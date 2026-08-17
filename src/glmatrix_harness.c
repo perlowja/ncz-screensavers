@@ -536,7 +536,29 @@ int main(void) {
         exit(1);
     }
 
-    /* Render loop. */
+    /* Render loop.
+     *
+     * DRAW AND SWAP ONCE BEFORE ASKING FOR A FRAME CALLBACK. A wl_surface
+     * that has never had a buffer attached is not mapped, and a compositor
+     * does not deliver frame callbacks for an unmapped surface -- so
+     * requesting one first and waiting for frame_done() to perform the first
+     * draw deadlocks: the callback that would trigger the draw is itself
+     * waiting on the draw.
+     *
+     * MEASURED on O6N 2026-08-17: the process ran happily, init_matrix
+     * returned, the event loop spun, and there were zero frames, zero
+     * errors and a blank screen -- indistinguishable from a hung hack.
+     * wl-screenhack.c has always primed the pump this way (initial draw +
+     * eglSwapBuffers before request_frame) and renders correctly on the
+     * same machine; this harness did not, which is the entire runtime
+     * difference between the two binaries.
+     */
+    glmatrix_xscreensaver_function_table.draw_cb(&app.mi);
+    if (!eglSwapBuffers(app.egl_display, app.egl_surface)) {
+        fprintf(stderr, "glmatrix_harness: initial eglSwapBuffers failed (0x%x)\n",
+                (unsigned int)eglGetError());
+        return 1;
+    }
     request_frame(&app);
     while (app.running) {
         while (wl_display_prepare_read(app.display) != 0) {
