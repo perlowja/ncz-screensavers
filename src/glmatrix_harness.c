@@ -279,6 +279,32 @@ static void ls_configure(void *d, struct zwlr_layer_surface_v1 *ls,
         g_harness_xscreen = (void *)(uintptr_t)0x1;  /* sentinel */
         g_harness_initialized = 1;
 
+        /* Declare the surface OPAQUE.
+         *
+         * The EGL config asks for EGL_ALPHA_SIZE 8, so the buffer has an
+         * alpha channel, and glmatrix clears to transparent black --
+         * xscreensaver hacks assume they own an opaque X drawable and never
+         * think about compositing. A wl_surface whose buffer carries alpha
+         * is blended against what is behind it unless it declares an opaque
+         * region, so the overlay composited to "whatever the desktop was
+         * already showing": invisible, while rendering perfectly.
+         *
+         * MEASURED on O6N 2026-08-17: frame_done reached 180+ frames in 8
+         * seconds with every eglSwapBuffers succeeding and a live Mali GPU
+         * context, and the screen still showed only the desktop. Frames were
+         * never the problem; blending was.
+         *
+         * The region is set in SURFACE-LOCAL (logical) coordinates, which is
+         * what configure hands us -- note that is 2194x1234 here, not the
+         * panel's 3840x2160, because this output runs a 1.75 fractional
+         * scale. */
+        struct wl_region *opaque = wl_compositor_create_region(a->compositor);
+        if (opaque) {
+            wl_region_add(opaque, 0, 0, a->width, a->height);
+            wl_surface_set_opaque_region(a->surface, opaque);
+            wl_region_destroy(opaque);
+        }
+
         /* Call the vendored hack's init. This will:
          *   - MI_INIT → xlockmore_mi_init (allocates state array)
          *   - init_GL → records ModeInfo fields, returns sentinel
@@ -341,6 +367,12 @@ static void frame_done(void *d, struct wl_callback *cb, uint32_t t) {
      * We just need to call draw_cb; it will issue glBegin/.../glEnd via
      * GL4ES, then call glXSwapBuffers (our shim) which routes to
      * eglSwapBuffers. */
+    {
+        static unsigned long _nframes = 0;
+        if (_nframes < 5 || (_nframes % 60) == 0)
+            fprintf(stderr, "[diag] frame_done #%lu\n", _nframes);
+        _nframes++;
+    }
     glmatrix_xscreensaver_function_table.draw_cb(&a->mi);
 
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
@@ -553,7 +585,10 @@ int main(void) {
      * same machine; this harness did not, which is the entire runtime
      * difference between the two binaries.
      */
+    fprintf(stderr, "[diag] initial draw: %dx%d configured=%d\n",
+            app.width, app.height, (int)app.configured);
     glmatrix_xscreensaver_function_table.draw_cb(&app.mi);
+    fprintf(stderr, "[diag] initial draw_cb returned; swapping\n");
     if (!eglSwapBuffers(app.egl_display, app.egl_surface)) {
         fprintf(stderr, "glmatrix_harness: initial eglSwapBuffers failed (0x%x)\n",
                 (unsigned int)eglGetError());
