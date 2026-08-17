@@ -593,6 +593,102 @@ static void layer_surface_handle_configure(void *data,
                            app->egl_surface, app->egl_context),
             EGL_TRUE, "eglMakeCurrent failed");
 
+        /* ------------------------------------------------------------------
+         * BEGIN TEMP DIAGNOSTIC BLOCK — round 4 hardware debug.
+         * Coordinator runs on real Mali-G720-Immortalis / Mesa panfrost
+         * (labwc 0.9.5 / wlroots 0.20.2). This block is intentionally
+         * inserted between a successful eglMakeCurrent and the first
+         * glCreateShader call to determine which of several subtly
+         * distinct root causes is producing glCreateShader == 0:
+         *
+         *   (a) EGL lies — eglMakeCurrent returned TRUE but no GL context
+         *       is truly current at the GL level. Diagnosis: glGetString
+         *       returns NULL, or eglGetCurrentContext() returns
+         *       EGL_NO_CONTEXT.
+         *   (b) Wrong GL library linked at runtime (a stub, the desktop
+         *       GL libGL.so, or a no-op ES2 shim). Diagnosis: glGetString
+         *       returns non-NULL but values look like "Mesa" desktop GL
+         *       or a stub banner.
+         *   (c) A stale GL error already set BEFORE glCreateShader from
+         *       some earlier untracked call. Diagnosis: glGetError() !=
+         *       GL_NO_ERROR right after the glGetString block.
+         *   (d) An implicit second eglMakeCurrent(NULL,…) or
+         *       eglReleaseThread() elsewhere reset current state.
+         *       Diagnosis: eglGetCurrentContext/Display/Surface returns
+         *       EGL_NO_* despite the call above succeeding.
+         *   (e) Pure EGL/GLES mismatch — current API is OpenGL, not
+         *       OpenGL ES. Diagnosis: glGetString returns NULL (desktop
+         *       GL has no ES entrypoints on Mesa for ES2-only contexts),
+         *       but eglGetCurrentContext is non-NULL.
+         *
+         * All output goes to stderr, one line per datum, prefixed with
+         * `[diag]` so the coordinator can grep for it verbatim in
+         * round 5. Print order matches the user's TASK list exactly.
+         * ------------------------------------------------------------------ */
+        {
+            EGLint  egl_err_after_makecurrent = eglGetError();
+            EGLDisplay cur_dpy = eglGetCurrentDisplay();
+            EGLContext cur_ctx = eglGetCurrentContext();
+            EGLSurface cur_srf = eglGetCurrentSurface(EGL_DRAW);
+
+            fprintf(stderr,
+                    "[diag] EGL handles: stored dpy=%p ctx=%p srf=%p | "
+                    "current dpy=%p ctx=%p srf(EGL_DRAW)=%p\n",
+                    (void *)app->egl_display, (void *)app->egl_context,
+                    (void *)app->egl_surface,
+                    (void *)cur_dpy, (void *)cur_ctx, (void *)cur_srf);
+            fprintf(stderr,
+                    "[diag] eglGetError() after makecurrent = 0x%x "
+                    "(EGL_SUCCESS=0x3000, EGL_NOT_INITIALIZED=0x3001)\n",
+                    (unsigned int)egl_err_after_makecurrent);
+
+            /* Capture-and-clear: read glGetError now so a non-zero
+             * value here means a GL error was set by some call BEFORE
+             * we entered this block. Each glGetString call below is
+             * required by the GL spec to NOT itself set an error, so
+             * the post-block glGetError isolates "stale error already
+             * pending" from anything we do later. */
+            const char *gl_ver  = (const char *)glGetString(GL_VERSION);
+            const char *gl_vnd  = (const char *)glGetString(GL_VENDOR);
+            const char *gl_rnd  = (const char *)glGetString(GL_RENDERER);
+            const char *gl_slv  = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+            fprintf(stderr, "[diag] GL_VERSION            = %s\n",
+                    gl_ver  ? gl_ver  : "<NULL>");
+            fprintf(stderr, "[diag] GL_VENDOR             = %s\n",
+                    gl_vnd  ? gl_vnd  : "<NULL>");
+            fprintf(stderr, "[diag] GL_RENDERER           = %s\n",
+                    gl_rnd  ? gl_rnd  : "<NULL>");
+            fprintf(stderr, "[diag] GL_SHADING_LANGUAGE_VERSION = %s\n",
+                    gl_slv  ? gl_slv  : "<NULL>");
+
+            EGLint gl_err_after_getstring = (EGLint)glGetError();
+            fprintf(stderr,
+                    "[diag] glGetError() after glGetString quartet = 0x%x "
+                    "(GL_NO_ERROR=0x0, GL_INVALID_OPERATION=0x502, "
+                    "GL_INVALID_ENUM=0x500)\n",
+                    (unsigned int)gl_err_after_getstring);
+
+            /* Inline glCreateShader — bypass compile_shader() so the
+             * call site, argument, return value, and post-call error
+             * are ALL visible verbatim on the hardware log. We do not
+             * delete this shader; the program crashes immediately
+             * afterward via compile_shader()'s DIE on the same call,
+             * so it leaks only for one round of debugging. */
+            GLuint diag_vs = glCreateShader(GL_VERTEX_SHADER);
+            EGLint  gl_err_after_create = (EGLint)glGetError();
+            fprintf(stderr,
+                    "[diag] inline glCreateShader(GL_VERTEX_SHADER) = 0x%x "
+                    "(0 means failure); glGetError() = 0x%x\n",
+                    (unsigned int)diag_vs, (unsigned int)gl_err_after_create);
+            if (diag_vs != 0) {
+                /* Free it so the resource doesn't leak if compile_shader
+                 * never gets to delete it (which is exactly what's about
+                 * to happen — DIE will exit the process, but be tidy). */
+                glDeleteShader(diag_vs);
+            }
+        }
+        /* END TEMP DIAGNOSTIC BLOCK */
+
         /* Now that GL is current, initialize the effect (loads shaders,
          * uploads geometry). */
         if (app->effect->init(app->effect) != 0) {
