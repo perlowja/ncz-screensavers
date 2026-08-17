@@ -1071,7 +1071,13 @@ static void atexit_app_fini(void) {
 }
 
 int main(void) {
-    struct app app;
+    /* static: atexit(atexit_app_fini) runs AFTER main() returns, when
+     * this variable would otherwise be automatic (stack) storage with
+     * expired lifetime -- g_app_for_signal pointed into a dead frame,
+     * observed on real hardware as app->effect reading back as garbage
+     * (0xaaaa00000001) inside app_fini, SIGSEGV. static gives it program
+     * lifetime so the atexit handler sees valid data. */
+    static struct app app;
     memset(&app, 0, sizeof app);
     app.egl_display = EGL_NO_DISPLAY;
     app.egl_surface = EGL_NO_SURFACE;
