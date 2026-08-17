@@ -2,9 +2,29 @@
 
 Goal: a native Wayland (wlr-layer-shell) + EGL (GLES2/3) host that renders
 xscreensaver-style GL screensavers WITHOUT X11/Xwayland. Reuses the GL rendering
-algorithms from xscreensaver's GPL hacks; replaces the X11/GLX windowing with a
+algorithms from xscreensaver's hacks; replaces the X11/GLX windowing with a
 Wayland/EGL layer-shell shell. Idle via ext-idle-notify-v1, lock coordination via
 ext-session-lock-v1.
+
+## Attribution
+
+The visual-effect algorithms this project ports (e.g. `src/glmatrix.c`) are
+the work of **Jamie Zawinski (jwz)**, author and maintainer of
+[xscreensaver](https://www.jwz.org/xscreensaver/) since 1992 — one of the
+longest-running, most widely-ported free software projects in existence.
+Every vendored hack keeps jwz's original copyright header and permission
+notice unmodified (xscreensaver hacks are released under a permissive
+MIT-style X Consortium notice, not the GPL); see `PORTING.md` §4 for the
+exact, minimal set of edits made to port each file and the file-level headers
+in `src/` for per-file provenance.
+
+This project is an independent, unofficial Wayland-native reimplementation of
+the *windowing and dispatch layer* xscreensaver hacks run under — it does not
+use, wrap, or depend on xscreensaver, Xlib, or Xwayland, and it is not
+affiliated with or endorsed by jwz. jwz has publicly and consistently stated
+he will not support Wayland in xscreensaver itself; that position is his to
+hold, and is unrelated to the credit owed him for the hacks' original
+authorship, which this project maintains in full.
 
 DESKTOP-ENVIRONMENT NEUTRAL BY DESIGN: depends only on standard wlroots
 protocols (wlr-layer-shell-unstable-v1, ext-session-lock-v1, ext-idle-notify-v1,

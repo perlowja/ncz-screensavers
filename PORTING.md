@@ -1,5 +1,12 @@
 # PORTING.md — Mechanical Porting Pipeline for xscreensaver GL Hacks
 
+Every hack this pipeline ports is the original work of **Jamie Zawinski
+(jwz)**, published as part of [xscreensaver](https://www.jwz.org/xscreensaver/)
+under a permissive X Consortium-style permission notice. We vendor his files
+with copyright/license headers unmodified and document every edit we make
+(see §4) — full credit and provenance stay attached to each port, not just to
+this document.
+
 Round 7 deliverable. This is the recipe that takes an upstream
 xscreensaver GL hack (a single .c file in `hacks/glx/`) and ports it
 through our native Wayland/EGL/GLES pipeline by:
