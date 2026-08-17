@@ -78,7 +78,7 @@
  */
 
 typedef struct _Display   Display;
-typedef struct _Window    Window;          /* actually a XID (uint32_t) */
+typedef unsigned long     Window;          /* XID -- an integer, not a pointer/struct; matches real Xlib.h */
 typedef struct _Visual    Visual;
 typedef struct _Drawable  Drawable;
 typedef struct _GC        GC;
@@ -503,7 +503,7 @@ struct xscreensaver_function_table {
 };
 
 #define XSCREENSAVER_MODULE_2(CLASS, NAME, PREFIX)                          \
-    static struct xscreensaver_function_table                                \
+    struct xscreensaver_function_table                                       \
         NAME##_xscreensaver_function_table = {                               \
             .name        = #NAME,                                            \
             .class_      = (CLASS),                                          \

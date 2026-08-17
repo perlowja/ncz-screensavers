@@ -31,23 +31,6 @@ project(
 # Build options — see `meson configure` for the full list.
 # ---------------------------------------------------------------------------
 
-option(
-    'gl4es', type: 'feature', value: 'enabled',
-    description: 'Build the GL4ES immediate-mode triangle test (round 7 part 1).',
-)
-
-option(
-    'gl4es-lib-dir',
-    type: 'string',
-    value: 'auto',
-    description: 'Directory or full path to GL4ES libGL.so.1. Default /usr/lib/gl4es/.',
-)
-
-option(
-    'xscreensaver-shim', type: 'feature', value: 'enabled',
-    description: 'Build the vendored xscreensaver glmatrix port through GL4ES + compat shim (round 7 part 2).',
-)
-
 # ---------------------------------------------------------------------------
 # Features
 # ---------------------------------------------------------------------------
@@ -109,11 +92,11 @@ if opt_gl4es
         # Treat as a directory; probe for libGL.so.1 inside.
         gl4es_lib_path = gl4es_lib_dir + '/libGL.so.1'
     endif
-    if not run_command('test', '-f', gl4es_lib_path, check: false).returncode() == 0
+    if run_command('test', '-f', gl4es_lib_path, check: false).returncode() != 0
         error('GL4ES feature enabled but @0@ not found. Install libgl4es0 (Debian), build GL4ES per PORTING.md §3, or pass -Dgl4es-lib-dir=/path/to/libGL.so.1, or pass -Dgl4es=disabled.'.format(gl4es_lib_path))
     endif
     # Extract just the directory portion for -L/-rpath flags.
-    gl4es_dir = gl4es_lib_path.substring(0, gl4es_lib_path.length() - ('libGL.so.1'.length()))
+    gl4es_dir = gl4es_lib_path.replace('libGL.so.1', '')
 endif
 
 # libpng — required for xscreensaver-shim (PNG textures via image_data_to_ximage).
@@ -246,6 +229,13 @@ if opt_xscreensaver
     # Vendored third-party source — relax warning strictness. The
     # xscreensaver_compat.c we author IS held to the standard bar.
     vendored_c_args = common_c_args + [
+        # glmatrix.c's real content is entirely behind '#ifdef USE_GL /* whole
+        # file */' -- xscreensaver's own Makefile system defines this per-GL-
+        # variant build. Without it the file compiles to an empty translation
+        # unit (no errors, no symbols) -- exactly what caused an "undefined
+        # reference to glmatrix_xscreensaver_function_table" link failure with
+        # zero prior compiler complaints from the drawing code itself.
+        '-DUSE_GL',
         '-Wno-unused-parameter',
         '-Wno-unused-but-set-variable',
         '-Wno-unused-variable',

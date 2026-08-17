@@ -35,7 +35,9 @@
  * For build cleanliness: this file is compiled with -Wall -Wextra.
  */
 
+#define _DEFAULT_SOURCE
 #include "xscreensaver_compat.h"
+#include <EGL/egl.h>
 
 #include <stdlib.h>
 #include <string.h>

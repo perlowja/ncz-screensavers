@@ -1,0 +1,17 @@
+option(
+    'gl4es', type: 'feature', value: 'enabled',
+    description: 'Build the GL4ES immediate-mode triangle test (round 7 part 1).',
+)
+
+option(
+    'gl4es-lib-dir',
+    type: 'string',
+    value: 'auto',
+    description: 'Directory or full path to GL4ES libGL.so.1. Default /usr/lib/gl4es/.',
+)
+
+option(
+    'xscreensaver-shim', type: 'feature', value: 'enabled',
+    description: 'Build the vendored xscreensaver glmatrix port through GL4ES + compat shim (round 7 part 2).',
+)
+
