@@ -5,7 +5,8 @@
  * xscreensaver_compat.h — the PUBLIC shim surface that vendored xscreensaver
  * GL hacks see when compiled into ncz-screensavers.
  *
- * Background: xscreensaver's GL hacks (hacks/glx/*.c in the xscreensaver
+ * Background: xscreensaver's GL hacks (the C files under hacks/glx/ in the
+ * xscreensaver
  * source tree) are written against a header chain that abstracts the GL
  * context + windowing + per-frame dispatch behind a small API:
  *
@@ -362,16 +363,32 @@ typedef struct {
     void *value;        /* string value, e.g. "True" */
 } XrmOptionDescRec;
 
-/* t_Bool — used in ModeSpec var tables as a type tag. */
-#define t_Bool 1
+/*
+ * xlockmore option-variable declarations.  Despite its historical name,
+ * `argtype` is the complete table-entry struct (not the enum): hacks declare
+ * `static argtype vars[] = { ... }`.  The final member is the parser tag.
+ *
+ * glmatrix currently uses t_String, t_Float, and t_Bool.  t_Int is included
+ * because it is part of the standard xlockmore declaration machinery and is
+ * used by many other hacks.  The table is metadata only in this port for now;
+ * ModeSpecOpt retains it for a future argv/resource-compatible consumer.
+ */
+typedef enum {
+    t_String,
+    t_Float,
+    t_Int,
+    t_Bool
+} argtype_tag;
 
 typedef struct {
-    void *var;          /* pointer to the variable to set */
-    char *name;         /* X resource name */
-    char *class_;       /* X resource class */
-    char *defval;       /* default value string */
-    int   type;         /* t_Bool, t_Int, etc. */
-} ModeSpecVar;
+    void        *var;        /* pointer to the variable to set */
+    char        *name;       /* X resource name */
+    char        *classname;  /* X resource class */
+    char        *def;        /* default value string */
+    argtype_tag  type;       /* how the framework parses def/overrides */
+} argtype;
+
+typedef argtype ModeSpecVar;
 
 typedef struct {
     int             numopts;

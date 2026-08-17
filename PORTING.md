@@ -375,6 +375,27 @@ and **it doesn't render correctly**, the failure modes are:
 The architecture is designed so any of 7a/7b/7c is recoverable without
 touching the rest of the pipeline.
 
+### 7d. Option-table compatibility status (round 9)
+
+The shim now provides xlockmore's standard `argtype` option-table entry and
+its `t_String`, `t_Float`, `t_Int`, and `t_Bool` parser tags.  `ModeSpecOpt`
+retains the tables so a future framework consumer can apply them, but this
+round deliberately does not parse X resources or hack-specific argv options.
+Consequently options such as glmatrix's `-speed`, `-density`, and `-clock`
+are not yet runtime overrides; the vendored defaults remain in effect.
+
+This is intentional because the native Wayland harness has no X server or X
+resource database, and current user-facing selection is through
+`NCZ_SCREENHACK_EFFECT`.  A future native configuration layer can consume the
+same tables (from argv, environment, or another frontend) without changing
+the vendored hacks or the table ABI.
+
+Randomness is likewise initialized lazily once per process by the current
+shim before the first `frand()` call.  Frame delivery remains compositor
+callback/vsync-driven.  Future requested-delay support should gate redraws
+using elapsed monotonic time rather than introducing the classic xlockmore
+poll/sleep loop.
+
 ---
 
 ## §8 — Provenance and licensing
