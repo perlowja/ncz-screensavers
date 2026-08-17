@@ -714,8 +714,10 @@ static void init_wayland(struct app *app) {
     wl_registry_add_listener(app->registry, &registry_listener, app);
 
     /* First roundtrip: deliver globals. */
-    DIE(wl_display_roundtrip(app->display), 0,
-        "wl_display_roundtrip (registry bind) failed");
+    if (wl_display_roundtrip(app->display) < 0) {
+        fprintf(stderr, "wl-screenhack: %s\n", "wl_display_roundtrip (registry bind) failed");
+        exit(1);
+    }
 
     if (!app->compositor) {
         fprintf(stderr, "wl-screenhack: wl_compositor not advertised by compositor\n");
@@ -736,8 +738,10 @@ static void init_wayland(struct app *app) {
     wl_seat_add_listener(app->seat, &seat_listener, app);
 
     /* Bind keyboard if it's already present. */
-    DIE(wl_display_roundtrip(app->display), 0,
-        "wl_display_roundtrip (seat caps) failed");
+    if (wl_display_roundtrip(app->display) < 0) {
+        fprintf(stderr, "wl-screenhack: %s\n", "wl_display_roundtrip (seat caps) failed");
+        exit(1);
+    }
 
     /* Set up the EGL *display / config / context* before creating the
      * layer surface. The actual window surface and makeCurrent happen
@@ -791,8 +795,10 @@ static void init_wayland(struct app *app) {
     wl_surface_commit(app->surface);
 
     /* Deliver the configure event. */
-    DIE(wl_display_roundtrip(app->display), 0,
-        "wl_display_roundtrip (configure) failed");
+    if (wl_display_roundtrip(app->display) < 0) {
+        fprintf(stderr, "wl-screenhack: %s\n", "wl_display_roundtrip (configure) failed");
+        exit(1);
+    }
 
     if (!app->configured) {
         fprintf(stderr,
