@@ -7,7 +7,7 @@
 # and compiled into the executable.
 
 project(
-    'ncz-wayland-screenhack',
+    'ncz-screensavers',
     'c',
     default_options: [
         'c_std=c11',
