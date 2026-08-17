@@ -515,8 +515,25 @@ static void seat_handle_capabilities(void *data,
     }
 }
 
+static void seat_handle_name(void *data,
+                             struct wl_seat *seat,
+                             const char *name) {
+    /* The seat name is a unique UTF-8 identifier for this wl_seat global,
+     * useful in multi-seat setups for clients that need to pick a specific
+     * physical device. A screensaver does not need to identify which seat
+     * it landed on — it just quits on any key press — so this handler is a
+     * no-op.
+     *
+     * It MUST exist and be non-NULL: libwayland aborts if a registered
+     * listener omits the function pointer for any event present in the
+     * bound interface version. We bind wl_seat at v7, which includes the
+     * `name` event (added in v2, opcode 1). */
+    (void)data; (void)seat; (void)name;
+}
+
 static const struct wl_seat_listener seat_listener = {
     .capabilities = seat_handle_capabilities,
+    .name         = seat_handle_name,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -834,6 +851,18 @@ static void init_egl(struct app *app) {
     EGLint major = 0, minor = 0;
     if (!eglInitialize(app->egl_display, &major, &minor)) {
         fprintf(stderr, "wl-screenhack: eglInitialize failed (0x%x)\n",
+                (unsigned int)eglGetError());
+        exit(1);
+    }
+
+    /* EGL's current-bound client rendering API defaults to EGL_OPENGL_API
+     * on implementations that also support desktop GL (Mesa does); without
+     * an explicit bind here, eglCreateContext below can succeed while the
+     * subsequent GLES2 calls (glCreateShader etc.) silently fail because no
+     * ES context is actually current. Must bind before choosing the config
+     * or creating the context. */
+    if (!eglBindAPI(EGL_OPENGL_ES_API)) {
+        fprintf(stderr, "wl-screenhack: eglBindAPI(EGL_OPENGL_ES_API) failed (0x%x)\n",
                 (unsigned int)eglGetError());
         exit(1);
     }
