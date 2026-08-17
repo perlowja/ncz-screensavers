@@ -48,7 +48,7 @@ wayland_scanner_privcode_args = ['private-code']
 protocols = {
     'wayland':           'protocols/wayland.xml',
     'xdg-shell':         'protocols/xdg-shell.xml',
-    'wlr-layer-shell':   'protocols/wlr-layer-shell-unstable-v1.xml',
+    'wlr-layer-shell-unstable-v1': 'protocols/wlr-layer-shell-unstable-v1.xml',
 }
 
 # Generated artifacts: one .h (header) and one .c (private code) per
@@ -58,7 +58,7 @@ protocols = {
 # wl-screenhack.c is compiled).
 gen_sources = []
 foreach name, xml_path : protocols
-    base = name.underscorify() + '-client-protocol'
+    base = name + '-client-protocol'
     h_target = custom_target(
         name + '_header',
         input:  xml_path,
@@ -81,7 +81,7 @@ endforeach
 # Add the build directory to the include path so generated headers are
 # reachable via `#include "wayland-client-protocol.h"` etc. The source
 # root is added so wl-screenhack.c can find them via relative path.
-inc = include_directories('.', meson.current_build_dir())
+inc = include_directories('.')
 
 # ---------------------------------------------------------------------------
 # Executable

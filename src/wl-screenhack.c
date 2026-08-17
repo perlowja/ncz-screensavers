@@ -1,3 +1,9 @@
+/* _POSIX_C_SOURCE MUST come before ANY system header so glibc exposes
+ * POSIX.1-2008 (sigaction, clock_gettime/CLOCK_MONOTONIC, poll, etc.).
+ * Without it the build fails with "storage size of 'sa' isn't known"
+ * and implicit decls of clock_gettime / sigemptyset / sigaddset. */
+#define _POSIX_C_SOURCE 200809L
+
 /*
  * wl-screenhack.c — native Wayland/EGL/GLES2 screensaver shell.
  *
@@ -30,6 +36,7 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglplatform.h>
+#include <EGL/eglext.h>      /* EGL_PLATFORM_WAYLAND_KHR and other EGL_KHR_* tokens */
 #include <GLES2/gl2.h>
 
 /*
@@ -306,6 +313,17 @@ struct app {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Forward declarations                                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Defined further below. init_wayland() calls this before the surface is
+ * created, so the prototype must be visible at that point. Without it, the
+ * compiler emits an implicit decl, then complains when the static definition
+ * later disagrees. */
+static void init_egl(struct app *app);
+static void init_wayland(struct app *app);
+
+/* -------------------------------------------------------------------------- */
 /* Signal handling                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -432,8 +450,12 @@ static void keyboard_handle_enter(void *data,
                                   struct wl_keyboard *keyboard,
                                   uint32_t serial,
                                   struct wl_surface *surface,
-                                  struct wl_output *output) {
-    (void)data; (void)keyboard; (void)serial; (void)surface; (void)output;
+                                  struct wl_array *keys) {
+    /* wl_keyboard.enter emits a wl_array of currently-pressed keys (list of
+     * uint32_t keycodes). We don't care about it: any press is enough to
+     * quit via the .key handler below. */
+    (void)data; (void)keyboard; (void)serial; (void)surface;
+    (void)keys;
 }
 static void keyboard_handle_leave(void *data,
                                   struct wl_keyboard *keyboard,
@@ -521,8 +543,10 @@ static void layer_surface_handle_configure(void *data,
 
     if (app->configured && (w != (uint32_t)app->width || h != (uint32_t)app->height)) {
         /* Resize the EGL window BEFORE the next frame, and notify the
-         * effect so it can update projection state. */
-        wl_egl_window_resize(app->egl_window, (int)w, (int)h);
+         * effect so it can update projection state. wl_egl_window_resize
+         * takes the new size plus two attach offsets (dx, dy); we anchor
+         * to all four edges so both are 0. */
+        wl_egl_window_resize(app->egl_window, (int)w, (int)h, 0, 0);
         app->width  = (int)w;
         app->height = (int)h;
         app->effect->reshape(app->effect, app->width, app->height);
@@ -747,10 +771,17 @@ static void init_wayland(struct app *app) {
      * for other layers — it may overlap them. */
     zwlr_layer_surface_v1_set_exclusive_zone(app->layer_surface, -1);
 
-    /* We want all key events so we can quit on any key press. ON means
-     * "exclusive" — wlr-layer-shell will route keyboard focus to us. */
+    /* We want all key events so we can quit on any key press. EXCLUSIVE
+     * means: this layer surface receives all keyboard input from the
+     * compositor (focus is forced onto us, regardless of any other
+     * surface that might want it). A screensaver wants exactly this —
+     * any keypress should dismiss it.
+     *
+     * Note: v4 of wlr-layer-shell-unstable-v1 only defines NONE /
+     * EXCLUSIVE / ON_DEMAND; there is no _ON. */
+
     zwlr_layer_surface_v1_set_keyboard_interactivity(
-        app->layer_surface, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON);
+        app->layer_surface, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
 
     zwlr_layer_surface_v1_add_listener(app->layer_surface,
                                        &layer_surface_listener, app);
