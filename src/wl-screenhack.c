@@ -56,10 +56,14 @@
  * We deliberately use a macro so the call site reads cleanly.
  *
  * The macro evaluates `call` exactly once and `expected` may be any
- * expression of an integer type comparable to `call`. We treat EGL_FALSE
- * (==0) and NULL as failure for the relevant types, and any return value
- * != `expected` for the rest. The `fmt`/`...` arguments are appended to
- * a base message so callers can add context.
+ * expression of an integer type comparable to `call`. This is an exact-value
+ * check: it exits when `call != expected`. It is appropriate for APIs whose
+ * success value is exactly known, e.g. `sigaction(...) == 0` or
+ * `eglMakeCurrent(...) == EGL_TRUE`. Do not use it for object-creation APIs
+ * where any nonzero / non-NULL value means success.
+ *
+ * The `fmt`/`...` arguments are appended to a base message so callers can add
+ * context.
  */
 #define DIE(call, expected, fmt, ...)                                          \
     do {                                                                       \
@@ -154,7 +158,14 @@ static const char *k_fragment_shader_src =
 
 static GLuint compile_shader(GLenum type, const char *src, const char *label) {
     GLuint s = glCreateShader(type);
-    DIE(s, (GLuint)0, "glCreateShader(%s) returned 0", label);
+    if (s == 0) {
+        GLenum err = glGetError();
+        fprintf(stderr,
+                "wl-screenhack: glCreateShader(%s, type=0x%x) returned 0 "
+                "(glGetError=0x%x)\n",
+                label, (unsigned int)type, (unsigned int)err);
+        exit(1);
+    }
     glShaderSource(s, 1, &src, NULL);
     glCompileShader(s);
     GLint ok = GL_FALSE;
@@ -179,7 +190,15 @@ static int triangle_init(struct effect *e) {
     GLuint fs = compile_shader(GL_FRAGMENT_SHADER, k_fragment_shader_src, "fragment");
 
     st->program = glCreateProgram();
-    DIE(st->program, (GLuint)0, "glCreateProgram returned 0");
+    if (st->program == 0) {
+        GLenum err = glGetError();
+        fprintf(stderr,
+                "wl-screenhack: glCreateProgram returned 0 (glGetError=0x%x)\n",
+                (unsigned int)err);
+        glDeleteShader(vs);
+        glDeleteShader(fs);
+        exit(1);
+    }
     glAttachShader(st->program, vs);
     glAttachShader(st->program, fs);
     glBindAttribLocation(st->program, 0, "a_pos");
@@ -205,7 +224,14 @@ static int triangle_init(struct effect *e) {
     st->u_time_loc  = glGetUniformLocation(st->program, "u_time");
 
     glGenBuffers(1, &st->vbo);
-    DIE(st->vbo, (GLuint)0, "glGenBuffers returned 0");
+    if (st->vbo == 0) {
+        GLenum err = glGetError();
+        fprintf(stderr,
+                "wl-screenhack: glGenBuffers produced buffer name 0 "
+                "(glGetError=0x%x)\n",
+                (unsigned int)err);
+        exit(1);
+    }
     glBindBuffer(GL_ARRAY_BUFFER, st->vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(k_triangle_verts),
                  k_triangle_verts, GL_STATIC_DRAW);
