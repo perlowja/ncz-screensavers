@@ -1,5 +1,15 @@
-/* _POSIX_C_SOURCE for sigaction + clock_gettime. */
+/* _POSIX_C_SOURCE for sigaction + clock_gettime.
+ *
+ * _DEFAULT_SOURCE as well, and it is NOT optional: defining
+ * _POSIX_C_SOURCE explicitly SUPPRESSES glibc's default feature set, and
+ * M_PI lives in the XSI/BSD half of math.h rather than the POSIX half. With
+ * only the line above, every vendored hack that does trigonometry fails to
+ * compile with M_PI undeclared -- glmatrix.c hits it twice (auto_track,
+ * init_matrix). The vendored sources are upstream's and must not be edited
+ * to work around our own feature-test macros, so the fix belongs here in
+ * the shim they include first. */
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE
 
 /*
  * xscreensaver_compat.h — the PUBLIC shim surface that vendored xscreensaver
@@ -239,6 +249,11 @@ typedef struct ModeInfo ModeInfo;
 #define MI_WIN_IS_INWINDOW(MI)     (!((MI)->root_p))
 #define MI_WIN_IS_ICONIC(MI)       (0)
 #define MI_WIN_IS_WIREFRAME(MI)    ((MI)->wireframe_p)
+/* Upstream xlockmore exposes BOTH spellings and the hacks use them
+ * interchangeably -- glmatrix.c calls MI_IS_WIREFRAME in three places. Without
+ * the alias it compiles as an implicit function declaration and then fails to
+ * link, which reads as a missing symbol rather than a missing macro. */
+#define MI_IS_WIREFRAME(MI)        MI_WIN_IS_WIREFRAME(MI)
 #define MI_WIN_IS_USE3D(MI)        ((MI)->threed)
 #define MI_LEFT_COLOR(MI)          ((MI)->threed_left_color)
 #define MI_RIGHT_COLOR(MI)         ((MI)->threed_right_color)
@@ -530,7 +545,7 @@ struct xscreensaver_function_table {
             .event_cb    = PREFIX##_handle_event,                            \
             .free_cb     = free_##PREFIX,                                    \
             .release_cb  = release_##PREFIX,                                 \
-            .opts        = PREFIX##_opts,                                    \
+            .opts        = &PREFIX##_opts,                                   \
         };
 
 #define XSCREENSAVER_MODULE(CLASS, PREFIX) \
