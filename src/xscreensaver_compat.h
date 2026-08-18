@@ -94,6 +94,33 @@ typedef unsigned long     Window;          /* XID -- an integer, not a pointer/s
 typedef struct _Visual    Visual;
 typedef struct _Drawable  Drawable;
 typedef struct _GC        GC;
+/* X11 keysym constants (values from X11/keysymdef.h). Hacks compare the KeySym
+ * returned by XLookupString against these to implement arrow-key navigation.
+ * Our XLookupString always returns 0, so no branch is ever taken -- but the
+ * constants must EXIST for the comparison to compile. */
+#define XK_BackSpace  0xff08
+#define XK_Tab        0xff09
+#define XK_Return     0xff0d
+#define XK_Escape     0xff1b
+#define XK_Home       0xff50
+#define XK_Left       0xff51
+#define XK_Up         0xff52
+#define XK_Right      0xff53
+#define XK_Down       0xff54
+#define XK_Prior      0xff55
+#define XK_Page_Up    0xff55
+#define XK_Next       0xff56
+#define XK_Page_Down  0xff56
+#define XK_End        0xff57
+#define XK_Begin      0xff58
+#define XK_Delete     0xffff
+#define XK_space      0x0020
+#define XK_plus       0x002b
+#define XK_minus      0x002d
+#define XK_equal      0x003d
+#define XK_less       0x003c
+#define XK_greater    0x003e
+
 typedef unsigned long     KeySym;        /* XID. Hacks declare `KeySym keysym` in
                                            their event handlers; they compare it
                                            against XK_* constants and otherwise
@@ -131,12 +158,19 @@ typedef struct _wl_display wl_display;
 
 typedef struct {
     int type;
-    /* Pad out so XButtonEvent::button lands at a known offset. The hack
-     * only reads type (offset 0) and button; we make the union members
-     * sized so the field positions are predictable and consistent. */
+    /* Pad so the named fields land at offsets we control. The harness writes
+     * through these same definitions, so the layout only has to be
+     * self-consistent -- it does not have to match real Xlib.
+     *
+     * x/y are REQUIRED, not decorative: hacks that implement drag or
+     * click-to-focus read event->xbutton.x, and without them the port fails
+     * with "'XButtonEvent' has no member named 'x'". */
     unsigned char _pad_to_button[72];
     unsigned int button;
-    unsigned char _rest[192 - 76];
+    int x, y;
+    int x_root, y_root;
+    unsigned int state;
+    unsigned char _rest[192 - 76 - 20];
 } XButtonEvent;
 
 typedef struct {
@@ -152,7 +186,9 @@ typedef struct {
      * `keycode` are ever read. */
     unsigned char _pad_to_keycode[72];
     unsigned int  keycode;
-    unsigned char _rest[192 - 76];
+    int x, y;
+    unsigned int state;
+    unsigned char _rest[192 - 76 - 12];
 } XKeyEvent;
 
 typedef union {

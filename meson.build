@@ -305,6 +305,10 @@ if opt_xscreensaver
         {'name': 'rubikblocks', 'src': 'src/rubikblocks.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'discoball', 'src': 'src/discoball.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'raverhoop', 'src': 'src/raverhoop.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'hextrail', 'src': 'src/hextrail.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'crumbler', 'src': 'src/crumbler.c', 'png': false, 'extra': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'lockward', 'src': 'src/lockward.c', 'png': false, 'extra': []},
+        {'name': 'cube21', 'src': 'src/cube21.c', 'png': false, 'extra': []},
     ]
 
     foreach h : ported_hacks
