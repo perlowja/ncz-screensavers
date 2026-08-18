@@ -292,6 +292,19 @@ if opt_xscreensaver
     ported_hacks = [
         {'name': 'noof', 'src': 'src/noof.c', 'png': false, 'extra': ['src/pow2.c']},
         {'name': 'beats', 'src': 'src/beats.c', 'png': false, 'extra': ['src/sphere.c']},
+        {'name': 'hypnowheel', 'src': 'src/hypnowheel.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'cubicgrid', 'src': 'src/cubicgrid.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'cubestack', 'src': 'src/cubestack.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'glknots', 'src': 'src/glknots.c', 'png': false, 'extra': ['src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'cubestorm', 'src': 'src/cubestorm.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'hexstrut', 'src': 'src/hexstrut.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'energystream', 'src': 'src/energystream.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'cubetwist', 'src': 'src/cubetwist.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'splodesic', 'src': 'src/splodesic.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'glblur', 'src': 'src/glblur.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'rubikblocks', 'src': 'src/rubikblocks.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'discoball', 'src': 'src/discoball.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'raverhoop', 'src': 'src/raverhoop.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks
