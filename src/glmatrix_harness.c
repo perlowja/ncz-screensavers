@@ -91,7 +91,21 @@
 /* The vendored glmatrix.c emits this via XSCREENSAVER_MODULE_2:
  *     glmatrix_xscreensaver_function_table
  * We pick it up via the linker symbol below. */
-extern struct xscreensaver_function_table glmatrix_xscreensaver_function_table;
+/* THE HACK UNDER TEST.
+ *
+ * Each vendored hack emits its own <name>_xscreensaver_function_table via
+ * XSCREENSAVER_MODULE_2. Rather than hardcode one, the harness takes a pointer
+ * and every call site goes through it, so porting a new hack is a one-line
+ * change here (or a different -DHACK_TABLE at build time) instead of a copy of
+ * this file per effect.
+ *
+ * HACK_TABLE is set by meson per target; it defaults to glmatrix so an
+ * unconfigured build still produces the known-good reference. */
+#ifndef HACK_TABLE
+#define HACK_TABLE glmatrix_xscreensaver_function_table
+#endif
+extern struct xscreensaver_function_table HACK_TABLE;
+static struct xscreensaver_function_table *hack = &HACK_TABLE;
 
 /* ----------------------------------------------------------------------- */
 /* Macros                                                                  */
@@ -351,10 +365,10 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
          * tunable stays at its BSS default. That is what made this render
          * black: do_texture was False, so init_matrix skipped load_textures()
          * and no glyph atlas was ever uploaded. */
-        xs_compat_apply_var_defaults(glmatrix_xscreensaver_function_table.opts);
+        xs_compat_apply_var_defaults(hack->opts);
 
         fprintf(stderr, "[diag] glmatrix_harness: calling init_matrix...\n");
-        glmatrix_xscreensaver_function_table.init_cb(&a->mi);
+        hack->init_cb(&a->mi);
         fprintf(stderr, "[diag] glmatrix_harness: init_matrix returned\n");
         a->configured = true;
     } else if (w != (uint32_t)a->width || h != (uint32_t)a->height) {
@@ -363,8 +377,8 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         a->height = (int)h;
         g_harness_width = a->width;
         g_harness_height = a->height;
-        if (glmatrix_xscreensaver_function_table.reshape_cb) {
-            glmatrix_xscreensaver_function_table.reshape_cb(&a->mi,
+        if (hack->reshape_cb) {
+            hack->reshape_cb(&a->mi,
                                                             a->width, a->height);
         }
     }
@@ -460,7 +474,7 @@ static void frame_done(void *d, struct wl_callback *cb, uint32_t t) {
             fprintf(stderr, "[diag] frame_done #%lu\n", _nframes);
         _nframes++;
     }
-    glmatrix_xscreensaver_function_table.draw_cb(&a->mi);
+    hack->draw_cb(&a->mi);
 
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "glmatrix_harness: eglSwapBuffers failed (0x%x)\n",
@@ -539,8 +553,8 @@ static void app_fini(struct app *a) {
 
     /* Tell the hack to free its GL resources before we tear down the
      * EGL context. */
-    if (a->configured && glmatrix_xscreensaver_function_table.free_cb) {
-        glmatrix_xscreensaver_function_table.free_cb(&a->mi);
+    if (a->configured && hack->free_cb) {
+        hack->free_cb(&a->mi);
     }
 
     if (a->egl_context != EGL_NO_CONTEXT) {
@@ -712,7 +726,7 @@ shell_ready:
      */
     fprintf(stderr, "[diag] initial draw: %dx%d configured=%d\n",
             app.width, app.height, (int)app.configured);
-    glmatrix_xscreensaver_function_table.draw_cb(&app.mi);
+    hack->draw_cb(&app.mi);
     fprintf(stderr, "[diag] initial draw_cb returned; swapping\n");
     if (!eglSwapBuffers(app.egl_display, app.egl_surface)) {
         fprintf(stderr, "glmatrix_harness: initial eglSwapBuffers failed (0x%x)\n",
