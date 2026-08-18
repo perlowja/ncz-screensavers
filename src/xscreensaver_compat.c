@@ -379,9 +379,26 @@ static const char *xs_env_override(const char *name) {
     return getenv(key);
 }
 
+/* The table most recently applied. The resource getters below consult it so
+ * that a hack which CALLS get_*_resource() sees the same values as a hack that
+ * reads the var pointers directly. */
+static ModeSpecOpt *xs_active_opts = NULL;
+
+/* Find a var entry by resource name. */
+static ModeSpecVar *xs_find_var(const char *name) {
+    int i;
+    if (!xs_active_opts || !xs_active_opts->vars || !name) return NULL;
+    for (i = 0; i < xs_active_opts->numvars; i++) {
+        ModeSpecVar *v = &xs_active_opts->vars[i];
+        if (v->name && strcmp(v->name, name) == 0) return v;
+    }
+    return NULL;
+}
+
 void xs_compat_apply_var_defaults(ModeSpecOpt *o) {
     int i;
     if (!o || !o->vars) return;
+    xs_active_opts = o;
     for (i = 0; i < o->numvars; i++) {
         ModeSpecVar *v = &o->vars[i];
         const char *ov;
@@ -411,25 +428,63 @@ void xs_compat_apply_var_defaults(ModeSpecOpt *o) {
 }
 
 /*
- * These two remain stubs: glmatrix reaches its tunables through the var table
- * above, not by calling these. A hack that DOES call them will need the table
- * consulted here -- left deliberately obvious rather than silently wrong.
+ * Resource getters, backed by the hack's own var table.
+ *
+ * Hacks reach their tunables two ways: through the var pointer (handled by
+ * xs_compat_apply_var_defaults above) or by calling these. Both must agree, or
+ * a hack behaves differently depending on which style its author used -- and
+ * the failure is silent, which is how do_texture stayed False and glmatrix
+ * rendered black.
+ *
+ * An unknown name returns the caller's stated fallback rather than a zero
+ * value, because "" and False are legitimate settings and are indistinguishable
+ * from "not found" otherwise.
  */
 
 char *get_string_resource(ModeInfo *mi, const char *res_name,
                           const char *res_class) {
-    (void)mi; (void)res_name; (void)res_class;
-    /* The hack stores the default value in its ModeSpecVar table and
-     * reads it directly via the var pointer. We return an empty string
-     * just in case. */
-    static char empty[] = "";
-    return empty;
+    ModeSpecVar *v;
+    const char *val = NULL;
+    (void)mi; (void)res_class;
+    v = xs_find_var(res_name);
+    if (v && v->type == t_String && v->var && *(char **)v->var)
+        val = *(char **)v->var;        /* live value, may carry an override */
+    else if (v)
+        val = v->def;
+    /* MUST be freeable: xscreensaver hacks routinely free() this result, so
+     * handing back a string literal or a pointer into the var table would be a
+     * free() of static storage. */
+    return strdup(val ? val : "");
 }
 
 Bool get_boolean_resource(ModeInfo *mi, const char *res_name,
                           const char *res_class) {
-    (void)mi; (void)res_name; (void)res_class;
-    return False;
+    ModeSpecVar *v;
+    (void)mi; (void)res_class;
+    v = xs_find_var(res_name);
+    if (!v) return False;
+    if (v->type == t_Bool && v->var) return *(Bool *)v->var;
+    return xs_parse_bool(v->def);
+}
+
+int get_integer_resource(ModeInfo *mi, const char *res_name,
+                         const char *res_class) {
+    ModeSpecVar *v;
+    (void)mi; (void)res_class;
+    v = xs_find_var(res_name);
+    if (!v) return 0;
+    if (v->type == t_Int && v->var) return *(int *)v->var;
+    return v->def ? atoi(v->def) : 0;
+}
+
+double get_float_resource(ModeInfo *mi, const char *res_name,
+                          const char *res_class) {
+    ModeSpecVar *v;
+    (void)mi; (void)res_class;
+    v = xs_find_var(res_name);
+    if (!v) return 0.0;
+    if (v->type == t_Float && v->var) return (double)*(float *)v->var;
+    return v->def ? atof(v->def) : 0.0;
 }
 
 /* ----------------------------------------------------------------------- */

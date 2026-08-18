@@ -429,6 +429,10 @@ extern void  xs_compat_apply_var_defaults(ModeSpecOpt *o);
 
 extern Bool  get_boolean_resource(ModeInfo *mi, const char *res_name,
                                   const char *res_class);
+extern int   get_integer_resource(ModeInfo *mi, const char *res_name,
+                                 const char *res_class);
+extern double get_float_resource(ModeInfo *mi, const char *res_name,
+                                 const char *res_class);
 
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only
  * ones used by glmatrix.c; expand as future ports need more. These

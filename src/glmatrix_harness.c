@@ -121,6 +121,10 @@ struct app {
     struct wl_keyboard             *keyboard;
     struct wl_output               *output;
     struct zwlr_layer_shell_v1     *layer_shell;
+    struct xdg_wm_base             *wm_base;      /* fallback shell */
+    struct xdg_surface             *xdg_surface;
+    struct xdg_toplevel            *xdg_toplevel;
+    int                             pending_w, pending_h;
     struct wl_surface              *surface;
     struct zwlr_layer_surface_v1   *layer_surface;
 
@@ -167,6 +171,16 @@ static double monotonic_seconds(void) {
 /* Wayland registry / seat / keyboard                                      */
 /* ----------------------------------------------------------------------- */
 
+static void wm_base_ping(void *d, struct xdg_wm_base *b, uint32_t serial) {
+    (void)d;
+    /* Mandatory. A client that does not pong is considered unresponsive and
+     * the compositor is entitled to kill it. */
+    xdg_wm_base_pong(b, serial);
+}
+static const struct xdg_wm_base_listener wm_base_listener = {
+    .ping = wm_base_ping,
+};
+
 static void reg_global(void *d, struct wl_registry *r, uint32_t n,
                        const char *iface, uint32_t v) {
     (void)v;
@@ -177,9 +191,19 @@ static void reg_global(void *d, struct wl_registry *r, uint32_t n,
         a->seat = wl_registry_bind(r, n, &wl_seat_interface, 7);
     else if (strcmp(iface, wl_output_interface.name) == 0 && !a->output)
         a->output = wl_registry_bind(r, n, &wl_output_interface, 4);
-    else if (strcmp(iface, zwlr_layer_shell_v1_interface.name) == 0)
-        a->layer_shell = wl_registry_bind(r, n,
-                                          &zwlr_layer_shell_v1_interface, 4);
+    else if (strcmp(iface, zwlr_layer_shell_v1_interface.name) == 0) {
+        /* NCZ_NO_LAYER_SHELL makes a wlroots compositor behave, for this
+         * client, like one that has no layer-shell. Without it the xdg
+         * fallback can only be exercised by installing a different desktop,
+         * so it would ship untested -- which is how a fallback path rots. */
+        if (!getenv("NCZ_NO_LAYER_SHELL"))
+            a->layer_shell = wl_registry_bind(r, n,
+                                              &zwlr_layer_shell_v1_interface, 4);
+    }
+    else if (strcmp(iface, xdg_wm_base_interface.name) == 0) {
+        a->wm_base = wl_registry_bind(r, n, &xdg_wm_base_interface, 1);
+        xdg_wm_base_add_listener(a->wm_base, &wm_base_listener, a);
+    }
 }
 
 static void reg_global_remove(void *d, struct wl_registry *r, uint32_t n) {
@@ -244,10 +268,14 @@ static const struct wl_seat_listener seat_listener = {
 /* Layer surface                                                           */
 /* ----------------------------------------------------------------------- */
 
-static void ls_configure(void *d, struct zwlr_layer_surface_v1 *ls,
-                         uint32_t serial, uint32_t w, uint32_t h) {
-    struct app *a = d;
-    zwlr_layer_surface_v1_ack_configure(ls, serial);
+/* Shared by BOTH shells.
+ *
+ * The surface this renders on differs by compositor -- a wlr layer surface
+ * where that protocol exists, an xdg_toplevel where it does not -- but
+ * everything after the shell has handed us a size is identical: create the EGL
+ * window, hand the hack its ModeInfo, call init. Keeping one body means the
+ * xdg path cannot drift from the tested layer-shell path. */
+static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
     if (w == 0 || h == 0) return;
 
     if (!a->configured) {
@@ -342,12 +370,61 @@ static void ls_configure(void *d, struct zwlr_layer_surface_v1 *ls,
     }
 }
 
+static void ls_configure(void *d, struct zwlr_layer_surface_v1 *ls,
+                         uint32_t serial, uint32_t w, uint32_t h) {
+    zwlr_layer_surface_v1_ack_configure(ls, serial);
+    surface_configured((struct app *)d, w, h);
+}
+
 static void ls_closed(void *d, struct zwlr_layer_surface_v1 *ls) {
     (void)ls; struct app *a = d; a->running = 0;
 }
 
 static const struct zwlr_layer_surface_v1_listener ls_listener = {
     .configure = ls_configure, .closed = ls_closed,
+};
+
+/* ----------------------------------------------------------------------- */
+/* xdg-shell fallback                                                      */
+/* ----------------------------------------------------------------------- */
+/*
+ * wlr-layer-shell is the right surface for a screensaver -- it can sit on the
+ * OVERLAY layer above everything and take no input focus. But it is a wlroots
+ * protocol, and GNOME/Mutter does not implement it. Requiring it made this
+ * engine exit with "missing Wayland globals" on the single most widely
+ * deployed Wayland desktop.
+ *
+ * So: layer-shell when present, a fullscreen xdg_toplevel when not. The
+ * fallback is a normal window, which means the compositor may show it with
+ * decorations behind other windows and the user can alt-tab away from it. That
+ * is a genuinely weaker screensaver, and it is stated rather than hidden --
+ * but it runs, which beats exiting.
+ */
+
+static void xdg_surf_configure(void *d, struct xdg_surface *xs,
+                               uint32_t serial) {
+    struct app *a = d;
+    xdg_surface_ack_configure(xs, serial);
+    /* xdg_toplevel.configure may legitimately propose 0x0, meaning "you
+     * choose". Pick the output size we already know, or a sane default. */
+    surface_configured(a, a->pending_w ? (uint32_t)a->pending_w : 1920,
+                          a->pending_h ? (uint32_t)a->pending_h : 1080);
+}
+static const struct xdg_surface_listener xdg_surf_listener = {
+    .configure = xdg_surf_configure,
+};
+
+static void xdg_top_configure(void *d, struct xdg_toplevel *t,
+                              int32_t w, int32_t h, struct wl_array *states) {
+    (void)t; (void)states;
+    struct app *a = d;
+    if (w > 0 && h > 0) { a->pending_w = w; a->pending_h = h; }
+}
+static void xdg_top_close(void *d, struct xdg_toplevel *t) {
+    (void)t; ((struct app *)d)->running = 0;
+}
+static const struct xdg_toplevel_listener xdg_top_listener = {
+    .configure = xdg_top_configure, .close = xdg_top_close,
 };
 
 /* ----------------------------------------------------------------------- */
@@ -487,6 +564,9 @@ static void app_fini(struct app *a) {
     if (a->keyboard)  { wl_keyboard_release(a->keyboard);  a->keyboard = NULL; }
     if (a->layer_surface) { zwlr_layer_surface_v1_destroy(a->layer_surface); a->layer_surface = NULL; }
     if (a->surface) { wl_surface_destroy(a->surface); a->surface = NULL; }
+    if (a->xdg_toplevel) { xdg_toplevel_destroy(a->xdg_toplevel); a->xdg_toplevel = NULL; }
+    if (a->xdg_surface)  { xdg_surface_destroy(a->xdg_surface);  a->xdg_surface  = NULL; }
+    if (a->wm_base)      { xdg_wm_base_destroy(a->wm_base);      a->wm_base      = NULL; }
     if (a->layer_shell) { zwlr_layer_shell_v1_destroy(a->layer_shell); a->layer_shell = NULL; }
     if (a->seat) { wl_seat_release(a->seat); a->seat = NULL; }
     if (a->output) { wl_output_release(a->output); a->output = NULL; }
@@ -541,8 +621,14 @@ int main(void) {
     app.registry = wl_display_get_registry(app.display);
     wl_registry_add_listener(app.registry, &reg_listener, &app);
     if (wl_display_roundtrip(app.display) < 0) exit(1);
-    if (!app.compositor || !app.layer_shell || !app.seat) {
-        fprintf(stderr, "glmatrix_harness: missing Wayland globals\n");
+    if (!app.compositor || !app.seat || (!app.layer_shell && !app.wm_base)) {
+        fprintf(stderr,
+            "glmatrix_harness: missing Wayland globals "
+            "(compositor=%d seat=%d layer_shell=%d xdg_wm_base=%d)\n",
+            !!app.compositor, !!app.seat, !!app.layer_shell, !!app.wm_base);
+        fprintf(stderr,
+            "  This needs wl_compositor + wl_seat, plus EITHER "
+            "zwlr_layer_shell_v1 or xdg_wm_base.\n");
         exit(1);
     }
     wl_seat_add_listener(app.seat, &seat_listener, &app);
@@ -557,6 +643,33 @@ int main(void) {
         fprintf(stderr, "glmatrix_harness: create_surface failed\n");
         exit(1);
     }
+    if (!app.layer_shell) {
+        /* xdg-shell fallback: a fullscreen toplevel. Weaker than a layer
+         * surface -- it is an ordinary window the user can alt-tab away from,
+         * and it cannot claim the OVERLAY layer -- but it is what exists on
+         * compositors without wlr-layer-shell, GNOME/Mutter chief among them. */
+        fprintf(stderr, "[diag] no zwlr_layer_shell_v1; "
+                        "falling back to a fullscreen xdg_toplevel\n");
+        app.xdg_surface = xdg_wm_base_get_xdg_surface(app.wm_base, app.surface);
+        if (!app.xdg_surface) {
+            fprintf(stderr, "glmatrix_harness: get_xdg_surface failed\n");
+            exit(1);
+        }
+        xdg_surface_add_listener(app.xdg_surface, &xdg_surf_listener, &app);
+        app.xdg_toplevel = xdg_surface_get_toplevel(app.xdg_surface);
+        if (!app.xdg_toplevel) {
+            fprintf(stderr, "glmatrix_harness: get_toplevel failed\n");
+            exit(1);
+        }
+        xdg_toplevel_add_listener(app.xdg_toplevel, &xdg_top_listener, &app);
+        xdg_toplevel_set_title(app.xdg_toplevel, "GLMatrix");
+        xdg_toplevel_set_app_id(app.xdg_toplevel, "org.nclawzero.screensaver");
+        xdg_toplevel_set_fullscreen(app.xdg_toplevel, app.output);
+        wl_surface_commit(app.surface);
+        if (wl_display_roundtrip(app.display) < 0) exit(1);
+        goto shell_ready;
+    }
+
     app.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         app.layer_shell, app.surface, app.output,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "glmatrix");
@@ -573,6 +686,8 @@ int main(void) {
     zwlr_layer_surface_v1_add_listener(app.layer_surface, &ls_listener, &app);
     wl_surface_commit(app.surface);
     if (wl_display_roundtrip(app.display) < 0) exit(1);
+
+shell_ready:
     if (!app.configured) {
         fprintf(stderr, "glmatrix_harness: never configured\n");
         exit(1);
