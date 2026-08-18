@@ -56,6 +56,7 @@
 #ifndef NCZ_XSCREENSAVER_COMPAT_H
 #define NCZ_XSCREENSAVER_COMPAT_H
 
+#include <sys/time.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -93,10 +94,32 @@ typedef unsigned long     Window;          /* XID -- an integer, not a pointer/s
 typedef struct _Visual    Visual;
 typedef struct _Drawable  Drawable;
 typedef struct _GC        GC;
-typedef struct _Colormap  Colormap;
+typedef unsigned long     KeySym;        /* XID. Hacks declare `KeySym keysym` in
+                                           their event handlers; they compare it
+                                           against XK_* constants and otherwise
+                                           treat it as an opaque integer. */
+typedef unsigned long     Colormap;      /* XID, like Window above -- real Xlib makes this an integer, not a struct. Passing it by value (as the hacks do) needs a complete type. */
 typedef struct _Screen     Screen;
 typedef struct _Pixmap     Pixmap;
-typedef struct _XColor     XColor;
+/* XColor is DEFINED, not forward-declared.
+ *
+ * The xlockmore GL hacks do not treat XColor as opaque: they calloc arrays of
+ * it (so they need sizeof) and read .red/.green/.blue to feed glColor3f. An
+ * incomplete type compiles right up until first use and then fails with
+ * "invalid use of undefined type" / "invalid application of sizeof", which is
+ * what blocked dangerball, cubestack, cubestorm, glknots, hexstrut and
+ * hypnowheel together.
+ *
+ * Layout and semantics match Xlib: the colour channels are 16-bit, 0..65535,
+ * which is why the hacks divide by 65536.0 to get a 0..1 float. `pixel` and
+ * `flags` are carried for source compatibility only -- there is no X server
+ * here and nothing consumes them. */
+typedef struct _XColor {
+    unsigned long  pixel;
+    unsigned short red, green, blue;
+    char           flags;
+    char           pad;
+} XColor;
 typedef struct _XGCValues  XGCValues;
 /* XImage is fully defined in section 6 below. */
 /* XEvent — see union definition below in this section. We use a union of
@@ -121,10 +144,22 @@ typedef struct {
     unsigned char _rest[192 - sizeof(int)];
 } XAnyEvent;
 
+typedef struct {
+    int type;
+    /* Same padding discipline as XButtonEvent: the union members are all 192
+     * bytes so every member's fields sit at offsets we control, and the
+     * harness writes through these same definitions. Only `type` and
+     * `keycode` are ever read. */
+    unsigned char _pad_to_keycode[72];
+    unsigned int  keycode;
+    unsigned char _rest[192 - 76];
+} XKeyEvent;
+
 typedef union {
     int type;
     XAnyEvent    xany;
     XButtonEvent xbutton;
+    XKeyEvent    xkey;
     unsigned char _pad[192];   /* round to real XEvent size */
 } XEvent;
 
@@ -277,6 +312,28 @@ typedef struct ModeInfo ModeInfo;
 #define MI_IS_VERBOSE(MI)          (MI_WIN_IS_VERBOSE((MI)))
 #define MI_IS_INSTALL(MI)          (MI_WIN_IS_INSTALL((MI)))
 #define MI_IS_DEBUG(MI)            (0)
+/* xlockmore's per-option description table. Hacks declare a static array of
+ * these alongside their ModeSpecOpt; nothing here reads it, but it must be a
+ * complete type for the declaration to compile. */
+typedef struct {
+    char *opt;
+    char *desc;
+} OptionStruct;
+
+/* Monochrome / colour-depth predicates. There is no X visual here and the
+ * surface is always 32-bit RGBA, so mono is always false and the colour tests
+ * are always true. Hacks use these to pick a drawing path; taking the colour
+ * path unconditionally is correct for us. */
+/* Clear the drawing surface. Upstream expands to an XClearWindow plus a GL
+ * clear; we only ever have the GL surface. */
+#define MI_CLEARWINDOW(MI)  do { glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); } while (0)
+
+#define MI_IS_MONO(MI)      (0)
+#define MI_IS_INSTALL(MI)   (0)
+#define MI_IS_INROOT(MI)    (0)
+#define MI_IS_INWINDOW(MI)  (1)
+#define MI_IS_ICONIC(MI)    (0)
+
 #define MI_IS_MOUSE(MI)            (0)
 
 /* MI_INIT — allocates per-screen state array. On real xlockmore this
@@ -351,6 +408,65 @@ extern void           XDestroyImage(XImage *xi);
 /* image_data_to_ximage — loads a PNG into a freshly allocated XImage.
  * Backed by libpng. The `Display *` and `Visual *` args are IGNORED — we
  * always produce an RGBA8 byte buffer. */
+/* Colour ramp generation (utils/colors.c upstream).
+ *
+ * Fills `colors` with a smooth, cyclic ramp of *ncolorsP entries. The
+ * Screen/Visual/Colormap arguments exist for source compatibility and are
+ * IGNORED: there is no X server and no palette to allocate into, so
+ * allocate_p/writable_pP are likewise inert. The hacks pass 0/0/0/False/0.
+ */
+/* ------------------------------------------------------------------------- */
+/* Input plumbing                                                            */
+/*                                                                           */
+/* These exist so hacks that offer mouse/keyboard interaction COMPILE and     */
+/* LINK. A screensaver drawing a background has no interactive user, so the   */
+/* handlers are inert by design rather than unimplemented by accident:        */
+/* they consistently report "event not handled", which is exactly what the    */
+/* hacks do when a real X server delivers them nothing.                       */
+/*                                                                           */
+/* If the engine later grows real input (the lock surface will need it), this */
+/* is the seam to implement against -- the signatures already match upstream. */
+/* ------------------------------------------------------------------------- */
+
+/* Opaque trackball state. Upstream tracks a quaternion built from drag
+ * deltas; with no pointer events the rotation is simply identity, so the
+ * hack's own idle spin (its `spin`/`wander` options) drives the view. */
+typedef struct trackball_state trackball_state;
+
+extern trackball_state *gltrackball_init(int ignore_device_rotation_p);
+extern void gltrackball_rotate(trackball_state *ts);
+extern void gltrackball_reset(trackball_state *ts, float x, float y);
+extern Bool gltrackball_event_handler(XEvent *event, trackball_state *ts,
+                                      int window_width, int window_height,
+                                      Bool *button_down_p);
+extern void gltrackball_free(trackball_state *ts);
+extern void gltrackball_stop(trackball_state *ts);
+extern void gltrackball_get_quaternion(trackball_state *ts, float q[4]);
+extern void gltrackball_start(trackball_state *ts, int x, int y, int w, int h);
+extern void gltrackball_track(trackball_state *ts, int x, int y, int w, int h);
+extern void gltrackball_mousewheel(trackball_state *ts, int button, int percent,
+                                   int flip_p);
+extern double gltrackball_get_x(trackball_state *ts);
+extern double gltrackball_get_y(trackball_state *ts);
+
+/* Generic per-hack event dispatch used by the xlockmore GL hacks. */
+extern Bool screenhack_event_helper(Display *dpy, Window window, XEvent *event);
+
+/* Xlib keyboard decode. Returns the number of characters written to `buffer`. */
+extern int XLookupString(XKeyEvent *event, char *buffer, int nbytes,
+                         KeySym *keysym, void *status);
+
+/* HSV <-> RGB in Xlib's 16-bit channel space (utils/colors.c upstream). */
+extern void hsv_to_rgb(int h, double s, double v,
+                       unsigned short *r, unsigned short *g, unsigned short *b);
+extern void rgb_to_hsv(unsigned short r, unsigned short g, unsigned short b,
+                       int *h, double *s, double *v);
+
+extern void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
+                                 XColor *colors, int *ncolorsP,
+                                 Bool allocate_p, Bool *writable_pP,
+                                 Bool verbose_p);
+
 extern XImage *image_data_to_ximage(Display *dpy, Visual *visual,
                                     const unsigned char *data,
                                     unsigned long size);

@@ -236,6 +236,14 @@ if opt_xscreensaver
         # reference to glmatrix_xscreensaver_function_table" link failure with
         # zero prior compiler complaints from the drawing code itself.
         '-DUSE_GL',
+        # M_PI and friends are not ISO C; xscreensaver expects the GNU
+        # extensions to be visible, as its own build system arranges.
+        '-D_GNU_SOURCE',
+        # xscreensaver's configure probes this; without it utils/yarandom.c
+        # and friends fall back to the ancient one-argument BSD gettimeofday
+        # and fail with "too few arguments".
+        '-DGETTIMEOFDAY_TWO_ARGS=1',
+        '-DHAVE_UNISTD_H=1',   # getpid() in utils/yarandom.c
         '-Wno-unused-parameter',
         '-Wno-unused-but-set-variable',
         '-Wno-unused-variable',
@@ -282,7 +290,8 @@ if opt_xscreensaver
     # 'png' marks hacks that pull in the libpng-backed XImage decoder; effects
     # with no texture data do not need image_data_to_ximage.c.
     ported_hacks = [
-        {'name': 'noof',      'src': 'src/noof.c',      'png': false, 'extra': ['src/pow2.c']},
+        {'name': 'noof', 'src': 'src/noof.c', 'png': false, 'extra': ['src/pow2.c']},
+        {'name': 'beats', 'src': 'src/beats.c', 'png': false, 'extra': ['src/sphere.c']},
     ]
 
     foreach h : ported_hacks

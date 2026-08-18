@@ -532,3 +532,212 @@ void XDestroyImage(XImage *xi) {
     if (xi->data) free(xi->data);
     free(xi);
 }
+/* ------------------------------------------------------------------------- */
+/* Colour ramps                                                              */
+/* ------------------------------------------------------------------------- */
+
+/* HSV -> RGB, channels 0..65535 to match XColor.
+ * h in degrees [0,360), s and v in [0,1]. */
+static void xs_hsv_to_rgb16(double h, double s, double v,
+                            unsigned short *r, unsigned short *g,
+                            unsigned short *b)
+{
+    double rr = v, gg = v, bb = v;
+    if (s > 0.0) {
+        double f, p, q, t;
+        int i;
+        h = fmod(h, 360.0);
+        if (h < 0.0) h += 360.0;
+        h /= 60.0;
+        i = (int) h;
+        f = h - i;
+        p = v * (1.0 - s);
+        q = v * (1.0 - s * f);
+        t = v * (1.0 - s * (1.0 - f));
+        switch (i) {
+            case 0:  rr = v; gg = t; bb = p; break;
+            case 1:  rr = q; gg = v; bb = p; break;
+            case 2:  rr = p; gg = v; bb = t; break;
+            case 3:  rr = p; gg = q; bb = v; break;
+            case 4:  rr = t; gg = p; bb = v; break;
+            default: rr = v; gg = p; bb = q; break;
+        }
+    }
+    *r = (unsigned short) (rr * 65535.0 + 0.5);
+    *g = (unsigned short) (gg * 65535.0 + 0.5);
+    *b = (unsigned short) (bb * 65535.0 + 0.5);
+}
+
+/* Fill `colors` with a smooth CYCLIC colour ramp.
+ *
+ * Upstream picks a handful of random points in HSV and interpolates between
+ * them, wrapping so the last colour blends back into the first. The hacks rely
+ * on that cyclicity: they walk the array with an incrementing index modulo
+ * ncolors, so a discontinuity at the wrap shows up as a visible flash.
+ *
+ * Not a byte-for-byte reimplementation of utils/colors.c -- the hacks only
+ * require "a smooth loop of pleasant colours of the requested length", and the
+ * exact sequence is random per run anyway.
+ *
+ * screen/visual/cmap/allocate_p/writable_pP are ignored: no X server, nothing
+ * to allocate. *ncolorsP is left as the caller set it (we always fill exactly
+ * that many) so callers that re-read it stay consistent.
+ */
+void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
+                          XColor *colors, int *ncolorsP,
+                          Bool allocate_p, Bool *writable_pP,
+                          Bool verbose_p)
+{
+    int n, i, npoints, seg;
+    double hues[6], sat, val;
+
+    (void) screen; (void) visual; (void) cmap;
+    (void) allocate_p; (void) writable_pP; (void) verbose_p;
+
+    if (!colors || !ncolorsP) return;
+    n = *ncolorsP;
+    if (n <= 0) return;
+
+    /* 3-5 waypoints around the wheel; fewer looks like a two-tone gradient,
+     * more turns into noise at typical ncolors (64-256). */
+    npoints = 3 + (random() % 3);
+    for (i = 0; i < npoints; i++)
+        hues[i] = (random() % 360000) / 1000.0;
+    hues[npoints] = hues[0];          /* close the loop */
+
+    sat = 0.6 + (random() % 400) / 1000.0;   /* 0.6 .. 1.0 */
+    val = 0.7 + (random() % 300) / 1000.0;   /* 0.7 .. 1.0 */
+
+    for (i = 0; i < n; i++) {
+        double t = (double) i * npoints / (double) n;
+        double frac;
+        double h0, h1, dh;
+        seg = (int) t;
+        if (seg >= npoints) seg = npoints - 1;
+        frac = t - seg;
+
+        h0 = hues[seg];
+        h1 = hues[seg + 1];
+        /* Interpolate the SHORT way around the wheel, otherwise a pair like
+         * 350 -> 10 sweeps backwards through the entire spectrum. */
+        dh = h1 - h0;
+        if (dh > 180.0)  dh -= 360.0;
+        if (dh < -180.0) dh += 360.0;
+
+        xs_hsv_to_rgb16(h0 + dh * frac, sat, val,
+                        &colors[i].red, &colors[i].green, &colors[i].blue);
+        colors[i].pixel = (unsigned long) i;
+        colors[i].flags = 0;
+        colors[i].pad   = 0;
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Input plumbing (see the header for why these are inert)                   */
+/* ------------------------------------------------------------------------- */
+
+/* Upstream carries a quaternion and drag origin. With no pointer events there
+ * is nothing to accumulate, so the struct exists only to give the hacks a
+ * non-NULL handle to pass around. */
+struct trackball_state { int unused; };
+
+static struct trackball_state xs_trackball_singleton = { 0 };
+
+trackball_state *gltrackball_init(int ignore_device_rotation_p)
+{
+    (void) ignore_device_rotation_p;
+    /* A shared singleton is safe precisely because the state is empty; if this
+     * ever holds a real rotation it must become a per-hack allocation. */
+    return &xs_trackball_singleton;
+}
+
+void gltrackball_rotate(trackball_state *ts)
+{
+    (void) ts;   /* identity rotation: no glMultMatrix, leave the modelview as-is */
+}
+
+void gltrackball_reset(trackball_state *ts, float x, float y)
+{
+    (void) ts; (void) x; (void) y;
+}
+
+Bool gltrackball_event_handler(XEvent *event, trackball_state *ts,
+                               int window_width, int window_height,
+                               Bool *button_down_p)
+{
+    (void) event; (void) ts; (void) window_width; (void) window_height;
+    /* Report "not handled" and never claim a button is held. A hack that saw a
+     * stuck button_down would freeze its own animation waiting for a release
+     * that cannot arrive. */
+    if (button_down_p) *button_down_p = 0;
+    return 0;
+}
+
+void gltrackball_start(trackball_state *ts, int x, int y, int w, int h)
+{ (void) ts; (void) x; (void) y; (void) w; (void) h; }
+
+void gltrackball_track(trackball_state *ts, int x, int y, int w, int h)
+{ (void) ts; (void) x; (void) y; (void) w; (void) h; }
+
+void gltrackball_mousewheel(trackball_state *ts, int button, int percent, int flip_p)
+{ (void) ts; (void) button; (void) percent; (void) flip_p; }
+
+double gltrackball_get_x(trackball_state *ts) { (void) ts; return 0.0; }
+double gltrackball_get_y(trackball_state *ts) { (void) ts; return 0.0; }
+
+Bool screenhack_event_helper(Display *dpy, Window window, XEvent *event)
+{
+    (void) dpy; (void) window; (void) event;
+    return 0;    /* not handled */
+}
+
+int XLookupString(XKeyEvent *event, char *buffer, int nbytes,
+                  KeySym *keysym, void *status)
+{
+    (void) event; (void) status;
+    /* No keyboard mapping table here. Report zero characters and a zero
+     * keysym; hacks compare the keysym against XK_* constants and fall through
+     * to "ignore" when it matches nothing. */
+    if (keysym) *keysym = 0;
+    if (buffer && nbytes > 0) buffer[0] = '\0';
+    return 0;
+}
+
+/* --- colour conversion (utils/colors.c) ---------------------------------- */
+
+/* h in degrees, s/v in [0,1], channels out in 0..65535. */
+void hsv_to_rgb(int h, double s, double v,
+                unsigned short *r, unsigned short *g, unsigned short *b)
+{
+    xs_hsv_to_rgb16((double) h, s, v, r, g, b);
+}
+
+void rgb_to_hsv(unsigned short r, unsigned short g, unsigned short b,
+                int *h, double *s, double *v)
+{
+    double rr = r / 65535.0, gg = g / 65535.0, bb = b / 65535.0;
+    double maxv = rr > gg ? (rr > bb ? rr : bb) : (gg > bb ? gg : bb);
+    double minv = rr < gg ? (rr < bb ? rr : bb) : (gg < bb ? gg : bb);
+    double d = maxv - minv, hh = 0.0;
+
+    if (d > 0.0) {
+        if (maxv == rr)      hh = 60.0 * fmod(((gg - bb) / d), 6.0);
+        else if (maxv == gg) hh = 60.0 * (((bb - rr) / d) + 2.0);
+        else                 hh = 60.0 * (((rr - gg) / d) + 4.0);
+        if (hh < 0.0) hh += 360.0;
+    }
+    if (h) *h = (int) (hh + 0.5);
+    if (s) *s = (maxv > 0.0) ? (d / maxv) : 0.0;
+    if (v) *v = maxv;
+}
+
+void gltrackball_free(trackball_state *ts) { (void) ts; }  /* singleton: nothing to free */
+void gltrackball_stop(trackball_state *ts) { (void) ts; }
+
+void gltrackball_get_quaternion(trackball_state *ts, float q[4])
+{
+    (void) ts;
+    /* Identity quaternion -- no accumulated rotation. */
+    if (!q) return;
+    q[0] = 0.0f; q[1] = 0.0f; q[2] = 0.0f; q[3] = 1.0f;
+}
