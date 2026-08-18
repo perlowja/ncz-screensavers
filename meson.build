@@ -270,6 +270,52 @@ if opt_xscreensaver
         c_args: vendored_c_args,
         install: false,
     )
+
+    # -----------------------------------------------------------------------
+    # Ported hacks. One entry per effect.
+    #
+    # The harness is SHARED: glmatrix_harness.c resolves the hack through
+    # -DHACK_TABLE=<prefix>_xscreensaver_function_table, so an effect costs one
+    # table entry here and a single #include edit in its vendored .c, with no
+    # copy of the harness per effect.
+    #
+    # 'png' marks hacks that pull in the libpng-backed XImage decoder; effects
+    # with no texture data do not need image_data_to_ximage.c.
+    ported_hacks = [
+        {'name': 'noof',      'src': 'src/noof.c',      'png': false, 'extra': ['src/pow2.c']},
+    ]
+
+    foreach h : ported_hacks
+        hack_sources = [
+            'src/glmatrix_harness.c',
+            'src/xscreensaver_compat.c',
+            h['src'],
+        ] + h.get('extra', [])
+        if h['png']
+            hack_sources += ['src/image_data_to_ximage.c']
+        endif
+        executable(
+            h['name'] + '_demo',
+            files(hack_sources) + gen_sources,
+            include_directories: inc,
+            dependencies: [
+                dep_wayland_client,
+                dep_wayland_egl,
+                dep_egl,
+                dep_glesv2,
+                dep_png,
+            ],
+            link_args: [
+                '-L@0@'.format(gl4es_dir),
+                '-lGL',
+                '-Wl,-rpath,@0@'.format(gl4es_dir),
+            ],
+            c_args: vendored_c_args + [
+                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
+            ],
+            install: false,
+        )
+    endforeach
 endif
 
 # ---------------------------------------------------------------------------
