@@ -331,9 +331,89 @@ int xlockmore_no_events(ModeInfo *mi, void *event) {
 /* get_string_resource / get_boolean_resource                             */
 /* ----------------------------------------------------------------------- */
 /*
- * glmatrix.c declares these in ModeSpecVar tables but doesn't actually
- * CALL them — they're consumed by xscreensaver's option-parsing layer.
- * On our pipeline we don't parse options at all, so these are stubs.
+ * A hack declares its tunables in a ModeSpecVar (argtype) table and NEVER
+ * assigns them in code. In real xscreensaver the option-parsing layer walks
+ * that table and WRITES each parsed value THROUGH the stored var pointer.
+ *
+ * We do not parse X resources or argv, but we must still perform that write,
+ * because a hack whose table is never walked runs with every tunable at its
+ * BSS default -- every Bool False, every float 0.0, every string NULL.
+ *
+ * That is not a cosmetic difference. MEASURED on O6N 2026-08-18: glmatrix
+ * rendered pure black because `do_texture` stayed False, so init_matrix
+ * skipped `load_textures()` entirely and no glyph atlas was ever uploaded.
+ * The tell was in the log ordering -- "init_matrix returned" printed BEFORE
+ * GL4ES initialised, i.e. init_matrix had made no GL call at all. The decode
+ * and upload path that looked guilty was never reached.
+ *
+ * xs_compat_apply_var_defaults() below performs the write, using each entry's
+ * own DEF_* string as the source, which is exactly what upstream does when no
+ * resource or command-line override is present.
+ */
+
+static Bool xs_parse_bool(const char *s) {
+    if (!s) return False;
+    while (*s == ' ' || *s == '\t') s++;
+    return (*s == 't' || *s == 'T' ||        /* true  */
+            *s == 'y' || *s == 'Y' ||        /* yes   */
+            *s == '1' ||
+            ((*s == 'o' || *s == 'O') &&     /* on, but not off */
+             (s[1] == 'n' || s[1] == 'N')));
+}
+
+/* Look up an override for one tunable in the environment.
+ *
+ * Upstream takes these from X resources or argv; we have neither, and a hack
+ * whose behaviour can only be changed by editing and rebuilding it is very
+ * hard to bisect. XS_<NAME> covers that: XS_FOG=False, XS_DENSITY=40. */
+static const char *xs_env_override(const char *name) {
+    char key[64];
+    size_t i;
+    if (!name) return NULL;
+    key[0] = 'X'; key[1] = 'S'; key[2] = '_';
+    for (i = 0; name[i] && i + 4 < sizeof key; i++) {
+        char c = name[i];
+        key[3 + i] = (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
+    }
+    key[3 + i] = '\0';
+    return getenv(key);
+}
+
+void xs_compat_apply_var_defaults(ModeSpecOpt *o) {
+    int i;
+    if (!o || !o->vars) return;
+    for (i = 0; i < o->numvars; i++) {
+        ModeSpecVar *v = &o->vars[i];
+        const char *ov;
+        if (!v->var) continue;
+        ov = xs_env_override(v->name);
+        if (ov) {
+            fprintf(stderr, "[xs-compat] override %s = %s\n", v->name, ov);
+            v->def = (char *)ov;
+        }
+        switch (v->type) {
+        case t_String:
+            *(char **)v->var = v->def;
+            break;
+        case t_Bool:
+            *(Bool *)v->var = xs_parse_bool(v->def);
+            break;
+        case t_Int:
+            *(int *)v->var = v->def ? atoi(v->def) : 0;
+            break;
+        case t_Float:
+            /* t_Float targets a float-width variable; hacks commonly declare
+             * these as GLfloat, which is float on every platform we build. */
+            *(float *)v->var = v->def ? (float)atof(v->def) : 0.0f;
+            break;
+        }
+    }
+}
+
+/*
+ * These two remain stubs: glmatrix reaches its tunables through the var table
+ * above, not by calling these. A hack that DOES call them will need the table
+ * consulted here -- left deliberately obvious rather than silently wrong.
  */
 
 char *get_string_resource(ModeInfo *mi, const char *res_name,

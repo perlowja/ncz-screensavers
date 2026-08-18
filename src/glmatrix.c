@@ -802,6 +802,7 @@ load_textures (ModeInfo *mi, Bool flip_p)
   check_gl_error ("texture init");
   glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, xi->width, xi->height, 0, GL_RGBA,
                 GL_UNSIGNED_BYTE, xi->data);
+
   {
     char buf[255];
     sprintf (buf, "creating %dx%d texture:", xi->width, xi->height);

@@ -315,6 +315,16 @@ static void ls_configure(void *d, struct zwlr_layer_surface_v1 *ls,
          *
          * If anything fails inside GL4ES, the hack will print to stderr
          * via check_gl_error. */
+        /* Apply the hack's own declared defaults BEFORE init.
+         *
+         * The hack never assigns its tunables itself -- upstream xscreensaver
+         * writes them through the ModeSpecVar table during option parsing. We
+         * do not parse options, but we must still do that write, or every
+         * tunable stays at its BSS default. That is what made this render
+         * black: do_texture was False, so init_matrix skipped load_textures()
+         * and no glyph atlas was ever uploaded. */
+        xs_compat_apply_var_defaults(glmatrix_xscreensaver_function_table.opts);
+
         fprintf(stderr, "[diag] glmatrix_harness: calling init_matrix...\n");
         glmatrix_xscreensaver_function_table.init_cb(&a->mi);
         fprintf(stderr, "[diag] glmatrix_harness: init_matrix returned\n");

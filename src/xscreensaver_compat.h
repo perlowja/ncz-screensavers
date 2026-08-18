@@ -422,6 +422,11 @@ typedef struct {
  * don't actually USE these in a Wayland port. */
 extern char *get_string_resource(ModeInfo *mi, const char *res_name,
                                  const char *res_class);
+/* Walk a hack's ModeSpecVar table and write each entry's default through its
+ * var pointer. MUST be called before the hack's init_cb: without it every
+ * tunable sits at its BSS default and the hack silently misbehaves. */
+extern void  xs_compat_apply_var_defaults(ModeSpecOpt *o);
+
 extern Bool  get_boolean_resource(ModeInfo *mi, const char *res_name,
                                   const char *res_class);
 

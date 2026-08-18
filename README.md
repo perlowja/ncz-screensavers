@@ -112,19 +112,52 @@ options to:
 
 Ship (2) with a strict fail-closed watchdog; treat (1) as the target.
 
-### Prerequisite before building any of this
+### Resolved: the glyph atlas now renders (2026-08-18)
 
-`glmatrix_demo` currently renders OPAQUE BLACK. The surface, the frame loop and
-the compositing are all correct as of `f77a79f` — the overlay genuinely covers
-the desktop now — but the glyph atlas does not appear. Wiring a GL lockscreen
-around a renderer that draws nothing would just produce a black lockscreen, so
-the atlas bug is the gate on starting this work.
+`glmatrix_demo` previously drew OPAQUE BLACK, and that was the gate on building
+the GL lockscreen. It is fixed, and the cause was not where this document
+predicted.
 
-What is already ruled out: the compiled-in asset is fine
-(`src/images/gen/matrix3_png.h`, 368 KB, valid PNG signature, IHDR 512x598),
-and GL4ES initialises cleanly with no GL errors reported. The remaining
-suspects are in the decode/upload path — `image_data_to_ximage` (libpng) ->
-`XGetPixel`/`XPutPixel` -> `glTexImage2D` through GL4ES.
+**The decode/upload path was never the bug.** `image_data_to_ximage` returns the
+atlas correctly -- measured on O6N: 512x598, green channel max 246, mean 72,
+84,034 pixels above half brightness -- `spank_image` and the power-of-two
+padding then produce the expected 512x512, and `glTexImage2D` returns
+`GL_NO_ERROR`.
+
+**`load_textures()` was never called at all.** It is gated on `do_texture`
+(`glmatrix.c:920`), and `do_texture` is a `static Bool` that the hack never
+assigns. Upstream xscreensaver populates it by walking the hack's `ModeSpecVar`
+table (`glmatrix.c:228`) and writing each parsed value THROUGH the stored var
+pointer. Our shim implemented no vars-table processing, so every tunable sat at
+its BSS default: `do_texture` False, `do_fog`/`do_waves`/`do_rotate` False,
+`speed` and `density` 0.0, `mode_str` NULL. No atlas was ever loaded.
+
+The tell was in the log ordering: `init_matrix returned` printed BEFORE GL4ES
+initialised, meaning `init_matrix` had made no GL call whatsoever. Any theory
+about byte order or texture upload was describing code that never ran.
+
+**Fix:** `xs_compat_apply_var_defaults()` in `src/xscreensaver_compat.c` walks
+the table and performs the write, using each entry's own `DEF_*` string. The
+harness calls it immediately before `init_cb`. This is not glmatrix-specific --
+every ported hack would have run with all tunables at zero.
+
+Measured after the fix on O6N (Mali, labwc, GL4ES): 600+ frames in 20 s (~30
+fps), 17,731 green pixels on a 3840x2160 capture, correct glyph shapes and
+alpha blending.
+
+**Tuning without a rebuild:** the shim honours `XS_<NAME>` environment
+overrides for any entry in the table, e.g. `XS_DENSITY=60`, `XS_FOG=False`.
+Upstream takes these from X resources or argv; we have neither, and a hack whose
+behaviour can only be changed by editing and recompiling it is very hard to
+bisect.
+
+**A trap worth recording for anyone testing on O6N:** killing
+`singularity-lockscreen` while the session is locked leaves the compositor
+locked with no lock surface, and it then renders BLACK and composites no client
+at all. Every screenshot comes back byte-identical black regardless of what is
+running, which looks exactly like a broken renderer. Verify against a control
+capture with nothing running before believing any "still black" result;
+recover with a `greetd` restart.
 
 ### Runtime requirement for every port
 
