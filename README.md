@@ -79,85 +79,81 @@ So a screensaver that must survive locking has to BE the lock surface. There
 is no composition path where a separate screensaver process draws beneath a
 separate locker process.
 
-### Shape of the implementation
+### Settled design (agreed with Mirko Brombin, 2026-08-18)
 
-`singularity-lockscreen` already owns the `ext-session-lock-v1` surface and
-already draws wallpaper + clock + password card, and already carries the
-PAM/auth path. The minimal, lowest-risk change is to replace only its STATIC
-WALLPAPER LAYER with a GL-rendered animated one, leaving the widget tree and
-every line of authentication code untouched. That yields the animated GL
-lockscreen with the password prompt composited on top, without editing
-security-critical code.
+The lock surface will be a NEW GL lock engine, separate from `loginui`. Not a
+GL layer bolted into the existing locker.
+
+That closes the question this section used to leave open, and it closes it the
+other way from the original plan. The earlier idea — "replace only the static
+wallpaper layer of `singularity-lockscreen`" — is not minimal and is now
+withdrawn. Reading the locker settles it:
+
+- The wallpaper is not a layer the locker owns. It is a `cairo_surface_t`
+  loaded by `loginui_load_wallpaper()` and passed INTO `loginui_render()` as
+  `st.background` (`lock_main.c:104`, `:274`, `:283`).
+- The whole lock surface is `wl_shm` + Cairo, drawn on the CPU
+  (`loginui_create_buffer(shm, ...)` at `:258`, then `wl_surface_attach()` at
+  `:290`). **There is no EGL context anywhere in the locker.**
+
+So "add GL to the wallpaper" means giving `loginui` an EGL rendering path, and
+`loginui` is a shared library (`dependency('singularity-loginui')`) used by the
+greeter and other Sinty components. Mirko flagged exactly this, and is
+additionally porting `loginui` to Zig — so building a GL dependency into it now
+would be building onto something mid-rewrite.
+
+### Wayland-agnostic, not Singularity-specific
+
+The engine is meant to run on any Wayland compositor, not just Singularity, so
+that any distribution can use it as a lock/screensaver engine. That is already
+how the code is written — it binds only `wlr-layer-shell`, `ext-session-lock`,
+`ext-idle-notify` and `xdg-shell`, with an xdg-shell fallback for compositors
+that have no layer-shell (GNOME/Mutter). Nothing links Singularity.
+
+Naming follows from that: the current `ncz-screensaver` name is a distribution
+brand on something intended to be shared. A neutral name is the right end
+state.
+
+### Known issue: the lock surface and the greeter get different geometry
+
+The lock screen does not come up at the same resolution as the greeter, and the
+cause is measured rather than suspected. On O6N, the same binary reports:
+
+    greeter compositor      initial draw: 3840x2160
+    user session (locked)   initial draw: 2194x1234   configured=1
+
+3840x2160 is the panel's native mode; 2194x1234 is the logical size after the
+output's **1.75 fractional scale**. The greeter runs before that scale applies
+and is handed native pixels; a surface inside the user session is handed
+logical coordinates and is expected to render at `scale x logical` into a
+buffer it declares.
+
+A GL engine therefore cannot treat the configure size as pixels. It has to take
+the logical size from the shell, multiply by the fractional scale, size the EGL
+window in real pixels, and set the buffer scale — otherwise it renders a
+1.75x-too-small image that the compositor upscales, which looks exactly like
+"the lock screen is at the wrong resolution".
 
 ### Non-negotiable: keep the hack out of the authenticator
 
 A ported hack is third-party C running legacy fixed-function GL through a
 translation shim. If it segfaults inside the process that owns the lock
 surface, the locker dies — and depending on how the compositor treats a
-vanishing lock client, that can expose the desktop. This is a real exposure
-risk, not a theoretical one, and it is the single thing that must not be
-handwaved.
+vanishing lock client, that can expose the desktop, or (as measured here) leave
+the session locked with no client drawing anything at all.
 
-Wayland subsurfaces must come from the same `wl_client`, which constrains the
-options to:
+`ext-session-lock-v1` permits ONE lock client, and Wayland subsurfaces must come
+from the same `wl_client`, so a separate renderer PROCESS cannot simply attach
+itself beneath the prompt. The GL engine and the prompt therefore have to live
+in one client, which puts the crash-isolation burden on that client:
 
-1. **Separate renderer process, compositor-composed** — the hack renders into
-   its own lock-owned surface, the prompt is a separate surface above it.
-   Strongest isolation; requires the lock client to coordinate two surfaces.
-2. **In-process with a hard fail-closed watchdog** — simplest to build. On
-   hack crash OR hang, fall back instantly to the current static wallpaper and
-   keep the prompt alive. The locker must be written so a dead renderer can
-   never leave the session unlocked, and never leave a blank screen with no
-   way to authenticate.
+1. Render the hack into its own surface owned by the lock client, with the
+   prompt as a subsurface above it.
+2. Watchdog the hack so a crash or a hang drops instantly to a static
+   background while the prompt stays alive and authentication still works.
 
-Ship (2) with a strict fail-closed watchdog; treat (1) as the target.
-
-### Resolved: the glyph atlas now renders (2026-08-18)
-
-`glmatrix_demo` previously drew OPAQUE BLACK, and that was the gate on building
-the GL lockscreen. It is fixed, and the cause was not where this document
-predicted.
-
-**The decode/upload path was never the bug.** `image_data_to_ximage` returns the
-atlas correctly -- measured on O6N: 512x598, green channel max 246, mean 72,
-84,034 pixels above half brightness -- `spank_image` and the power-of-two
-padding then produce the expected 512x512, and `glTexImage2D` returns
-`GL_NO_ERROR`.
-
-**`load_textures()` was never called at all.** It is gated on `do_texture`
-(`glmatrix.c:920`), and `do_texture` is a `static Bool` that the hack never
-assigns. Upstream xscreensaver populates it by walking the hack's `ModeSpecVar`
-table (`glmatrix.c:228`) and writing each parsed value THROUGH the stored var
-pointer. Our shim implemented no vars-table processing, so every tunable sat at
-its BSS default: `do_texture` False, `do_fog`/`do_waves`/`do_rotate` False,
-`speed` and `density` 0.0, `mode_str` NULL. No atlas was ever loaded.
-
-The tell was in the log ordering: `init_matrix returned` printed BEFORE GL4ES
-initialised, meaning `init_matrix` had made no GL call whatsoever. Any theory
-about byte order or texture upload was describing code that never ran.
-
-**Fix:** `xs_compat_apply_var_defaults()` in `src/xscreensaver_compat.c` walks
-the table and performs the write, using each entry's own `DEF_*` string. The
-harness calls it immediately before `init_cb`. This is not glmatrix-specific --
-every ported hack would have run with all tunables at zero.
-
-Measured after the fix on O6N (Mali, labwc, GL4ES): 600+ frames in 20 s (~30
-fps), 17,731 green pixels on a 3840x2160 capture, correct glyph shapes and
-alpha blending.
-
-**Tuning without a rebuild:** the shim honours `XS_<NAME>` environment
-overrides for any entry in the table, e.g. `XS_DENSITY=60`, `XS_FOG=False`.
-Upstream takes these from X resources or argv; we have neither, and a hack whose
-behaviour can only be changed by editing and recompiling it is very hard to
-bisect.
-
-**A trap worth recording for anyone testing on O6N:** killing
-`singularity-lockscreen` while the session is locked leaves the compositor
-locked with no lock surface, and it then renders BLACK and composites no client
-at all. Every screenshot comes back byte-identical black regardless of what is
-running, which looks exactly like a broken renderer. Verify against a control
-capture with nothing running before believing any "still black" result;
-recover with a `greetd` restart.
+A dead renderer must never leave the session unlocked, and must never leave a
+blank screen with no way to authenticate.
 
 ### Runtime requirement for every port
 
