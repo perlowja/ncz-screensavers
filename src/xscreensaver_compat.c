@@ -633,6 +633,98 @@ void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
     }
 }
 
+void make_color_ramp(Screen *screen, Visual *visual, Colormap cmap,
+                     int h1, double s1, double v1,
+                     int h2, double s2, double v2,
+                     XColor *colors, int *ncolorsP,
+                     Bool closed_p,
+                     Bool allocate_p,
+                     Bool *writable_pP)
+{
+    int n, i, limit;
+
+    (void) screen; (void) visual; (void) cmap;
+    (void) allocate_p; (void) writable_pP;
+
+    if (!colors || !ncolorsP) return;
+    n = *ncolorsP;
+    if (n <= 0) return;
+
+    limit = closed_p ? (n / 2 + 1) : n;
+    if (limit <= 1) {
+        xs_hsv_to_rgb16(h1, s1, v1, &colors[0].red, &colors[0].green, &colors[0].blue);
+        colors[0].pixel = 0;
+        colors[0].flags = 0;
+        colors[0].pad = 0;
+        return;
+    }
+
+    for (i = 0; i < limit; i++) {
+        double t = (double)i / (double)(limit - 1);
+        double dh = (double)h2 - (double)h1;
+        double h;
+        if (dh > 180.0) dh -= 360.0;
+        if (dh < -180.0) dh += 360.0;
+        h = (double)h1 + dh * t;
+        xs_hsv_to_rgb16(h,
+                        s1 + (s2 - s1) * t,
+                        v1 + (v2 - v1) * t,
+                        &colors[i].red, &colors[i].green, &colors[i].blue);
+        colors[i].pixel = (unsigned long)i;
+        colors[i].flags = 0;
+        colors[i].pad = 0;
+    }
+
+    if (closed_p) {
+        for (i = limit; i < n; i++) {
+            int src = limit - 2 - (i - limit);
+            if (src < 0) src = 0;
+            colors[i] = colors[src];
+            colors[i].pixel = (unsigned long)i;
+        }
+    }
+}
+
+void make_color_loop(Screen *screen, Visual *visual, Colormap cmap,
+                     int h1, double s1, double v1,
+                     int h2, double s2, double v2,
+                     int h3, double s3, double v3,
+                     XColor *colors, int *ncolorsP,
+                     Bool allocate_p,
+                     Bool *writable_pP)
+{
+    int n, i;
+    const int hues[4] = { h1, h2, h3, h1 };
+    const double sats[4] = { s1, s2, s3, s1 };
+    const double vals[4] = { v1, v2, v3, v1 };
+
+    (void) screen; (void) visual; (void) cmap;
+    (void) allocate_p; (void) writable_pP;
+
+    if (!colors || !ncolorsP) return;
+    n = *ncolorsP;
+    if (n <= 0) return;
+
+    for (i = 0; i < n; i++) {
+        double pos = ((double)i * 3.0) / (double)n;
+        int seg = (int)pos;
+        double t = pos - seg;
+        double dh, h;
+        if (seg > 2) seg = 2;
+        dh = (double)hues[seg + 1] - (double)hues[seg];
+        if (dh > 180.0) dh -= 360.0;
+        if (dh < -180.0) dh += 360.0;
+        h = (double)hues[seg] + dh * t;
+        xs_hsv_to_rgb16(h,
+                        sats[seg] + (sats[seg + 1] - sats[seg]) * t,
+                        vals[seg] + (vals[seg + 1] - vals[seg]) * t,
+                        &colors[i].red, &colors[i].green, &colors[i].blue);
+        colors[i].pixel = (unsigned long)i;
+        colors[i].flags = 0;
+        colors[i].pad = 0;
+    }
+}
+
 static int xs_hexval(char c)
 {
     if (c >= '0' && c <= '9') return c - '0';

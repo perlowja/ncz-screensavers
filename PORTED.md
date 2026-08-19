@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (40)
+## Ported (41)
 
 | hack | companion sources |
 |---|---|
@@ -22,6 +22,7 @@ link time.
 | cityflow | - |
 | covid19 | rotator.c, sphere.c, tube.c, yarandom.c |
 | crackberg | - |
+| cubenetic | rotator.c, yarandom.c |
 | discoball | rotator.c, yarandom.c |
 | energystream | rotator.c, yarandom.c |
 | gears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
@@ -49,7 +50,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (50)
+## Deferred (49)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -66,7 +67,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
 | chompytower | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |
-| cubenetic | `/usr/bin/aarch64-linux-gnu-ld.bfd: cubenetic_demo.p/src_colors.c.o: undefined reference to symbol 'XFlush'` |
 | dangerball | `../src/voronoi.c:21:10: fatal error: xlockmore.h: No such file or directory` |
 | dnalogo | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | fliptext | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |

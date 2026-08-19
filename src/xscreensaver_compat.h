@@ -534,6 +534,20 @@ extern void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
                                  XColor *colors, int *ncolorsP,
                                  Bool allocate_p, Bool *writable_pP,
                                  Bool verbose_p);
+extern void make_color_ramp(Screen *screen, Visual *visual, Colormap cmap,
+                            int h1, double s1, double v1,
+                            int h2, double s2, double v2,
+                            XColor *colors, int *ncolorsP,
+                            Bool closed_p,
+                            Bool allocate_p,
+                            Bool *writable_pP);
+extern void make_color_loop(Screen *screen, Visual *visual, Colormap cmap,
+                            int h1, double s1, double v1,
+                            int h2, double s2, double v2,
+                            int h3, double s3, double v3,
+                            XColor *colors, int *ncolorsP,
+                            Bool allocate_p,
+                            Bool *writable_pP);
 extern int XParseColor(Display *dpy, Colormap cmap, const char *spec,
                        XColor *exact_def_return);
 
