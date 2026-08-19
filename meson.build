@@ -292,6 +292,9 @@ if opt_xscreensaver
     ported_hacks = [
         {'name': 'noof', 'src': 'src/noof.c', 'png': false, 'extra': ['src/pow2.c']},
         {'name': 'beats', 'src': 'src/beats.c', 'png': false, 'extra': ['src/sphere.c']},
+        {'name': 'boing', 'src': 'src/boing.c', 'png': false, 'extra': []},
+        {'name': 'blinkbox', 'src': 'src/blinkbox.c', 'png': false, 'extra': ['src/sphere.c']},
+        {'name': 'blocktube', 'src': 'src/blocktube.c', 'png': false, 'extra': []},
         {'name': 'hypnowheel', 'src': 'src/hypnowheel.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubicgrid', 'src': 'src/cubicgrid.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubestack', 'src': 'src/cubestack.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},

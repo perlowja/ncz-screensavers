@@ -4,12 +4,15 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (37)
+## Ported (40)
 
 | hack | companion sources |
 |---|---|
 | antinspect | sphere.c |
 | beats | sphere.c |
+| boing | - |
+| blinkbox | sphere.c |
+| blocktube | - |
 | crumbler | quickhull.c, rotator.c, yarandom.c |
 | cube21 | - |
 | cubestack | rotator.c, yarandom.c |
@@ -46,7 +49,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (53)
+## Deferred (50)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -60,9 +63,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 |---|---|
 | antspotlight | `../src/antspotlight.c:25:10: fatal error: xlock.h: No such file or directory` |
 | b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
-| blinkbox | `../src/blinkbox.c:20:28: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible p` |
-| blocktube | `../src/blocktube.c:22:33: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible ` |
-| boing | `../src/boing.c:143:9: error: implicit declaration of function ‘XParseColor’; did you mean ‘parse_color’? [-Wimplicit-function-declaration]` |
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
 | chompytower | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |

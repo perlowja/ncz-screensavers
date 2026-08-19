@@ -318,7 +318,7 @@ void do_fps(ModeInfo *mi) {
 /* xlockmore_no_events                                                     */
 /* ----------------------------------------------------------------------- */
 
-int xlockmore_no_events(ModeInfo *mi, void *event) {
+Bool xlockmore_no_events(ModeInfo *mi, XEvent *event) {
     /*
      * Real xscreensaver: "did the daemon have events to dispatch this
      * frame?" — used to gate input-handling. We have no X events; the

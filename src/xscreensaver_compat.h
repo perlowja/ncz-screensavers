@@ -337,6 +337,7 @@ typedef struct ModeInfo ModeInfo;
 #define MI_WIN_DEPTH(MI)           ((MI)->xgwa.depth)
 #define MI_DEPTH(MI)               ((MI)->xgwa.depth)
 #define MI_WIN_COLORMAP(MI)        ((MI)->xgwa.colormap)
+#define MI_COLORMAP(MI)            MI_WIN_COLORMAP(MI)
 #define MI_VISUAL(MI)              ((MI)->xgwa.visual)
 #define MI_GC(MI)                  ((MI)->gc)
 #define MI_PAUSE(MI)               ((MI)->pause)
@@ -677,7 +678,7 @@ extern void do_fps(ModeInfo *mi);
 
 /* xlockmore_no_events — used by the daemon to indicate "no input events
  * queued". We don't dispatch real X events to hacks; we just return True. */
-extern int xlockmore_no_events(ModeInfo *mi, void *event);
+extern Bool xlockmore_no_events(ModeInfo *mi, XEvent *event);
 
 /* ----------------------------------------------------------------------- */
 /* Section 9 — registration                                                */
