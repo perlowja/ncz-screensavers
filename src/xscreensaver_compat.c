@@ -41,6 +41,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <math.h>
 
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only
@@ -211,7 +212,7 @@ void *init_GL(ModeInfo *mi) {
     mi->window = 0;   /* unused by our shim */
     mi->screen_number = 0;
     mi->xgwa.visual = NULL;
-    mi->xgwa.colormap = NULL;
+    mi->xgwa.colormap = 0;
     mi->xgwa.width  = g_harness_width;
     mi->xgwa.height = g_harness_height;
     mi->xgwa.depth  = 24;
@@ -441,11 +442,11 @@ void xs_compat_apply_var_defaults(ModeSpecOpt *o) {
  * from "not found" otherwise.
  */
 
-char *get_string_resource(ModeInfo *mi, const char *res_name,
+char *get_string_resource(void *ctx, const char *res_name,
                           const char *res_class) {
     ModeSpecVar *v;
     const char *val = NULL;
-    (void)mi; (void)res_class;
+    (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
     if (v && v->type == t_String && v->var && *(char **)v->var)
         val = *(char **)v->var;        /* live value, may carry an override */
@@ -457,30 +458,30 @@ char *get_string_resource(ModeInfo *mi, const char *res_name,
     return strdup(val ? val : "");
 }
 
-Bool get_boolean_resource(ModeInfo *mi, const char *res_name,
+Bool get_boolean_resource(void *ctx, const char *res_name,
                           const char *res_class) {
     ModeSpecVar *v;
-    (void)mi; (void)res_class;
+    (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
     if (!v) return False;
     if (v->type == t_Bool && v->var) return *(Bool *)v->var;
     return xs_parse_bool(v->def);
 }
 
-int get_integer_resource(ModeInfo *mi, const char *res_name,
+int get_integer_resource(void *ctx, const char *res_name,
                          const char *res_class) {
     ModeSpecVar *v;
-    (void)mi; (void)res_class;
+    (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
     if (!v) return 0;
     if (v->type == t_Int && v->var) return *(int *)v->var;
     return v->def ? atoi(v->def) : 0;
 }
 
-double get_float_resource(ModeInfo *mi, const char *res_name,
+double get_float_resource(void *ctx, const char *res_name,
                           const char *res_class) {
     ModeSpecVar *v;
-    (void)mi; (void)res_class;
+    (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
     if (!v) return 0.0;
     if (v->type == t_Float && v->var) return (double)*(float *)v->var;
@@ -630,6 +631,96 @@ void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
         colors[i].flags = 0;
         colors[i].pad   = 0;
     }
+}
+
+static int xs_hexval(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+static Bool xs_parse_hex_component(const char *s, int digits,
+                                   unsigned short *out)
+{
+    int i;
+    unsigned int v = 0;
+    for (i = 0; i < digits; i++) {
+        int h = xs_hexval(s[i]);
+        if (h < 0) return False;
+        v = (v << 4) | (unsigned int)h;
+    }
+
+    if (digits == 1) v = v * 0x1111u;
+    else if (digits == 2) v = (v << 8) | v;
+    else if (digits == 4) { /* already 16-bit */ }
+    else return False;
+
+    *out = (unsigned short)v;
+    return True;
+}
+
+static Bool xs_named_color(const char *spec, XColor *c)
+{
+    struct named_color { const char *name; unsigned short r, g, b; };
+    static const struct named_color colors[] = {
+        {"black",   0x0000, 0x0000, 0x0000},
+        {"blue",    0x0000, 0x0000, 0xffff},
+        {"cyan",    0x0000, 0xffff, 0xffff},
+        {"gray",    0x8080, 0x8080, 0x8080},
+        {"green",   0x0000, 0xffff, 0x0000},
+        {"grey",    0x8080, 0x8080, 0x8080},
+        {"magenta", 0xffff, 0x0000, 0xffff},
+        {"orange",  0xffff, 0xa5a5, 0x0000},
+        {"purple",  0x8080, 0x0000, 0x8080},
+        {"red",     0xffff, 0x0000, 0x0000},
+        {"white",   0xffff, 0xffff, 0xffff},
+        {"yellow",  0xffff, 0xffff, 0x0000},
+    };
+    size_t i;
+    for (i = 0; i < countof(colors); i++) {
+        if (strcasecmp(spec, colors[i].name) == 0) {
+            c->red = colors[i].r;
+            c->green = colors[i].g;
+            c->blue = colors[i].b;
+            return True;
+        }
+    }
+    return False;
+}
+
+int XParseColor(Display *dpy, Colormap cmap, const char *spec,
+                XColor *exact_def_return)
+{
+    size_t len;
+    int digits;
+    XColor c = {0};
+
+    (void)dpy;
+    (void)cmap;
+    if (!spec || !exact_def_return) return 0;
+    while (isspace((unsigned char)*spec)) spec++;
+
+    if (spec[0] == '#') {
+        len = strlen(spec + 1);
+        if (len != 3 && len != 6 && len != 12) return 0;
+        digits = (int)(len / 3);
+        if (!xs_parse_hex_component(spec + 1, digits, &c.red) ||
+            !xs_parse_hex_component(spec + 1 + digits, digits, &c.green) ||
+            !xs_parse_hex_component(spec + 1 + 2 * digits, digits, &c.blue))
+            return 0;
+    } else if (!xs_named_color(spec, &c)) {
+        return 0;
+    }
+
+    c.pixel = ((unsigned long)(c.red >> 8) << 16) |
+              ((unsigned long)(c.green >> 8) << 8) |
+              (unsigned long)(c.blue >> 8);
+    c.flags = 0;
+    c.pad = 0;
+    *exact_def_return = c;
+    return 1;
 }
 
 /* ------------------------------------------------------------------------- */

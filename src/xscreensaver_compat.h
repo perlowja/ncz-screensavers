@@ -8,8 +8,12 @@
  * init_matrix). The vendored sources are upstream's and must not be edited
  * to work around our own feature-test macros, so the fix belongs here in
  * the shim they include first. */
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
 
 /*
  * xscreensaver_compat.h — the PUBLIC shim surface that vendored xscreensaver
@@ -92,7 +96,11 @@
 typedef struct _Display   Display;
 typedef unsigned long     Window;          /* XID -- an integer, not a pointer/struct; matches real Xlib.h */
 typedef struct _Visual    Visual;
-typedef struct _Drawable  Drawable;
+typedef unsigned long     Drawable;      /* XID, as in real Xlib. It was an
+                                           incomplete struct, which CONFLICTS with
+                                           X11/X.h if anything drags the real headers
+                                           in: "conflicting types for 'Drawable';
+                                           have 'XID'". */
 typedef struct _GC        GC;
 /* X11 keysym constants (values from X11/keysymdef.h). Hacks compare the KeySym
  * returned by XLookupString against these to implement arrow-key navigation.
@@ -191,11 +199,24 @@ typedef struct {
     unsigned char _rest[192 - 76 - 12];
 } XKeyEvent;
 
+typedef struct {
+    int type;
+    /* Same 192-byte discipline as the other members. Hacks that track the
+     * pointer read xmotion.x/.y; ours are never written to by anything, since
+     * the input surface is inert, but the fields must exist to compile. */
+    unsigned char _pad_to_xy[72];
+    int x, y;
+    int x_root, y_root;
+    unsigned int state;
+    unsigned char _rest[192 - 72 - 20];
+} XMotionEvent;
+
 typedef union {
     int type;
     XAnyEvent    xany;
     XButtonEvent xbutton;
     XKeyEvent    xkey;
+    XMotionEvent xmotion;
     unsigned char _pad[192];   /* round to real XEvent size */
 } XEvent;
 
@@ -214,6 +235,10 @@ typedef union {
 #define Button1   1
 #define Button2   2
 #define Button3   3
+#define Button4   4
+#define Button5   5
+#define Button6   6
+#define Button7   7
 
 /* ----------------------------------------------------------------------- */
 /* Section 2 — Bool / True / False                                         */
@@ -247,7 +272,7 @@ typedef int Bool;
 struct _XWindowAttributes {
     int     depth;        /* only referenced via MI_DEPTH (we don't use) */
     void   *visual;       /* MI_VISUAL → xgwa.visual */
-    void   *colormap;     /* MI_WIN_COLORMAP → xgwa.colormap */
+    Colormap colormap;    /* MI_WIN_COLORMAP -> xgwa.colormap */
     int     width;        /* MI_WIN_WIDTH */
     int     height;       /* MI_WIN_HEIGHT */
 };
@@ -278,6 +303,10 @@ struct ModeInfo {
     long                threed_both_color, threed_none_color;
     long                threed_delta;
     Bool                wireframe_p;
+    /* Reached for directly by some hacks (geodesic and friends) rather than
+     * through an MI_* accessor, so it has to be a real field. Recursion/
+     * subdivision depth for the generated geometry. */
+    int                 recursion_depth;
     Bool                is_drawn;
     Bool                root_p;
     void               *eraser;
@@ -314,7 +343,7 @@ typedef struct ModeInfo ModeInfo;
 #define MI_DELAY(MI)               ((MI)->pause)
 #define MI_WIN_IS_FULLRANDOM(MI)   ((MI)->fullrandom)
 #define MI_WIN_IS_VERBOSE(MI)      (0)
-#define MI_WIN_IS_INSTALL(MI)      (1)
+#define MI_WIN_IS_INSTALL(MI)      (0)
 #define MI_WIN_IS_MONO(MI)         (0)
 #define MI_WIN_IS_INROOT(MI)       ((MI)->root_p)
 #define MI_WIN_IS_INWINDOW(MI)     (!((MI)->root_p))
@@ -365,7 +394,6 @@ typedef struct {
 #define MI_CLEARWINDOW(MI)  do { glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); } while (0)
 
 #define MI_IS_MONO(MI)      (0)
-#define MI_IS_INSTALL(MI)   (0)
 #define MI_IS_INROOT(MI)    (0)
 #define MI_IS_INWINDOW(MI)  (1)
 #define MI_IS_ICONIC(MI)    (0)
@@ -396,6 +424,9 @@ extern void xlockmore_mi_init(ModeInfo *mi, size_t sz, void **parray);
 #endif
 #ifndef ABS
 #define ABS(a)   ((a) < 0 ? -(a) : (a))
+#endif
+#ifndef NRAND
+#define NRAND(n) ((int)(random() % (long)(n)))
 #endif
 
 #define NUMCOLORS 256
@@ -502,6 +533,8 @@ extern void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
                                  XColor *colors, int *ncolorsP,
                                  Bool allocate_p, Bool *writable_pP,
                                  Bool verbose_p);
+extern int XParseColor(Display *dpy, Colormap cmap, const char *spec,
+                       XColor *exact_def_return);
 
 extern XImage *image_data_to_ximage(Display *dpy, Visual *visual,
                                     const unsigned char *data,
@@ -572,18 +605,18 @@ typedef struct {
  * tables store the default strings, so we just return those. We provide
  * a stub that returns an empty string or the second arg — most hacks
  * don't actually USE these in a Wayland port. */
-extern char *get_string_resource(ModeInfo *mi, const char *res_name,
+extern char *get_string_resource(void *ctx, const char *res_name,
                                  const char *res_class);
 /* Walk a hack's ModeSpecVar table and write each entry's default through its
  * var pointer. MUST be called before the hack's init_cb: without it every
  * tunable sits at its BSS default and the hack silently misbehaves. */
 extern void  xs_compat_apply_var_defaults(ModeSpecOpt *o);
 
-extern Bool  get_boolean_resource(ModeInfo *mi, const char *res_name,
+extern Bool  get_boolean_resource(void *ctx, const char *res_name,
                                   const char *res_class);
-extern int   get_integer_resource(ModeInfo *mi, const char *res_name,
+extern int   get_integer_resource(void *ctx, const char *res_name,
                                  const char *res_class);
-extern double get_float_resource(ModeInfo *mi, const char *res_name,
+extern double get_float_resource(void *ctx, const char *res_name,
                                  const char *res_class);
 
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only

@@ -169,19 +169,6 @@ static void on_signal(int sig) {
 }
 
 /* ----------------------------------------------------------------------- */
-/* Monotonic clock                                                         */
-/* ----------------------------------------------------------------------- */
-
-static double monotonic_seconds(void) {
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-        fprintf(stderr, "glmatrix_harness: clock_gettime failed\n");
-        exit(1);
-    }
-    return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
-}
-
-/* ----------------------------------------------------------------------- */
 /* Wayland registry / seat / keyboard                                      */
 /* ----------------------------------------------------------------------- */
 

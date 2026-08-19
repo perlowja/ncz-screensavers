@@ -5,24 +5,8 @@
  * the above copyright notice appear in all copies and that both that
  * copyright notice and this permission notice appear in supporting
  * documentation.  No representations are made about the suitability of this
- * software for any purpose.  It is provided "as is" without express or
+ * software for any purpose.  It is provided "as is" without express or 
  * implied warranty.
- *
- * VENDORED INTO ncz-screensavers (round 7):
- *   Source:  https://www.jwz.org/xscreensaver/xscreensaver-6.15.tar.gz
- *   Path:    hacks/glx/glmatrix.c
- *   License: MIT-style X Consortium "Permission Notice" (permissive).
- *
- *   Three edits made to port this file to a Wayland/EGL/GLES2 target via
- *   the ncz-screensavers xscreensaver_compat shim:
- *     1. `#include "xlockmore.h"` → `#include "xscreensaver_compat.h"`
- *        (we don't ship xlockmore.h; the shim provides an equivalent API)
- *     2. `#include "ximage-loader.h"` removed
- *        (xscreensaver_compat.h declares image_data_to_ximage directly)
- *     3. `#include "images/gen/matrix3_png.h"` unchanged
- *        (we generate this from the original xscreensaver PNG asset at
- *         build time using xscreensaver's own utils/bin2c tool)
- *   The body of the file is otherwise UNMODIFIED.
  *
  * GLMatrix -- simulate the text scrolls from the movie "The Matrix".
  *
@@ -41,7 +25,8 @@
 #undef BELLRAND
 #define BELLRAND(n) ((frand((n)) + frand((n)) + frand((n))) / 3)
 
-#include "xscreensaver_compat.h"
+#include "xscreensaver_compat.h"  /* was: xlockmore.h */
+#include "ximage-loader.h"
 
 #include "images/gen/matrix3_png.h"
 
@@ -802,7 +787,6 @@ load_textures (ModeInfo *mi, Bool flip_p)
   check_gl_error ("texture init");
   glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, xi->width, xi->height, 0, GL_RGBA,
                 GL_UNSIGNED_BYTE, xi->data);
-
   {
     char buf[255];
     sprintf (buf, "creating %dx%d texture:", xi->width, xi->height);
