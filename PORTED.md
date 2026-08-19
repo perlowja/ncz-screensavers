@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (41)
+## Ported (42)
 
 | hack | companion sources |
 |---|---|
@@ -30,6 +30,7 @@ link time.
 | glblur | rotator.c, yarandom.c |
 | glknots | rotator.c, tube.c, yarandom.c |
 | glmatrix | image_data_to_ximage.c |
+| glschool | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
 | headroom | gllist.c, headroom_model.c, rotator.c, skull_model.c, yarandom.c |
 | hexstrut | rotator.c, yarandom.c |
 | hextrail | rotator.c, yarandom.c |
@@ -50,7 +51,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (49)
+## Deferred (48)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -76,7 +77,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | glcells | `/tmp/xscreensaver-6.15/hacks/glx/glcells.c:40:30: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible pointer type ‘int (*)(ModeInfo *, void *)’ [-Wincompatible-pointer-types]` |
 | glforestfire | `../src/glforestfire.c:88:10: fatal error: xlock.h: No such file or directory` |
 | glhanoi | `object compile probe succeeded; no link target added yet` |
-| glschool | `../src/glschool.c:150:9: error: implicit declaration of function ‘make_color_ramp’ [-Wimplicit-function-declaration]` |
 | glsnake | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | gravitywell | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
