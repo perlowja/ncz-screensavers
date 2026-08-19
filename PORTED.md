@@ -4,10 +4,11 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (19)
+## Ported (37)
 
 | hack | companion sources |
 |---|---|
+| antinspect | sphere.c |
 | beats | sphere.c |
 | crumbler | quickhull.c, rotator.c, yarandom.c |
 | cube21 | - |
@@ -15,20 +16,37 @@ link time.
 | cubestorm | rotator.c, yarandom.c |
 | cubetwist | rotator.c, yarandom.c |
 | cubicgrid | rotator.c, yarandom.c |
+| cityflow | - |
+| covid19 | rotator.c, sphere.c, tube.c, yarandom.c |
+| crackberg | - |
 | discoball | rotator.c, yarandom.c |
 | energystream | rotator.c, yarandom.c |
+| gears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
+| geodesic | normals.c, rotator.c, yarandom.c |
 | glblur | rotator.c, yarandom.c |
 | glknots | rotator.c, tube.c, yarandom.c |
+| glmatrix | image_data_to_ximage.c |
+| headroom | gllist.c, headroom_model.c, rotator.c, skull_model.c, yarandom.c |
 | hexstrut | rotator.c, yarandom.c |
 | hextrail | rotator.c, yarandom.c |
+| highvoltage | gllist.c, highvoltage_model.c, normals.c, tube.c |
+| hydrostat | sphere.c |
 | hypnowheel | rotator.c, yarandom.c |
 | lockward | - |
+| menger | rotator.c, yarandom.c |
+| moebiusgears | involute.c, normals.c, rotator.c, yarandom.c |
 | noof | pow2.c |
+| papercube | rotator.c, yarandom.c |
+| providence | - |
+| quasicrystal | rotator.c, yarandom.c |
 | raverhoop | rotator.c, yarandom.c |
 | rubikblocks | rotator.c, yarandom.c |
 | splodesic | rotator.c, yarandom.c |
+| stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
+| topblock | sphere.c, tube.c |
+| voronoi | - |
 
-## Deferred (71)
+## Deferred (53)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -40,7 +58,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 
 | hack | blocking error |
 |---|---|
-| antinspect | `../src/antinspect.c:25:10: fatal error: xlock.h: No such file or directory` |
 | antspotlight | `../src/antspotlight.c:25:10: fatal error: xlock.h: No such file or directory` |
 | b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
 | blinkbox | `../src/blinkbox.c:20:28: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible p` |
@@ -48,66 +65,49 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | boing | `../src/boing.c:143:9: error: implicit declaration of function ‘XParseColor’; did you mean ‘parse_color’? [-Wimplicit-function-declaration]` |
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
 | chompytower | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
-| cityflow | `../src/cityflow.c:176:14: error: ‘XEvent’ has no member named ‘xmotion’` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |
-| covid19 | `../src/covid19.c:338:41: error: passing argument 1 of ‘get_string_resource’ from incompatible pointer type [-Wincompatible-pointer-types]` |
-| crackberg | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
 | cubenetic | `/usr/bin/aarch64-linux-gnu-ld.bfd: cubenetic_demo.p/src_colors.c.o: undefined reference to symbol 'XFlush'` |
 | dangerball | `../src/voronoi.c:21:10: fatal error: xlockmore.h: No such file or directory` |
-| dnalogo | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| dnalogo | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | fliptext | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | flyingtoasters | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
-| gears | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
-| geodesic | `../src/geodesic.c:726:7: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
-| geodesicgears | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| gibson | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| glcells | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| geodesicgears | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
+| gibson | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
+| glcells | `/tmp/xscreensaver-6.15/hacks/glx/glcells.c:40:30: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible pointer type ‘int (*)(ModeInfo *, void *)’ [-Wincompatible-pointer-types]` |
 | glforestfire | `../src/glforestfire.c:88:10: fatal error: xlock.h: No such file or directory` |
-| glhanoi | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| glmatrix | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| glhanoi | `object compile probe succeeded; no link target added yet` |
 | glschool | `../src/glschool.c:150:9: error: implicit declaration of function ‘make_color_ramp’ [-Wimplicit-function-declaration]` |
-| glsnake | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| glsnake | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | gravitywell | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
-| handsy | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| headroom | `../src/headroom.c:177:41: error: passing argument 1 of ‘get_string_resource’ from incompatible pointer type [-Wincompatible-pointer-types]` |
-| highvoltage | `../src/highvoltage.c:169:41: error: passing argument 1 of ‘get_string_resource’ from incompatible pointer type [-Wincompatible-pointer-types` |
+| handsy | `object compile probe succeeded; no link target added yet` |
 | hilbert | `../src/hilbert.c:1071:9: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
-| hydrostat | `../src/hydrostat.c:597:14: error: ‘XEvent’ has no member named ‘xmotion’` |
-| jigsaw | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| juggler3d | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| jigsaw | `/tmp/xscreensaver-6.15/utils/spline.h:39:3: error: unknown type name ‘XPoint’` |
+| juggler3d | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | kaleidocycle | `../src/kaleidocycle.c:558:5: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
 | kallisti | `/home/jasonperlow/ncz-screensavers/build/../src/kallisti.c:167:(.text+0x4d0): undefined reference to `kallisti_model'` |
-| lament | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| lavalite | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| mapscroller | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| menger | `../src/menger.c:535:9: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
-| moebiusgears | `/home/jasonperlow/ncz-screensavers/build/../src/involute.c:336:(.text+0x153c): undefined reference to `glEnable_fn'` |
-| molecule | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| nakagin | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| papercube | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
-| peepers | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| lament | `/tmp/xscreensaver-6.15/hacks/glx/lament.c:168:10: fatal error: images/gen/lament512_png.h: No such file or directory` |
+| lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
+| mapscroller | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
+| molecule | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
+| nakagin | `object compile probe succeeded; no link target added yet` |
+| peepers | `/tmp/xscreensaver-6.15/hacks/glx/peepers.c:46:10: fatal error: images/gen/sclera_png.h: No such file or directory` |
 | photopile | `../src/photopile.c:33:11: fatal error: X11/Intrinsic.h: No such file or directory` |
-| pinion | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| pinion | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | polyhedra-gl | `<command-line>: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘-’ token` |
-| providence | `../src/providence.c:25:10: fatal error: xlock.h: No such file or directory` |
-| quasicrystal | `../src/quasicrystal.c:125:38: error: ‘Button4’ undeclared (first use in this function); did you mean ‘Button2’?` |
 | razzledazzle | `../src/razzledazzle.c:476:34: error: ‘XEvent’ has no member named ‘xmotion’` |
 | sballs | `../src/sballs.c:55:10: fatal error: xlock.h: No such file or directory` |
 | skulloop | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
-| skytentacles | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| sonar | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| skytentacles | `/tmp/xscreensaver-6.15/hacks/glx/skytentacles.c:27:10: fatal error: images/gen/scales_png.h: No such file or directory` |
+| sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
 | spheremonics | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
-| splitflap | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| splitflap | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | squirtorus | `../src/spline.h:39:3: error: unknown type name ‘XPoint’` |
 | starwars | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
-| stonerview | `/home/jasonperlow/ncz-screensavers/build/../src/stonerview-view.c:42:(.text+0x80): undefined reference to `glEnable_fn'` |
-| tangram | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| timetunnel | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| topblock | `../src/topblock.c:318:5: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
+| tangram | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
+| timetunnel | `/tmp/xscreensaver-6.15/hacks/glx/timetunnel.c:88:10: fatal error: images/gen/logo-180_png.h: No such file or directory` |
 | tronbit | `/usr/bin/aarch64-linux-gnu-ld.bfd: tronbit_demo.p/src_tronbit.c.o:/home/jasonperlow/ncz-screensavers/build/../src/tronbit.c:32:(.data.rel+0x` |
 | unicrud | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | unknownpleasures | `../src/grab-ximage.h:70:44: error: unknown type name ‘XRectangle’` |
-| vigilance | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
-| voronoi | `../src/voronoi.c:401:40: error: ‘XEvent’ has no member named ‘xmotion’` |
-| winduprobot | `ninja: error: rebuilding 'build.ninja': subcommand failed` |
+| vigilance | `object compile probe succeeded; no link target added yet` |
+| winduprobot | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |

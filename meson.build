@@ -205,8 +205,8 @@ if opt_gl4es
         link_args: [
             '-L@0@'.format(gl4es_dir),
             '-lGL',
-            '-Wl,-rpath,@0@'.format(gl4es_dir),
         ],
+        build_rpath: gl4es_dir,
         c_args: common_c_args,
         install: false,
     )
@@ -270,8 +270,8 @@ if opt_xscreensaver
         link_args: [
             '-L@0@'.format(gl4es_dir),
             '-lGL',
-            '-Wl,-rpath,@0@'.format(gl4es_dir),
         ],
+        build_rpath: gl4es_dir,
         # Vendored third-party (glmatrix.c) is the primary source of
         # warnings; relax the strictness for the whole executable.
         # The compat shim and harness stay warning-clean under -Wall -Wextra.
@@ -309,6 +309,23 @@ if opt_xscreensaver
         {'name': 'crumbler', 'src': 'src/crumbler.c', 'png': false, 'extra': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'lockward', 'src': 'src/lockward.c', 'png': false, 'extra': []},
         {'name': 'cube21', 'src': 'src/cube21.c', 'png': false, 'extra': []},
+        {'name': 'stonerview', 'src': 'src/stonerview.c', 'png': false, 'extra': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c']},
+        {'name': 'moebiusgears', 'src': 'src/moebiusgears.c', 'png': false, 'extra': ['src/rotator.c', 'src/involute.c', 'src/normals.c', 'src/yarandom.c']},
+        {'name': 'voronoi', 'src': 'src/voronoi.c', 'png': false, 'extra': []},
+        {'name': 'cityflow', 'src': 'src/cityflow.c', 'png': false, 'extra': []},
+        {'name': 'menger', 'src': 'src/menger.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'hydrostat', 'src': 'src/hydrostat.c', 'png': false, 'extra': ['src/sphere.c']},
+        {'name': 'geodesic', 'src': 'src/geodesic.c', 'png': false, 'extra': ['src/rotator.c', 'src/normals.c', 'src/yarandom.c']},
+        {'name': 'gears', 'src': 'src/gears.c', 'png': false, 'extra': ['src/rotator.c', 'src/involute.c', 'src/tube.c', 'src/normals.c', 'src/yarandom.c']},
+        {'name': 'papercube', 'src': 'src/papercube.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'topblock', 'src': 'src/topblock.c', 'png': false, 'extra': ['src/sphere.c', 'src/tube.c']},
+        {'name': 'antinspect', 'src': 'src/antinspect.c', 'png': false, 'extra': ['src/sphere.c'], 'c_args': ['-DSTANDALONE']},
+        {'name': 'providence', 'src': 'src/providence.c', 'png': false, 'extra': [], 'c_args': ['-DSTANDALONE']},
+        {'name': 'quasicrystal', 'src': 'src/quasicrystal.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'highvoltage', 'src': 'src/highvoltage.c', 'png': false, 'extra': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
+        {'name': 'headroom', 'src': 'src/headroom.c', 'png': false, 'extra': ['src/gllist.c', 'src/headroom_model.c', 'src/skull_model.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'covid19', 'src': 'src/covid19.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'crackberg', 'src': 'src/crackberg.c', 'png': false, 'extra': []},
     ]
 
     foreach h : ported_hacks
@@ -334,9 +351,9 @@ if opt_xscreensaver
             link_args: [
                 '-L@0@'.format(gl4es_dir),
                 '-lGL',
-                '-Wl,-rpath,@0@'.format(gl4es_dir),
             ],
-            c_args: vendored_c_args + [
+            build_rpath: gl4es_dir,
+            c_args: vendored_c_args + h.get('c_args', []) + [
                 '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
             ],
             install: false,
