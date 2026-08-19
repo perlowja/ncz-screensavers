@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (46)
+## Ported (47)
 
 | hack | companion sources |
 |---|---|
@@ -34,6 +34,7 @@ link time.
 | glmatrix | image_data_to_ximage.c |
 | glschool | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
 | gravitywell | - |
+| handsy | doubletime.c, gllist.c, handsy_model.c, rotator.c, sphere.c, tube.c, yarandom.c |
 | headroom | gllist.c, headroom_model.c, rotator.c, skull_model.c, yarandom.c |
 | hexstrut | rotator.c, yarandom.c |
 | hextrail | rotator.c, yarandom.c |
@@ -55,7 +56,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (44)
+## Deferred (43)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -81,7 +82,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | glforestfire | `../src/glforestfire.c:88:10: fatal error: xlock.h: No such file or directory` |
 | glsnake | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
-| handsy | `object compile probe succeeded; no link target added yet` |
 | hilbert | `../src/hilbert.c:1071:9: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
 | jigsaw | `/tmp/xscreensaver-6.15/utils/spline.h:39:3: error: unknown type name ‘XPoint’` |
 | juggler3d | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
