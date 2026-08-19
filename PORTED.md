@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (47)
+## Ported (48)
 
 | hack | companion sources |
 |---|---|
@@ -44,6 +44,7 @@ link time.
 | lockward | - |
 | menger | rotator.c, yarandom.c |
 | moebiusgears | involute.c, normals.c, rotator.c, yarandom.c |
+| nakagin | doubletime.c, easing.c, normals.c, rotator.c, yarandom.c |
 | noof | pow2.c |
 | papercube | rotator.c, yarandom.c |
 | providence | - |
@@ -56,7 +57,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (43)
+## Deferred (42)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -91,7 +92,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
 | mapscroller | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | molecule | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
-| nakagin | `object compile probe succeeded; no link target added yet` |
 | peepers | `/tmp/xscreensaver-6.15/hacks/glx/peepers.c:46:10: fatal error: images/gen/sclera_png.h: No such file or directory` |
 | photopile | `../src/photopile.c:33:11: fatal error: X11/Intrinsic.h: No such file or directory` |
 | pinion | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |

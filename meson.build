@@ -321,6 +321,7 @@ if opt_xscreensaver
         {'name': 'cube21', 'src': 'src/cube21.c', 'png': false, 'extra': []},
         {'name': 'stonerview', 'src': 'src/stonerview.c', 'png': false, 'extra': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c']},
         {'name': 'moebiusgears', 'src': 'src/moebiusgears.c', 'png': false, 'extra': ['src/rotator.c', 'src/involute.c', 'src/normals.c', 'src/yarandom.c']},
+        {'name': 'nakagin', 'src': 'src/nakagin.c', 'png': false, 'extra': ['src/doubletime.c', 'src/easing.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'voronoi', 'src': 'src/voronoi.c', 'png': false, 'extra': []},
         {'name': 'cityflow', 'src': 'src/cityflow.c', 'png': false, 'extra': []},
         {'name': 'menger', 'src': 'src/menger.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
