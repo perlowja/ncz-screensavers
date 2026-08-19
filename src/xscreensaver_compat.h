@@ -688,6 +688,11 @@ extern void gluPerspective(GLdouble fovy, GLdouble aspect,
 extern void gluLookAt(GLdouble ex, GLdouble ey, GLdouble ez,
                       GLdouble cx, GLdouble cy, GLdouble cz,
                       GLdouble ux, GLdouble uy, GLdouble uz);
+extern int  gluProject(GLdouble objx, GLdouble objy, GLdouble objz,
+                       const GLdouble model[16],
+                       const GLdouble proj[16],
+                       const GLint viewport[4],
+                       GLdouble *winx, GLdouble *winy, GLdouble *winz);
 
 /* ----------------------------------------------------------------------- */
 /* Section 8 — GLX passthroughs (these are the key bridge to EGL)          */

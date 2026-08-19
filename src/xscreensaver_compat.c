@@ -86,6 +86,43 @@ void gluLookAt(GLdouble ex, GLdouble ey, GLdouble ez,
     glTranslated(-ex, -ey, -ez);
 }
 
+int gluProject(GLdouble objx, GLdouble objy, GLdouble objz,
+               const GLdouble model[16], const GLdouble proj[16],
+               const GLint viewport[4],
+               GLdouble *winx, GLdouble *winy, GLdouble *winz)
+{
+    GLdouble in[4] = { objx, objy, objz, 1.0 };
+    GLdouble eye[4];
+    GLdouble clip[4];
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        eye[i] = in[0] * model[0 * 4 + i] +
+                 in[1] * model[1 * 4 + i] +
+                 in[2] * model[2 * 4 + i] +
+                 in[3] * model[3 * 4 + i];
+    }
+
+    for (i = 0; i < 4; i++) {
+        clip[i] = eye[0] * proj[0 * 4 + i] +
+                  eye[1] * proj[1 * 4 + i] +
+                  eye[2] * proj[2 * 4 + i] +
+                  eye[3] * proj[3 * 4 + i];
+    }
+
+    if (clip[3] == 0.0)
+        return 0;
+
+    clip[0] /= clip[3];
+    clip[1] /= clip[3];
+    clip[2] /= clip[3];
+
+    if (winx) *winx = viewport[0] + (1.0 + clip[0]) * viewport[2] / 2.0;
+    if (winy) *winy = viewport[1] + (1.0 + clip[1]) * viewport[3] / 2.0;
+    if (winz) *winz = (1.0 + clip[2]) / 2.0;
+    return 1;
+}
+
 /*
  * g_harness_egl_display / g_harness_egl_surface / g_harness_egl_context —
  * the live EGL objects the harness has created and made current.

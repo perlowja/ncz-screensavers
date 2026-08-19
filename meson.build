@@ -345,6 +345,7 @@ if opt_xscreensaver
         {'name': 'peepers', 'src': 'src/peepers.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'c_args': ['-DHAVE_JWXYZ']},
         {'name': 'skytentacles', 'src': 'src/skytentacles.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'table': 'skytentacles'},
         {'name': 'antspotlight', 'src': 'src/antspotlight.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args': ['-DSTANDALONE']},
+        {'name': 'lament', 'src': 'src/lament.c', 'png': true, 'extra': ['src/gllist.c', 'src/lament_model.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks

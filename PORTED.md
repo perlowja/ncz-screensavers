@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (56)
+## Ported (57)
 
 | hack | companion sources |
 |---|---|
@@ -44,6 +44,7 @@ link time.
 | hydrostat | sphere.c |
 | hypnowheel | rotator.c, yarandom.c |
 | kallisti | gllist.c, kallisti_model.c, rotator.c, yarandom.c |
+| lament | gllist.c, image_data_to_ximage.c, lament_model.c, normals.c, rotator.c, yarandom.c |
 | lockward | - |
 | menger | rotator.c, yarandom.c |
 | moebiusgears | involute.c, normals.c, rotator.c, yarandom.c |
@@ -65,7 +66,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (34)
+## Deferred (33)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -93,7 +94,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | jigsaw | `/tmp/xscreensaver-6.15/utils/spline.h:39:3: error: unknown type name ‘XPoint’` |
 | juggler3d | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | kaleidocycle | `../src/kaleidocycle.c:558:5: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
-| lament | `/tmp/xscreensaver-6.15/hacks/glx/lament.c:168:10: fatal error: images/gen/lament512_png.h: No such file or directory` |
 | lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
 | mapscroller | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | molecule | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
