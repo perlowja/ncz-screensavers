@@ -533,6 +533,58 @@ void XDestroyImage(XImage *xi) {
     if (xi->data) free(xi->data);
     free(xi);
 }
+
+XImage *XCreateImage(Display *dpy, Visual *visual,
+                     unsigned int depth, int format,
+                     int offset, char *data,
+                     unsigned int width, unsigned int height,
+                     int bitmap_pad, int bytes_per_line)
+{
+    XImage *xi;
+    int stride;
+    (void)dpy; (void)visual; (void)format; (void)offset; (void)bitmap_pad;
+
+    xi = (XImage *)calloc(1, sizeof(*xi));
+    if (!xi) return NULL;
+
+    stride = bytes_per_line;
+    if (stride <= 0) {
+        unsigned int bytes_per_pixel = (depth + 7u) / 8u;
+        if (bytes_per_pixel == 0) bytes_per_pixel = 4;
+        stride = (int)(width * bytes_per_pixel);
+    }
+
+    xi->width = (int)width;
+    xi->height = (int)height;
+    xi->bytes_per_line = stride;
+    xi->data = data;
+    xi->depth = (int)depth;
+    xi->bits_per_pixel = (int)depth;
+    return xi;
+}
+
+Bool XQueryPointer(Display *dpy, Window window,
+                   Window *root_return,
+                   Window *child_return,
+                   int *root_x_return,
+                   int *root_y_return,
+                   int *win_x_return,
+                   int *win_y_return,
+                   unsigned int *mask_return)
+{
+    int x = g_harness_width / 2;
+    int y = g_harness_height / 2;
+    (void)dpy;
+
+    if (root_return) *root_return = window;
+    if (child_return) *child_return = 0;
+    if (root_x_return) *root_x_return = x;
+    if (root_y_return) *root_y_return = y;
+    if (win_x_return) *win_x_return = x;
+    if (win_y_return) *win_y_return = y;
+    if (mask_return) *mask_return = 0;
+    return True;
+}
 /* ------------------------------------------------------------------------- */
 /* Colour ramps                                                              */
 /* ------------------------------------------------------------------------- */

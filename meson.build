@@ -342,6 +342,8 @@ if opt_xscreensaver
         {'name': 'glforestfire', 'src': 'src/glforestfire.c', 'png': true, 'extra': [], 'table': 'glforestfire', 'c_args': ['-DSTANDALONE']},
         {'name': 'kallisti', 'src': 'src/kallisti.c', 'png': false, 'extra': ['src/gllist.c', 'src/kallisti_model.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'tronbit', 'src': 'src/tronbit.c', 'png': false, 'extra': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
+        {'name': 'peepers', 'src': 'src/peepers.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'c_args': ['-DHAVE_JWXYZ']},
+        {'name': 'skytentacles', 'src': 'src/skytentacles.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'table': 'skytentacles'},
     ]
 
     foreach h : ported_hacks

@@ -242,6 +242,7 @@ typedef union {
 #ifndef None
 #define None 0L
 #endif
+#define ZPixmap 2
 
 #define Button1   1
 #define Button2   2
@@ -489,6 +490,19 @@ typedef struct _XImage_real XImage_real;
 extern unsigned long XGetPixel(XImage *xi, int x, int y);
 extern void           XPutPixel(XImage *xi, int x, int y, unsigned long pixel);
 extern void           XDestroyImage(XImage *xi);
+extern XImage        *XCreateImage(Display *dpy, Visual *visual,
+                                   unsigned int depth, int format,
+                                   int offset, char *data,
+                                   unsigned int width, unsigned int height,
+                                   int bitmap_pad, int bytes_per_line);
+extern Bool           XQueryPointer(Display *dpy, Window window,
+                                    Window *root_return,
+                                    Window *child_return,
+                                    int *root_x_return,
+                                    int *root_y_return,
+                                    int *win_x_return,
+                                    int *win_y_return,
+                                    unsigned int *mask_return);
 
 /* image_data_to_ximage — loads a PNG into a freshly allocated XImage.
  * Backed by libpng. The `Display *` and `Visual *` args are IGNORED — we

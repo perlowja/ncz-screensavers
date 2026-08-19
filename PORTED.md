@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (53)
+## Ported (55)
 
 | hack | companion sources |
 |---|---|
@@ -49,11 +49,13 @@ link time.
 | nakagin | doubletime.c, easing.c, normals.c, rotator.c, yarandom.c |
 | noof | pow2.c |
 | papercube | rotator.c, yarandom.c |
+| peepers | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
 | providence | - |
 | quasicrystal | rotator.c, yarandom.c |
 | raverhoop | rotator.c, yarandom.c |
 | rubikblocks | rotator.c, yarandom.c |
 | sballs | image_data_to_ximage.c |
+| skytentacles | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
 | splodesic | rotator.c, yarandom.c |
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
@@ -62,7 +64,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (37)
+## Deferred (35)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -95,13 +97,11 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
 | mapscroller | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | molecule | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
-| peepers | `/tmp/xscreensaver-6.15/hacks/glx/peepers.c:46:10: fatal error: images/gen/sclera_png.h: No such file or directory` |
 | photopile | `../src/photopile.c:33:11: fatal error: X11/Intrinsic.h: No such file or directory` |
 | pinion | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | polyhedra-gl | `<command-line>: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘-’ token` |
 | razzledazzle | `../src/razzledazzle.c:476:34: error: ‘XEvent’ has no member named ‘xmotion’` |
 | skulloop | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
-| skytentacles | `/tmp/xscreensaver-6.15/hacks/glx/skytentacles.c:27:10: fatal error: images/gen/scales_png.h: No such file or directory` |
 | sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
 | spheremonics | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | splitflap | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
