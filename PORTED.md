@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (48)
+## Ported (49)
 
 | hack | companion sources |
 |---|---|
@@ -55,9 +55,10 @@ link time.
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
 | topblock | sphere.c, tube.c |
+| vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (42)
+## Deferred (41)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -109,5 +110,4 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | tronbit | `/usr/bin/aarch64-linux-gnu-ld.bfd: tronbit_demo.p/src_tronbit.c.o:/home/jasonperlow/ncz-screensavers/build/../src/tronbit.c:32:(.data.rel+0x` |
 | unicrud | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | unknownpleasures | `../src/grab-ximage.h:70:44: error: unknown type name ‘XRectangle’` |
-| vigilance | `object compile probe succeeded; no link target added yet` |
 | winduprobot | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |

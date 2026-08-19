@@ -330,6 +330,7 @@ if opt_xscreensaver
         {'name': 'gears', 'src': 'src/gears.c', 'png': false, 'extra': ['src/rotator.c', 'src/involute.c', 'src/tube.c', 'src/normals.c', 'src/yarandom.c']},
         {'name': 'papercube', 'src': 'src/papercube.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'topblock', 'src': 'src/topblock.c', 'png': false, 'extra': ['src/sphere.c', 'src/tube.c']},
+        {'name': 'vigilance', 'src': 'src/vigilance.c', 'png': false, 'extra': ['src/gllist.c', 'src/normals.c', 'src/seccam.c'], 'table': 'vigilance'},
         {'name': 'antinspect', 'src': 'src/antinspect.c', 'png': false, 'extra': ['src/sphere.c'], 'c_args': ['-DSTANDALONE']},
         {'name': 'providence', 'src': 'src/providence.c', 'png': false, 'extra': [], 'c_args': ['-DSTANDALONE']},
         {'name': 'quasicrystal', 'src': 'src/quasicrystal.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
