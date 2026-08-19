@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (45)
+## Ported (46)
 
 | hack | companion sources |
 |---|---|
@@ -29,6 +29,7 @@ link time.
 | gears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
 | geodesic | normals.c, rotator.c, yarandom.c |
 | glblur | rotator.c, yarandom.c |
+| glhanoi | doubletime.c, rotator.c, yarandom.c |
 | glknots | rotator.c, tube.c, yarandom.c |
 | glmatrix | image_data_to_ximage.c |
 | glschool | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
@@ -54,7 +55,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (45)
+## Deferred (44)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -78,7 +79,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | gibson | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | glcells | `/tmp/xscreensaver-6.15/hacks/glx/glcells.c:40:30: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible pointer type ‘int (*)(ModeInfo *, void *)’ [-Wincompatible-pointer-types]` |
 | glforestfire | `../src/glforestfire.c:88:10: fatal error: xlock.h: No such file or directory` |
-| glhanoi | `object compile probe succeeded; no link target added yet` |
 | glsnake | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | handsy | `object compile probe succeeded; no link target added yet` |

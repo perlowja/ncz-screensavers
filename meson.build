@@ -299,6 +299,7 @@ if opt_xscreensaver
         {'name': 'cubenetic', 'src': 'src/cubenetic.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'glschool', 'src': 'src/glschool.c', 'png': false, 'extra': ['src/glschool_alg.c', 'src/glschool_gl.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'gravitywell', 'src': 'src/gravitywell.c', 'png': false, 'extra': [], 'table': 'gravitywell'},
+        {'name': 'glhanoi', 'src': 'src/glhanoi.c', 'png': false, 'extra': ['src/doubletime.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'hypnowheel', 'src': 'src/hypnowheel.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubicgrid', 'src': 'src/cubicgrid.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubestack', 'src': 'src/cubestack.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
