@@ -155,6 +155,13 @@ typedef struct _XColor {
     char           flags;
     char           pad;
 } XColor;
+typedef struct {
+    short x, y;
+} XPoint;
+typedef struct {
+    short x, y;
+    unsigned short width, height;
+} XRectangle;
 typedef struct _XGCValues  XGCValues;
 /* XImage is fully defined in section 6 below. */
 /* XEvent — see union definition below in this section. We use a union of

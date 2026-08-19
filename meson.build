@@ -295,6 +295,7 @@ if opt_xscreensaver
         {'name': 'boing', 'src': 'src/boing.c', 'png': false, 'extra': []},
         {'name': 'blinkbox', 'src': 'src/blinkbox.c', 'png': false, 'extra': ['src/sphere.c']},
         {'name': 'blocktube', 'src': 'src/blocktube.c', 'png': false, 'extra': []},
+        {'name': 'chompytower', 'src': 'src/chompytower.c', 'png': false, 'extra': ['src/doubletime.c', 'src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/spline.c', 'src/teeth_model.c', 'src/yarandom.c']},
         {'name': 'cubenetic', 'src': 'src/cubenetic.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'glschool', 'src': 'src/glschool.c', 'png': false, 'extra': ['src/glschool_alg.c', 'src/glschool_gl.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'gravitywell', 'src': 'src/gravitywell.c', 'png': false, 'extra': [], 'table': 'gravitywell'},

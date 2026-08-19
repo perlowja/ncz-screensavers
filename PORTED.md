@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (43)
+## Ported (44)
 
 | hack | companion sources |
 |---|---|
@@ -13,6 +13,7 @@ link time.
 | boing | - |
 | blinkbox | sphere.c |
 | blocktube | - |
+| chompytower | doubletime.c, easing.c, gllist.c, normals.c, rotator.c, sphere.c, spline.c, teeth_model.c, yarandom.c |
 | crumbler | quickhull.c, rotator.c, yarandom.c |
 | cube21 | - |
 | cubestack | rotator.c, yarandom.c |
@@ -52,7 +53,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (47)
+## Deferred (46)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -67,7 +68,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | antspotlight | `../src/antspotlight.c:25:10: fatal error: xlock.h: No such file or directory` |
 | b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
-| chompytower | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |
 | dangerball | `../src/voronoi.c:21:10: fatal error: xlockmore.h: No such file or directory` |
 | dnalogo | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
