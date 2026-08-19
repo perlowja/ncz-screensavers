@@ -308,6 +308,7 @@ if opt_xscreensaver
         {'name': 'energystream', 'src': 'src/energystream.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubetwist', 'src': 'src/cubetwist.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'splodesic', 'src': 'src/splodesic.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'squirtorus', 'src': 'src/squirtorus.c', 'png': false, 'extra': ['src/easing.c', 'src/normals.c', 'src/spline.c', 'src/yarandom.c']},
         {'name': 'glblur', 'src': 'src/glblur.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'rubikblocks', 'src': 'src/rubikblocks.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'discoball', 'src': 'src/discoball.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},

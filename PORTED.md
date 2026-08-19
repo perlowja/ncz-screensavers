@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (44)
+## Ported (45)
 
 | hack | companion sources |
 |---|---|
@@ -49,11 +49,12 @@ link time.
 | raverhoop | rotator.c, yarandom.c |
 | rubikblocks | rotator.c, yarandom.c |
 | splodesic | rotator.c, yarandom.c |
+| squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (46)
+## Deferred (45)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -102,7 +103,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
 | spheremonics | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | splitflap | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
-| squirtorus | `../src/spline.h:39:3: error: unknown type name ‘XPoint’` |
 | starwars | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | tangram | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | timetunnel | `/tmp/xscreensaver-6.15/hacks/glx/timetunnel.c:88:10: fatal error: images/gen/logo-180_png.h: No such file or directory` |
