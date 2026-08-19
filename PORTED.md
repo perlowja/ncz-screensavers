@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (51)
+## Ported (53)
 
 | hack | companion sources |
 |---|---|
@@ -42,6 +42,7 @@ link time.
 | highvoltage | gllist.c, highvoltage_model.c, normals.c, tube.c |
 | hydrostat | sphere.c |
 | hypnowheel | rotator.c, yarandom.c |
+| kallisti | gllist.c, kallisti_model.c, rotator.c, yarandom.c |
 | lockward | - |
 | menger | rotator.c, yarandom.c |
 | moebiusgears | involute.c, normals.c, rotator.c, yarandom.c |
@@ -57,10 +58,11 @@ link time.
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
 | topblock | sphere.c, tube.c |
+| tronbit | doubletime.c, gllist.c, rotator.c, sphere.c, tronbit_idle1.c, tronbit_idle2.c, tronbit_no.c, tronbit_yes.c, yarandom.c |
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (39)
+## Deferred (37)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -89,7 +91,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | jigsaw | `/tmp/xscreensaver-6.15/utils/spline.h:39:3: error: unknown type name ‘XPoint’` |
 | juggler3d | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | kaleidocycle | `../src/kaleidocycle.c:558:5: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
-| kallisti | `/home/jasonperlow/ncz-screensavers/build/../src/kallisti.c:167:(.text+0x4d0): undefined reference to `kallisti_model'` |
 | lament | `/tmp/xscreensaver-6.15/hacks/glx/lament.c:168:10: fatal error: images/gen/lament512_png.h: No such file or directory` |
 | lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
 | mapscroller | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
@@ -107,7 +108,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | starwars | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | tangram | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | timetunnel | `/tmp/xscreensaver-6.15/hacks/glx/timetunnel.c:88:10: fatal error: images/gen/logo-180_png.h: No such file or directory` |
-| tronbit | `/usr/bin/aarch64-linux-gnu-ld.bfd: tronbit_demo.p/src_tronbit.c.o:/home/jasonperlow/ncz-screensavers/build/../src/tronbit.c:32:(.data.rel+0x` |
 | unicrud | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | unknownpleasures | `../src/grab-ximage.h:70:44: error: unknown type name ‘XRectangle’` |
 | winduprobot | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
