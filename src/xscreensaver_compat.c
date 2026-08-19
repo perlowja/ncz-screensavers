@@ -211,6 +211,7 @@ void *init_GL(ModeInfo *mi) {
     mi->dpy = (Display *)g_harness_xscreen;
     mi->window = 0;   /* unused by our shim */
     mi->screen_number = 0;
+    mi->xgwa.screen = NULL;
     mi->xgwa.visual = NULL;
     mi->xgwa.colormap = 0;
     mi->xgwa.width  = g_harness_width;
@@ -584,6 +585,49 @@ Bool XQueryPointer(Display *dpy, Window window,
     if (win_y_return) *win_y_return = y;
     if (mask_return) *mask_return = 0;
     return True;
+}
+
+void load_texture_async(Screen *screen, Window window, GLXContext glx_context,
+                        int x, int y, Bool mipmap_p, GLuint texid,
+                        void (*callback)(const char *filename,
+                                         XRectangle *geometry,
+                                         int image_width,
+                                         int image_height,
+                                         int texture_width,
+                                         int texture_height,
+                                         void *closure),
+                        void *closure)
+{
+    enum { TEX_W = 64, TEX_H = 64 };
+    unsigned char pixels[TEX_W * TEX_H * 4];
+    XRectangle geom;
+    int px, py;
+    (void)screen; (void)window; (void)glx_context; (void)x; (void)y;
+
+    for (py = 0; py < TEX_H; py++) {
+        for (px = 0; px < TEX_W; px++) {
+            size_t off = ((size_t)py * TEX_W + (size_t)px) * 4;
+            int checker = ((px / 8) + (py / 8)) & 1;
+            pixels[off + 0] = checker ? 0x30 : 0x10;
+            pixels[off + 1] = checker ? 0x38 : 0x18;
+            pixels[off + 2] = checker ? 0x40 : 0x20;
+            pixels[off + 3] = 0xff;
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, texid);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEX_W, TEX_H, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    if (mipmap_p)
+        glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+
+    geom.x = 0;
+    geom.y = 0;
+    geom.width = TEX_W;
+    geom.height = TEX_H;
+    if (callback)
+        callback(NULL, &geom, TEX_W, TEX_H, TEX_W, TEX_H, closure);
 }
 /* ------------------------------------------------------------------------- */
 /* Colour ramps                                                              */

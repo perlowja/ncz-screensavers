@@ -4,11 +4,12 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (55)
+## Ported (56)
 
 | hack | companion sources |
 |---|---|
 | antinspect | sphere.c |
+| antspotlight | rotator.c, sphere.c, tube.c, yarandom.c |
 | beats | sphere.c |
 | boing | - |
 | blinkbox | sphere.c |
@@ -64,7 +65,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (35)
+## Deferred (34)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -76,7 +77,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 
 | hack | blocking error |
 |---|---|
-| antspotlight | `../src/antspotlight.c:25:10: fatal error: xlock.h: No such file or directory` |
 | b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |

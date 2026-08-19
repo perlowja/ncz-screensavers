@@ -344,6 +344,7 @@ if opt_xscreensaver
         {'name': 'tronbit', 'src': 'src/tronbit.c', 'png': false, 'extra': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
         {'name': 'peepers', 'src': 'src/peepers.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'c_args': ['-DHAVE_JWXYZ']},
         {'name': 'skytentacles', 'src': 'src/skytentacles.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'table': 'skytentacles'},
+        {'name': 'antspotlight', 'src': 'src/antspotlight.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args': ['-DSTANDALONE']},
     ]
 
     foreach h : ported_hacks

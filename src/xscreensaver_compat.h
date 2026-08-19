@@ -136,6 +136,7 @@ typedef unsigned long     KeySym;        /* XID. Hacks declare `KeySym keysym` i
 typedef unsigned long     Colormap;      /* XID, like Window above -- real Xlib makes this an integer, not a struct. Passing it by value (as the hacks do) needs a complete type. */
 typedef struct _Screen     Screen;
 typedef struct _Pixmap     Pixmap;
+typedef struct _GLXContext *GLXContext;
 /* XColor is DEFINED, not forward-declared.
  *
  * The xlockmore GL hacks do not treat XColor as opaque: they calloc arrays of
@@ -284,6 +285,7 @@ typedef int Bool;
 struct _XWindowAttributes {
     int     depth;        /* only referenced via MI_DEPTH (we don't use) */
     void   *visual;       /* MI_VISUAL → xgwa.visual */
+    Screen *screen;       /* grab-ximage callers pass this back unchanged */
     Colormap colormap;    /* MI_WIN_COLORMAP -> xgwa.colormap */
     int     width;        /* MI_WIN_WIDTH */
     int     height;       /* MI_WIN_HEIGHT */
@@ -503,6 +505,18 @@ extern Bool           XQueryPointer(Display *dpy, Window window,
                                     int *win_x_return,
                                     int *win_y_return,
                                     unsigned int *mask_return);
+extern void           load_texture_async(Screen *screen, Window window,
+                                         GLXContext glx_context,
+                                         int x, int y, Bool mipmap_p,
+                                         GLuint texid,
+                                         void (*callback)(const char *filename,
+                                                          XRectangle *geometry,
+                                                          int image_width,
+                                                          int image_height,
+                                                          int texture_width,
+                                                          int texture_height,
+                                                          void *closure),
+                                         void *closure);
 
 /* image_data_to_ximage — loads a PNG into a freshly allocated XImage.
  * Backed by libpng. The `Display *` and `Visual *` args are IGNORED — we
@@ -694,8 +708,6 @@ extern void gluLookAt(GLdouble ex, GLdouble ey, GLdouble ez,
  * EGL state via a global pointer (set by the harness before the first
  * call).
  */
-
-typedef struct _GLXContext *GLXContext;
 
 extern int  glXMakeCurrent(Display *dpy, Window drawable, GLXContext ctx);
 extern void glXSwapBuffers(Display *dpy, Window drawable);
