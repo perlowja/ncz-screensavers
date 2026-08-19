@@ -297,6 +297,7 @@ if opt_xscreensaver
         {'name': 'blocktube', 'src': 'src/blocktube.c', 'png': false, 'extra': []},
         {'name': 'cubenetic', 'src': 'src/cubenetic.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'glschool', 'src': 'src/glschool.c', 'png': false, 'extra': ['src/glschool_alg.c', 'src/glschool_gl.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'gravitywell', 'src': 'src/gravitywell.c', 'png': false, 'extra': [], 'table': 'gravitywell'},
         {'name': 'hypnowheel', 'src': 'src/hypnowheel.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubicgrid', 'src': 'src/cubicgrid.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'cubestack', 'src': 'src/cubestack.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
@@ -359,7 +360,7 @@ if opt_xscreensaver
             ],
             build_rpath: gl4es_dir,
             c_args: vendored_c_args + h.get('c_args', []) + [
-                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
+                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
             ],
             install: false,
         )

@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (42)
+## Ported (43)
 
 | hack | companion sources |
 |---|---|
@@ -31,6 +31,7 @@ link time.
 | glknots | rotator.c, tube.c, yarandom.c |
 | glmatrix | image_data_to_ximage.c |
 | glschool | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
+| gravitywell | - |
 | headroom | gllist.c, headroom_model.c, rotator.c, skull_model.c, yarandom.c |
 | hexstrut | rotator.c, yarandom.c |
 | hextrail | rotator.c, yarandom.c |
@@ -51,7 +52,7 @@ link time.
 | topblock | sphere.c, tube.c |
 | voronoi | - |
 
-## Deferred (48)
+## Deferred (47)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -79,7 +80,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | glhanoi | `object compile probe succeeded; no link target added yet` |
 | glsnake | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
-| gravitywell | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
 | handsy | `object compile probe succeeded; no link target added yet` |
 | hilbert | `../src/hilbert.c:1071:9: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
 | jigsaw | `/tmp/xscreensaver-6.15/utils/spline.h:39:3: error: unknown type name ‘XPoint’` |
