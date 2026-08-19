@@ -338,6 +338,8 @@ if opt_xscreensaver
         {'name': 'headroom', 'src': 'src/headroom.c', 'png': false, 'extra': ['src/gllist.c', 'src/headroom_model.c', 'src/skull_model.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'covid19', 'src': 'src/covid19.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'crackberg', 'src': 'src/crackberg.c', 'png': false, 'extra': []},
+        {'name': 'sballs', 'src': 'src/sballs.c', 'png': true, 'extra': [], 'c_args': ['-DSTANDALONE']},
+        {'name': 'glforestfire', 'src': 'src/glforestfire.c', 'png': true, 'extra': [], 'table': 'glforestfire', 'c_args': ['-DSTANDALONE']},
     ]
 
     foreach h : ported_hacks

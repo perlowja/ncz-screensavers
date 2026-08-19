@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (49)
+## Ported (51)
 
 | hack | companion sources |
 |---|---|
@@ -30,6 +30,7 @@ link time.
 | geodesic | normals.c, rotator.c, yarandom.c |
 | glblur | rotator.c, yarandom.c |
 | glhanoi | doubletime.c, rotator.c, yarandom.c |
+| glforestfire | image_data_to_ximage.c |
 | glknots | rotator.c, tube.c, yarandom.c |
 | glmatrix | image_data_to_ximage.c |
 | glschool | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
@@ -51,6 +52,7 @@ link time.
 | quasicrystal | rotator.c, yarandom.c |
 | raverhoop | rotator.c, yarandom.c |
 | rubikblocks | rotator.c, yarandom.c |
+| sballs | image_data_to_ximage.c |
 | splodesic | rotator.c, yarandom.c |
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
@@ -58,7 +60,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (41)
+## Deferred (39)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -81,7 +83,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | geodesicgears | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gibson | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | glcells | `/tmp/xscreensaver-6.15/hacks/glx/glcells.c:40:30: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible pointer type ‘int (*)(ModeInfo *, void *)’ [-Wincompatible-pointer-types]` |
-| glforestfire | `../src/glforestfire.c:88:10: fatal error: xlock.h: No such file or directory` |
 | glsnake | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | hilbert | `../src/hilbert.c:1071:9: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
@@ -98,7 +99,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | pinion | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | polyhedra-gl | `<command-line>: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘-’ token` |
 | razzledazzle | `../src/razzledazzle.c:476:34: error: ‘XEvent’ has no member named ‘xmotion’` |
-| sballs | `../src/sballs.c:55:10: fatal error: xlock.h: No such file or directory` |
 | skulloop | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | skytentacles | `/tmp/xscreensaver-6.15/hacks/glx/skytentacles.c:27:10: fatal error: images/gen/scales_png.h: No such file or directory` |
 | sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |

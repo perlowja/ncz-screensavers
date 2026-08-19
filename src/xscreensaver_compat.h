@@ -239,6 +239,10 @@ typedef union {
 #define Expose         12
 #define ClientMessage  33
 
+#ifndef None
+#define None 0L
+#endif
+
 #define Button1   1
 #define Button2   2
 #define Button3   3
@@ -435,6 +439,12 @@ extern void xlockmore_mi_init(ModeInfo *mi, size_t sz, void **parray);
 #endif
 #ifndef NRAND
 #define NRAND(n) ((int)(random() % (long)(n)))
+#endif
+#ifndef LRAND
+#define LRAND() ((long)(random() & 0x7fffffff))
+#endif
+#ifndef MAXRAND
+#define MAXRAND (2147483648.0)
 #endif
 
 #define NUMCOLORS 256
