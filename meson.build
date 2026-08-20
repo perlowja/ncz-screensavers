@@ -369,6 +369,8 @@ if opt_xscreensaver
         {'name': 'gibson', 'src': 'src/gibson.c', 'png': false, 'extra': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'geodesicgears', 'src': 'src/geodesicgears.c', 'png': false, 'extra': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'tangram', 'src': 'src/tangram.c', 'png': false, 'extra': ['src/tangram_shapes.c']},
+        {'name': 'gltext', 'src': 'src/gltext.c', 'png': false, 'extra': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'starwars', 'src': 'src/starwars.c', 'png': false, 'extra': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks

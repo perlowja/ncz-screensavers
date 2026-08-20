@@ -1467,3 +1467,20 @@ XImage *file_to_ximage(Display *dpy, Visual *visual, const char *filename)
     (void) dpy; (void) visual; (void) filename;
     return NULL;
 }
+
+/* utf8_decode_combining -- decode the next UTF-8 character, skipping
+ * zero-width and combining marks that follow the base character.
+ * starwars.c uses this to render one logical character at a time from
+ * a UTF-8 string. Our stub ignores the combining logic and just
+ * returns the first character's advance; visual quality of combining
+ * marks in the scrolling text is the only thing that degrades.
+ */
+long utf8_decode_combining(const unsigned char *in, long length,
+                           unsigned long *unicode_ret)
+{
+    (void) in; (void) length; (void) unicode_ret;
+    /* Reuse the simpler utf8_decode; it already returns the byte
+     * advance for the leading character. The "combining" aspect is
+     * a no-op in this shim. */
+    return utf8_decode(in, length, unicode_ret);
+}
