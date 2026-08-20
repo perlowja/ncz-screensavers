@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (87)
+## Ported (89)
 
 | hack | companion sources |
 |---|---|
@@ -14,6 +14,7 @@ link time.
 | boing | - |
 | blinkbox | sphere.c |
 | blocktube | - |
+| bouncingcow | cow_face.c, cow_hide.c, cow_hoofs.c, cow_horns.c, cow_tail.c, cow_udder.c, gllist.c, rotator.c, yarandom.c |
 | chompytower | doubletime.c, easing.c, gllist.c, normals.c, rotator.c, sphere.c, spline.c, teeth_model.c, yarandom.c |
 | crumbler | quickhull.c, rotator.c, yarandom.c |
 | cube21 | - |
@@ -23,6 +24,7 @@ link time.
 | dangerball | rotator.c, sphere.c, tube.c, yarandom.c |
 | cubicgrid | rotator.c, yarandom.c |
 | cityflow | - |
+| companion | companion_disc.c, companion_heart.c, companion_quad.c, gllist.c, rotator.c, yarandom.c |
 | covid19 | rotator.c, sphere.c, tube.c, yarandom.c |
 | crackberg | - |
 | cubenetic | rotator.c, yarandom.c |
@@ -96,7 +98,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (4)
+## Deferred (2)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -109,6 +111,4 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | hack | blocking error |
 |---|---|
 | b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
-| bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
-| companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |
 | sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
