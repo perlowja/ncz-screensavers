@@ -379,6 +379,10 @@ if opt_xscreensaver
         {'name': 'lavalite', 'src': 'src/lavalite.c', 'png': true, 'extra': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'unknownpleasures', 'src': 'src/unknownpleasures.c', 'png': true, 'extra': ['src/doubletime.c', 'src/easing.c']},
         {'name': 'photopile', 'src': 'src/photopile.c', 'png': true, 'extra': ['src/dropshadow.c', 'src/xftwrap.c', 'src/yarandom.c']},
+        {'name': 'timetunnel', 'src': 'src/timetunnel.c', 'png': true, 'extra': ['src/rotator.c', 'src/yarandom.c'], 'glu': true},
+        {'name': 'dangerball', 'src': 'src/dangerball.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'glcells', 'src': 'src/glcells.c', 'png': false, 'extra': []},
+        {'name': 'flyingtoasters', 'src': 'src/flyingtoasters.c', 'png': true, 'extra': ['src/gllist.c', 'src/toast.c', 'src/toast2.c', 'src/toaster.c', 'src/toaster_base.c', 'src/toaster_handle.c', 'src/toaster_handle2.c', 'src/toaster_jet.c', 'src/toaster_knob.c', 'src/toaster_slots.c', 'src/toaster_wing.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks

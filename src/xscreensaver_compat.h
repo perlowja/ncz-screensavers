@@ -498,7 +498,7 @@ struct _XImage_real {
     int     width;
     int     height;
     int     bytes_per_line;
-    void   *data;
+    char   *data;
     int     depth;           /* bits per pixel — 32 for RGBA */
     int     bits_per_pixel;  /* alias */
 };
