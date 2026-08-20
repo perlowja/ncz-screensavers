@@ -97,6 +97,28 @@ if opt_gl4es
     endif
     # Extract just the directory portion for -L/-rpath flags.
     gl4es_dir = gl4es_lib_path.replace('libGL.so.1', '')
+
+    # Bundle a copy of gl4es's libGL.so.1 INSIDE the build tree, so that the
+    # binaries we produce can be relocated to a target host (e.g. the O6N test
+    # box) without that host needing libgl4es0 installed at /usr/lib/.../gl4es.
+    #
+    # The runtime loader resolves "$ORIGIN" to the directory the binary lives
+    # in. By setting build_rpath to include "$ORIGIN/gl4es" and copying
+    # libGL.so.1 next to each binary at build/gl4es/, we get a self-contained
+    # bundle: scp build/ to O6N and run ./glmatrix_demo — no LD_PRELOAD, no
+    # apt-get install on the target, the binary just works.
+    #
+    # MEASURED on O6N 2026-08-20: without this, the binary's rpath
+    # /usr/lib/aarch64-linux-gnu/gl4es/ does not resolve (no such dir on the
+    # test host) and the loader silently falls back to Mesa's libGL, which
+    # passes init/draw/swaps with healthy-looking diagnostic logs but renders
+    # pure black for any GL1.x fixed-function call the vendored hack makes.
+    # The frame callback chain still ticks (frame_done increments normally)
+    # so log-text-only checks cannot distinguish the two. Visual verification
+    # on real hardware is the only bar.
+    gl4es_bundle_dir = meson.current_build_dir() / 'gl4es'
+    run_command('mkdir', '-p', gl4es_bundle_dir, check: true)
+    run_command('cp', gl4es_lib_path, gl4es_bundle_dir / 'libGL.so.1', check: true)
 endif
 
 # libpng — required for xscreensaver-shim (PNG textures via image_data_to_ximage).
@@ -210,11 +232,16 @@ if opt_gl4es
         ],
         # Link against GL. The -L flag selects GL4ES's directory first,
         # so libGL.so.1 from gl4es is preferred over Mesa's.
+        # build_rpath contains BOTH the in-tree install path (so a binary
+        # built here runs correctly without any extra setup) AND the
+        # $ORIGIN-relative path (so the binary keeps working after the
+        # build/ directory is relocated to a target host that does not
+        # have gl4es installed system-wide).
         link_args: [
             '-L@0@'.format(gl4es_dir),
             '-lGL',
         ],
-        build_rpath: gl4es_dir,
+        build_rpath: gl4es_dir + ':$ORIGIN/gl4es',
         c_args: common_c_args,
         install: false,
     )
@@ -279,7 +306,7 @@ if opt_xscreensaver
             '-L@0@'.format(gl4es_dir),
             '-lGL',
         ],
-        build_rpath: gl4es_dir,
+        build_rpath: gl4es_dir + ':$ORIGIN/gl4es',
         # Vendored third-party (glmatrix.c) is the primary source of
         # warnings; relax the strictness for the whole executable.
         # The compat shim and harness stay warning-clean under -Wall -Wextra.
@@ -415,7 +442,7 @@ if opt_xscreensaver
                 '-L@0@'.format(gl4es_dir),
                 '-lGL',
             ],
-            build_rpath: gl4es_dir,
+            build_rpath: gl4es_dir + ':$ORIGIN/gl4es',
             c_args: vendored_c_args + h.get('c_args', []) + [
                 '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
             ],
