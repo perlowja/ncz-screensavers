@@ -50,6 +50,7 @@
 #include "xft.h"
 #include "texfont.h"
 #include "utf8wc.h"
+#include "textclient.h"
 
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only
  * ones used by glmatrix.c; expand as future ports need more. */
@@ -773,6 +774,50 @@ void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
     }
 }
 
+/* make_random_colormap (utils/colors.c) -- fills *colors with ncolors
+ * random entries. bright_p picks from a bright-saturated HSV band;
+ * otherwise each channel is independently random. screen/visual/cmap
+ * are vestigial; allocate_p / writable_pP / verbose_p are ignored.
+ *
+ * Vendored hacks reach this through colors.h. The implementations of
+ * this and make_smooth_colormap intentionally diverge from upstream
+ * only in their handling of X colormap allocation, which doesn't apply
+ * to a GL4ES pipeline: there's no X server to allocate cells in.
+ */
+void make_random_colormap(Screen *screen, Visual *visual, Colormap cmap,
+                          XColor *colors, int *ncolorsP,
+                          Bool bright_p, Bool allocate_p,
+                          Bool *writable_pP, Bool verbose_p)
+{
+    int n, i;
+
+    (void) screen; (void) visual; (void) cmap;
+    (void) allocate_p; (void) writable_pP; (void) verbose_p;
+
+    if (!colors || !ncolorsP) return;
+    n = *ncolorsP;
+    if (n <= 0) return;
+
+    for (i = 0; i < n; i++) {
+        colors[i].flags = 0;
+        colors[i].pad   = 0;
+        colors[i].pixel = (unsigned long) i;
+        if (bright_p) {
+            int H = random() % 360;
+            double S = ((double) (random() % 70) + 30) / 100.0;
+            double V = ((double) (random() % 34) + 66) / 100.0;
+            xs_hsv_to_rgb16((double) H, S, V,
+                            &colors[i].red,
+                            &colors[i].green,
+                            &colors[i].blue);
+        } else {
+            colors[i].red   = (unsigned short) (random() & 0xFFFF);
+            colors[i].green = (unsigned short) (random() & 0xFFFF);
+            colors[i].blue  = (unsigned short) (random() & 0xFFFF);
+        }
+    }
+}
+
 void make_color_ramp(Screen *screen, Visual *visual, Colormap cmap,
                      int h1, double s1, double v1,
                      int h2, double s2, double v2,
@@ -1065,6 +1110,21 @@ void gltrackball_get_quaternion(trackball_state *ts, float q[4])
     q[0] = 0.0f; q[1] = 0.0f; q[2] = 0.0f; q[3] = 1.0f;
 }
 
+/* --- screenhack_usleep (usleep.h) ------------------------------------- *
+ *
+ * usleep() was removed from POSIX in 2008 and glibc flags it
+ * _XOPEN_SOURCE=500 which our _POSIX_C_SOURCE=200809L doesn't expose.
+ * Vendored hacks reach for it directly (glsnake does), so we shim it
+ * to nanosleep. */
+#include <time.h>
+void screenhack_usleep(unsigned long usecs)
+{
+    struct timespec ts;
+    ts.tv_sec  = (time_t)  (usecs / 1000000UL);
+    ts.tv_nsec = (long) ((usecs % 1000000UL) * 1000UL);
+    nanosleep(&ts, NULL);
+}
+
 /* --- texture-font stubs (texfont.h) ------------------------------------ *
  *
  * We do not compile texfont.c — the upstream ~1500 line implementation
@@ -1304,4 +1364,55 @@ char *XChar2b_to_utf8(const XChar2b *str, int *length_ret)
     out[len] = '\0';
     if (length_ret) *length_ret = (int) len;
     return out;
+}
+
+/* --- textclient.c stubs (utils/textclient.c) --------------------------- *
+ *
+ * textclient.c spawns `xscreensaver-text` and pipes bytes back. We are
+ * not running an X11 session, so no helper process is available.
+ * Vendored hacks that include textclient.h (fliptext, splitflap) only
+ * call textclient_getc to read text characters and textclient_puts /
+ * textclient_putc_event to feed input back; they ALL guard the reads
+ * with NULL checks on the text_data handle. Returning NULL / EOF / True
+ * makes them behave like "no live text source" -- the screensaver runs,
+ * it just doesn't show scroll-in text.
+ */
+struct text_data { int _placeholder; };
+
+text_data *textclient_open(Display *dpy)
+{
+    (void) dpy;
+    return NULL;
+}
+
+void textclient_close(text_data *td)
+{
+    (void) td;
+}
+
+void textclient_reshape(text_data *td,
+                        int pix_w, int pix_h,
+                        int char_w, int char_h,
+                        int max_lines)
+{
+    (void) td; (void) pix_w; (void) pix_h;
+    (void) char_w; (void) char_h; (void) max_lines;
+}
+
+int textclient_getc(text_data *td)
+{
+    (void) td;
+    return -1;   /* EOF -- callers treat as "no more text" */
+}
+
+Bool textclient_puts(text_data *td, const char *s)
+{
+    (void) td; (void) s;
+    return True;
+}
+
+Bool textclient_putc_event(text_data *td, XKeyEvent *e)
+{
+    (void) td; (void) e;
+    return True;
 }

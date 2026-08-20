@@ -355,6 +355,20 @@ if opt_xscreensaver
         {'name': 'antspotlight', 'src': 'src/antspotlight.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args': ['-DSTANDALONE']},
         {'name': 'lament', 'src': 'src/lament.c', 'png': true, 'extra': ['src/gllist.c', 'src/lament_model.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'dnalogo', 'src': 'src/dnalogo.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'glu': true},
+        {'name': 'glsnake', 'src': 'src/glsnake.c', 'png': false, 'extra': []},
+        {'name': 'skulloop', 'src': 'src/skulloop.c', 'png': false, 'extra': ['src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/skull_model.c', 'src/yarandom.c']},
+        {'name': 'spheremonics', 'src': 'src/spheremonics.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'fliptext', 'src': 'src/fliptext.c', 'png': false, 'extra': []},
+        {'name': 'molecule', 'src': 'src/molecule.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'unicrud', 'src': 'src/unicrud.c', 'png': false, 'extra': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'winduprobot', 'src': 'src/winduprobot.c', 'png': true, 'extra': ['src/gllist.c', 'src/involute.c', 'src/normals.c', 'src/robot.c', 'src/robot-wireframe.c', 'src/sphere.c', 'src/yarandom.c']},
+        {'name': 'juggler3d', 'src': 'src/juggler3d.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'mapscroller', 'src': 'src/mapscroller.c', 'png': true, 'extra': ['src/easing.c']},
+        {'name': 'splitflap', 'src': 'src/splitflap.c', 'png': true, 'extra': ['src/gllist.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'pinion', 'src': 'src/pinion.c', 'png': false, 'extra': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'gibson', 'src': 'src/gibson.c', 'png': false, 'extra': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'geodesicgears', 'src': 'src/geodesicgears.c', 'png': false, 'extra': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'tangram', 'src': 'src/tangram.c', 'png': false, 'extra': ['src/tangram_shapes.c']},
     ]
 
     foreach h : ported_hacks

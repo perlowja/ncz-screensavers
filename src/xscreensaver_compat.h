@@ -588,6 +588,10 @@ extern void make_smooth_colormap(Screen *screen, Visual *visual, Colormap cmap,
                                  XColor *colors, int *ncolorsP,
                                  Bool allocate_p, Bool *writable_pP,
                                  Bool verbose_p);
+extern void make_random_colormap(Screen *screen, Visual *visual, Colormap cmap,
+                                 XColor *colors, int *ncolorsP,
+                                 Bool bright_p, Bool allocate_p,
+                                 Bool *writable_pP, Bool verbose_p);
 extern void make_color_ramp(Screen *screen, Visual *visual, Colormap cmap,
                             int h1, double s1, double v1,
                             int h2, double s2, double v2,
