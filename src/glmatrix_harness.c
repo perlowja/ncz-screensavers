@@ -352,7 +352,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
          * tunable stays at its BSS default. That is what made this render
          * black: do_texture was False, so init_matrix skipped load_textures()
          * and no glyph atlas was ever uploaded. */
-        xs_compat_apply_var_defaults(hack->opts);
+        xs_compat_apply_var_defaults(hack->opts, hack->defaults_str);
 
         fprintf(stderr, "[diag] glmatrix_harness: calling init_matrix...\n");
         hack->init_cb(&a->mi);

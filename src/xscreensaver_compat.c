@@ -43,6 +43,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 /* texfont.h / xft.h provide texture_font_data, XCharStruct, XftFont
  * types. Vendored hacks reach them through texfont.h; we link the
@@ -184,8 +186,35 @@ static int frand_initialized = 0;
 static double frand_max;
 
 static void frand_init(void) {
+    struct timeval tv;
+    unsigned int seed;
     if (frand_initialized) return;
-    srandom(0xDEADBEEF);
+    /*
+     * Seed from the wall clock + process ID so each launch differs.
+     *
+     * A fixed seed (e.g. 0xDEADBEEF) used to be the choice here -- and it
+     * is what made the visual verification loop in PORTING.md reproducible
+     * -- but it surfaces a real upstream-xscreensaver fragility: a number
+     * of hacks (gears, pinion) have data-validation aborts of the form
+     * `if (g->inner_r2 > g->inner_r) abort();` that fire when the
+     * deterministic random sequence produces a small gear. Roughly half
+     * of all 32-bit seeds hit one of those aborts in the first few gears.
+     *
+     * A live seed makes most launches succeed (54% of seeds are clean
+     * for gears in a 100k sweep, but each launch only samples one seed
+     * and a single retry on abort would clear that). The cost of losing
+     * bit-exact reproducibility across runs is the right one for a
+     * screensaver -- the alternative is "deterministically broken".
+     *
+     * The historical "looks the same on every run" comment in this file
+     * was a property of upstream xscreensaver's daemon mode, where the
+     * daemon runs each hack for minutes and the deterministic seed
+     * mattered because the daemon doesn't fork between hacks. Our
+     * _demo binaries are one-shot, so per-run reseeding is fine.
+     */
+    gettimeofday(&tv, NULL);
+    seed = (unsigned int)(tv.tv_sec ^ tv.tv_usec ^ ((unsigned int)getpid() << 16));
+    srandom(seed);
     frand_max = (double)((unsigned long)random() >> 16);  /* 0..0xFFFF */
     if (frand_max < 1.0) frand_max = 1.0;
     frand_initialized = 1;
@@ -427,6 +456,168 @@ static const char *xs_env_override(const char *name) {
     return getenv(key);
 }
 
+/*
+ * Defaults block parsed from the hack's DEFAULTS macro.
+ *
+ * A hack declares its tunables two ways in upstream xscreensaver:
+ *
+ *   1. An argtype vars[] table -- the "xlockmore-style" declarations, where
+ *      each entry holds the .def (default) inline. xs_compat_apply_var_defaults
+ *      walks this and writes through each var pointer.
+ *
+ *   2. A `#define DEFAULTS "*name: value\n..."` macro at the top of the .c
+ *      file -- the "screenhack-style" declarations, used for resource keys
+ *      upstream treated as defaults rather than tunables: typically the
+ *      color names, font names and similar that the hack reads via
+ *      get_string_resource() but never puts in vars[].
+ *
+ * Until 2026-08-20 we parsed only the first form, which silently broke
+ * chompytower (jawColor), covid19, gibson, gravitywell, handsy, headroom,
+ * highvoltage, nakagin, skulloop, splitflap, squirtorus, vigilance,
+ * winduprobot, fliptext, unknownpleasures, dnalogo and unicrud. The hack's
+ * get_string_resource("jawColor") came back empty, XParseColor printed
+ * "unparsable color in jawColor: ", and the hack exited 1 -- logged as a
+ * crash even though the actual fault was a shim-side lookup miss.
+ *
+ * We now parse the DEFAULTS block at apply time and store the entries here,
+ * in a per-hack table. get_*_resource consults this table after the
+ * vars[] table, so a hack with both styles sees a single consistent view.
+ *
+ * Entries are malloc'd and must be freed when the harness tears down or
+ * a new hack is loaded into the same process. We are single-hack-at-a-time
+ * (each _demo binary runs one effect and exits), so the leak is bounded by
+ * the number of entries one DEFAULTS block contributes (a few dozen).
+ */
+typedef struct {
+    char *name;
+    char *value;
+} xs_defaults_entry;
+
+static xs_defaults_entry *xs_defaults_table = NULL;
+static int                 xs_defaults_count  = 0;
+static int                 xs_defaults_cap    = 0;
+
+static void xs_defaults_clear(void) {
+    int i;
+    for (i = 0; i < xs_defaults_count; i++) {
+        free(xs_defaults_table[i].name);
+        free(xs_defaults_table[i].value);
+    }
+    xs_defaults_count = 0;
+    /* keep xs_defaults_table allocated for reuse -- freed at process exit. */
+}
+
+static void xs_defaults_add(const char *name, const char *value, int vlen) {
+    char *n, *v;
+    if (xs_defaults_count == xs_defaults_cap) {
+        int newcap = xs_defaults_cap ? xs_defaults_cap * 2 : 32;
+        xs_defaults_entry *nt = realloc(xs_defaults_table,
+                                        newcap * sizeof(*nt));
+        if (!nt) return;   /* OOM: silently skip */
+        xs_defaults_table = nt;
+        xs_defaults_cap = newcap;
+    }
+    n = strdup(name);
+    v = (char *)malloc(vlen + 1);
+    if (!n || !v) { free(n); free(v); return; }
+    memcpy(v, value, vlen);
+    v[vlen] = '\0';
+    xs_defaults_table[xs_defaults_count].name = n;
+    xs_defaults_table[xs_defaults_count].value = v;
+    xs_defaults_count++;
+}
+
+static const char *xs_defaults_lookup(const char *name) {
+    int i;
+    if (!name || !xs_defaults_table) return NULL;
+    for (i = 0; i < xs_defaults_count; i++) {
+        if (strcmp(xs_defaults_table[i].name, name) == 0)
+            return xs_defaults_table[i].value;
+    }
+    return NULL;
+}
+
+/* Parse a DEFAULTS string of the form:
+ *
+ *     "*name: value\n*name2: value 2\n..."
+ *
+ * Each line is "*" + name + ":" + value (whitespace padded). Names and
+ * values are stripped of leading/trailing whitespace. Values may contain
+ * internal whitespace and punctuation (font names, hex colors with spaces,
+ * text strings). Empty lines are skipped. A value that extends across the
+ * remaining buffer is still captured -- the DEFAULTS macro typically has a
+ * trailing "\n" but some hacks omit it on the last line.
+ *
+ * Not strtok-based because DEFAULTS is read-only storage in the vendored
+ * hack's .rodata, and we want to keep that storage immutable.
+ */
+static void xs_parse_defaults_string(const char *s) {
+    const char *p;
+    if (!s) return;
+    xs_defaults_clear();
+    p = s;
+    while (*p) {
+        const char *line_start = p;
+        const char *nl = strchr(p, '\n');
+        const char *line_end = nl ? nl : (p + strlen(p));
+        const char *colon;
+        const char *name_start, *name_end;
+        const char *val_start, *val_end;
+        int name_len, val_len;
+
+        /* Skip leading whitespace, require a leading '*' or '.' as the
+         * "this is a defaults line" marker. screenhack.c treats them as
+         * equivalent: '*' is the loose binding (matches the program class),
+         * '.' is the tight binding (matches the program instance). Hacks
+         * mix them in the same block -- dnalogo uses '*' for tunables and
+         * '.' for the colour slot specifically. */
+        while (line_start < line_end &&
+               (*line_start == ' ' || *line_start == '\t' ||
+                *line_start == '\r'))
+            line_start++;
+        if (line_start >= line_end ||
+            (*line_start != '*' && *line_start != '.'))
+            goto next;
+
+        name_start = line_start + 1;
+        colon = name_start;
+        while (colon < line_end && *colon != ':') colon++;
+        if (colon >= line_end) goto next;   /* no colon, malformed line */
+
+        name_end = colon;
+        while (name_end > name_start &&
+               (name_end[-1] == ' ' || name_end[-1] == '\t'))
+            name_end--;
+        name_len = (int)(name_end - name_start);
+        if (name_len <= 0) goto next;
+
+        val_start = colon + 1;
+        while (val_start < line_end &&
+               (*val_start == ' ' || *val_start == '\t'))
+            val_start++;
+        val_end = line_end;
+        while (val_end > val_start &&
+               (val_end[-1] == ' ' || val_end[-1] == '\t' ||
+                val_end[-1] == '\r'))
+            val_end--;
+        val_len = (int)(val_end - val_start);
+
+        /* Heap-copy both -- the source string is rodata we must not mutate. */
+        {
+            char *namebuf = (char *)malloc(name_len + 1);
+            if (!namebuf) goto next;
+            memcpy(namebuf, name_start, name_len);
+            namebuf[name_len] = '\0';
+            xs_defaults_add(namebuf, val_start, val_len);
+            free(namebuf);
+        }
+
+      next:
+        if (!nl) break;
+        p = nl + 1;
+    }
+}
+
 /* The table most recently applied. The resource getters below consult it so
  * that a hack which CALLS get_*_resource() sees the same values as a hack that
  * reads the var pointers directly. */
@@ -443,10 +634,18 @@ static ModeSpecVar *xs_find_var(const char *name) {
     return NULL;
 }
 
-void xs_compat_apply_var_defaults(ModeSpecOpt *o) {
+void xs_compat_apply_var_defaults(ModeSpecOpt *o, const char *defaults_str) {
     int i;
-    if (!o || !o->vars) return;
     xs_active_opts = o;
+
+    /* Parse the screenhack-style DEFAULTS block FIRST so the side-table is
+     * populated before vars[] writes go through: a hack whose vars[] table
+     * points at a name that ALSO appears in DEFAULTS (e.g. "delay") still
+     * resolves via vars[], but anything only in DEFAULTS (colors, fonts) is
+     * findable through xs_defaults_lookup. */
+    xs_parse_defaults_string(defaults_str);
+
+    if (!o || !o->vars) return;
     for (i = 0; i < o->numvars; i++) {
         ModeSpecVar *v = &o->vars[i];
         const char *ov;
@@ -499,6 +698,12 @@ char *get_string_resource(void *ctx, const char *res_name,
         val = *(char **)v->var;        /* live value, may carry an override */
     else if (v)
         val = v->def;
+    /* Fall through to the screenhack-style DEFAULTS table. chompytower's
+     * "jawColor" (and the 16 other hacks' analogous names) only appear in
+     * DEFAULTS, never in vars[]. Without this fallback the call returns
+     * "" and XParseColor errors out with "unparsable color in jawColor: ". */
+    if (!val)
+        val = xs_defaults_lookup(res_name);
     /* MUST be freeable: xscreensaver hacks routinely free() this result, so
      * handing back a string literal or a pointer into the var table would be a
      * free() of static storage. */
@@ -508,31 +713,41 @@ char *get_string_resource(void *ctx, const char *res_name,
 Bool get_boolean_resource(void *ctx, const char *res_name,
                           const char *res_class) {
     ModeSpecVar *v;
+    const char *def = NULL;
     (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
-    if (!v) return False;
-    if (v->type == t_Bool && v->var) return *(Bool *)v->var;
-    return xs_parse_bool(v->def);
+    if (v && v->type == t_Bool && v->var) return *(Bool *)v->var;
+    if (v) def = v->def;
+    /* Fall through to DEFAULTS table. dnalogo reads "doGasket"/"doHelix"
+     * this way and has no vars[] table at all, so this lookup is the
+     * only way those names resolve. Without it dnalogo exits with
+     * "no helix or gasket?" because both booleans default to False. */
+    if (!def) def = xs_defaults_lookup(res_name);
+    return xs_parse_bool(def);
 }
 
 int get_integer_resource(void *ctx, const char *res_name,
                          const char *res_class) {
     ModeSpecVar *v;
+    const char *def = NULL;
     (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
-    if (!v) return 0;
-    if (v->type == t_Int && v->var) return *(int *)v->var;
-    return v->def ? atoi(v->def) : 0;
+    if (v && v->type == t_Int && v->var) return *(int *)v->var;
+    if (v) def = v->def;
+    if (!def) def = xs_defaults_lookup(res_name);
+    return def ? atoi(def) : 0;
 }
 
 double get_float_resource(void *ctx, const char *res_name,
                           const char *res_class) {
     ModeSpecVar *v;
+    const char *def = NULL;
     (void)ctx; (void)res_class;
     v = xs_find_var(res_name);
-    if (!v) return 0.0;
-    if (v->type == t_Float && v->var) return (double)*(float *)v->var;
-    return v->def ? atof(v->def) : 0.0;
+    if (v && v->type == t_Float && v->var) return (double)*(float *)v->var;
+    if (v) def = v->def;
+    if (!def) def = xs_defaults_lookup(res_name);
+    return def ? atof(def) : 0.0;
 }
 
 /* ----------------------------------------------------------------------- */

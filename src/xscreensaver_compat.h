@@ -694,7 +694,7 @@ extern char *get_string_resource(void *ctx, const char *res_name,
 /* Walk a hack's ModeSpecVar table and write each entry's default through its
  * var pointer. MUST be called before the hack's init_cb: without it every
  * tunable sits at its BSS default and the hack silently misbehaves. */
-extern void  xs_compat_apply_var_defaults(ModeSpecOpt *o);
+extern void  xs_compat_apply_var_defaults(ModeSpecOpt *o, const char *defaults_str);
 
 extern Bool  get_boolean_resource(void *ctx, const char *res_name,
                                   const char *res_class);
@@ -813,7 +813,20 @@ struct xscreensaver_function_table {
     void       (*free_cb)(ModeInfo *);
     void       (*release_cb)(ModeInfo *);  /* may be NULL */
     ModeSpecOpt *opts;          /* may be NULL */
+    /* Embedded X-resources defaults block (the DEFAULTS macro at the top
+     * of the vendored .c file). Lines look like "*name: value\n" and carry
+     * the values that were never put into the vars[] table because
+     * upstream considered them "defaults, not tunables" -- typically the
+     * color and font names a hack reads via get_string_resource(). NULL
+     * when the hack has no such block (juggler3d, lockward). */
+    const char  *defaults_str;
 };
+
+/* Default-empty DEFAULTS for hacks that omit it (juggler3d, lockward).
+ * The xscreensaver_function_table defaults_str field will point at this. */
+#ifndef DEFAULTS
+#define DEFAULTS ""
+#endif
 
 #define XSCREENSAVER_MODULE_2(CLASS, NAME, PREFIX)                          \
     struct xscreensaver_function_table                                       \
@@ -827,6 +840,7 @@ struct xscreensaver_function_table {
             .free_cb     = free_##PREFIX,                                    \
             .release_cb  = release_##PREFIX,                                 \
             .opts        = &PREFIX##_opts,                                   \
+            .defaults_str = DEFAULTS,                                        \
         };
 
 #define XSCREENSAVER_MODULE(CLASS, PREFIX) \
