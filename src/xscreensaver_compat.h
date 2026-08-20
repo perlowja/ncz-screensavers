@@ -273,6 +273,13 @@ typedef int Bool;
 #ifndef False
 #define False 0
 #endif
+/* Mapscroller.c uses the all-caps Xlib spellings. */
+#ifndef TRUE
+#define TRUE  1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
 
 /* ----------------------------------------------------------------------- */
 /* Section 3 — ModeInfo struct                                             */

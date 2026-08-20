@@ -51,6 +51,7 @@
 #include "texfont.h"
 #include "utf8wc.h"
 #include "textclient.h"
+#include "X11/Intrinsic.h"
 
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only
  * ones used by glmatrix.c; expand as future ports need more. */
@@ -1415,4 +1416,54 @@ Bool textclient_putc_event(text_data *td, XKeyEvent *e)
 {
     (void) td; (void) e;
     return True;
+}
+
+/* --- X Toolkit (Xt) shim (X11/Intrinsic.h) ----------------------------- *
+ *
+ * mapscroller.c uses XtAppAddInput / XtRemoveInput / the XtInput*Mask
+ * constants to register a callback that watches the stdout pipe of an
+ * external "xscreensaver-text" helper. We do not run that helper and
+ * have no X11 display, so XtAppAddInput simply returns a sentinel
+ * input id and XtRemoveInput is a no-op. The callback never fires,
+ * which means mapscroller renders without scroll-in text -- still a
+ * valid screensaver.
+ */
+XtAppContext XtDisplayToApplicationContext(Display *dpy)
+{
+    (void) dpy;
+    return (XtAppContext) 0;
+}
+
+XtInputId XtAppAddInput(XtAppContext app,
+                        int           source,
+                        XtPointer     condition,
+                        void        (*proc)(XtPointer, int *, XtInputId *),
+                        XtPointer     closure)
+{
+    (void) app; (void) source; (void) condition;
+    (void) proc; (void) closure;
+    return (XtInputId) 1;   /* sentinel: not 0, so XtRemoveInput can match */
+}
+
+void XtRemoveInput(XtInputId id)
+{
+    (void) id;
+}
+
+/* --- file_to_ximage (ximage-loader.c) ---------------------------------- *
+ *
+ * Upstream's file_to_ximage uses GdkPixbuf to load a PNG/JPEG/GIF from
+ * a filename into an XImage. We don't have GdkPixbuf; we have libpng
+ * and the image_data_to_ximage() shim that takes in-memory PNG data.
+ *
+ * A simple stub: return NULL. mapscroller / lavalite / maze3d / pulsar /
+ * gleidescope / extrusion / worldpieces / timetunnel / glplanet all
+ * check the return value and skip texture rendering when it fails --
+ * the rest of the hack runs unaffected. A future round could replace
+ * this with a libpng-backed implementation if any of those textures
+ * turn out to be visually essential. */
+XImage *file_to_ximage(Display *dpy, Visual *visual, const char *filename)
+{
+    (void) dpy; (void) visual; (void) filename;
+    return NULL;
 }

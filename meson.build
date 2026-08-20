@@ -152,7 +152,7 @@ endforeach
 # Add the build directory to the include path so generated headers are
 # reachable via `#include "wayland-client-protocol.h"` etc. The source
 # root is added so source files can find them via relative path.
-inc = include_directories('.')
+inc = include_directories('.', 'src')
 
 # Build-wide -Wall -Wextra. All our code (and the compat shim) must stay
 # warning-clean under these. Vendored third-party code (xscreensaver
@@ -364,8 +364,8 @@ if opt_xscreensaver
         {'name': 'winduprobot', 'src': 'src/winduprobot.c', 'png': true, 'extra': ['src/gllist.c', 'src/involute.c', 'src/normals.c', 'src/robot.c', 'src/robot-wireframe.c', 'src/sphere.c', 'src/yarandom.c']},
         {'name': 'juggler3d', 'src': 'src/juggler3d.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'mapscroller', 'src': 'src/mapscroller.c', 'png': true, 'extra': ['src/easing.c']},
-        {'name': 'splitflap', 'src': 'src/splitflap.c', 'png': true, 'extra': ['src/gllist.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'pinion', 'src': 'src/pinion.c', 'png': false, 'extra': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'splitflap', 'src': 'src/splitflap.c', 'png': true, 'extra': ['src/gllist.c', 'src/rotator.c', 'src/splitflap_obj.c', 'src/yarandom.c']},
+        {'name': 'pinion', 'src': 'src/pinion.c', 'png': false, 'extra': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'glu': true},
         {'name': 'gibson', 'src': 'src/gibson.c', 'png': false, 'extra': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'geodesicgears', 'src': 'src/geodesicgears.c', 'png': false, 'extra': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'tangram', 'src': 'src/tangram.c', 'png': false, 'extra': ['src/tangram_shapes.c']},

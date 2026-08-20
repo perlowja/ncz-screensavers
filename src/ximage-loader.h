@@ -11,4 +11,12 @@
 
 #include "xscreensaver_compat.h"
 
+/* Forward declaration: file_to_ximage is implemented as a NULL stub
+ * in xscreensaver_compat.c. Vendored hacks (mapscroller, lavalite,
+ * timetunnel, gleidescope, pulsar, maze3d, extrusion, worldpieces,
+ * glplanet, unknownpleasures) all check the return and skip texture
+ * rendering when it fails. */
+extern XImage *file_to_ximage(Display *dpy, Visual *visual,
+                              const char *filename);
+
 #endif /* NCZ_XIMAGE_LOADER_H */
