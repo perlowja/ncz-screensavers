@@ -376,6 +376,9 @@ if opt_xscreensaver
         {'name': 'polyhedra-gl', 'src': 'src/polyhedra-gl.c', 'png': false, 'extra': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'glu': true, 'table': 'polyhedra'},
         {'name': 'jigsaw', 'src': 'src/jigsaw.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/spline.c', 'src/yarandom.c'], 'glu': true},
         {'name': 'razzledazzle', 'src': 'src/razzledazzle.c', 'png': false, 'extra': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
+        {'name': 'lavalite', 'src': 'src/lavalite.c', 'png': true, 'extra': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'unknownpleasures', 'src': 'src/unknownpleasures.c', 'png': true, 'extra': ['src/doubletime.c', 'src/easing.c']},
+        {'name': 'photopile', 'src': 'src/photopile.c', 'png': true, 'extra': ['src/dropshadow.c', 'src/xftwrap.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks

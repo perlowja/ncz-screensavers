@@ -118,13 +118,50 @@ typedef struct _XFontStruct {
     int _placeholder;
 } XFontStruct;
 
-typedef struct _XftFont    XftFont;
+typedef struct _XftFont {
+    XFontStruct *xfont;
+    char *name;
+    int ascent;
+    int descent;
+    int height;
+} XftFont;
 typedef struct _XftColor   XftColor;
 typedef struct _XftDraw    XftDraw;
 typedef struct _XftPattern XftPattern;
-typedef struct _XRenderColor XRenderColor;
+typedef struct {
+    unsigned short red, green, blue, alpha;
+} XRenderColor;
 
 typedef unsigned char FcChar8;
 typedef struct _FcPattern    FcPattern;
 
 #endif /* __XSCREENSAVER_XFT_H__ */
+/* Function stubs. Vendored hacks (xftwrap.c, texfont.c) reference these.
+ * Our build never actually calls into real Xft; the stub implementations
+ * in xscreensaver_compat.c return NULL/no-op so the hacks compile and
+ * link, and the rendering paths that depend on real Xft silently no-op.
+ *
+ * These declarations were removed from upstream's vendored copy because
+ * we expected to avoid compiling texfont.c / xftwrap.c at all. We have
+ * since added them back as stubs for hacks like photopile that need
+ * xftwrap.c's word-wrap helpers. */
+XftFont *XftFontOpenXlfd(Display *dpy, int screen, const char *xlfd);
+XftFont *XftFontOpenName(Display *dpy, int screen, const char *name);
+void     XftFontClose(Display *dpy, XftFont *font);
+Bool     XftColorAllocName(Display *dpy, void *visual, Colormap cmap,
+                           const char *name, XftColor *result);
+Bool     XftColorAllocValue(Display *dpy, void *visual, Colormap cmap,
+                            const XRenderColor *color, XftColor *result);
+void     XftColorFree(Display *dpy, void *visual, Colormap cmap,
+                      XftColor *color);
+XftDraw *XftDrawCreate(Display *dpy, void *drawable, void *visual,
+                       Colormap colormap);
+Display *XftDrawDisplay(XftDraw *draw);
+void     XftDrawDestroy(XftDraw *draw);
+void     XftTextExtentsUtf8(Display *dpy, XftFont *pub,
+                            const unsigned char *string, int len,
+                            XGlyphInfo *extents);
+void     XftDrawStringUtf8(XftDraw *draw, const XftColor *color,
+                           XftFont *pub, int x, int y,
+                           const unsigned char *string, int len);
+

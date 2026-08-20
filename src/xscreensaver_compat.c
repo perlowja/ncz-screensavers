@@ -1516,3 +1516,86 @@ void make_uniform_colormap(Screen *screen, Visual *visual, Colormap cmap,
                     colors, &ncolors,
                     False, allocate_p, writable_pP);
 }
+
+/* --- Xft function stubs (xft.h) ---------------------------------------- *
+ *
+ * photopile.c pulls in xftwrap.c, which calls XftTextExtentsUtf8 and
+ * XftDrawStringUtf8 for word-wrapping title text. We have no real Xft.
+ * Stub all of them out: NULL returns, zero-fill extents, no-op draws.
+ * The vendor hacks guard all real text rendering with `if (font)`, so
+ * the no-op draws simply skip the title -- photopile's images still
+ * shuffle and stack. */
+XftFont *XftFontOpenXlfd(Display *dpy, int screen, const char *xlfd)
+{ (void) dpy; (void) screen; (void) xlfd; return NULL; }
+
+XftFont *XftFontOpenName(Display *dpy, int screen, const char *name)
+{ (void) dpy; (void) screen; (void) name; return NULL; }
+
+void XftFontClose(Display *dpy, XftFont *font)
+{ (void) dpy; (void) font; }
+
+Bool XftColorAllocName(Display *dpy, void *visual, Colormap cmap,
+                       const char *name, XftColor *result)
+{
+    (void) dpy; (void) visual; (void) cmap; (void) name; (void) result;
+    return False;
+}
+
+Bool XftColorAllocValue(Display *dpy, void *visual, Colormap cmap,
+                        const XRenderColor *color, XftColor *result)
+{
+    (void) dpy; (void) visual; (void) cmap; (void) color; (void) result;
+    return False;
+}
+
+void XftColorFree(Display *dpy, void *visual, Colormap cmap, XftColor *color)
+{ (void) dpy; (void) visual; (void) cmap; (void) color; }
+
+XftDraw *XftDrawCreate(Display *dpy, void *drawable, void *visual,
+                       Colormap colormap)
+{ (void) dpy; (void) drawable; (void) visual; (void) colormap; return NULL; }
+
+Display *XftDrawDisplay(XftDraw *draw)
+{ (void) draw; return NULL; }
+
+void XftDrawDestroy(XftDraw *draw)
+{ (void) draw; }
+
+void XftTextExtentsUtf8(Display *dpy, XftFont *pub,
+                        const unsigned char *string, int len,
+                        XGlyphInfo *extents)
+{
+    (void) dpy; (void) pub; (void) string; (void) len;
+    if (extents) memset(extents, 0, sizeof(*extents));
+}
+
+void XftDrawStringUtf8(XftDraw *draw, const XftColor *color,
+                       XftFont *pub, int x, int y,
+                       const unsigned char *string, int len)
+{
+    (void) draw; (void) color; (void) pub;
+    (void) x; (void) y; (void) string; (void) len;
+}
+
+/* uc_isspace / uc_ispunct / uc_is_combining -- upstream lives in
+ * utils/utf8wc.c. Used by xftwrap.c to skip whitespace/punctuation in
+ * word-wrap decisions. We don't have real Unicode classification
+ * tables here; the no-op approximation is fine for a shim -- the
+ * text rendering is dead anyway. */
+int uc_isspace(unsigned long uc)
+{
+    /* ASCII-only subset is sufficient for the use site. */
+    return uc == ' ' || uc == '\t' || uc == '\n' || uc == '\r';
+}
+
+int uc_ispunct(unsigned long uc)
+{
+    (void) uc;
+    return 0;
+}
+
+int uc_is_combining(unsigned long uc)
+{
+    (void) uc;
+    return 0;
+}

@@ -46,3 +46,15 @@ void         XtRemoveInput(XtInputId id);
 #ifndef ConnectionNumber
 # define ConnectionNumber(dpy) 0
 #endif
+
+/* XrmDatabase / XrmValue / XrmPutResource / XtDatabase. These are X
+ * resource manager types. photopile.c only uses XrmPutResource in a
+ * debug-mode codepath; we stub them and return success so the
+ * conditionals compile and the runtime branch is taken. */
+typedef struct _XrmHashBucketRec *XrmDatabase;
+typedef struct {
+    unsigned int size;
+    void *addr;
+} XrmValue;
+#define XrmPutResource(db, name, type, value)  /* no-op */
+#define XtDatabase(dpy) ((XrmDatabase) 0)
