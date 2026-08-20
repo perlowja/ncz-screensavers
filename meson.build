@@ -383,6 +383,8 @@ if opt_xscreensaver
         {'name': 'dangerball', 'src': 'src/dangerball.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'glcells', 'src': 'src/glcells.c', 'png': false, 'extra': []},
         {'name': 'flyingtoasters', 'src': 'src/flyingtoasters.c', 'png': true, 'extra': ['src/gllist.c', 'src/toast.c', 'src/toast2.c', 'src/toaster.c', 'src/toaster_base.c', 'src/toaster_handle.c', 'src/toaster_handle2.c', 'src/toaster_jet.c', 'src/toaster_knob.c', 'src/toaster_slots.c', 'src/toaster_wing.c', 'src/yarandom.c']},
+        {'name': 'companion', 'src': 'src/companion.c', 'png': false, 'extra': ['src/companion_disc.c', 'src/companion_heart.c', 'src/companion_quad.c', 'src/gllist.c', 'src/rotator.c', 'src/yarandom.c'], 'table': 'companioncube'},
+        {'name': 'bouncingcow', 'src': 'src/bouncingcow.c', 'png': false, 'extra': ['src/cow_face.c', 'src/cow_hide.c', 'src/cow_hoofs.c', 'src/cow_horns.c', 'src/cow_tail.c', 'src/cow_udder.c', 'src/gllist.c', 'src/rotator.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks
