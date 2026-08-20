@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (57)
+## Ported (58)
 
 | hack | companion sources |
 |---|---|
@@ -26,6 +26,7 @@ link time.
 | crackberg | - |
 | cubenetic | rotator.c, yarandom.c |
 | discoball | rotator.c, yarandom.c |
+| dnalogo | normals.c, rotator.c, sphere.c, tube.c, yarandom.c |
 | energystream | rotator.c, yarandom.c |
 | gears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
 | geodesic | normals.c, rotator.c, yarandom.c |
@@ -66,7 +67,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (33)
+## Deferred (32)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -82,7 +83,6 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |
 | dangerball | `../src/voronoi.c:21:10: fatal error: xlockmore.h: No such file or directory` |
-| dnalogo | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
 | fliptext | `/usr/include/X11/X.h:97:13: error: conflicting types for ‘Drawable’; have ‘XID’ {aka ‘long unsigned int’}` |
 | flyingtoasters | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
 | geodesicgears | `/usr/include/X11/X.h:102:13: error: conflicting types for ‘Pixmap’; have ‘XID’ {aka ‘long unsigned int’}` |
