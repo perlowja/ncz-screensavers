@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (72)
+## Ported (80)
 
 | hack | companion sources |
 |---|---|
@@ -40,12 +40,18 @@ link time.
 | glmatrix | image_data_to_ximage.c |
 | glschool | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
 | glsnake | - |
+| gltext | glut_stroke.c, glut_swidth.c, rotator.c, sphere.c, tube.c, yarandom.c |
 | gravitywell | - |
 | handsy | doubletime.c, gllist.c, handsy_model.c, rotator.c, sphere.c, tube.c, yarandom.c |
+| hilbert | rotator.c, sphere.c, tube.c, yarandom.c |
 | juggler3d | rotator.c, sphere.c, tube.c, yarandom.c |
+| jigsaw | normals.c, rotator.c, spline.c, yarandom.c |
+| kaleidocycle | normals.c, rotator.c, yarandom.c |
 | mapscroller | easing.c |
 | molecule | rotator.c, sphere.c, tube.c, yarandom.c |
 | pinion | involute.c, normals.c, rotator.c, yarandom.c |
+| polyhedra-gl | normals.c, polyhedra.c, rotator.c, teapot.c, yarandom.c |
+| razzledazzle | gllist.c, normals.c, ships.c, yarandom.c |
 | skulloop | easing.c, gllist.c, normals.c, skull_model.c, yarandom.c |
 | spheremonics | normals.c, rotator.c, yarandom.c |
 | splitflap | gllist.c, rotator.c, splitflap_obj.c, yarandom.c |
@@ -74,6 +80,7 @@ link time.
 | sballs | image_data_to_ximage.c |
 | skytentacles | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
 | splodesic | rotator.c, yarandom.c |
+| starwars | glut_stroke.c, glut_swidth.c, yarandom.c |
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
 | topblock | sphere.c, tube.c |
@@ -81,7 +88,7 @@ link time.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (18)
+## Deferred (11)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -99,15 +106,8 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | dangerball | `../src/voronoi.c:21:10: fatal error: xlockmore.h: No such file or directory` |
 | flyingtoasters | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
 | glcells | `/tmp/xscreensaver-6.15/hacks/glx/glcells.c:40:30: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible pointer type ‘int (*)(ModeInfo *, void *)’ [-Wincompatible-pointer-types]` |
-| gltext | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
-| hilbert | `../src/hilbert.c:1071:9: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
-| jigsaw | `/tmp/xscreensaver-6.15/utils/spline.h:39:3: error: unknown type name ‘XPoint’` |
-| kaleidocycle | `../src/kaleidocycle.c:558:5: error: ‘ModeInfo’ has no member named ‘recursion_depth’` |
 | lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
 | photopile | `../src/photopile.c:33:11: fatal error: X11/Intrinsic.h: No such file or directory` |
-| polyhedra-gl | `<command-line>: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘-’ token` |
-| razzledazzle | `../src/razzledazzle.c:476:34: error: ‘XEvent’ has no member named ‘xmotion’` |
 | sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
-| starwars | `../src/utf8wc.h:21:8: error: unknown type name ‘XChar2b’` |
 | timetunnel | `/tmp/xscreensaver-6.15/hacks/glx/timetunnel.c:88:10: fatal error: images/gen/logo-180_png.h: No such file or directory` |
 | unknownpleasures | `../src/grab-ximage.h:70:44: error: unknown type name ‘XRectangle’` |
