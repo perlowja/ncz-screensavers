@@ -4,7 +4,7 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (80)
+## Ported (87)
 
 | hack | companion sources |
 |---|---|
@@ -20,6 +20,7 @@ link time.
 | cubestack | rotator.c, yarandom.c |
 | cubestorm | rotator.c, yarandom.c |
 | cubetwist | rotator.c, yarandom.c |
+| dangerball | rotator.c, sphere.c, tube.c, yarandom.c |
 | cubicgrid | rotator.c, yarandom.c |
 | cityflow | - |
 | covid19 | rotator.c, sphere.c, tube.c, yarandom.c |
@@ -29,9 +30,11 @@ link time.
 | dnalogo | normals.c, rotator.c, sphere.c, tube.c, yarandom.c |
 | energystream | rotator.c, yarandom.c |
 | fliptext | - |
+| flyingtoasters | gllist.c, toast.c, toast2.c, toaster.c, toaster_base.c, toaster_handle.c, toaster_handle2.c, toaster_jet.c, toaster_knob.c, toaster_slots.c, toaster_wing.c, yarandom.c |
 | geodesicgears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
 | gears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
 | gibson | easing.c, rotator.c, yarandom.c |
+| glcells | - |
 | geodesic | normals.c, rotator.c, yarandom.c |
 | glblur | rotator.c, yarandom.c |
 | glhanoi | doubletime.c, rotator.c, yarandom.c |
@@ -66,6 +69,7 @@ link time.
 | hypnowheel | rotator.c, yarandom.c |
 | kallisti | gllist.c, kallisti_model.c, rotator.c, yarandom.c |
 | lament | gllist.c, image_data_to_ximage.c, lament_model.c, normals.c, rotator.c, yarandom.c |
+| lavalite | marching.c, normals.c, rotator.c, yarandom.c |
 | lockward | - |
 | menger | rotator.c, yarandom.c |
 | moebiusgears | involute.c, normals.c, rotator.c, yarandom.c |
@@ -73,6 +77,7 @@ link time.
 | noof | pow2.c |
 | papercube | rotator.c, yarandom.c |
 | peepers | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
+| photopile | dropshadow.c, xftwrap.c, yarandom.c |
 | providence | - |
 | quasicrystal | rotator.c, yarandom.c |
 | raverhoop | rotator.c, yarandom.c |
@@ -83,12 +88,15 @@ link time.
 | starwars | glut_stroke.c, glut_swidth.c, yarandom.c |
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
 | stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
+| timetunnel | rotator.c, yarandom.c |
 | topblock | sphere.c, tube.c |
 | tronbit | doubletime.c, gllist.c, rotator.c, sphere.c, tronbit_idle1.c, tronbit_idle2.c, tronbit_no.c, tronbit_yes.c, yarandom.c |
+| unicrud | rotator.c, yarandom.c |
+| unknownpleasures | doubletime.c, easing.c |
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Deferred (11)
+## Deferred (4)
 
 Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
 Each entry is the FIRST error; closing one usually reveals the next.
@@ -103,11 +111,4 @@ Each entry is the FIRST error; closing one usually reveals the next.
 | b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
 | bouncingcow | `/usr/bin/aarch64-linux-gnu-ld.bfd: bouncingcow_demo.p/src_ximage-loader.c.o: undefined reference to symbol 'XGetWindowAttributes'` |
 | companion | `/usr/bin/aarch64-linux-gnu-ld.bfd: companion_demo.p/src_glmatrix_harness.c.o:/home/jasonperlow/ncz-screensavers/build/../src/glmatrix_harnes` |
-| dangerball | `../src/voronoi.c:21:10: fatal error: xlockmore.h: No such file or directory` |
-| flyingtoasters | `../src/screenhackI.h:170:10: fatal error: xft.h: No such file or directory` |
-| glcells | `/tmp/xscreensaver-6.15/hacks/glx/glcells.c:40:30: error: initialization of ‘Bool (*)(ModeInfo *, XEvent *)’ {aka ‘int (*)(ModeInfo *, XEvent *)’} from incompatible pointer type ‘int (*)(ModeInfo *, void *)’ [-Wincompatible-pointer-types]` |
-| lavalite | `/tmp/xscreensaver-6.15/hacks/glx/lavalite.c:343:11: error: implicit declaration of function ‘file_to_ximage’ [-Wimplicit-function-declaration]` |
-| photopile | `../src/photopile.c:33:11: fatal error: X11/Intrinsic.h: No such file or directory` |
 | sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
-| timetunnel | `/tmp/xscreensaver-6.15/hacks/glx/timetunnel.c:88:10: fatal error: images/gen/logo-180_png.h: No such file or directory` |
-| unknownpleasures | `../src/grab-ximage.h:70:44: error: unknown type name ‘XRectangle’` |
