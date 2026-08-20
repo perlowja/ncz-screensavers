@@ -1,2 +1,26 @@
 build/
 .ported-state.json
+
+# Vendored hyprsaver source tree at vendor/hyprsaver. Upstream includes
+# `/target/` (cargo build outputs — irrelevant since we build with our own
+# `tools/build-hyprsaver.sh`), `examples/palettes/` (auto-generated at
+# build-time from build.rs), and `media/` (animated webp preview GIF-
+# equivalents used by the upstream README galleries — marketing, not
+# source). Also excluded are upstream-only authorial / distro-packaging
+# artifacts (CLAUDE.md, the AUR PKGBUILD, the nix flake, deny.toml,
+# rustfmt.toml, .github/) that aren't relevant when hyprsaver is
+# consumed as a vendored library rather than as its own project.
+#
+# The remaining vendored tree is the source of record: Cargo.toml,
+# Cargo.lock, src/, shaders/, build.rs, README.md, LICENSE (MIT,
+# retained unmodified), CHANGELOG.md, CONTRIBUTING.md, docs/, examples/.
+vendor/hyprsaver/target/
+vendor/hyprsaver/examples/palettes/
+vendor/hyprsaver/media/
+vendor/hyprsaver/CLAUDE.md
+vendor/hyprsaver/PKGBUILD
+vendor/hyprsaver/flake.nix
+vendor/hyprsaver/flake.lock
+vendor/hyprsaver/deny.toml
+vendor/hyprsaver/rustfmt.toml
+vendor/hyprsaver/.github/
