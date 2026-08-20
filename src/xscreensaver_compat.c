@@ -1484,3 +1484,35 @@ long utf8_decode_combining(const unsigned char *in, long length,
      * a no-op in this shim. */
     return utf8_decode(in, length, unicode_ret);
 }
+
+/* make_uniform_colormap (utils/colors.c) -- fills *colors with ncolors
+ * entries that sweep once around the hue wheel at a fixed random
+ * saturation and value. Equivalent to make_color_ramp(0..360) with
+ * one less call frame on the stack.
+ *
+ * Vendored hacks reach this through colors.h (hilbert, kaleidocycle,
+ * and probably more). The screen/visual/cmap/allocate_p/writable_pP/
+ * verbose_p parameters are vestigial -- no X server to allocate cells
+ * in. The implementation reuses our make_color_ramp shim. */
+void make_uniform_colormap(Screen *screen, Visual *visual, Colormap cmap,
+                           XColor *colors, int *ncolorsP,
+                           Bool allocate_p, Bool *writable_pP,
+                           Bool verbose_p)
+{
+    int ncolors;
+    double S, V;
+
+    (void) screen; (void) visual; (void) cmap;
+    (void) allocate_p; (void) writable_pP; (void) verbose_p;
+
+    if (!colors || !ncolorsP || *ncolorsP <= 0) return;
+    ncolors = *ncolorsP;
+
+    S = ((double) (random() % 34) + 66) / 100.0;
+    V = ((double) (random() % 34) + 66) / 100.0;
+
+    make_color_ramp(screen, visual, cmap,
+                    0, S, V, 359, S, V,
+                    colors, &ncolors,
+                    False, allocate_p, writable_pP);
+}

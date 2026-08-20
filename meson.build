@@ -371,6 +371,11 @@ if opt_xscreensaver
         {'name': 'tangram', 'src': 'src/tangram.c', 'png': false, 'extra': ['src/tangram_shapes.c']},
         {'name': 'gltext', 'src': 'src/gltext.c', 'png': false, 'extra': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'starwars', 'src': 'src/starwars.c', 'png': false, 'extra': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/yarandom.c']},
+        {'name': 'hilbert', 'src': 'src/hilbert.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'kaleidocycle', 'src': 'src/kaleidocycle.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'polyhedra-gl', 'src': 'src/polyhedra-gl.c', 'png': false, 'extra': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'glu': true, 'table': 'polyhedra'},
+        {'name': 'jigsaw', 'src': 'src/jigsaw.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/spline.c', 'src/yarandom.c'], 'glu': true},
+        {'name': 'razzledazzle', 'src': 'src/razzledazzle.c', 'png': false, 'extra': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
     ]
 
     foreach h : ported_hacks
