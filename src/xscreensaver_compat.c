@@ -44,6 +44,13 @@
 #include <ctype.h>
 #include <math.h>
 
+/* texfont.h / xft.h provide texture_font_data, XCharStruct, XftFont
+ * types. Vendored hacks reach them through texfont.h; we link the
+ * stubs out of this file. */
+#include "xft.h"
+#include "texfont.h"
+#include "utf8wc.h"
+
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only
  * ones used by glmatrix.c; expand as future ports need more. */
 void gluPerspective(GLdouble fovy, GLdouble aspect,
@@ -1056,4 +1063,245 @@ void gltrackball_get_quaternion(trackball_state *ts, float q[4])
     /* Identity quaternion -- no accumulated rotation. */
     if (!q) return;
     q[0] = 0.0f; q[1] = 0.0f; q[2] = 0.0f; q[3] = 1.0f;
+}
+
+/* --- texture-font stubs (texfont.h) ------------------------------------ *
+ *
+ * We do not compile texfont.c — the upstream ~1500 line implementation
+ * pulls screenhackI.h, fps.h, xshm.h, jwxyz font APIs, GLSL utilities,
+ * and ends up drawing through an Xft pipeline that does not exist on
+ * this build (no X11, no FontConfig, no Pango). Vendored hacks that use
+ * texture fonts (dnalogo, geodesicgears, gibson, glsnake, juggler3d,
+ * mapscroller, molecule, pinion, splitflap, tangram, winduprobot,
+ * fliptext, skulloop, spheremonics, unicrud) all guard their text
+ * rendering with `if (font)` so a NULL return here produces a clean,
+ * un-fonted hack rather than a missing-symbol link failure.
+ *
+ * The implementations are no-ops / identity functions; they exist only
+ * to satisfy the linker.
+ */
+struct texture_font_data { int _placeholder; };
+
+texture_font_data *load_texture_font(Display *dpy, char *res)
+{
+    (void) dpy; (void) res;
+    return NULL;
+}
+
+void texture_string_metrics(texture_font_data *fd, const char *s,
+                            XCharStruct *m, int *ascent, int *descent)
+{
+    (void) fd; (void) s;
+    if (m)      memset(m, 0, sizeof(*m));
+    if (ascent) *ascent = 0;
+    if (descent) *descent = 0;
+}
+
+void print_texture_string(texture_font_data *fd, const char *s)
+{
+    (void) fd; (void) s;
+}
+
+void print_texture_label(Display *dpy, texture_font_data *fd,
+                         int win_w, int win_h, int position, const char *s)
+{
+    (void) dpy; (void) fd; (void) win_w; (void) win_h;
+    (void) position; (void) s;
+}
+
+void string_to_texture(texture_font_data *fd, const char *s,
+                       XCharStruct *ext, int *tw, int *th)
+{
+    (void) fd; (void) s;
+    if (ext) memset(ext, 0, sizeof(*ext));
+    if (tw)  *tw = 0;
+    if (th)  *th = 0;
+}
+
+void enable_texture_string_parameters(texture_font_data *fd)
+{
+    (void) fd;
+}
+
+Bool blank_character_p(texture_font_data *fd, const char *s)
+{
+    (void) fd; (void) s;
+    return True;
+}
+
+void free_texture_font(texture_font_data *fd)
+{
+    (void) fd;
+}
+
+XftFont *texfont_xft(texture_font_data *fd)
+{
+    (void) fd;
+    return NULL;
+}
+
+/* --- utf8wc.c helpers (utils/utf8wc.c) --------------------------------- *
+ *
+ * Vendored hacks that include utf8wc.h call these to convert UTF-8
+ * input to Latin1 for XChar2b rendering. With texfont.c absent we
+ * never feed the result to XDrawString16, but the hacks call them
+ * unconditionally during init. utf8_to_latin1 is the only one whose
+ * result is consulted (the others return values into ignored locals);
+ * we keep their behaviour realistic enough to avoid surprises.
+ */
+char *utf8_to_latin1(const char *string, int ascii_p)
+{
+    /* Length-bounded malloc: copy the input and convert anything outside
+     * Latin1 to '?'. ascii_p forces every non-ASCII byte to '?' too. */
+    if (!string) return NULL;
+    size_t n = strlen(string);
+    char *out = (char *) malloc(n + 1);
+    if (!out) return NULL;
+    size_t i = 0, j = 0;
+    while (i < n) {
+        unsigned char c = (unsigned char) string[i];
+        if (c < 0x80) {
+            out[j++] = (char) c;
+            i++;
+        } else if ((c & 0xE0) == 0xC0 && i + 1 < n) {
+            unsigned int cp = ((c & 0x1F) << 6) | (string[i + 1] & 0x3F);
+            i += 2;
+            if (ascii_p || cp > 0xFF) out[j++] = '?';
+            else out[j++] = (char) cp;
+        } else if ((c & 0xF0) == 0xE0 && i + 2 < n) {
+            unsigned int cp = ((c & 0x0F) << 12)
+                             | ((string[i + 1] & 0x3F) << 6)
+                             |  (string[i + 2] & 0x3F);
+            i += 3;
+            if (ascii_p || cp > 0xFF) out[j++] = '?';
+            else out[j++] = (char) cp;
+        } else if ((c & 0xF8) == 0xF0 && i + 3 < n) {
+            i += 4;
+            out[j++] = '?';
+        } else {
+            i++;
+            out[j++] = '?';
+        }
+    }
+    out[j] = '\0';
+    return out;
+}
+
+int utf8_encode(unsigned long uc, char *out, long length)
+{
+    if (!out || length <= 0) return 0;
+    if (uc < 0x80) {
+        if (length < 1) return 0;
+        out[0] = (char) uc;
+        return 1;
+    } else if (uc < 0x800) {
+        if (length < 2) return 0;
+        out[0] = (char) (0xC0 | (uc >> 6));
+        out[1] = (char) (0x80 | (uc & 0x3F));
+        return 2;
+    } else if (uc < 0x10000) {
+        if (length < 3) return 0;
+        out[0] = (char) (0xE0 | (uc >> 12));
+        out[1] = (char) (0x80 | ((uc >> 6) & 0x3F));
+        out[2] = (char) (0x80 | (uc & 0x3F));
+        return 3;
+    } else if (uc < 0x110000) {
+        if (length < 4) return 0;
+        out[0] = (char) (0xF0 | (uc >> 18));
+        out[1] = (char) (0x80 | ((uc >> 12) & 0x3F));
+        out[2] = (char) (0x80 | ((uc >> 6) & 0x3F));
+        out[3] = (char) (0x80 | (uc & 0x3F));
+        return 4;
+    }
+    return 0;
+}
+
+long utf8_decode(const unsigned char *in, long length,
+                 unsigned long *unicode_ret)
+{
+    if (!in || length <= 0) {
+        if (unicode_ret) *unicode_ret = 0;
+        return 0;
+    }
+    unsigned char c = in[0];
+    if (c < 0x80) {
+        if (unicode_ret) *unicode_ret = c;
+        return 1;
+    } else if ((c & 0xE0) == 0xC0 && length >= 2) {
+        if (unicode_ret) *unicode_ret = ((c & 0x1F) << 6) | (in[1] & 0x3F);
+        return 2;
+    } else if ((c & 0xF0) == 0xE0 && length >= 3) {
+        if (unicode_ret) *unicode_ret =
+            ((c & 0x0F) << 12) | ((in[1] & 0x3F) << 6) | (in[2] & 0x3F);
+        return 3;
+    } else if ((c & 0xF8) == 0xF0 && length >= 4) {
+        if (unicode_ret) *unicode_ret =
+            ((c & 0x07) << 18) | ((in[1] & 0x3F) << 12)
+            | ((in[2] & 0x3F) << 6) | (in[3] & 0x3F);
+        return 4;
+    }
+    if (unicode_ret) *unicode_ret = c;
+    return 1;
+}
+
+/* utf8_to_XChar2b: convert a UTF-8 string to a 2-byte-packed XChar2b
+ * array. Bytes outside Latin1 are stored as '?'. The returned array
+ * is malloc'd; the caller is responsible for freeing it. */
+XChar2b *utf8_to_XChar2b(const char *string, int *length_ret)
+{
+    if (!string) {
+        if (length_ret) *length_ret = 0;
+        return NULL;
+    }
+    size_t n = strlen(string);
+    XChar2b *out = (XChar2b *) malloc((n + 1) * sizeof(XChar2b));
+    if (!out) {
+        if (length_ret) *length_ret = 0;
+        return NULL;
+    }
+    size_t j = 0;
+    for (size_t i = 0; i < n; ) {
+        unsigned long cp = 0;
+        long adv = utf8_decode((const unsigned char *) (string + i),
+                               (long) (n - i), &cp);
+        if (adv <= 0) { i++; continue; }
+        i += adv;
+        if (cp > 0xFF) cp = '?';
+        out[j].byte1 = (unsigned char) (cp & 0xFF);
+        out[j].byte2 = 0;
+        j++;
+    }
+    out[j].byte1 = 0;
+    out[j].byte2 = 0;
+    if (length_ret) *length_ret = (int) j;
+    return out;
+}
+
+char *XChar2b_to_utf8(const XChar2b *str, int *length_ret)
+{
+    if (!str) {
+        if (length_ret) *length_ret = 0;
+        return NULL;
+    }
+    size_t cap = 16, len = 0;
+    char *out = (char *) malloc(cap);
+    if (!out) {
+        if (length_ret) *length_ret = 0;
+        return NULL;
+    }
+    int i = 0;
+    while (str[i].byte1 != 0 || str[i].byte2 != 0) {
+        if (len + 4 >= cap) {
+            cap *= 2;
+            char *p = (char *) realloc(out, cap);
+            if (!p) { free(out); if (length_ret) *length_ret = 0; return NULL; }
+            out = p;
+        }
+        unsigned long cp = str[i].byte1 | ((unsigned long) str[i].byte2 << 8);
+        len += (size_t) utf8_encode(cp, out + len, (long) (cap - len));
+        i++;
+    }
+    out[len] = '\0';
+    if (length_ret) *length_ret = (int) len;
+    return out;
 }

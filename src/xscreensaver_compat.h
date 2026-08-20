@@ -163,6 +163,15 @@ typedef struct {
     short x, y;
     unsigned short width, height;
 } XRectangle;
+/* XChar2b — 2-byte packed character. Used by utf8wc.h and by hacks
+ * (gltext, starwars, etc.) that render Latin1 via the XChar2b array API.
+ * The layout matches Xlib: low byte first, high byte second. We carry
+ * the struct as-is so the utf8_to_XChar2b / XChar2b_to_utf8 helpers in
+ * xscreensaver_compat.c can shuffle bytes. */
+typedef struct {
+    unsigned char byte1;
+    unsigned char byte2;
+} XChar2b;
 typedef struct _XGCValues  XGCValues;
 /* XImage is fully defined in section 6 below. */
 /* XEvent — see union definition below in this section. We use a union of

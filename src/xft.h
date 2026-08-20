@@ -5,12 +5,37 @@
  * the above copyright notice appear in all copies and that both that
  * copyright notice and this permission notice appear in supporting
  * documentation.  No representations are made about the suitability of this
- * software for any purpose.  It is provided "as is" without express or 
+ * software for any purpose.  It is provided "as is" without express or
  * implied warranty.
  */
 
-/* Compatibility layer using XDrawString, XDrawString16() or Xutf8DrawString().
-   This layer is used by X11 systems without Xft, and by MacOS / iOS.
+/* Minimal xft.h shim for the ncz-screensavers compositor build.
+ *
+ * Upstream's xft.h is the real Xft compatibility header — when neither
+ * HAVE_XFT nor HAVE_COCOA/HAVE_ANDROID is defined, its tail-branch pulls
+ * in <X11/Xlib.h>. That collides with the shim's opaque Display/Window/
+ * Drawable/Pixmap typedefs in xscreensaver_compat.h:
+ *
+ *     /usr/include/X11/X.h:102:13: error: conflicting types for 'Pixmap';
+ *     have 'XID' {aka 'long unsigned int'}
+ *
+ * That single conflict blocks every vendored hack that #include's
+ * "texfont.h" (which #include's "xft.h") — i.e. dnalogo, geodesicgears,
+ * gibson, glsnake, juggler3d, mapscroller, molecule, pinion, splitflap,
+ * tangram, winduprobot, fliptext, skulloop, spheremonics, unicrud.
+ *
+ * We do not compile texfont.c / xft.c at all. The vendored hacks never
+ * call XftFontOpenXlfd / XftDrawStringUtf8 / etc. directly; they only
+ * pass through the texture_font_data wrapper in texfont.h, whose
+ * load_texture_font / print_texture_string / print_texture_label /
+ * free_texture_font we stub in xscreensaver_compat.c (returning NULL /
+ * no-op, so the hacks skip the text-rendering path).
+ *
+ * Therefore we need just enough here to make texfont.h and the vendored
+ * hack .c files accept the XCharStruct type and the conversion macros.
+ * XftFont, XftColor, XftDraw, XRenderColor, XGlyphInfo, FcChar8 etc.
+ * stay as forward declarations so that IF something in the future needs
+ * to touch them, the compiler won't reject the identifier outright.
  */
 
 #ifndef __XSCREENSAVER_XFT_H__
@@ -20,7 +45,6 @@
    different from XCharStruct for no sensible reason.  These macros
    translate between them.
  */
-
 # define XGlyphInfo_to_XCharStruct(G,C) do {		\
     (C).lbearing  =  -(G).x;				\
     (C).rbearing  =   (G).width - (G).x;		\
@@ -58,122 +82,49 @@
 } while (0)
 
 
-# ifdef HAVE_XFT
+#ifndef _Xconst
+# define _Xconst const
+#endif
 
-#  if (__GNUC__ >= 4)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wlong-long"
-#  endif
+/* XCharStruct — the only Xft-derived type the vendored GL hacks actually
+ * touch. They declare it as a local variable and pass it to print_texture_*
+ * / texture_string_metrics. We carry it as a complete struct so
+ * sizeof(XCharStruct) is meaningful. Field semantics match Xlib:
+ *   lbearing / rbearing: distance from origin to left/right edge of ink
+ *   width:               distance from origin to next origin (== advance)
+ *   ascent / descent:    vertical extents above/below the baseline
+ */
+typedef struct {
+    short           lbearing;
+    short           rbearing;
+    short           width;
+    short           ascent;
+    short           descent;
+    unsigned short  attributes;
+} XCharStruct;
 
-#  include <X11/Xft/Xft.h>
-
-#  if (__GNUC__ >= 4)
-#   pragma GCC diagnostic pop
-#  endif
-
-# else  /* !HAVE_XFT -- the rest of the file */
-
-# ifdef HAVE_COCOA
-#  include "jwxyz.h"
-# elif defined(HAVE_ANDROID)
-#  include "jwxyz.h"
-# else
-#  include <X11/Xlib.h>
-# endif
-
-/* This doesn't seem to work right under X11.  See comment in xft.c. */
-# ifndef HAVE_COCOA
-#  undef HAVE_XUTF8DRAWSTRING
-# endif
-
-
-# ifndef _Xconst
-#  define _Xconst const
-# endif
-
+/* Forward declarations for the rest. Vendored hacks do not touch these
+ * directly; texfont.c, which would, is not compiled by us. If any
+ * future hack does reach for one, the linker will tell us — and the
+ * shape can be filled in here or stubbed in xscreensaver_compat.c. */
 typedef struct _XGlyphInfo {
-  unsigned short width, height;     /* bounding box of the ink */
-  short x, y;		/* distance from upper left of bbox to glyph origin. */
-  short xOff, yOff;	/* distance from glyph origin to next origin. */
+    unsigned short width, height;
+    short x, y;
+    short xOff, yOff;
 } XGlyphInfo;
 
+typedef struct _XFontStruct {
+    /* unused -- declared as a type by xft.h but never dereferenced here. */
+    int _placeholder;
+} XFontStruct;
 
-typedef struct _XftFont {
-  XFontStruct *xfont;
-# ifdef HAVE_XUTF8DRAWSTRING
-  XFontSet fontset;
-# endif
-  char *name;
-  int ascent;
-  int descent;
-  int height;
-} XftFont;
-
-typedef struct {
-  unsigned short   red;
-  unsigned short   green;
-  unsigned short   blue;
-  unsigned short   alpha;
-} XRenderColor;
-
-typedef struct _XftColor {
-  unsigned long pixel;
-  XRenderColor color;
-} XftColor;
-
-typedef struct _XftDraw XftDraw;
+typedef struct _XftFont    XftFont;
+typedef struct _XftColor   XftColor;
+typedef struct _XftDraw    XftDraw;
+typedef struct _XftPattern XftPattern;
+typedef struct _XRenderColor XRenderColor;
 
 typedef unsigned char FcChar8;
-
-
-XftFont *XftFontOpenXlfd (Display *dpy, int screen, _Xconst char *xlfd);
-XftFont *XftFontOpenName (Display *dpy, int screen, _Xconst char *name);
-
-void XftFontClose (Display *dpy, XftFont *font);
-
-Bool XftColorAllocName (Display  *dpy,
-                        _Xconst Visual *visual,
-                        Colormap cmap,
-                        _Xconst char *name,
-                        XftColor *result);
-
-Bool XftColorAllocValue (Display *dpy,
-                         _Xconst Visual *visual,
-                         Colormap cmap,
-                         _Xconst XRenderColor *color,
-                         XftColor *result);
-
-void XftColorFree (Display *dpy,
-                   Visual *visual,
-                   Colormap cmap,
-                   XftColor *color);
-
-XftDraw *XftDrawCreate (Display   *dpy,
-                        Drawable  drawable,
-                        Visual    *visual,
-                        Colormap  colormap);
-Display *XftDrawDisplay (XftDraw *);
-Bool XftDrawSetClipRectangles (XftDraw *, int x, int y, 
-                               _Xconst XRectangle *rects, int n);
-Bool XftDrawSetClip (XftDraw *draw, Region region);
-void XftDrawDestroy (XftDraw *draw);
-
-void
-XftTextExtentsUtf8 (Display	    *dpy,
-		    XftFont	    *pub,
-		    _Xconst FcChar8 *string,
-		    int		    len,
-		    XGlyphInfo	    *extents);
-
-void
-XftDrawStringUtf8 (XftDraw	    *draw,
-		   _Xconst XftColor *color,
-		   XftFont	    *pub,
-		   int		    x,
-		   int		    y,
-		   _Xconst FcChar8  *string,
-		   int		    len);
-
-# endif /* !HAVE_XFT */
+typedef struct _FcPattern    FcPattern;
 
 #endif /* __XSCREENSAVER_XFT_H__ */
