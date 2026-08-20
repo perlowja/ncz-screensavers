@@ -108,7 +108,33 @@ if opt_gl4es
     # bundle: scp build/ to O6N and run ./glmatrix_demo — no LD_PRELOAD, no
     # apt-get install on the target, the binary just works.
     #
-    # MEASURED on O6N 2026-08-20: without this, the binary's rpath
+    # IMPORTANT: we use `-Wl,--disable-new-dtags` so the link emits DT_RPATH
+    # (the legacy tag), NOT DT_RUNPATH (the modern default). The two behave
+    # differently under glibc:
+    #
+    #   * DT_RUNPATH is searched AFTER LD_LIBRARY_PATH.
+    #   * DT_RPATH    is searched BEFORE LD_LIBRARY_PATH.
+    #
+    # On O6N the live labwc session exports LD_LIBRARY_PATH that contains
+    # /opt/cixgpu-compat/lib/aarch64-linux-gnu (set by
+    # /opt/singularity/bin/singularity-labwc-session). With DT_RUNPATH, that
+    # LD_LIBRARY_PATH entry wins and the loader picks up
+    # /opt/cixgpu-compat/.../libGL.so.1 (the CIX vendor Mesa/Panthor libGL)
+    # instead of our bundled gl4es. The vendor libGL accepts init/draw/swap
+    # with healthy-looking diagnostic logs but renders pure black for any
+    # GL1.x fixed-function call the vendored hack makes. With DT_RPATH, our
+    # $ORIGIN/gl4es wins regardless of what LD_LIBRARY_PATH the calling
+    # session set, which is what we want for the *_demo screensaver-test
+    # binaries specifically. Verified on O6N 2026-08-20: process
+    # /opt/singularity/bin/labwc (PID 1656) has
+    # LD_LIBRARY_PATH=/opt/singularity/lib:/opt/cixgpu-pro/lib/aarch64-linux-gnu:/opt/cixgpu-compat/lib/aarch64-linux-gnu:/usr/share/cix/lib
+    # in its /proc/1656/environ — confirmed via `tr '\0' '\n'`. Setting
+    # LD_LIBRARY_PATH to those same four dirs in a bare SSH shell
+    # reproduces the wrong-libGL resolution in `ldd`; switching to
+    # DT_RPATH makes it resolve to /home/mini/ssreg/build/gl4es/libGL.so.1
+    # (the bundled one) deterministically.
+    #
+    # MEASURED on O6N 2026-08-20: without the bundling, the binary's rpath
     # /usr/lib/aarch64-linux-gnu/gl4es/ does not resolve (no such dir on the
     # test host) and the loader silently falls back to Mesa's libGL, which
     # passes init/draw/swaps with healthy-looking diagnostic logs but renders
@@ -237,7 +263,12 @@ if opt_gl4es
         # $ORIGIN-relative path (so the binary keeps working after the
         # build/ directory is relocated to a target host that does not
         # have gl4es installed system-wide).
+        #
+        # --disable-new-dtags emits DT_RPATH instead of DT_RUNPATH, so our
+        # rpath wins over LD_LIBRARY_PATH (see the comment block above the
+        # gl4es_bundle_dir for the live-session /opt/cixgpu-compat issue).
         link_args: [
+            '-Wl,--disable-new-dtags',
             '-L@0@'.format(gl4es_dir),
             '-lGL',
         ],
@@ -302,7 +333,11 @@ if opt_xscreensaver
             dep_glesv2,
             dep_png,
         ],
+        # --disable-new-dtags emits DT_RPATH instead of DT_RUNPATH, so our
+        # bundled gl4es wins over any LD_LIBRARY_PATH the calling session
+        # has set (see the comment block above gl4es_bundle_dir).
         link_args: [
+            '-Wl,--disable-new-dtags',
             '-L@0@'.format(gl4es_dir),
             '-lGL',
         ],
@@ -438,7 +473,11 @@ if opt_xscreensaver
             files(hack_sources) + gen_sources,
             include_directories: inc,
             dependencies: hack_deps,
+            # --disable-new-dtags emits DT_RPATH instead of DT_RUNPATH, so
+            # the bundled gl4es wins over LD_LIBRARY_PATH (see the comment
+            # block above gl4es_bundle_dir for why this matters on O6N).
             link_args: [
+                '-Wl,--disable-new-dtags',
                 '-L@0@'.format(gl4es_dir),
                 '-lGL',
             ],
