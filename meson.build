@@ -102,6 +102,14 @@ endif
 # libpng — required for xscreensaver-shim (PNG textures via image_data_to_ximage).
 dep_png = dependency('libpng', required: opt_xscreensaver)
 
+# libGLU — system Mesa GLU provides the tessellator (gluNewTess /
+# gluTessCallback / gluTessVertex). Three vendored hacks need it:
+# dnalogo, jigsaw, polyhedra-gl. The hacks themselves call
+# gluTessCallback directly from their .c files; GL4ES does not
+# provide these symbols. Marked optional so the build is fine on
+# systems without libglu1-mesa-dev.
+dep_glu = dependency('glu', required: false)
+
 # ---------------------------------------------------------------------------
 # wayland-scanner — generates both headers (client-side) and the private
 # bindings code (no dlopen, all symbols static). One custom_target per
@@ -346,6 +354,7 @@ if opt_xscreensaver
         {'name': 'skytentacles', 'src': 'src/skytentacles.c', 'png': true, 'extra': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c'], 'table': 'skytentacles'},
         {'name': 'antspotlight', 'src': 'src/antspotlight.c', 'png': false, 'extra': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args': ['-DSTANDALONE']},
         {'name': 'lament', 'src': 'src/lament.c', 'png': true, 'extra': ['src/gllist.c', 'src/lament_model.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'dnalogo', 'src': 'src/dnalogo.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'glu': true},
     ]
 
     foreach h : ported_hacks
@@ -357,17 +366,21 @@ if opt_xscreensaver
         if h['png']
             hack_sources += ['src/image_data_to_ximage.c']
         endif
+        hack_deps = [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ]
+        if h.get('glu', false)
+            hack_deps += [dep_glu]
+        endif
         executable(
             h['name'] + '_demo',
             files(hack_sources) + gen_sources,
             include_directories: inc,
-            dependencies: [
-                dep_wayland_client,
-                dep_wayland_egl,
-                dep_egl,
-                dep_glesv2,
-                dep_png,
-            ],
+            dependencies: hack_deps,
             link_args: [
                 '-L@0@'.format(gl4es_dir),
                 '-lGL',
