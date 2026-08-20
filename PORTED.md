@@ -100,15 +100,9 @@ link time.
 
 ## Deferred (2)
 
-Blocked on gaps in `src/xscreensaver_compat.h`, not on porting mechanics.
-Each entry is the FIRST error; closing one usually reveals the next.
+Blocked on architectural gaps that exceed the scope of this round.
 
-> Some entries below read `rebuilding build.ninja: subcommand failed`.
-> Those are NOT real per-hack failures -- the tree was transiently broken
-> during that batch and every hack after it inherited the error. They need
-> re-running before being believed.
-
-| hack | blocking error |
+| hack | blocking reason |
 |---|---|
-| b_lockglue | `../src/b_lockglue.c:49:10: fatal error: vis.h: No such file or directory` |
-| sonar | `src/xscreensaver_compat.h:96:27: error: conflicting types for ‘Display’; have ‘struct _Display’` |
+| b_lockglue | This is an xlock-mode hack, not a GL hack. It depends on the xlock pipeline (xlock.h, bubble3d.h, vis.h) which we have not ported because the whole xlockmode / `xlockmore_passwd_authenticate` flow does not apply to a compositor-driven Wayland build. |
+| sonar | Uses POSIX threads via thread_util.h to parallelize the FFT across CPU cores, AND raw ICMP sockets (sonar-icmp.c) AND DNS resolution (sonar-sim.c). Sonar's recorded Display-conflict error is misleading; the actual blocker is the missing threading + network support. |
