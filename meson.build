@@ -601,6 +601,27 @@ if opt_xscreensaver
     # The 6 per-hack executable() targets are added individually by the
     # per-hack commits that vendor each hack's source. See
     # UPSTREAM-GLES3-HACKS-2026-08-20.md.
+
+    # Etruscanvenus — Klein bottle deforming between Venus / Roman / Boy / Ida
+    executable(
+        'etruscanvenus_gles3',
+        files(common_gles3_sources + upstream_gles3_common_sources + [
+            'src/gles3_harness.c',
+            'src/etruscanvenus.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: upstream_gles3_c_args + [
+            '-DHACK_TABLE=etruscanvenus_xscreensaver_function_table',
+        ],
+        install: false,
+    )
 endif
 
 # ---------------------------------------------------------------------------
