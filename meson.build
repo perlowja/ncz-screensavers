@@ -488,6 +488,85 @@ if opt_xscreensaver
             install: false,
         )
     endforeach
+
+    # -----------------------------------------------------------------------
+    # Phase 1 GLES3-native pilots: boing (immediate-mode + matrix stack)
+    # and companion (gllist VBO conversion + display-list recorder).
+    #
+    # These compile against system libGLESv2 / libEGL directly — NO
+    # gl4es. They live alongside the legacy gl4es-routed ports above and
+    # do NOT replace them. The legacy gl4es path stays active until
+    # every hack has been ported (per the operator's full-migration
+    # directive). See GLES3-MIGRATION-PHASE1.md for the rollout plan.
+    # -----------------------------------------------------------------------
+
+    common_gles3_sources = [
+        'src/xscreensaver_compat.c',
+        'src/gles3_compat.c',
+    ]
+    # GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
+    # helpers in xscreensaver_compat.c compile to empty stubs (they
+    # rely on glMultMatrixf/glTranslated which don't exist in GLES3).
+    common_gles3_c_args = vendored_c_args + ['-DNCZ_GLES3_BUILD=1']
+
+    # Boing — simplest GL1 pilot. Uses immediate-mode helpers + matrix
+    # stack + lighting + ortho projection. Zero model dependencies.
+    executable(
+        'boing_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_boing.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: common_gles3_c_args + [
+            # gles3_boing emits `gles3boing_xscreensaver_function_table`
+            # via XSCREENSAVER_MODULE_2.
+            '-DHACK_TABLE=gles3boing_xscreensaver_function_table',
+        ],
+        install: false,
+    )
+
+    # Companion — gllist VBO conversion pilot. Loads 3 pre-baked
+    # `struct gllist` chains (companion_quad, companion_disc,
+    # companion_heart) into VBOs at init, plays them every frame. Also
+    # exercises the display-list recorder path (the cube is built as a
+    # sequence of inline quads + chain draws, not via a recorded
+    # display list, but the recorder API is in place for hacks that
+    # actually use glNewList/glEndList).
+    executable(
+        'companion_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_companion.c',
+            # Companion's 3 pre-baked object data files (these are the
+            # `struct gllist` chains in C, not model files).
+            'src/companion_quad.c',
+            'src/companion_disc.c',
+            'src/companion_heart.c',
+            # The physics / random helpers that companion needs.
+            'src/rotator.c',
+            'src/yarandom.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: common_gles3_c_args + [
+            '-DHACK_TABLE=gles3companioncube_xscreensaver_function_table',
+        ],
+        install: false,
+    )
 endif
 
 # ---------------------------------------------------------------------------
