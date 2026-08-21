@@ -622,6 +622,27 @@ if opt_xscreensaver
         ],
         install: false,
     )
+
+    # Hypertorus — thickened torus surface with Phong shading
+    executable(
+        'hypertorus_gles3',
+        files(common_gles3_sources + upstream_gles3_common_sources + [
+            'src/gles3_harness.c',
+            'src/hypertorus.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: upstream_gles3_c_args + [
+            '-DHACK_TABLE=hypertorus_xscreensaver_function_table',
+        ],
+        install: false,
+    )
 endif
 
 # ---------------------------------------------------------------------------
