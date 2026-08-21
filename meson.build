@@ -685,6 +685,27 @@ if opt_xscreensaver
         ],
         install: false,
     )
+
+    # Romanboy — Roman and Boy surfaces (doubly-covered projective plane)
+    executable(
+        'romanboy_gles3',
+        files(common_gles3_sources + upstream_gles3_common_sources + [
+            'src/gles3_harness.c',
+            'src/romanboy.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: upstream_gles3_c_args + [
+            '-DHACK_TABLE=romanboy_xscreensaver_function_table',
+        ],
+        install: false,
+    )
 endif
 
 # ---------------------------------------------------------------------------
