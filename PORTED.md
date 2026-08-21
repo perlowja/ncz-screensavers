@@ -4,7 +4,14 @@ A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 target. Compiling is not enough: missing companion sources surface only at
 link time.
 
-## Ported (88)
+This count covers both gl4es-routed `_demo` binaries (88 entries
+below — the legacy path that runs through the GL4ES translation
+shim) AND the GLES3-native `_gles3` binaries (6 entries at the
+bottom — upstream xscreensaver 6.00+ hacks that already use real
+GLSL/GLES3 shaders and were ported in 2026-08-20, see
+UPSTREAM-GLES3-HACKS-2026-08-20.md).
+
+## Ported (88 legacy gl4es-routed)
 
 | hack | companion sources |
 |---|---|
@@ -97,6 +104,26 @@ link time.
 | unknownpleasures | doubletime.c, easing.c |
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
+
+## Ported (6 GLES3-native, no gl4es)
+
+These are the upstream xscreensaver 6.00+ Carsten Steger additions —
+already real GLSL/GLES3 shader code upstream, ported directly to the
+GLES3-native path (no gl4es, link against system libGLESv2 / libEGL
+on O6N's Mali-G720-Immortalis). See UPSTREAM-GLES3-HACKS-2026-08-20.md
+for the per-hack verification, the foundation extensions they needed,
+and the per-hack commit log.
+
+| hack | companion sources |
+|---|---|
+| etruscanvenus_gles3   | glsl-utils.c |
+| hypertorus_gles3      | glsl-utils.c |
+| klein_gles3           | glsl-utils.c, curlicue.h |
+| projectiveplane_gles3 | glsl-utils.c, curlicue.h |
+| romanboy_gles3        | glsl-utils.c, curlicue.h |
+| sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
+
+Total ported: **94** (88 gl4es-routed + 6 GLES3-native).
 
 ## Deferred (2)
 
