@@ -664,6 +664,27 @@ if opt_xscreensaver
         ],
         install: false,
     )
+
+    # Projectiveplane — real projective plane immersion
+    executable(
+        'projectiveplane_gles3',
+        files(common_gles3_sources + upstream_gles3_common_sources + [
+            'src/gles3_harness.c',
+            'src/projectiveplane.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: upstream_gles3_c_args + [
+            '-DHACK_TABLE=projectiveplane_xscreensaver_function_table',
+        ],
+        install: false,
+    )
 endif
 
 # ---------------------------------------------------------------------------
