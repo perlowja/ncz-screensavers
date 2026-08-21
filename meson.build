@@ -706,6 +706,40 @@ if opt_xscreensaver
         ],
         install: false,
     )
+
+    # Sphereeversion — sphere turned inside out via homotopy. The single
+    # sphereeversion.c file drives two different eversion algorithms
+    # (analytic and corrugations) via a runtime-selected helper object.
+    # earth.{h,c} provides the earth-texture data (1x1 valid-PNG stubs,
+    # see earth.c). image_data_to_ximage.c provides the libpng-backed
+    # decoder sphereeversion calls from setup_xpm_texture() (the
+    # runtime call is in the texture-init path which executes once
+    # per launch to populate GL textures for the optional '-colors
+    # earth' mode — that mode is never randomly selected by default,
+    # but the call always runs to keep texture IDs consistent).
+    executable(
+        'sphereeversion_gles3',
+        files(common_gles3_sources + upstream_gles3_common_sources + [
+            'src/gles3_harness.c',
+            'src/sphereeversion.c',
+            'src/sphereeversion-analytic.c',
+            'src/sphereeversion-corrugations.c',
+            'src/earth.c',
+            'src/image_data_to_ximage.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: [
+            dep_wayland_client,
+            dep_wayland_egl,
+            dep_egl,
+            dep_glesv2,
+            dep_png,
+        ],
+        c_args: upstream_gles3_c_args + [
+            '-DHACK_TABLE=sphereeversion_xscreensaver_function_table',
+        ],
+        install: false,
+    )
 endif
 
 # ---------------------------------------------------------------------------
