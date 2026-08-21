@@ -567,6 +567,40 @@ if opt_xscreensaver
         ],
         install: false,
     )
+
+    # -----------------------------------------------------------------------
+    # Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
+    # Klein-bottle-cluster hacks + sphereeversion). These already use real
+     # GLSL/GLES3 shaders upstream — they call glCreateShader /
+     # glCompileShader / glLinkProgram directly via the shared
+     # hacks/glx/glsl-utils.{c,h} utility. Vendor the hack source + the
+     # shared utility + any per-hack model data, and build against system
+     # libGLESv2 / libEGL with -DHAVE_GLSL so the GLSL path compiles in.
+     #
+     # See UPSTREAM-GLES3-HACKS-2026-08-20.md for the per-hack verification
+     # and which hacks needed foundation extensions.
+     # -----------------------------------------------------------------------
+
+    # Shared utility: glsl-utils.{c,h} + the GLSL helper functions used by
+    # every upstream GLES3 hack (glsl_CompileAndLinkShaders,
+    # glsl_Perspective, glsl_LookAt, glsl_GetGLSLVersionString, ...).
+    upstream_gles3_common_sources = [
+        'src/glsl-utils.c',
+    ]
+
+    # Helper macro: every upstream GLES3 hack needs -DHAVE_GLSL (so the
+    # shader paths compile) plus -DSTANDALONE (so #include "xlockmore.h"
+    # fires inside the file's #ifdef STANDALONE block). The HACK_TABLE
+    # override routes gles3_harness.c at the right
+    # xscreensaver_function_table symbol.
+    upstream_gles3_c_args = common_gles3_c_args + [
+        '-DHAVE_GLSL',
+        '-DSTANDALONE',
+    ]
+
+    # The 6 per-hack executable() targets are added individually by the
+    # per-hack commits that vendor each hack's source. See
+    # UPSTREAM-GLES3-HACKS-2026-08-20.md.
 endif
 
 # ---------------------------------------------------------------------------

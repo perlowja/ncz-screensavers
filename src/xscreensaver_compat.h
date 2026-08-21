@@ -78,6 +78,61 @@
  */
 #include "gl4es_include/GL/gl.h"
 
+/*
+ * When NCZ_GLES3_BUILD is defined (Phase 1+ GLES3-native pilots and
+ * upstream-GLSL hack ports: etruscanvenus, hypertorus, klein,
+ * projectiveplane, romanboy, sphereeversion), the hack compiles against
+ * real GLES3 — so the system GLES3 header is the one that must declare
+ * glCreateShader / glCompileShader / glLinkProgram / glGetUniformLocation
+ * / glGetAttribLocation / glUseProgram / glUniform* / glVertexAttribPointer
+ * / glBindVertexArray / glGenVertexArrays / glDeleteVertexArrays /
+ * glEnableVertexAttribArray / glDisableVertexAttribArray / glVertexAttrib4f
+ * / glGenerateMipmap / glBindFramebuffer / glGenFramebuffers /
+ * glDeleteFramebuffers / glFramebufferTexture2D / glCheckFramebufferStatus
+ * etc. — all the symbols the upstream-6.00 GLSL hacks (and any future
+ * GLES3-native port) reach for.
+ *
+ * gl4es_include/GL/gl.h above is the GL1-only vendored Mesa-7.6 header.
+ * It does NOT declare any of the GLSL/VAO/FBO entry points. The
+ * gl4es-routed legacy _demo binaries don't need them — they only call
+ * GL1 fixed-function entry points which gl4es then translates to GLES2
+ * vertex calls. The GLES3-native pilots need the real GLES3 declarations.
+ *
+ * We include the system GLES3 header here (after the gl4es header) and
+ * the gles3_compat.c / gles3_harness.c files undef the few value macros
+ * (GL_FALSE, GL_TRUE, GL_ZERO, GL_ONE, GL_NONE, GL_NO_ERROR) that both
+ * headers define with the same values — so no real symbol conflict.
+ *
+ * EGL is NOT included here — it is needed only by the harness binaries
+ * (gles3_harness.c) which include gles3_compat.h which includes EGL. The
+ * vendored hack files don't reach for any EGL entry point.
+ */
+#ifdef NCZ_GLES3_BUILD
+#  include <GLES3/gl32.h>
+#  include <GLES3/gl3ext.h>
+
+/*
+ * Anisotropy constants are not part of core GLES3 (they're a desktop
+ * GL extension: EXT_texture_filter_anisotropic). The upstream
+ * sphereeversion.c references them inside setup_xpm_texture() — which
+ * is compiled in under HAVE_GLSL but never invoked at runtime
+ * (gen_textures() is dead code in xscreensaver 6.15). We define them
+ * here so the build succeeds; the runtime check
+ * `strstr(gl_ext,"GL_EXT_texture_filter_anisotropic")` will return
+ * NULL on Mali/Panthor GLES3 drivers that don't expose the extension,
+ * and the anisotropy block becomes a no-op.
+ *
+ * Standard values from
+ * https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt
+ */
+#  ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
+#    define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
+#  endif
+#  ifndef GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT
+#    define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+#  endif
+#endif
+
 /* ----------------------------------------------------------------------- */
 /* Section 1 — opaque X11 types (declared, never dereferenced)             */
 /* ----------------------------------------------------------------------- */
@@ -128,6 +183,12 @@ typedef struct _GC        GC;
 #define XK_equal      0x003d
 #define XK_less       0x003c
 #define XK_greater    0x003e
+/* Shift keysyms — used by hypertorus's event handler to detect
+ * shift-modified drag. Like all our XK_* constants, never actually
+ * compared because the shim's XLookupString returns 0, but must
+ * exist for the comparison to compile. */
+#define XK_Shift_L    0xffe1
+#define XK_Shift_R    0xffe2
 
 typedef unsigned long     KeySym;        /* XID. Hacks declare `KeySym keysym` in
                                            their event handlers; they compare it

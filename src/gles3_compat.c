@@ -1386,3 +1386,129 @@ EGLConfig ncz_gles3_choose_config(EGLDisplay dpy) {
     if (!eglChooseConfig(dpy, cfg_attr, &cfg, 1, &num) || num < 1) return NULL;
     return cfg;
 }
+
+/* ------------------------------------------------------------------------ */
+/* GL1 fixed-function stubs for the upstream-GLSL hack ports                */
+/* ------------------------------------------------------------------------ */
+/*
+ * The 6 upstream-GLSL hacks (etruscanvenus, hypertorus, klein,
+ * projectiveplane, romanboy, sphereeversion) all carry a fixed-function
+ * fallback path under `#ifndef HAVE_GLSL` AND several GL1 state-setup
+ * calls inside the GLSL path itself (glLightfv, glMaterialfv, glShadeModel,
+ * glPolygonMode, glLightModeli, glLightModelfv, glTexEnvf). At runtime
+ * init_glsl() succeeds on GLES3 → ev->use_shaders == True → only the
+ * per-fragment GLSL path runs → all these GL1 calls are dead code at
+ * runtime.
+ *
+ * But the linker still needs the symbols to resolve — and they don't
+ * exist in libGLESv2.so (they're GL1 / OpenGL fixed-function, not
+ * GLES3). We provide empty no-op stubs here so the binary links.
+ * These never affect rendered output: the GLSL shader owns lighting,
+ * materials, shading model, and polygon mode.
+ *
+ * The matrix-stack stubs (glMatrixMode / glLoadIdentity / glRotatef /
+ * glTranslatef / glPushMatrix / glPopMatrix / glMultMatrixf /
+ * gluPerspective / gluLookAt) route into the ncz_mat_stack_* API
+ * because the FF fallback path actually uses them to set up the
+ * projection — even though it never runs, the symbols must resolve
+ * AND the FF code does some basic matrix setup that affects the
+ * fallback path's correctness if it ever IS exercised (e.g. on a
+ * future driver that can't compile the per-fragment shader).
+ */
+
+void glMatrixMode(GLenum mode) {
+    (void)mode;
+    /* ncz_mat_stack tracks mode internally — accepted but inert here. */
+}
+void glLoadIdentity(void) {
+    ncz_mat_stack_load_identity(g_model_stack_ptr);
+}
+void glPushMatrix(void)  { ncz_mat_stack_push(g_model_stack_ptr); }
+void glPopMatrix(void)   { ncz_mat_stack_pop(g_model_stack_ptr);  }
+void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
+    ncz_mat_stack_rotate(g_model_stack_ptr, (float)angle, (float)x,
+                         (float)y, (float)z);
+}
+void glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
+    ncz_mat_stack_translate(g_model_stack_ptr, (float)x, (float)y, (float)z);
+}
+void glMultMatrixf(const GLfloat *m) {
+    nczMat4 mm;
+    for (int i = 0; i < 16; i++) mm[i] = (float)m[i];
+    ncz_mat4_multiply(g_model_stack_ptr->m[g_model_stack_ptr->top],
+                      g_model_stack_ptr->m[g_model_stack_ptr->top], mm);
+}
+
+void glOrtho(GLdouble l, GLdouble r, GLdouble b, GLdouble t,
+             GLdouble n, GLdouble f) {
+    ncz_mat_stack_ortho(g_proj_stack_ptr, (float)l, (float)r, (float)b,
+                        (float)t, (float)n, (float)f);
+}
+void glClearDepth(GLdouble d) { (void)d; /* GLES3 uses glClearDepthf */ }
+
+void glPushAttrib(GLbitfield mask) { (void)mask; }
+void glPopAttrib(void)             { }
+void glPushClientAttrib(GLbitfield m) { (void)m; }
+void glPopClientAttrib(void)         { }
+void glClientActiveTexture(GLenum t) { (void)t; }
+
+void glShadeModel(GLenum mode)           { (void)mode; }
+void glPolygonMode(GLenum face, GLenum m){ (void)face; (void)m; }
+void glLightModelfv(GLenum p, const GLfloat *v) { (void)p; (void)v; }
+void glLightModeli(GLenum p, GLint v)    { (void)p; (void)v; }
+void glLightfv(GLenum light, GLenum pname, const GLfloat *v) {
+    (void)light; (void)pname; (void)v;
+}
+void glMaterialf(GLenum face, GLenum pname, GLfloat v) {
+    (void)face; (void)pname; (void)v;
+}
+void glMaterialfv(GLenum face, GLenum pname, const GLfloat *v) {
+    (void)face; (void)pname; (void)v;
+}
+void glTexEnvf(GLenum target, GLenum pname, GLfloat v) {
+    (void)target; (void)pname; (void)v;
+}
+void glTexEnvfv(GLenum target, GLenum pname, const GLfloat *v) {
+    (void)target; (void)pname; (void)v;
+}
+void glTexEnvi(GLenum target, GLenum pname, GLint v) {
+    (void)target; (void)pname; (void)v;
+}
+void glHint(GLenum target, GLenum mode) { (void)target; (void)mode; }
+void glLineStipple(GLint f, GLushort p) { (void)f; (void)p; }
+void glLineWidth(GLfloat w)             { (void)w; }
+void glGetDoublev(GLenum p, GLdouble *v){ (void)p; (void)v; }
+
+/* Immediate-mode stubs — never called at runtime in the GLSL path,
+ * but referenced in the FF fallback. Empty no-ops satisfy the linker. */
+void glBegin(GLenum mode)   { (void)mode; }
+void glEnd(void)            { }
+void glVertex3fv(const GLfloat *v) { (void)v; }
+void glVertex3f(GLfloat x, GLfloat y, GLfloat z) { (void)x; (void)y; (void)z; }
+void glVertex2f(GLfloat x, GLfloat y)            { (void)x; (void)y; }
+void glColor3fv(const GLfloat *c)  { (void)c; }
+void glColor3f(GLfloat r, GLfloat g, GLfloat b)  { (void)r; (void)g; (void)b; }
+void glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+    (void)r; (void)g; (void)b; (void)a;
+}
+void glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a) {
+    (void)r; (void)g; (void)b; (void)a;
+}
+void glNormal3fv(const GLfloat *v) { (void)v; }
+void glNormal3f(GLfloat x, GLfloat y, GLfloat z) { (void)x; (void)y; (void)z; }
+void glTexCoord2fv(const GLfloat *v){ (void)v; }
+void glTexCoord2f(GLfloat u, GLfloat v){ (void)u; (void)v; }
+void glEdgeFlag(GLboolean f)         { (void)f; }
+
+void glGetFloatv(GLenum p, GLfloat *v) { (void)p; (void)v; }
+void glGetIntegerv(GLenum p, GLint *v) {
+    /* Stub: many hacks call glGetIntegerv(GL_TEXTURE_BINDING_2D, ...)
+     * etc. for diagnostics. Zero everything. */
+    (void)p;
+    if (v) *v = 0;
+}
+
+/* The gluPerspective / gluLookAt that the FF fallback uses are already
+ * provided as no-op stubs in xscreensaver_compat.c when
+ * -DNCZ_GLES3_BUILD=1 is set — see that file's
+ * #ifdef NCZ_GLES3_BUILD block. No need to add them here. */
