@@ -180,6 +180,15 @@ typedef struct {
     float   cur_uv[2];
     bool    recording;
     const nczGLListChain *rec_chain;
+    /* When recording (g_im.recording == true), glBegin/glEnd
+     * accumulate one inline batch into rec_batch_verts (size 16 verts
+     * × 12 floats each = 768 bytes) and on glEnd the recorder turns
+     * the batch into an ncz_dl_draw_inline op on rec_dl. Multiple
+     * glBegin/glEnd pairs within one glNewList/glEndList produce
+     * multiple ops — they replay in order on glCallList. */
+    nczDL  *rec_dl;
+    float   rec_batch_verts[16 * 12];
+    int     rec_batch_count;
     bool    has_material;
     float   material[4];
     bool    lit;
@@ -776,7 +785,101 @@ void ncz_im_set_chain_for_recording(const nczGLListChain *chain) {
     g_im.rec_chain = chain;
 }
 
+/* ----------------------------------------------------------------------- */
+/* GL1 display-list API — glGenLists / glNewList / glEndList /             */
+/* glCallList / glIsList / glDeleteLists.                                 */
+/*                                                                         */
+/* GLES3 has no display lists. The xscreensaver gllist cluster (bouncing- */
+/* cow, companion, highvoltage, winduprobot, vigilance) plus several      */
+/* one-off hacks (beats, spheremonics, etc.) compile a sequence of        */
+/* immediate-mode commands into a list at init time and replay the list   */
+/* every frame. We model this with a pool of nczDL structs indexed by an  */
+/* integer handle. glNewList starts recording into the pool entry;        */
+/* glEndList stops recording; glCallList replays via ncz_dl_call.         */
+/* ----------------------------------------------------------------------- */
+
+#define NCZ_DL_POOL_SIZE 64
+
+static nczDL  g_dl_pool[NCZ_DL_POOL_SIZE] = {0};
+static bool   g_dl_pool_used[NCZ_DL_POOL_SIZE] = {0};
+static int    g_dl_next_id = 1;       /* handle 0 means "no list" */
+
+/* Find a pool slot for `id` (a previously-returned handle). Returns
+ * NULL if the handle doesn't match any slot we issued. */
+static nczDL *dl_lookup(int id) {
+    if (id <= 0 || id >= NCZ_DL_POOL_SIZE) return NULL;
+    if (!g_dl_pool_used[id]) return NULL;
+    return &g_dl_pool[id];
+}
+
+GLuint glGenLists(GLsizei range) {
+    /* Allocate `range` consecutive handles from the pool. Return the
+     * first, or 0 on failure (matches GL semantics). */
+    for (int start = 1; start + range <= NCZ_DL_POOL_SIZE; start++) {
+        bool ok = true;
+        for (int k = 0; k < range; k++) {
+            if (g_dl_pool_used[start + k]) { ok = false; break; }
+        }
+        if (!ok) continue;
+        for (int k = 0; k < range; k++) {
+            g_dl_pool_used[start + k] = true;
+            memset(&g_dl_pool[start + k], 0, sizeof(g_dl_pool[start + k]));
+        }
+        return (GLuint)start;
+    }
+    return 0;
+}
+
+void glNewList(GLuint list, GLenum mode) {
+    nczDL *dl = dl_lookup((int)list);
+    if (!dl) return;
+    (void)mode;  /* GL_COMPILE / GL_COMPILE_AND_EXECUTE — we always compile */
+    ncz_dl_new(dl);
+    g_im.recording = true;
+    g_im.rec_dl = dl;
+    g_im.rec_batch_count = 0;
+}
+
+void glEndList(void) {
+    if (!g_im.recording) return;
+    ncz_dl_end(g_im.rec_dl);
+    g_im.recording = false;
+    g_im.rec_dl = NULL;
+    g_im.rec_batch_count = 0;
+}
+
+void glCallList(GLuint list) {
+    nczDL *dl = dl_lookup((int)list);
+    if (!dl) return;
+    ncz_dl_call(dl);
+}
+
+GLboolean glIsList(GLuint list) {
+    return dl_lookup((int)list) ? GL_TRUE : GL_FALSE;
+}
+
+void glDeleteLists(GLuint list, GLsizei range) {
+    for (int k = 0; k < range; k++) {
+        int id = (int)list + k;
+        if (id <= 0 || id >= NCZ_DL_POOL_SIZE) continue;
+        if (!g_dl_pool_used[id]) continue;
+        ncz_dl_free(&g_dl_pool[id]);
+        g_dl_pool_used[id] = false;
+    }
+}
+
+/* Forward declaration of the GL1 display-list API. xscreensaver hack
+ * sources include them through the vendored gl4es_include/GL/gl.h. */
+
 void ncz_im_begin(GLenum primitive) {
+    if (g_im.recording) {
+        /* Recording mode — start a new inline batch in rec_batch_verts.
+         * The actual draw call into the DL happens on ncz_im_end. */
+        g_im.rec_batch_count = 0;
+        g_im.primitive = primitive;
+        g_im.vertex_count = 0;
+        return;
+    }
     g_im.primitive = primitive;
     g_im.vertex_count = 0;
     if (!g_im.verts) {
@@ -786,6 +889,22 @@ void ncz_im_begin(GLenum primitive) {
 }
 
 static float *im_push_vertex(float x, float y, float z) {
+    if (g_im.recording) {
+        if (g_im.rec_batch_count >= 16) return NULL;  /* batch full */
+        float *v = g_im.rec_batch_verts + g_im.rec_batch_count * 12;
+        v[0] = x; v[1] = y; v[2] = z;
+        v[3] = g_im.cur_normal[0];
+        v[4] = g_im.cur_normal[1];
+        v[5] = g_im.cur_normal[2];
+        v[6] = g_im.cur_color[0];
+        v[7] = g_im.cur_color[1];
+        v[8] = g_im.cur_color[2];
+        v[9] = g_im.cur_color[3];
+        v[10] = g_im.cur_uv[0];
+        v[11] = g_im.cur_uv[1];
+        g_im.rec_batch_count++;
+        return v;
+    }
     if (g_im.vertex_count >= g_im.vertex_cap) {
         /* Spill to heap. Rare. */
         int newcap = g_im.vertex_cap * 2;
@@ -951,6 +1070,18 @@ static void im_flush_as_draw(void) {
 
 void ncz_im_end(void) {
     if (g_im.recording) {
+        /* Decide where the inline batch goes. If a chain was set with
+         * ncz_im_set_chain_for_recording, record a GLLIST op; else
+         * record an INLINE op carrying the captured vertices. */
+        if (g_im.rec_dl && g_im.rec_batch_count > 0) {
+            if (g_im.rec_chain) {
+                ncz_dl_draw_chain(g_im.rec_dl, g_im.rec_chain);
+            } else {
+                ncz_dl_draw_inline(g_im.rec_dl, g_im.primitive,
+                                   g_im.rec_batch_verts, g_im.rec_batch_count);
+            }
+        }
+        g_im.rec_batch_count = 0;
         return;
     }
     im_flush_as_draw();
@@ -1223,6 +1354,7 @@ int ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain) {
     nczDL_Rec *r = &dl->ops[dl->n_ops++];
     r->chain = chain;
     r->vcount = 0;
+    r->primitive = 0;
     memcpy(r->color, g_im.cur_color, sizeof r->color);
     memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
     r->has_material = g_im.has_material;
@@ -1230,56 +1362,20 @@ int ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain) {
     return 0;
 }
 
-int ncz_dl_draw_quad(nczDL *dl,
-                     const float *p0, const float *p1,
-                     const float *p2, const float *p3,
-                     const float *normal) {
-    if (!dl) return -1;
+/* Record an inline immediate-mode batch. The caller has accumulated
+ * `vcount` vertices (each in the standard 12-float pos+normal+color+uv
+ * format) into a separate buffer and passes that buffer pointer here.
+ * Replaces the older quad/triangle-specific entry points. */
+int ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
+                       const float *verts, int vcount) {
+    if (!dl || !verts || vcount <= 0) return -1;
+    if (vcount > 16) vcount = 16;  /* rec capacity */
     if (dl->n_ops >= dl->max_ops) return -1;
     nczDL_Rec *r = &dl->ops[dl->n_ops++];
     r->chain = NULL;
-    r->vcount = 4;
-    float *v = r->verts;
-    const float *pts[4] = { p0, p1, p2, p3 };
-    for (int i = 0; i < 4; i++) {
-        v[i*9 + 0] = pts[i][0];
-        v[i*9 + 1] = pts[i][1];
-        v[i*9 + 2] = pts[i][2];
-        v[i*9 + 3] = normal[0];
-        v[i*9 + 4] = normal[1];
-        v[i*9 + 5] = normal[2];
-        v[i*9 + 6] = g_im.cur_color[0];
-        v[i*9 + 7] = g_im.cur_color[1];
-        v[i*9 + 8] = g_im.cur_color[2];
-    }
-    memcpy(r->color, g_im.cur_color, sizeof r->color);
-    memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
-    r->has_material = g_im.has_material;
-    r->lit = g_im.lit;
-    return 0;
-}
-
-int ncz_dl_draw_triangle(nczDL *dl,
-                         const float *p0, const float *p1, const float *p2,
-                         const float *normal) {
-    if (!dl) return -1;
-    if (dl->n_ops >= dl->max_ops) return -1;
-    nczDL_Rec *r = &dl->ops[dl->n_ops++];
-    r->chain = NULL;
-    r->vcount = 3;
-    float *v = r->verts;
-    const float *pts[3] = { p0, p1, p2 };
-    for (int i = 0; i < 3; i++) {
-        v[i*9 + 0] = pts[i][0];
-        v[i*9 + 1] = pts[i][1];
-        v[i*9 + 2] = pts[i][2];
-        v[i*9 + 3] = normal[0];
-        v[i*9 + 4] = normal[1];
-        v[i*9 + 5] = normal[2];
-        v[i*9 + 6] = g_im.cur_color[0];
-        v[i*9 + 7] = g_im.cur_color[1];
-        v[i*9 + 8] = g_im.cur_color[2];
-    }
+    r->primitive = primitive;
+    r->vcount = vcount;
+    memcpy(r->verts, verts, vcount * 12 * sizeof(float));
     memcpy(r->color, g_im.cur_color, sizeof r->color);
     memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
     r->has_material = g_im.has_material;
@@ -1289,8 +1385,8 @@ int ncz_dl_draw_triangle(nczDL *dl,
 
 void ncz_dl_call(const nczDL *dl) {
     if (!dl || dl->n_ops == 0) return;
-    /* Phase 1 stub: iterate ops; for chain ops, replay via gllist
-     * draw; for inline ops, push into the scratch VBO and draw. */
+    /* Iterate ops; for chain ops, replay via gllist draw; for inline
+     * ops, push into the ncz_im accumulator and draw. */
     for (int i = 0; i < dl->n_ops; i++) {
         const nczDL_Rec *r = &dl->ops[i];
         if (r->chain) {
@@ -1299,21 +1395,17 @@ void ncz_dl_call(const nczDL *dl) {
              * actually wants to use. The hack calls glMaterialfv
              * right before glCallList, so we honor the live state. */
             nczGLList_draw(r->chain);
-        } else if (r->vcount == 4) {
-            /* Inline quad. Push into scratch + draw with index expansion. */
-            ncz_im_begin(GL_QUADS);
-            for (int v = 0; v < 4; v++) {
-                ncz_im_normal3f(r->verts[v*9+3], r->verts[v*9+4], r->verts[v*9+5]);
-                ncz_im_color3f(r->verts[v*9+6], r->verts[v*9+7], r->verts[v*9+8]);
-                ncz_im_vertex3f(r->verts[v*9+0], r->verts[v*9+1], r->verts[v*9+2]);
-            }
-            ncz_im_end();
-        } else if (r->vcount == 3) {
-            ncz_im_begin(GL_TRIANGLES);
-            for (int v = 0; v < 3; v++) {
-                ncz_im_normal3f(r->verts[v*9+3], r->verts[v*9+4], r->verts[v*9+5]);
-                ncz_im_color3f(r->verts[v*9+6], r->verts[v*9+7], r->verts[v*9+8]);
-                ncz_im_vertex3f(r->verts[v*9+0], r->verts[v*9+1], r->verts[v*9+2]);
+        } else {
+            /* Inline batch. The recorded vertices carry pos+normal+
+             * color+uv in our 12-float-per-vertex format; replay by
+             * walking them into ncz_im in the same order. */
+            ncz_im_begin(r->primitive ? r->primitive : GL_TRIANGLES);
+            for (int v = 0; v < r->vcount; v++) {
+                const float *p = &r->verts[v*12];
+                ncz_im_normal3f(p[3], p[4], p[5]);
+                ncz_im_color4f (p[6], p[7], p[8], p[9]);
+                ncz_im_tex_coord2f(p[10], p[11]);
+                ncz_im_vertex3f(p[0], p[1], p[2]);
             }
             ncz_im_end();
         }
@@ -1432,6 +1524,19 @@ void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
 void glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
     ncz_mat_stack_translate(g_model_stack_ptr, (float)x, (float)y, (float)z);
 }
+void glScalef(GLfloat x, GLfloat y, GLfloat z) {
+    ncz_mat_stack_scale(g_model_stack_ptr, (float)x, (float)y, (float)z);
+}
+void glScaled(GLdouble x, GLdouble y, GLdouble z) {
+    ncz_mat_stack_scale(g_model_stack_ptr, (float)x, (float)y, (float)z);
+}
+void glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdouble z) {
+    ncz_mat_stack_rotate(g_model_stack_ptr, (float)angle, (float)x,
+                         (float)y, (float)z);
+}
+void glTranslated(GLdouble x, GLdouble y, GLdouble z) {
+    ncz_mat_stack_translate(g_model_stack_ptr, (float)x, (float)y, (float)z);
+}
 void glMultMatrixf(const GLfloat *m) {
     nczMat4 mm;
     for (int i = 0; i < 16; i++) mm[i] = (float)m[i];
@@ -1452,18 +1557,49 @@ void glPushClientAttrib(GLbitfield m) { (void)m; }
 void glPopClientAttrib(void)         { }
 void glClientActiveTexture(GLenum t) { (void)t; }
 
-void glShadeModel(GLenum mode)           { (void)mode; }
+void glShadeModel(GLenum mode)           { ncz_im_shade_model(mode); }
 void glPolygonMode(GLenum face, GLenum m){ (void)face; (void)m; }
 void glLightModelfv(GLenum p, const GLfloat *v) { (void)p; (void)v; }
 void glLightModeli(GLenum p, GLint v)    { (void)p; (void)v; }
 void glLightfv(GLenum light, GLenum pname, const GLfloat *v) {
-    (void)light; (void)pname; (void)v;
+    switch (pname) {
+        case GL_POSITION:   ncz_im_light_position((int)light, v); break;
+        case GL_AMBIENT:    ncz_im_light_ambient ((int)light, v); break;
+        case GL_DIFFUSE:    ncz_im_light_diffuse ((int)light, v); break;
+        case GL_SPECULAR:   ncz_im_light_specular((int)light, v); break;
+        default: break;
+    }
+}
+void glLightf(GLenum light, GLenum pname, GLfloat v) {
+    GLfloat vv[4] = {v, 0, 0, 0};
+    switch (pname) {
+        case GL_CONSTANT_ATTENUATION:  /* ignored */ break;
+        case GL_LINEAR_ATTENUATION:    /* ignored */ break;
+        case GL_QUADRATIC_ATTENUATION: /* ignored */ break;
+        case GL_SPOT_CUTOFF:           /* ignored */ break;
+        case GL_SPOT_EXPONENT:         /* ignored */ break;
+        default:
+            glLightfv(light, pname, vv);
+            break;
+    }
 }
 void glMaterialf(GLenum face, GLenum pname, GLfloat v) {
-    (void)face; (void)pname; (void)v;
+    if (pname == GL_AMBIENT_AND_DIFFUSE) {
+        float vv[4] = { v, v, v, 1.0f };
+        ncz_im_material(face, pname, vv);
+        return;
+    }
+    /* GL_SHININESS, GL_SPECULAR etc. — ignored in this initial pass. */
+}
+void glMateriali(GLenum face, GLenum pname, GLint v) {
+    if (pname == GL_AMBIENT_AND_DIFFUSE) {
+        float vv[4] = { (float)v, (float)v, (float)v, 1.0f };
+        ncz_im_material(face, pname, vv);
+        return;
+    }
 }
 void glMaterialfv(GLenum face, GLenum pname, const GLfloat *v) {
-    (void)face; (void)pname; (void)v;
+    ncz_im_material(face, pname, v);
 }
 void glTexEnvf(GLenum target, GLenum pname, GLfloat v) {
     (void)target; (void)pname; (void)v;
@@ -1474,31 +1610,192 @@ void glTexEnvfv(GLenum target, GLenum pname, const GLfloat *v) {
 void glTexEnvi(GLenum target, GLenum pname, GLint v) {
     (void)target; (void)pname; (void)v;
 }
+/* Fog — GLES3 has glFog* in the GLES 1.0 compat subset (declared in
+ * <GLES3/gl.h>) but the gl4es vendored header doesn't expose them.
+ * Accept the calls as no-ops for the legacy hacks — fog is a visual
+ * nicety, not a correctness requirement, and the existing single-
+ * light shader in gles3_compat.c doesn't have a fog stage. */
+void glFogi(GLenum pname, GLint v)        { (void)pname; (void)v; }
+void glFogf(GLenum pname, GLfloat v)      { (void)pname; (void)v; }
+void glFogfv(GLenum pname, const GLfloat *v) { (void)pname; (void)v; }
+/* Texture-coordinate generation (GL_TEXTURE_GEN_*) — not in GLES3.
+ * Accepted but inert. */
+void glTexGeni(GLenum coord, GLenum pname, GLint v) {
+    (void)coord; (void)pname; (void)v;
+}
+void glTexGenf(GLenum coord, GLenum pname, GLfloat v) {
+    (void)coord; (void)pname; (void)v;
+}
+void glTexGenfv(GLenum coord, GLenum pname, const GLfloat *v) {
+    (void)coord; (void)pname; (void)v;
+}
 void glHint(GLenum target, GLenum mode) { (void)target; (void)mode; }
 void glLineStipple(GLint f, GLushort p) { (void)f; (void)p; }
 void glLineWidth(GLfloat w)             { (void)w; }
 void glGetDoublev(GLenum p, GLdouble *v){ (void)p; (void)v; }
 
-/* Immediate-mode stubs — never called at runtime in the GLSL path,
- * but referenced in the FF fallback. Empty no-ops satisfy the linker. */
-void glBegin(GLenum mode)   { (void)mode; }
-void glEnd(void)            { }
-void glVertex3fv(const GLfloat *v) { (void)v; }
-void glVertex3f(GLfloat x, GLfloat y, GLfloat z) { (void)x; (void)y; (void)z; }
-void glVertex2f(GLfloat x, GLfloat y)            { (void)x; (void)y; }
-void glColor3fv(const GLfloat *c)  { (void)c; }
-void glColor3f(GLfloat r, GLfloat g, GLfloat b)  { (void)r; (void)g; (void)b; }
+/* Immediate-mode stubs — these route every glBegin/glVertex/glColor/
+ * glNormal/glTexCoord call through the ncz_im_* immediate-mode
+ * accumulator. With this layer, vendored xscreensaver hacks written
+ * against the GL1 fixed-function API drop into the GLES3 build with
+ * zero source edits (the "mechanical Phase 4+ porting pipeline"
+ * described in GLES3-MIGRATION-PHASE1.md). The accumulator flushes
+ * the CPU vertex buffer as one glDrawArrays call per glEnd, exactly
+ * what gl4es does internally but without the lossy translation
+ * shim in between. */
+void glBegin(GLenum mode)             { ncz_im_begin(mode); }
+void glEnd(void)                      { ncz_im_end(); }
+void glVertex3fv(const GLfloat *v)    { ncz_im_vertex3f(v[0], v[1], v[2]); }
+void glVertex3f(GLfloat x, GLfloat y, GLfloat z) { ncz_im_vertex3f(x, y, z); }
+void glVertex2f(GLfloat x, GLfloat y) { ncz_im_vertex3f(x, y, 0.0f); }
+void glColor3fv(const GLfloat *c)     { ncz_im_color3fv(c); }
+void glColor3f(GLfloat r, GLfloat g, GLfloat b)  { ncz_im_color3f(r, g, b); }
+void glColor4fv(const GLfloat *c)     { ncz_im_color4fv(c); }
 void glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    (void)r; (void)g; (void)b; (void)a;
+    ncz_im_color4f(r, g, b, a);
 }
 void glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a) {
-    (void)r; (void)g; (void)b; (void)a;
+    ncz_im_color4f(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 }
-void glNormal3fv(const GLfloat *v) { (void)v; }
-void glNormal3f(GLfloat x, GLfloat y, GLfloat z) { (void)x; (void)y; (void)z; }
-void glTexCoord2fv(const GLfloat *v){ (void)v; }
-void glTexCoord2f(GLfloat u, GLfloat v){ (void)u; (void)v; }
-void glEdgeFlag(GLboolean f)         { (void)f; }
+void glNormal3fv(const GLfloat *v)    { ncz_im_normal3f(v[0], v[1], v[2]); }
+void glNormal3f(GLfloat x, GLfloat y, GLfloat z) { ncz_im_normal3f(x, y, z); }
+void glTexCoord2fv(const GLfloat *v)  { ncz_im_tex_coord2f(v[0], v[1]); }
+void glTexCoord2f(GLfloat u, GLfloat v){ ncz_im_tex_coord2f(u, v); }
+void glEdgeFlag(GLboolean f)          { (void)f; }
+
+/* GL1 client-side vertex-array stubs. xscreensaver's sphere.c, tube.c
+ * and a few other helpers use glVertexPointer / glNormalPointer /
+ * glTexCoordPointer + glEnableClientState / glDrawArrays to draw
+ * interleaved float arrays from local memory. GLES3 has no client-
+ * side vertex arrays; the equivalent is per-attribute GL_ARRAY_BUFFER
+ * VBO bindings via glVertexAttribPointer. We track the bound client
+ * pointers here and on glDrawArrays we walk the count, copy into the
+ * scratch VBO interleaved as our pos+normal+color+uv vertex format,
+ * and issue the real GLES3 draw. Sphere.c / tube.c / etc. always
+ * supply vertex + normal + texcoord pointers, so the path is well-
+ * defined for them. */
+static struct {
+    const GLfloat *vertex_ptr;
+    GLsizei vertex_stride;
+    GLsizei vertex_size;
+    const GLfloat *normal_ptr;
+    GLsizei normal_stride;
+    const GLfloat *texcoord_ptr;
+    GLsizei texcoord_stride;
+    GLsizei texcoord_size;
+    bool enabled[3];  /* VERTEX_ARRAY=0, NORMAL_ARRAY=1, TEXCOORD_ARRAY=2 */
+} g_client_vao;
+
+void glEnableClientState(GLenum array) {
+    if (array == GL_VERTEX_ARRAY)        g_client_vao.enabled[0] = true;
+    else if (array == GL_NORMAL_ARRAY)   g_client_vao.enabled[1] = true;
+    else if (array == GL_TEXTURE_COORD_ARRAY) g_client_vao.enabled[2] = true;
+    else if (array == GL_COLOR_ARRAY)    { /* ignored — color is per-vertex current color */ }
+}
+void glDisableClientState(GLenum array) {
+    if (array == GL_VERTEX_ARRAY)        g_client_vao.enabled[0] = false;
+    else if (array == GL_NORMAL_ARRAY)   g_client_vao.enabled[1] = false;
+    else if (array == GL_TEXTURE_COORD_ARRAY) g_client_vao.enabled[2] = false;
+    else if (array == GL_COLOR_ARRAY)    { }
+}
+void glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr) {
+    if (type != GL_FLOAT) return;  /* only FLOAT supported by GLES3 too */
+    g_client_vao.vertex_ptr = (const GLfloat *)ptr;
+    g_client_vao.vertex_size = size;
+    g_client_vao.vertex_stride = stride ? stride : size * sizeof(GLfloat);
+}
+void glNormalPointer(GLenum type, GLsizei stride, const GLvoid *ptr) {
+    if (type != GL_FLOAT) return;
+    g_client_vao.normal_ptr = (const GLfloat *)ptr;
+    g_client_vao.normal_stride = stride ? stride : 3 * sizeof(GLfloat);
+}
+void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr) {
+    if (type != GL_FLOAT) return;
+    g_client_vao.texcoord_ptr = (const GLfloat *)ptr;
+    g_client_vao.texcoord_size = size;
+    g_client_vao.texcoord_stride = stride ? stride : size * sizeof(GLfloat);
+}
+
+/* glDrawArrays — handles both the immediate-mode path (when no client
+ * vertex arrays are bound) and the client-array path. The former is
+ * already issued by ncz_im_end; here we intercept only the
+ * client-array case used by sphere.c / tube.c. */
+void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
+    if (count <= 0) return;
+    if (!g_client_vao.enabled[0] || !g_client_vao.vertex_ptr) {
+        /* No client arrays bound — glDrawArrays issued outside our
+         * immediate-mode path. Ignore; the ncz_im_end path will
+         * issue the actual draw when the matching glEnd runs. */
+        return;
+    }
+    /* Walk the count, copy each vertex into our 12-float scratch
+     * format (pos3 + normal3 + color4 + uv2), flush via the
+     * same path ncz_im_end uses. */
+    ncz_im_begin(mode);
+    int vs = g_client_vao.vertex_size;
+    int ts = g_client_vao.texcoord_size;
+    const GLfloat *vp = g_client_vao.vertex_ptr + first * (g_client_vao.vertex_stride / sizeof(GLfloat));
+    const GLfloat *np = g_client_vao.normal_ptr
+        ? g_client_vao.normal_ptr + first * (g_client_vao.normal_stride / sizeof(GLfloat))
+        : NULL;
+    const GLfloat *tp = g_client_vao.texcoord_ptr
+        ? g_client_vao.texcoord_ptr + first * (g_client_vao.texcoord_stride / sizeof(GLfloat))
+        : NULL;
+    int vstep = g_client_vao.vertex_stride / sizeof(GLfloat);
+    int nstep = g_client_vao.normal_stride / sizeof(GLfloat);
+    int tstep = g_client_vao.texcoord_stride / sizeof(GLfloat);
+    for (int i = 0; i < count; i++) {
+        if (np) ncz_im_normal3f(np[0], np[1], np[2]);
+        if (tp) ncz_im_tex_coord2f(tp[0], (ts >= 2) ? tp[1] : 0.0f);
+        ncz_im_vertex3f(vp[0], (vs >= 2) ? vp[1] : 0.0f, (vs >= 3) ? vp[2] : 0.0f);
+        vp += vstep;
+        if (np) np += nstep;
+        if (tp) tp += tstep;
+    }
+    ncz_im_end();
+}
+
+/* glInterleavedArrays — GL1 convenience for setting up V/N/C/T
+ * pointers all from one packed stride. NOT in GLES3 core. We handle
+ * the two formats xscreensaver actually uses (GL_C3F_V3F,
+ * GL_N3F_V3F) by routing into our glVertexPointer/glNormalPointer/
+ * glTexCoordPointer + glEnableClientState state. */
+void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer) {
+    (void)stride;  /* stride==0 means "tightly packed" — our stride
+                    *   calc already handles that */
+    if (format == GL_C3F_V3F) {
+        const GLfloat *p = (const GLfloat *)pointer;
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_COLOR_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p + 3);
+        /* Color is "current color" in this format — we set it from
+         * the per-vertex color data implicitly via a separate path,
+         * but xscreensaver's gllist pattern is that color is the
+         * per-vertex material set via glColor (or, here, ncz_im_color).
+         * In practice, GL_C3F_V3F is unused by gllist.c's renderList
+         * path — both companion_quad/disc/heart use GL_N3F_V3F. We
+         * still wire it up so the link succeeds. */
+    } else if (format == GL_N3F_V3F) {
+        const GLfloat *p = (const GLfloat *)pointer;
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_NORMAL_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p + 3);
+        glNormalPointer(GL_FLOAT, 6 * sizeof(GLfloat), p);
+    }
+    /* Other formats (GL_T2F_V3F, GL_T2F_C3F_V3F, etc.) are not used
+     * by the legacy hacks we are porting here. */
+}
+
+/* glPointSize / glDrawBuffer / glClearDepthf — NOT in GLES3 core as
+ * standalone functions (glPointSize lives in the vertex shader as
+ * gl_PointSize; glDrawBuffer is the singular form of glDrawBuffers;
+ * glClearDepthf exists in GLES3 but isn't used by the legacy hacks
+ * being ported here). The hack sources call them through the
+ * vendored gl.h prototype that IS visible at the call site, so the
+ * prototypes are not the problem — the implementations are. Provide
+ * them as no-ops / passthroughs. */
+void glPointSize(GLfloat size)   { (void)size; /* future: uniform */ }
+void glDrawBuffer(GLenum buf)    { (void)buf;  /* single-buffer: front==back */ }
 
 void glGetFloatv(GLenum p, GLfloat *v) { (void)p; (void)v; }
 void glGetIntegerv(GLenum p, GLint *v) {

@@ -586,6 +586,59 @@ if opt_xscreensaver
     )
 
     # -----------------------------------------------------------------------
+    # Phase 2 — legacy 88-hack migration to native GLES3. With the
+    # GLES3 foundation now providing active stubs for the GL1 fixed-
+    # function API (glBegin/glVertex/glColor/glNormal/glTexCoord →
+    # ncz_im_*; glMatrixMode/glPushMatrix/glRotatef/glMultMatrixf →
+    # ncz_mat_stack_*; glLightfv/glMaterialfv → ncz_im_light_*/material),
+    # the vendored xscreensaver sources for these hacks compile and
+    # link directly against the GLES3 harness with no source edits —
+    # the "mechanical Phase 4+ porting pipeline" flagged as a future
+    # optimization in GLES3-MIGRATION-PHASE1.md, brought forward here
+    # because the surface gap (immediate-mode accumulator + matrix
+    # stack) was already bridged by the boing/companion pilots.
+    #
+    # The gl4es-routed `_demo` binary for each of these hacks is kept
+    # alive in the build (it depends on opt_gl4es which is off by
+    # default on build hosts without gl4es installed) so the dual-path
+    # is preserved while the native path is being verified. Once a
+    # full-88 visual verification passes, the gl4es-routed path is
+    # retired per the operator's directive.
+    # -----------------------------------------------------------------------
+
+    # Generic config: most legacy hacks just need the harness + the
+    # vendored source + the optional model / utility companions.
+    # 'c_args_extra' are -DSTANDALONE / -DHAVE_JWXYZ / etc. — the
+    # include-vs-xlockmore.h choice the vendored sources gate on.
+    legacy_gles3_hacks = [
+        {'name': 'antinspect',    'src': 'src/antinspect.c',     'extras': ['src/sphere.c'],                                 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'antspotlight',  'src': 'src/antspotlight.c',   'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'beats',         'src': 'src/beats.c',          'extras': ['src/sphere.c']},
+        {'name': 'blinkbox',      'src': 'src/blinkbox.c',       'extras': ['src/sphere.c']},
+        {'name': 'blocktube',     'src': 'src/blocktube.c',      'extras': []},
+        {'name': 'bouncingcow',   'src': 'src/bouncingcow.c',    'extras': ['src/cow_face.c', 'src/cow_hide.c', 'src/cow_hoofs.c', 'src/cow_horns.c', 'src/cow_tail.c', 'src/cow_udder.c', 'src/gllist.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'chompytower',   'src': 'src/chompytower.c',    'extras': ['src/doubletime.c', 'src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/spline.c', 'src/teeth_model.c', 'src/yarandom.c']},
+        {'name': 'crumbler',      'src': 'src/crumbler.c',       'extras': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'cube21',        'src': 'src/cube21.c',         'extras': []},
+    ]
+
+    foreach h : legacy_gles3_hacks
+        executable(
+            h['name'] + '_gles3',
+            files(common_gles3_sources + [
+                'src/gles3_harness.c',
+                h['src'],
+            ] + h.get('extras', [])) + gen_sources,
+            include_directories: inc,
+            dependencies: common_gles3_deps,
+            c_args: common_gles3_c_args + h.get('c_args_extra', []) + [
+                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
+            ],
+            install: false,
+        )
+    endforeach
+
+    # -----------------------------------------------------------------------
     # Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
     # Klein-bottle-cluster hacks + sphereeversion). These already use real
      # GLSL/GLES3 shaders upstream — they call glCreateShader /

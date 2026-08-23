@@ -1,37 +1,39 @@
 # Ported xscreensaver hacks
 
 A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
-target. Compiling is not enough: missing companion sources surface only at
-link time.
+or <name>_gles3 target. Compiling is not enough: missing companion
+sources surface only at link time.
 
-This count covers both gl4es-routed `_demo` binaries (88 entries
-below — the legacy path that runs through the GL4ES translation
-shim) AND the GLES3-native `_gles3` binaries (6 entries at the
-bottom — upstream xscreensaver 6.00+ hacks that already use real
-GLSL/GLES3 shaders and were ported in 2026-08-20, see
-UPSTREAM-GLES3-HACKS-2026-08-20.md).
+This count covers both gl4es-routed `_demo` binaries (the legacy path
+that runs through the GL4ES translation shim) AND the GLES3-native
+`_gles3` binaries (vendored xscreensaver source compiled against
+system libGLESv2 / libEGL with no translation shim).
 
-## Ported (88 legacy gl4es-routed)
+The operator's standing directive (2026-08-20): all 88 legacy hacks
+move off gl4es to native GLES3, no dual-binary split. The `_demo`
+binaries are kept in meson.build behind `-Dgl4es=enabled` (off by
+default on build hosts without gl4es installed) so the legacy path
+remains available while the native fan-out completes. They will be
+deleted in the final Phase 4+ step once every legacy hack has a
+verified native port.
+
+## Ported (86 legacy gl4es-routed)
+
+These 86 build as `<name>_demo` binaries when `-Dgl4es=enabled` is
+passed AND the system has gl4es installed at a known path. On hosts
+without gl4es (most), only the native `_gles3` binaries (next
+section) are built.
 
 | hack | companion sources |
 |---|---|
-| antinspect | sphere.c |
 | antspotlight | rotator.c, sphere.c, tube.c, yarandom.c |
-| beats | sphere.c |
-| boing | - |
-| blinkbox | sphere.c |
-| blocktube | - |
 | bouncingcow | cow_face.c, cow_hide.c, cow_hoofs.c, cow_horns.c, cow_tail.c, cow_udder.c, gllist.c, rotator.c, yarandom.c |
-| chompytower | doubletime.c, easing.c, gllist.c, normals.c, rotator.c, sphere.c, spline.c, teeth_model.c, yarandom.c |
-| crumbler | quickhull.c, rotator.c, yarandom.c |
-| cube21 | - |
 | cubestack | rotator.c, yarandom.c |
 | cubestorm | rotator.c, yarandom.c |
 | cubetwist | rotator.c, yarandom.c |
 | dangerball | rotator.c, sphere.c, tube.c, yarandom.c |
 | cubicgrid | rotator.c, yarandom.c |
 | cityflow | - |
-| companion | companion_disc.c, companion_heart.c, companion_quad.c, gllist.c, rotator.c, yarandom.c |
 | covid19 | rotator.c, sphere.c, tube.c, yarandom.c |
 | crackberg | - |
 | cubenetic | rotator.c, yarandom.c |
@@ -100,15 +102,64 @@ UPSTREAM-GLES3-HACKS-2026-08-20.md).
 | timetunnel | rotator.c, yarandom.c |
 | topblock | sphere.c, tube.c |
 | tronbit | doubletime.c, gllist.c, rotator.c, sphere.c, tronbit_idle1.c, tronbit_idle2.c, tronbit_no.c, tronbit_yes.c, yarandom.c |
-| unicrud | rotator.c, yarandom.c |
 | unknownpleasures | doubletime.c, easing.c |
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Ported (6 GLES3-native, no gl4es)
+## Ported (17 GLES3-native, no gl4es)
 
-These are the upstream xscreensaver 6.00+ Carsten Steger additions —
-already real GLSL/GLES3 shader code upstream, ported directly to the
+These 17 build as `<name>_gles3` binaries linked directly against
+system libGLESv2 / libEGL — no libGL.so.1, no gl4es, no translation
+shim. The vendored xscreensaver source compiles against the GLES3
+compat layer (`gles3_compat.h`) which routes every glBegin/glVertex/
+glColor/glNormal/glMatrixMode/glLightfv/glMaterialfv/glNewList/...
+call through to a small fixed-function shader pair and CPU vertex
+accumulator. Verified on this build host: `ldd <binary>` shows
+`libEGL.so.1` + `libGLESv2.so.2` + `libGLdispatch.so.0` only.
+
+### Phase 1 pilots (boing, companion)
+
+The first two native ports — boing (immediate-mode + matrix stack +
+lighting + ortho scanlines) and companion (gllist VBO conversion +
+display-list recorder). Hand-written ports in `src/gles3_boing.c` /
+`src/gles3_companion.c`. Verified on O6N real hardware 2026-08-20
+with multiple `grim` captures — see GLES3-MIGRATION-PHASE1.md for
+the full verification trail.
+
+### Phase 2 mechanical ports (9 new this round)
+
+These 9 use the same vendored xscreensaver source as the
+gl4es-routed `_demo` binary; the only thing different is that
+they are now built against the GLES3-native path with no source
+edits to the vendored hack. The active stubs in `gles3_compat.c`
+route glBegin/glVertex/glColor/glNormal/glMatrixMode/glLightfv/
+glMaterialfv/glNewList/glEndList/glCallList/glInterleavedArrays/
+glVertexPointer/glNormalPointer/glTexCoordPointer/etc. through
+the ncz_im_*/ncz_mat_stack_*/nczGLList_*/ncz_dl_* surface that
+emits native GLES3 calls. No `libGL.so.1` in the link for any of
+these. Visual rendering evidence was NOT obtained on the build
+host (no working Wayland display attached at run time); the
+verifiable evidence is the link-time check (`ninja -C build` links
+each target, `ldd` shows no libGL.so.1) which matches the project's
+established ported-only-if-LINKS rule.
+
+| hack | companion sources |
+|---|---|
+| antinspect_gles3 | sphere.c |
+| antspotlight_gles3 | rotator.c, sphere.c, tube.c, yarandom.c |
+| beats_gles3 | sphere.c |
+| blinkbox_gles3 | sphere.c |
+| blocktube_gles3 | - |
+| bouncingcow_gles3 | cow_face.c, cow_hide.c, cow_hoofs.c, cow_horns.c, cow_tail.c, cow_udder.c, gllist.c, rotator.c, yarandom.c |
+| boing_gles3 | - |
+| chompytower_gles3 | doubletime.c, easing.c, gllist.c, normals.c, rotator.c, sphere.c, spline.c, teeth_model.c, yarandom.c |
+| companion_gles3 | companion_disc.c, companion_heart.c, companion_quad.c, rotator.c, yarandom.c |
+| crumbler_gles3 | quickhull.c, rotator.c, yarandom.c |
+| cube21_gles3 | - |
+
+### Upstream xscreensaver 6.00+ GLES3 rewrites (6 Carsten Steger hacks)
+
+Already real GLSL/GLES3 shader code upstream, ported directly to the
 GLES3-native path (no gl4es, link against system libGLESv2 / libEGL
 on O6N's Mali-G720-Immortalis). See UPSTREAM-GLES3-HACKS-2026-08-20.md
 for the per-hack verification, the foundation extensions they needed,
@@ -123,7 +174,9 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **94** (88 gl4es-routed + 6 GLES3-native).
+Total ported: **103** (86 gl4es-routed + 17 GLES3-native).
+GLES3-native count: 2 (Phase 1) + 9 (Phase 2 mechanical) + 6 (Phase 1+ upstream) = 17.
+Remaining to migrate off gl4es: 86 - 9 = 77.
 
 ## Deferred (2)
 

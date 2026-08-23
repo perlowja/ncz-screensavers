@@ -402,24 +402,25 @@ void nczGLList_draw_wire(const nczGLListChain *chain);
 
 typedef enum {
     NCZ_DL_OP_GLLIST,    /* draw a previously-uploaded gllist chain */
-    NCZ_DL_OP_QUAD,      /* inline quad (4 vertices) with current color/normal */
-    NCZ_DL_OP_TRIANGLE,  /* inline triangle (3 vertices) with current color/normal */
-    NCZ_DL_OP_LINES,     /* inline line list with current color */
+    NCZ_DL_OP_INLINE,    /* inline immediate-mode batch (primitive +
+                            up to 16 verts × 12 floats each) */
 } nczDL_Op;
 
 typedef struct {
     /* For GLLIST: pointer to the chain (uploaded at init, stable ptr).
-     * For QUAD/TRIANGLE/LINES: a small inline vertex array. */
+     * For INLINE: NULL. */
     const nczGLListChain *chain;
-    /* Inline-vertex storage: up to 16 vertices (4 quads or one big
-     * line strip). Plenty for what companion emits inline. */
-    float verts[16 * 9];   /* 9 floats per vertex: pos(3) + normal(3) + color(3) */
-    int    vcount;
+    /* Inline-vertex storage: up to 16 vertices in the standard 12-
+     * float per-vertex format (pos3 + normal3 + color4 + uv2).
+     * Plenty for what the legacy hacks emit in one glBegin/glEnd. */
+    GLenum  primitive;          /* GL_TRIANGLES / GL_QUADS / GL_LINES / etc. */
+    float   verts[16 * 12];     /* 12 floats per vertex */
+    int     vcount;
     /* Color/material snapshot at recording time. */
-    float  color[4];
-    float  material_ambdiff[4];
-    bool   has_material;
-    bool   lit;
+    float   color[4];
+    float   material_ambdiff[4];
+    bool    has_material;
+    bool    lit;
 } nczDL_Rec;
 
 typedef struct {
@@ -433,18 +434,12 @@ int  ncz_dl_new(nczDL *dl);
 void ncz_dl_end(nczDL *dl);
 
 /* Record ops. ncz_dl_draw_chain records a gllist-chain draw;
- * ncz_dl_draw_inline records an inline immediate-mode batch whose
- * vertices have been accumulated by the caller via ncz_im_begin /
- * ... / ncz_im_end (those calls are no-ops on the live GL state when
- * a list is being recorded — see ncz_im_set_recording). */
+ * ncz_dl_draw_inline records an inline immediate-mode batch (a whole
+ * glBegin/glEnd pair captured by the recording-mode hooks in
+ * ncz_im_begin / vertex / color / end — see ncz_im_set_recording). */
 int  ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain);
-int  ncz_dl_draw_quad(nczDL *dl,
-                      const float *p0, const float *p1,
-                      const float *p2, const float *p3,
-                      const float *normal);
-int  ncz_dl_draw_triangle(nczDL *dl,
-                          const float *p0, const float *p1, const float *p2,
-                          const float *normal);
+int  ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
+                        const float *verts, int vcount);
 
 /* Replay: walks ops and emits the GLES3 draws. */
 void ncz_dl_call(const nczDL *dl);
