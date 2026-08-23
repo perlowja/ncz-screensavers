@@ -1690,8 +1690,12 @@ void glEnd(void)                      { ncz_im_end(); }
 void glVertex3fv(const GLfloat *v)    { ncz_im_vertex3f(v[0], v[1], v[2]); }
 void glVertex3f(GLfloat x, GLfloat y, GLfloat z) { ncz_im_vertex3f(x, y, z); }
 void glVertex2f(GLfloat x, GLfloat y) { ncz_im_vertex3f(x, y, 0.0f); }
+void glVertex3d(GLdouble x, GLdouble y, GLdouble z) { ncz_im_vertex3f((GLfloat)x, (GLfloat)y, (GLfloat)z); }
+void glVertex3dv(const GLdouble *v)   { ncz_im_vertex3f((GLfloat)v[0], (GLfloat)v[1], (GLfloat)v[2]); }
 void glColor3fv(const GLfloat *c)     { ncz_im_color3fv(c); }
 void glColor3f(GLfloat r, GLfloat g, GLfloat b)  { ncz_im_color3f(r, g, b); }
+void glColor3d(GLdouble r, GLdouble g, GLdouble b) { ncz_im_color3f((GLfloat)r, (GLfloat)g, (GLfloat)b); }
+void glColor3dv(const GLdouble *c)    { ncz_im_color3f((GLfloat)c[0], (GLfloat)c[1], (GLfloat)c[2]); }
 void glColor4fv(const GLfloat *c)     { ncz_im_color4fv(c); }
 void glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     ncz_im_color4f(r, g, b, a);
@@ -1701,9 +1705,71 @@ void glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a) {
 }
 void glNormal3fv(const GLfloat *v)    { ncz_im_normal3f(v[0], v[1], v[2]); }
 void glNormal3f(GLfloat x, GLfloat y, GLfloat z) { ncz_im_normal3f(x, y, z); }
+void glNormal3d(GLdouble x, GLdouble y, GLdouble z) { ncz_im_normal3f((GLfloat)x, (GLfloat)y, (GLfloat)z); }
+void glNormal3dv(const GLdouble *v)   { ncz_im_normal3f((GLfloat)v[0], (GLfloat)v[1], (GLfloat)v[2]); }
 void glTexCoord2fv(const GLfloat *v)  { ncz_im_tex_coord2f(v[0], v[1]); }
 void glTexCoord2f(GLfloat u, GLfloat v){ ncz_im_tex_coord2f(u, v); }
 void glEdgeFlag(GLboolean f)          { (void)f; }
+
+/* glColorMaterial — GL1 selector that, when enabled, routes the
+ * current color into the per-mesh material slot picked by (face,
+ * mode) instead of being treated as a separate per-vertex color
+ * channel.
+ *
+ * Correctness proof for the no-op stub in THIS port (full transcript
+ * with grep commands + GLSL excerpts is in
+ * docs/audit/phase3-fix-audit.txt §5):
+ *
+ *   1. The shader pair (gles3_compat.c VERT_SHADER at line 234 and
+ *      FRAG_SHADER at line 263, declared at lines 259 and 294 in
+ *      the shader source strings) has exactly ONE material-aware
+ *      line — the vertex shader's base color selection:
+ *
+ *          vec4 base = u_has_material ? u_material_color : a_color;
+ *
+ *      The fragment shader's lighting term uses v_color.rgb (which
+ *      is already `base` from the vertex shader) and has no separate
+ *      material input:
+ *
+ *          vec3 lit = v_color.rgb * (u_ambient + u_light_color * ndotl);
+ *
+ *   2. The u_has_material / u_material_color uniforms are written
+ *      from g_im.has_material / g_im.material at the matching
+ *      draw-emission points (gles3_compat.c line ~1084 and similar
+ *      mesh-buffer-flush sites). g_im.has_material flips to true
+ *      ONLY via ncz_im_material() (declared at line 757), which is
+ *      called ONLY from glMaterialfv / glMaterialf / glMateriali
+ *      (declared at lines 1628, 1636, 1643). glColor* calls never
+ *      touch g_im.material or g_im.has_material.
+ *
+ *   3. crackberg.c (the only legacy-hack caller in this dispatch —
+ *      `grep -nE 'glMaterial' src/crackberg.c` returns ZERO hits)
+ *      does not call glMaterial* anywhere in its source. So
+ *      g_im.has_material stays false from the start of rendering to
+ *      the end, and the shader's base is always `a_color` (the
+ *      per-vertex color set by glColor*). Under GL_COLOR_MATERIAL=on
+ *      or =off, the vertex output is identical. The single
+ *      glColorMaterial call at crackberg.c:1225 has no effect on
+ *      what the fragment shader produces, and hence no effect on
+ *      what crackberg renders.
+ *
+ *   4. The 12 other Phase 3 + glFrustum-cohort hacks also never call
+ *      glColorMaterial (full transcript in phase3-fix-audit.txt §5
+ *      Step 3), so the only binary whose link is influenced by this
+ *      stub is crackberg, and crackberg is provably inert.
+ *
+ * Conclusion: the no-op stub is provably correct for crackberg's
+ * specific usage. If a future port (Phase 3+ dispatch) combines
+ * glMaterial* with glColorMaterial, this stub will need to grow
+ * into real material-routing state: track a `g_im.color_material_mode`
+ * flag set by this function, and inside ncz_im_color() route to
+ * g_im.material (and flip g_im.has_material) when the flag is on.
+ * See phase3-fix-audit.txt §5 for the contrapositive — a hack that
+ * DID call glMaterial* would expose the stub as a silent rendering
+ * bug and is exactly the trigger condition for the implementation
+ * work above.
+ */
+void glColorMaterial(GLenum face, GLenum mode) { (void)face; (void)mode; }
 
 /* GL1 client-side vertex-array stubs. xscreensaver's sphere.c, tube.c
  * and a few other helpers use glVertexPointer / glNormalPointer /

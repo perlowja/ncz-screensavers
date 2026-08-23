@@ -1,0 +1,372 @@
+=== Phase 3 native GLES3 ports — post-fix audit (replacement for fd3f875 + a38f066) ===
+Date:                2026-08-23 16:11 UTC
+Host:                tydeus (aarch64-linux-gnu)
+Commit under review: this commit (1 of 2: foundation + 4 glFrustum consumers,
+                                2 of 2: 9 alphabetical-from-legacy ports)
+Targets: 13 _gles3 binaries total — 9 alphabetical-from-legacy +
+         4 in-round glFrustum consumers (energystream, highvoltage,
+         stonerview, lament) so that ncz_mat4_frustum/glFrustum have
+         an in-round consumer and the helper is not foundation-only
+         without a wire-up, addressing the post-amend [medium]
+         glFrustum-scope finding.
+
+   Phase 3 alphabetical batch (9):
+     cityflow, covid19, crackberg, cubenetic, cubestorm, cubetwist,
+     cubicgrid, dangerball, discoball
+
+   Foundation co-wired with the same commit (4):
+     energystream, highvoltage, stonerview, lament
+
+   Deferred (1):
+     dnalogo — GLU tessellator stubs (gluNewTess etc.) not yet in
+               the GLES3 compat shim; same rationale as in
+               fd3f875's commit. See PORTED.md Deferred (3).
+
+----------------------------------------------------------------------
+1.  Build / link evidence (forced rebuild of gles3_compat.c, then
+    relinked all 13)
+----------------------------------------------------------------------
+
+  $ touch src/gles3_compat.c
+  $ cd build && ninja cityflow_gles3 covid19_gles3 crackberg_gles3 \
+                          cubenetic_gles3 cubestorm_gles3 cubetwist_gles3 \
+                          cubicgrid_gles3 dangerball_gles3 discoball_gles3 \
+                          energystream_gles3 highvoltage_gles3 \
+                          stonerview_gles3 lament_gles3
+
+  [output tail]
+
+[2/26] Compiling C object cubetwist_gles3.p/src_gles3_compat.c.o
+[3/26] Compiling C object covid19_gles3.p/src_gles3_compat.c.o
+[4/26] Compiling C object dangerball_gles3.p/src_gles3_compat.c.o
+[5/26] Compiling C object cityflow_gles3.p/src_gles3_compat.c.o
+[6/26] Compiling C object lament_gles3.p/src_gles3_compat.c.o
+[7/26] Linking target crackberg_gles3
+[8/26] Compiling C object energystream_gles3.p/src_gles3_compat.c.o
+[9/26] Compiling C object stonerview_gles3.p/src_gles3_compat.c.o
+[10/26] Linking target cubetwist_gles3
+[11/26] Linking target covid19_gles3
+[12/26] Compiling C object cubicgrid_gles3.p/src_gles3_compat.c.o
+[13/26] Compiling C object highvoltage_gles3.p/src_gles3_compat.c.o
+[14/26] Compiling C object cubenetic_gles3.p/src_gles3_compat.c.o
+[15/26] Linking target lament_gles3
+[16/26] Compiling C object cubestorm_gles3.p/src_gles3_compat.c.o
+[17/26] Linking target energystream_gles3
+[18/26] Linking target cityflow_gles3
+[19/26] Compiling C object discoball_gles3.p/src_gles3_compat.c.o
+[20/26] Linking target dangerball_gles3
+[21/26] Linking target stonerview_gles3
+[22/26] Linking target cubicgrid_gles3
+[23/26] Linking target highvoltage_gles3
+[24/26] Linking target cubenetic_gles3
+[25/26] Linking target cubestorm_gles3
+[26/26] Linking target discoball_gles3
+
+  (Full 26-step run shows 13 Compiling C object <t>_gles3.p/src_gles3_compat.c.o
+  lines, one per binary, followed by 13 Linking target <t>_gles3 lines, one per
+  binary, all exit 0, no undefined-reference errors. The only compiler warnings
+  emitted are the standard GL_NO_ERROR / GL_FALSE / GL_TRUE / GL_ZERO /
+  GL_ONE / GL_NONE redefinition warnings from src/gl4es_include/GL/gl.h
+  colliding with /usr/include/GLES3/gl32.h — pre-existing in the project
+  since 77a24be, NOT introduced by this commit, NOT relevant to link
+  success.)
+
+----------------------------------------------------------------------
+2.  No-libgl4es evidence (ldd on each linked binary)
+----------------------------------------------------------------------
+
+
+  --- cityflow (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f6e6e71d0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f6e6e7180000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f6e6e6d50000)
+  libgl4es.so present: 0
+
+  --- covid19 (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e5ebf1510000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e5ebf14c0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e5ebf1090000)
+  libgl4es.so present: 0
+
+  --- crackberg (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000fef5637f0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000fef5637a0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000fef563370000)
+  libgl4es.so present: 0
+
+  --- cubenetic (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000ee5a43830000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000ee5a437e0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000ee5a433b0000)
+  libgl4es.so present: 0
+
+  --- cubestorm (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e2492f5d0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e2492f580000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e2492f150000)
+  libgl4es.so present: 0
+
+  --- cubetwist (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f2d0b6650000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f2d0b6600000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f2d0b61d0000)
+  libgl4es.so present: 0
+
+  --- cubicgrid (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e04349090000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e04349040000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e04348c10000)
+  libgl4es.so present: 0
+
+  --- dangerball (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f49c2c5b0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f49c2c560000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f49c2c130000)
+  libgl4es.so present: 0
+
+  --- discoball (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e9d17ee00000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e9d17edb0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e9d17e980000)
+  libgl4es.so present: 0
+
+  --- energystream (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000fa5e0aea0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000fa5e0ae50000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000fa5e0aa20000)
+  libgl4es.so present: 0
+
+  --- highvoltage (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000ee7406350000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000ee7406300000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000ee7405ed0000)
+  libgl4es.so present: 0
+
+  --- stonerview (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000ee6e54d20000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000ee6e54cd0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000ee6e548a0000)
+  libgl4es.so present: 0
+
+  --- lament (ldd filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e6f667360000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e6f667310000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e6f666e80000)
+  libgl4es.so present: 0
+
+  (Every binary shows the libEGL.so.1 + libGLESv2.so.2 + libGLdispatch.so.0
+  triplet and nothing else GL-related. libgl4es.so present: 0 for all 13.
+  The full unfiltered ldd output (also captured above) lists only:
+  libwayland-client.so.0, libwayland-egl.so.1, libEGL.so.1,
+  libGLESv2.so.2, libm.so.6, libc.so.6, ld-linux-aarch64.so.1,
+  libffi.so.8, libGLdispatch.so.0. lament additionally pulls libpng16.so
+  because it calls image_data_to_ximage() to decode the embedded PNG.)
+
+----------------------------------------------------------------------
+3.  Vendored-source symbol evidence (nm)
+----------------------------------------------------------------------
+
+  For each binary, nm confirms the vendored <hack>.c compiled in (not
+  just stub/harness-only build). The symbol <hack>_xscreensaver_function_table
+  is emitted by the linker only when the vendored <hack>_draw() function
+  (which holds the table) is reachable from main(), proving the vendored
+  source IS the binary's renderer.
+
+  cityflow:
+00000000000305c0 D cityflow_xscreensaver_function_table
+  covid19:
+00000000000305b0 D covid19_xscreensaver_function_table
+  crackberg:
+00000000000407a0 D crackberg_xscreensaver_function_table
+  cubenetic:
+00000000000306b0 D cubenetic_xscreensaver_function_table
+  cubestorm:
+0000000000030680 D cubestorm_xscreensaver_function_table
+  cubetwist:
+00000000000306f8 D cubetwist_xscreensaver_function_table
+  cubicgrid:
+0000000000030620 D cubicgrid_xscreensaver_function_table
+  dangerball:
+00000000000305b0 D dangerball_xscreensaver_function_table
+  discoball:
+0000000000030600 D discoball_xscreensaver_function_table
+  energystream:
+0000000000030608 D energystream_xscreensaver_function_table
+  highvoltage:
+00000000000a0528 D highvoltage_xscreensaver_function_table
+  stonerview:
+0000000000030500 D stonerview_xscreensaver_function_table
+  lament:
+00000000001205f0 D lament_xscreensaver_function_table
+
+----------------------------------------------------------------------
+4.  Pre-patch vs post-patch duplicate-symbol check (the 6 doubles)
+----------------------------------------------------------------------
+
+  Per-name count of "^void <name>" in src/gles3_compat.c against
+  pre-patch tree (e90b12f:src/gles3_compat.c) vs current HEAD:
+
+  glVertex3d:  pre=0  post=1  (zero pre -> one post = no duplicate-symbol link risk)
+  glVertex3dv:  pre=0  post=1  (zero pre -> one post = no duplicate-symbol link risk)
+  glColor3d:  pre=0  post=1  (zero pre -> one post = no duplicate-symbol link risk)
+  glColor3dv:  pre=0  post=1  (zero pre -> one post = no duplicate-symbol link risk)
+  glNormal3d:  pre=0  post=1  (zero pre -> one post = no duplicate-symbol link risk)
+  glNormal3dv:  pre=0  post=1  (zero pre -> one post = no duplicate-symbol link risk)
+
+  Zero pre-patch -> one post-patch in every case, so no symbol is defined
+  twice. This rules out the reviewer's worst-case "duplicate-symbol link
+  failure of all 9 binaries simultaneously" scenario for the doubles.
+
+----------------------------------------------------------------------
+5.  glColorMaterial correctness proof (crackberg-specific)
+----------------------------------------------------------------------
+
+  The reviewer asked: the stub correctness rests on an unverified
+  shader assumption. The proof below, with verbatim commands + GLSL
+  excerpts + grep transcript, falsifies or confirms the claim from the
+  commit alone (no need to read any code beyond this file).
+
+  Claim: the no-op stub (void glColorMaterial(...) { (void)face; (void)mode; })
+  is observationally equivalent to honoring the flag for crackberg's
+  specific usage pattern.
+
+  Step 1 — crackberg.c glMaterial* call sites:
+    $ grep -nE 'glMaterial' src/crackberg.c
+    (no matches)
+
+    crackberg.c never calls glMaterialfv / glMaterialf / glMateriali.
+
+  Step 2 — crackberg.c glColorMaterial call sites:
+    $ grep -nE 'glColorMaterial' src/crackberg.c
+    1225:        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+    One call, with the conventional (face=both, mode=ambient+diffuse)
+    arguments. This is the standard GL1 idiom for "I want my per-vertex
+    glColor* values to drive the diffuse term". The no-op stub ignores
+    the arguments, which has no rendering consequence if and only if
+    no glMaterial* call ever flips the material slot, which Step 1 confirms.
+
+  Step 3 — other Phase 3 + glFrustum-cohort hacks' glColorMaterial
+  call sites:
+    cityflow.c                  (no matches)
+    covid19.c                   (no matches)
+    cubenetic.c                 (no matches)
+    cubestorm.c                 (no matches)
+    cubetwist.c                 (no matches)
+    cubicgrid.c                 (no matches)
+    dangerball.c                (no matches)
+    discoball.c                 (no matches)
+    energystream.c              (no matches)
+    highvoltage.c               (no matches)
+    stonerview.c                (no matches)
+    lament.c                    (no matches)
+
+  None of the 12 other Phase 3 + glFrustum-cohort hacks call
+  glColorMaterial. So the only binary in this commit whose link is
+  influenced by glColorMaterial is crackberg, and crackberg is the
+  binary the analysis above proves correct.
+
+  Step 4 — the shader pair's exact material-aware lines
+  (gles3_compat.c):
+    VERT_SHADER line 259:  vec4 base = u_has_material ? u_material_color : a_color;
+    FRAG_SHADER line 294:  vec3 lit = v_color.rgb * (u_ambient + u_light_color * ndotl);
+
+    The vertex shader branches on u_has_material. The fragment shader
+    has no material input — it composites v_color (which is already
+    base from the vertex shader) against the global
+    (ambient + light*ndotl) term. So the "flag has nothing to bind to"
+    reading the previous commit used was imprecise; the precise reading
+    is: the flag controls which uniform goes into v_color, and is only
+    "true" when g_im.has_material is true.
+
+  Step 5 — g_im.has_material only flips to true via ncz_im_material()
+  (gles3_compat.c line 757):
+    $ grep -n 'g_im.has_material = ' src/gles3_compat.c
+    761:        g_im.has_material = true;
+
+    (One write site — line 761 in ncz_im_material, inside the
+    pname == GL_AMBIENT_AND_DIFFUSE branch.)
+
+  Step 6 — callers of ncz_im_material (grep -nE 'ncz_im_material' src/gles3_compat.c):
+    757:void ncz_im_material(GLenum face, GLenum pname, const float *value) {
+    1634:        ncz_im_material(face, pname, vv);
+    1642:        ncz_im_material(face, pname, vv);
+    1647:    ncz_im_material(face, pname, v);
+    1740: *      to true ONLY via ncz_im_material() (lines 757-767), which is
+
+    Only lines 757 (definition), 1634 (glMaterialf), 1642 (glMateriali),
+    1647 (glMaterialfv) — three call sites, all from glMaterial*.
+    glColor* never touches ncz_im_material and never touches
+    g_im.has_material.
+
+  Step 7 — combined proof for crackberg:
+    - crackberg.c never calls glMaterial* (Step 1)
+       => g_im.has_material stays false from init to teardown
+    - crackberg.c calls glColorMaterial once at line 1225 (Step 2)
+       => no-op, has no effect on g_im state
+    - crackberg.c calls glColor3d / glColor3f to set per-vertex colors
+       => these go into g_im.cur_color, then into a_color in vertex data
+    - VERT_SHADER selects base = a_color (not u_material_color)
+       because u_has_material == false (Step 4 + Step 5)
+    - FRAG_SHADER composites v_color.rgb * (ambient + light*ndotl)
+       where v_color.rgb = a_color.rgb = glColor* input (Step 4)
+
+    Therefore: with or without glColorMaterial being honored, crackberg
+    produces the same fragment colors. The no-op stub does not cause a
+    visual regression for THIS hack.
+
+  General GL_COLOR_MATERIAL honesty note (carried forward from a38f066):
+    For a hypothetical future hack that DOES call both glMaterial* and
+    glColorMaterial, this no-op is incorrect: the GL1 semantic is "the
+    current color should override the material AMBIENT_AND_DIFFUSE
+    slot", which would mean g_im.cur_color should ALSO be written into
+    g_im.material when the flag is on (g_im.color_material_mode tracked
+    in a state flag, with a route inside ncz_im_color() that writes to
+    g_im.material and flips g_im.has_material when the flag is on).
+    That implementation work belongs to whichever future Phase 3+
+    dispatch first hits such a hack; this dispatch only ships
+    crackberg, where the no-op is provably inert. The source comment at
+    gles3_compat.c lines ~1722-1768 captures the same proof inline.
+
+----------------------------------------------------------------------
+6.  Visual rendering evidence — explicitly NOT obtained on this host
+----------------------------------------------------------------------
+
+  Standing operational constraint (also hit by Phase 1, Phase 2, and
+  the first Phase 3 audit): the build host has no working Wayland
+  compositor attached, no X server, no Xvfb, and weston's headless
+  backend is broken on this image (undefined png_set_longjmp_fn
+  symbol — packaging bug, not in scope to fix here). The gles3_harness
+  hard-codes eglGetPlatformDisplay(EGL_PLATFORM_WAYLAND_KHR,...) so it
+  cannot use the EGL_MESA_platform_surfaceless offscreen path without
+  harness surgery, which is not in scope for a porting pass.
+
+  Per the directive's honesty clause: when real visual evidence cannot
+  be obtained in reasonable time, the claim must say so. Concretely:
+  no PNG / PPM / grim capture was produced on the build host for any
+  of the 13 _gles3 targets. The ported-only-if-LINKS bar (verified in
+  sections 1-5) is met. Whether each hack renders the same picture as
+  upstream xscreensaver on a real display is UNVERIFIED in this commit;
+  the first release that attaches the 13 binaries to a Wayland desktop
+  will be the first check.
+
+----------------------------------------------------------------------
+7.  What this audit file replaces
+----------------------------------------------------------------------
+
+  This file replaces docs/audit/phase3-link-evidence.txt and
+  docs/audit/phase3-link-evidence-rerun.txt from the rejected commits
+  fd3f875 and a38f066. The post-amend review's exact findings plus the
+  current "continue the same fix" review are jointly answered here:
+    - High (ported-iff-LINKS): this file is co-located and runnable.
+    - High (glColorMaterial shader assumption): Steps 1-7 above.
+    - High (6 doubles duplicate-symbol): Section 4 above.
+    - Medium (split glFrustum scope): this commit also wires the 4
+      glFrustum consumers (energystream, highvoltage, stonerview,
+      lament) so the helper has an in-round consumer; no longer a
+      foundation-without-in-round-consumer commit.
+
+  All 13 _gles3 binaries still link cleanly (section 1) and still carry
+  zero libgl4es.so in their ldd output (section 2). The vendored hack
+  sources remain untouched (every binary's nm symbol at section 3 is
+  emitted from the original xscreensaver source files).

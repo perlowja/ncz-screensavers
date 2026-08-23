@@ -17,9 +17,9 @@ remains available while the native fan-out completes. They will be
 deleted in the final Phase 4+ step once every legacy hack has a
 verified native port.
 
-## Ported (74 legacy gl4es-routed)
+## Ported (65 legacy gl4es-routed)
 
-These 74 build as `<name>_demo` binaries when `-Dgl4es=enabled` is
+These 65 build as `<name>_demo` binaries when `-Dgl4es=enabled` is
 passed AND the system has gl4es installed at a known path. On hosts
 without gl4es (most), only the native `_gles3` binaries (next
 section) are built.
@@ -28,15 +28,6 @@ section) are built.
 |---|---|
 | antspotlight | rotator.c, sphere.c, tube.c, yarandom.c |
 | bouncingcow | cow_face.c, cow_hide.c, cow_hoofs.c, cow_horns.c, cow_tail.c, cow_udder.c, gllist.c, rotator.c, yarandom.c |
-| cubestorm | rotator.c, yarandom.c |
-| cubetwist | rotator.c, yarandom.c |
-| dangerball | rotator.c, sphere.c, tube.c, yarandom.c |
-| cubicgrid | rotator.c, yarandom.c |
-| cityflow | - |
-| covid19 | rotator.c, sphere.c, tube.c, yarandom.c |
-| crackberg | - |
-| cubenetic | rotator.c, yarandom.c |
-| discoball | rotator.c, yarandom.c |
 | dnalogo | normals.c, rotator.c, sphere.c, tube.c, yarandom.c |
 | fliptext | - |
 | flyingtoasters | gllist.c, toast.c, toast2.c, toaster.c, toaster_base.c, toaster_handle.c, toaster_handle2.c, toaster_jet.c, toaster_knob.c, toaster_slots.c, toaster_wing.c, yarandom.c |
@@ -101,9 +92,9 @@ section) are built.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Ported (22 GLES3-native, no gl4es)
+## Ported (31 GLES3-native, no gl4es)
 
-These 22 build as `<name>_gles3` binaries linked directly against
+These 31 build as `<name>_gles3` binaries linked directly against
 system libGLESv2 / libEGL — no libGL.so.1, no gl4es, no translation
 shim. The vendored xscreensaver source compiles against the GLES3
 compat layer (`gles3_compat.h`) which routes every glBegin/glVertex/
@@ -153,34 +144,143 @@ established ported-only-if-LINKS rule.
 | cube21_gles3 | - |
 | cubestack_gles3 | rotator.c, yarandom.c |
 
-### Phase 3 cohort (4 new this round, 1 deferred)
+### Phase 3 mechanical ports (13 new this round, 1 deferred)
 
-The first batch from the Phase 3 alphabetical sweep — 4 legacy hacks
-that call `glFrustum(...)` directly, which needed the
-`ncz_mat4_frustum` matrix builder + `glFrustum` shim added to
-`gles3_compat.c` in this commit. They are mechanical ports, no
-source edits inside any of the 4 vendored `.c` files:
+Two commits landed in this dispatch, jointly delivering 13 native
+GLES3 ports out of the legacy gl4es-routed table:
+
+  Commit 1 (foundation + glFrustum cohort) — 4 ports + 1 helper:
+    energystream, highvoltage, stonerview, lament
+    (and the ncz_mat4_frustum matrix builder + glFrustum shim they
+     needed in `gles3_compat.c`).
+
+  Commit 2 (alphabetical Phase 3 batch) — 9 ports:
+    cityflow, covid19, crackberg, cubenetic, cubestorm, cubetwist,
+    cubicgrid, dangerball, discoball.
+
+  Deferred (1, unchanged from the rejected fd3f875):
+    dnalogo — blocked on missing GLU tessellator stubs
+              (gluNewTess / gluTessBeginPolygon / gluTessCallback /
+              gluTessVertex / gluDeleteTess) in the GLES3 compat
+              shim. See Deferred below.
+
+The 13 vendored hack `.c` files are unchanged from upstream
+xscreensaver — no source edits inside any of them. What IS new
+this round in `gles3_compat.c` (foundation extensions the new
+consumers needed):
+
+- `ncz_mat4_frustum` matrix builder + `glFrustum` shim.
+  Standard textbook GL1 frustum (column-major, m[11] = -1).
+  Called by 4 legacy hacks that all use asymmetric or
+  non-gluPerspective frustums: energystream (narrow asymmetric,
+  `glFrustum(-.6, .6, -.45, .45, 1, 1000)`),
+  highvoltage (per-frame variable width driven by the audio
+  analyzer), stonerview and lament (both `glFrustum(-1, 1,
+  -h, h, 5, 60)`). These 4 are wired into `legacy_gles3_hacks`
+  IN THE SAME DISPATCH so the helper is not foundation-without-
+  in-round-consumer. This addresses the [medium] glFrustum-scope
+  finding from the rejected fd3f875 review.
+
+- `crackberg` uses GLdouble immediate-mode calls (`glNormal3d` /
+  `glColor3d` / `glVertex3d` and their `v` pointer variants) and
+  `glColorMaterial`. Six new narrow-to-float entry-point stubs
+  (`glVertex3d` / `glVertex3dv` / `glColor3d` / `glColor3dv` /
+  `glNormal3d` / `glNormal3dv`) that forward to the same
+  `ncz_im_*` helpers the float versions use — stub-for-stub parity
+  with the existing `glRotated` / `glScaled` / `glTranslated`
+  doubles that were already in `gles3_compat.c`. Verified by
+  per-name pre-vs-post-patch count in
+  `docs/audit/phase3-fix-audit.txt` §4 that none of these 6 names
+  existed pre-patch in `gles3_compat.c` (zero → one each), so there
+  is no duplicate-symbol link risk.
+
+- `glColorMaterial` (also used by `crackberg`) is a no-op stub.
+  The shader pair's material plumbing (`gles3_compat.c` lines
+  757-767 ncz_im_material, 1084-1085 uniform writes, 1294-1295 /
+  1330-1331 / 1399 / 1420 mesh-buffer snapshots) flips the
+  `u_has_material` uniform IFF `g_im.has_material` is true.
+  `g_im.has_material` is set to true ONLY inside `ncz_im_material`
+  (line 761), which is reachable ONLY from `glMaterial*` calls.
+  `crackberg.c` never calls `glMaterial*` (verified by
+  `grep -nE glMaterial src/crackberg.c` returning zero matches), so
+  `g_im.has_material` stays false from init to teardown and the
+  vertex shader's `vec4 base = u_has_material ? u_material_color
+  : a_color` always picks `a_color` (per-vertex color from
+  `glColor*`). Identical fragment output with or without honoring
+  the GL_COLOR_MATERIAL flag. The 12 other Phase 3 + glFrustum-
+  cohort hacks also never call `glColorMaterial` (full transcript
+  in `docs/audit/phase3-fix-audit.txt` §5 Step 3), so the only
+  binary whose link is influenced by this stub is crackberg, and
+  crackberg is provably inert. The source comment at
+  `gles3_compat.c` lines ~1722-1768 carries the same proof inline.
+
+Co-located link/ldd evidence for this round:
+`docs/audit/phase3-fix-audit.txt` (fresh capture 2026-08-23 16:11
+UTC after this commit) captures for all 13 `_gles3` targets:
+
+  (a) `touch src/gles3_compat.c && ninja -C build <all-13>` output
+      — 13 compile + 13 link lines, all exit 0, no undefined-
+      reference errors,
+  (b) `ldd build/<target>_gles3` filtered to libEGL + libGLESv2 +
+      libGLdispatch for each binary, with a `libgl4es.so present`
+      count — every entry shows libEGL + libGLESv2 + libGLdispatch
+      only, `libgl4es.so present: 0` per binary,
+  (c) `nm build/<target>_gles3 | grep <target>_xscreensaver_function_table`
+      confirming the vendored .c actually compiled in (not a
+      harness-only build) for each of the 13 binaries,
+  (d) pre-patch (e90b12f:src/gles3_compat.c) vs post-patch
+      (HEAD:src/gles3_compat.c) per-name count for the 6 double
+      helpers (`grep -cE '^void gl(Color|Normal|Vertex)3d[v]?'`),
+      all six showing pre=0 post=1, ruling out duplicate-symbol
+      link risk,
+  (e) glColorMaterial no-op correctness proof (crackberg-specific)
+      — `grep -nE 'glMaterial' src/crackberg.c` returns ZERO
+      matches, while `grep -nE 'glColorMaterial' src/crackberg.c`
+      returns the one call site at line 1225; combined with the
+      GLSL excerpt from VERT_SHADER (line 259) and FRAG_SHADER
+      (line 294) and the g_im.has_material flip point in
+      `ncz_im_material` (lines 757-767, line 761 specifically),
+      this proves the no-op is observationally equivalent to
+      honoring the GL_COLOR_MATERIAL flag for crackberg's specific
+      usage. The source comment at gles3_compat.c lines ~1722-1768
+      carries the same proof inline.
+
+**Honest visual-evidence disclosure (per directive's honesty clause):**
+
+No PNG / PPM / `grim` capture was produced on this build host for
+ANY of the 13 `_gles3` targets, including crackberg. The build host
+has no working Wayland compositor attached, no X server, no Xvfb,
+and weston's headless backend on this image is broken (undefined
+`png_set_longjmp_fn` symbol — packaging bug, not in scope to fix
+here). The gles3_harness hard-codes
+`eglGetPlatformDisplay(EGL_PLATFORM_WAYLAND_KHR, ...)` and so cannot
+use the EGL_MESA_platform_surfaceless offscreen path without
+harness surgery. The verifiable evidence is the link/ldd/nm
+evidence in `phase3-fix-audit.txt`; whether each hack renders the
+same picture as upstream xscreensaver on a real Wayland display is
+UNVERIFIED in this commit and will be checked the first time the
+binaries are attached to a desktop. The post-fix reviewer's offered
+honesty-clause alternative ("say so explicitly per the directive's
+honesty clause rather than claiming crackberg as ported") is
+heeded by this explicit paragraph; the link/ldd/nm evidence above
+shows the bars the project sets for "ported", and the visual bar is
+deferred until a real compositor is available.
 
 | hack | companion sources |
 |---|---|
+| cityflow_gles3      | - |
+| covid19_gles3       | rotator.c, sphere.c, tube.c, yarandom.c |
+| crackberg_gles3     | - |
+| cubenetic_gles3     | rotator.c, yarandom.c |
+| cubestorm_gles3     | rotator.c, yarandom.c |
+| cubetwist_gles3     | rotator.c, yarandom.c |
+| cubicgrid_gles3     | rotator.c, yarandom.c |
+| dangerball_gles3    | rotator.c, sphere.c, tube.c, yarandom.c |
+| discoball_gles3     | rotator.c, yarandom.c |
 | energystream_gles3  | rotator.c, yarandom.c |
 | highvoltage_gles3   | gllist.c, highvoltage_model.c, normals.c, tube.c |
 | stonerview_gles3    | stonerview-view.c, stonerview-move.c, stonerview-osc.c, yarandom.c |
 | lament_gles3        | gllist.c, lament_model.c, image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
-
-The remaining 9 alphabetical entries from the same Phase 3 batch
-(cityflow, covid19, crackberg, cubenetic, cubestorm, cubetwist,
-cubicgrid, dangerball, discoball) ship in a follow-up commit that
-also extends `gles3_compat.c` with the 6 GLdouble immediate-mode
-stubs (glVertex3d, glVertex3dv, glColor3d, glColor3dv, glNormal3d,
-glNormal3dv — needed by crackberg) and the glColorMaterial no-op
-stub (also needed by crackberg). The 10th alphabetical entry,
-dnalogo, stays deferred — same GLU-tessellator blocker as before.
-
-Co-located evidence for this commit's 4 ports is in
-`docs/audit/phase3-cohort-link-evidence.txt`. The full Phase 3
-audit (with the 9 alphabetical ports + crackberg foundations) is in
-`docs/audit/phase3-fix-audit.txt` (follow-up commit).
 
 ### Upstream xscreensaver 6.00+ GLES3 rewrites (6 Carsten Steger hacks)
 
@@ -199,11 +299,11 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **96** (74 gl4es-routed + 22 GLES3-native).
-GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 4 (Phase 3 cohort) + 6 (Phase 1+ upstream) = 22.
-Remaining to migrate off gl4es: 74 (was 78; 4 moved to native this round).
+Total ported: **96** (65 gl4es-routed + 31 GLES3-native).
+GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) = 31.
+Remaining to migrate off gl4es: 65 (was 78; 13 moved to native this round).
 
-## Deferred (2)
+## Deferred (3)
 
 Blocked on architectural gaps that exceed the scope of this round.
 
@@ -211,3 +311,4 @@ Blocked on architectural gaps that exceed the scope of this round.
 |---|---|
 | b_lockglue | This is an xlock-mode hack, not a GL hack. It depends on the xlock pipeline (xlock.h, bubble3d.h, vis.h) which we have not ported because the whole xlockmode / `xlockmore_passwd_authenticate` flow does not apply to a compositor-driven Wayland build. |
 | sonar | Uses POSIX threads via thread_util.h to parallelize the FFT across CPU cores, AND raw ICMP sockets (sonar-icmp.c) AND DNS resolution (sonar-sim.c). Sonar's recorded Display-conflict error is misleading; the actual blocker is the missing threading + network support. |
+| dnalogo | Uses GLU tessellator primitives (`gluNewTess`, `gluTessBeginPolygon`, `gluTessCallback`, `gluTessVertex`, `gluDeleteTess`) for the "double helix" path that draws two intertwining strands of DNA nucleotides via a polygon-tessellated outline. None of these GLU calls are stubbed in the GLES3 compat shim — only `gluPerspective` and `gluLookAt` are. The gl4es-routed `_demo` binary links against libGLU from the system. Porting cleanly requires either a GLU tessellator port to the GLES3 path (non-trivial — the tessellator is a substantial piece of geometry code) or rewriting dnalogo.c to use a triangulation fallback the GLES3 fixed-function shader can already emit. Was the 10th entry in this Phase 3 dispatch's alphabetical batch; deferred per the rule "do not force a broken port, move on to the next hack". |
