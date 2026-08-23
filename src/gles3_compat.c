@@ -1720,10 +1720,8 @@ void glEdgeFlag(GLboolean f)          { (void)f; }
  * with grep commands + GLSL excerpts is in
  * docs/audit/phase3-fix-audit.txt §5):
  *
- *   1. The shader pair (gles3_compat.c VERT_SHADER at line 234 and
- *      FRAG_SHADER at line 263, declared at lines 259 and 294 in
- *      the shader source strings) has exactly ONE material-aware
- *      line — the vertex shader's base color selection:
+ *   1. The shader pair has exactly ONE material-aware line —
+ *      the vertex shader's base color selection:
  *
  *          vec4 base = u_has_material ? u_material_color : a_color;
  *
@@ -1735,12 +1733,12 @@ void glEdgeFlag(GLboolean f)          { (void)f; }
  *
  *   2. The u_has_material / u_material_color uniforms are written
  *      from g_im.has_material / g_im.material at the matching
- *      draw-emission points (gles3_compat.c line ~1084 and similar
- *      mesh-buffer-flush sites). g_im.has_material flips to true
- *      ONLY via ncz_im_material() (declared at line 757), which is
- *      called ONLY from glMaterialfv / glMaterialf / glMateriali
- *      (declared at lines 1628, 1636, 1643). glColor* calls never
- *      touch g_im.material or g_im.has_material.
+ *      draw-emission points (gles3_compat.c lines 1081-1082, 1291-1292,
+ *      1327-1328). g_im.has_material flips to true ONLY via
+ *      ncz_im_material() (declared at line 754, with the flip at
+ *      line 758), which is called ONLY from glMaterialfv / glMaterialf
+ *      / glMateriali (declared at lines 1628, 1636, 1643). glColor*
+ *      calls never touch g_im.material or g_im.has_material.
  *
  *   3. crackberg.c (the only legacy-hack caller in this dispatch —
  *      `grep -nE 'glMaterial' src/crackberg.c` returns ZERO hits)

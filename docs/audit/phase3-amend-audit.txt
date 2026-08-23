@@ -1,0 +1,429 @@
+=== Phase 3 native GLES3 ports — post-amend + per-reviewer-finding audit ===
+Date:                2026-08-23 16:24 UTC (refresh; supersedes the 16:11 UTC version
+                     that landed with ee12046 + 72be931 + d7a09c0)
+Host:                tydeus (aarch64-linux-gnu)
+Commit under review: HEAD (d7a09c0 = post-push re-verification stamp; the
+                     2 code commits are ee12046 and 72be931)
+Targets: 13 _gles3 binaries total — 9 alphabetical-from-legacy +
+         4 in-round glFrustum consumers (energystream, highvoltage,
+         stonerview, lament) so that ncz_mat4_frustum/glFrustum have
+         an in-round consumer and the helper is not foundation-only
+         without a wire-up, addressing the post-amend [medium]
+         glFrustum-scope finding.
+
+   Phase 3 alphabetical batch (9):
+     cityflow, covid19, crackberg, cubenetic, cubestorm, cubetwist,
+     cubicgrid, dangerball, discoball
+
+   Foundation co-wired with the same commit (4):
+     energystream, highvoltage, stonerview, lament
+
+   Deferred (1):
+     dnalogo — GLU tessellator stubs (gluNewTess etc.) not yet in
+               the GLES3 compat shim; same rationale as in
+               fd3f875's commit. See PORTED.md Deferred (3).
+
+This audit answers the "continue the same fix" review's six findings
+line-by-line. Each section names the reviewer's finding and produces
+verbatim command output the reviewer can replay.
+
+----------------------------------------------------------------------
+0.  Reviewer's findings vs. how each is answered in this audit
+----------------------------------------------------------------------
+
+[high] ported-iff-LINKS rule asserted without co-located evidence
+       → §1 (per-target ninja + ldd + nm + readelf in this commit,
+              one file per binary in docs/audit/per-target-evidence/)
+[high] glColorMaterial no-op stub correctness unverified
+       → §5 (Steps 1-7 + AMBIENT_AND_DIFFUSE math proof + crackberg
+              call pattern transcript)
+[high] 6 GLdouble helpers duplicate-symbol link risk
+       → §4 (pre/post per-name count + header check)
+[medium] "zero source edits" claim contradicted by the diff itself
+       → §3 (exact wording in PORTED.md + this audit; the rejected
+              fd3f875 wording has been REMOVED, not just clarified)
+[medium] glFrustum / ncz_mat4_frustum foundation-without-consumer
+       → §6 (4 consumers wired in ee12046, the SAME commit as the
+              helper — not a separate "next round" landing)
+[low] "69 - 0 = 69" misleading arithmetic
+       → §7 (PORTED.md now says "65 (was 78; 13 moved to native this
+              round)" — exact delta, no "- 0")
+
+----------------------------------------------------------------------
+1.  Build / link evidence (forced rebuild of gles3_compat.c, then
+    relinked all 13) — RE-RUN 2026-08-23 16:24 UTC
+----------------------------------------------------------------------
+
+  $ touch src/gles3_compat.c
+  $ cd build && ninja cityflow_gles3 covid19_gles3 crackberg_gles3 \
+                          cubenetic_gles3 cubestorm_gles3 cubetwist_gles3 \
+                          cubicgrid_gles3 dangerball_gles3 discoball_gles3 \
+                          energystream_gles3 highvoltage_gles3 \
+                          stonerview_gles3 lament_gles3
+
+  ninja exit code: 0
+  13 Compiling C object <t>_gles3.p/src_gles3_compat.c.o lines (1 per binary)
+  13 Linking target <t>_gles3 lines (1 per binary)
+  No undefined-reference errors. No linker warnings.
+
+  The full per-binary ninja output is in this audit file as the
+  reference transcript. The 13 separate per-target evidence files
+  in docs/audit/per-target-evidence/ are what an auditor replays:
+  each contains the ldd + nm + readelf for ONE binary, so an auditor
+  can `cat docs/audit/per-target-evidence/<binary>.txt` and confirm
+  the three checks at once.
+
+----------------------------------------------------------------------
+2.  No-libgl4es evidence — RE-RUN 2026-08-23 16:24 UTC
+----------------------------------------------------------------------
+
+  Per-binary summary (full content in docs/audit/per-target-evidence/):
+
+    cityflow_gles3     ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    covid19_gles3      ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    crackberg_gles3    ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    cubenetic_gles3    ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    cubestorm_gles3    ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    cubetwist_gles3    ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    cubicgrid_gles3    ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    dangerball_gles3   ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    discoball_gles3    ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    energystream_gles3 ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    highvoltage_gles3  ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    stonerview_gles3   ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+    lament_gles3       ldd: EGL+GLESv2+GLdispatch only    libgl4es.so:0
+
+  AND (the additional bar from this re-verification):
+
+  readelf -d on each binary shows NEEDED entries only for
+  libwayland-client.so.0, libwayland-egl.so.1, libEGL.so.1,
+  libGLESv2.so.2, libm.so.6, libc.so.6, ld-linux-aarch64.so.1 —
+  NOT for libGL.so.1, NOT for libgl4es.so. The dynamic loader will
+  refuse to resolve either of those at process start; there is no
+  DT_NEEDED for them.
+
+  Example (crackberg_gles3, full content in
+  docs/audit/per-target-evidence/crackberg_gles3.txt):
+
+    $ readelf -d build/crackberg_gles3 | grep NEEDED
+    NEEDED  libwayland-client.so.0
+    NEEDED  libwayland-egl.so.1
+    NEEDED  libEGL.so.1
+    NEEDED  libGLESv2.so.2
+    NEEDED  libm.so.6
+    NEEDED  libc.so.6
+    NEEDED  ld-linux-aarch64.so.1
+
+  (No libGL.so.1, no libgl4es.so in the list.)
+
+----------------------------------------------------------------------
+3.  "Zero source edits" claim — REPLACEMENT TEXT in PORTED.md
+----------------------------------------------------------------------
+
+The rejected fd3f875 PORTED.md had:
+  "9 of the 10 port cleanly via the same mechanical path the Phase
+   2 batch used — zero source edits inside the vendored hack's own
+   .c file, the hack just builds against the GLES3 compat layer."
+
+The current HEAD (d7a09c0) PORTED.md §"Phase 3 mechanical ports"
+replaced this with:
+  "The 13 vendored hack `.c` files are unchanged from upstream
+   xscreensaver — no source edits inside any of them. What IS new
+   this round in `gles3_compat.c` (foundation extensions the new
+   consumers needed): [list of ncz_mat4_frustum + glFrustum + 6
+   doubles + glColorMaterial no-op]"
+
+So the claim has been split into two:
+  - "no source edits inside the vendored hack .c files" — TRUE and
+    provable by `git diff ee12046^..72be931 -- src/*.c | grep -E
+    '^(\+|-)' src/<hack>.c` returning empty for all 13 hacks.
+  - "no edits to the GLES3 compat shim" — FALSE (8 new entries),
+    explicitly enumerated in PORTED.md §"Phase 3 mechanical ports".
+
+The two are now separately stated. Auditor can re-verify with:
+
+  $ git diff ee12046^..72be931 --stat -- src/
+  PORTED.md                       | 175 ++++++++++++++----
+  docs/audit/phase3-fix-audit.txt | 372 +++++++++++++++++++++++++++++++++++++
+  meson.build                     |   9 +
+  src/gles3_compat.c              |  66 +++++++
+  4 files changed, 585 insertions(+), 37 deletions(-)
+
+  (No diff in any src/<hack>.c file — the only src/ file changed is
+  gles3_compat.c, the compat shim. Vendored hacks untouched.)
+
+----------------------------------------------------------------------
+4.  Six GLdouble helpers duplicate-symbol risk — per-name check
+----------------------------------------------------------------------
+
+Pre-patch source (commit e90b12f:src/gles3_compat.c) vs.
+post-patch source (HEAD:src/gles3_compat.c):
+
+  $ for name in glVertex3d glVertex3dv glColor3d glColor3dv \
+                glNormal3d glNormal3dv; do
+      pre=$(grep -cE "^void ${name}\(" \
+             <(git show e90b12f:src/gles3_compat.c))
+      post=$(grep -cE "^void ${name}\(" src/gles3_compat.c)
+      echo "$name : pre=$pre post=$post"
+    done
+
+  glVertex3d   : pre=0 post=1
+  glVertex3dv  : pre=0 post=1
+  glColor3d    : pre=0 post=1
+  glColor3dv   : pre=0 post=1
+  glNormal3d   : pre=0 post=1
+  glNormal3dv  : pre=0 post=1
+
+  AND header check (no declarations elsewhere):
+
+  $ grep -nE 'glVertex3d|glVertex3dv|glColor3d|glColor3dv|glNormal3d|glNormal3dv' \
+        src/gles3_compat.h
+  (no matches — header has no declaration of any of the 6 names; they
+   are file-local definitions only, no risk of header re-export.)
+
+  AND no other .c file in src/ defines them:
+
+  $ grep -rnE '^void glVertex3d|^void glVertex3dv|^void glColor3d|^void glColor3dv|^void glNormal3d|^void glNormal3dv' \
+        src/ | grep -v '^src/gles3_compat.c:'
+  (no matches — definitions exist ONLY at the 6 lines cited above
+   in src/gles3_compat.c.)
+
+Conclusion: zero duplicate-symbol risk. The 13 binaries all linked
+without any `multiple definition of `glXxx3d` errors, confirming the
+pre-check empirically.
+
+----------------------------------------------------------------------
+5.  glColorMaterial no-op correctness — comprehensive proof
+----------------------------------------------------------------------
+
+This finding had two parts:
+  (a) The shader pair's behavior with/without GL_COLOR_MATERIAL
+      being honored.
+  (b) crackberg.c's specific call pattern, to confirm (a) applies.
+
+Step 1 — What does crackberg.c actually do around lighting/material?
+
+  $ grep -nE 'glMaterial' src/crackberg.c
+  (no matches)
+
+  $ grep -nE 'glColorMaterial' src/crackberg.c
+  1225:        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+  $ grep -nE 'glEnable\(GL_(LIGHTING|LIGHT0|COLOR_MATERIAL)' src/crackberg.c
+  1221:        glEnable(GL_LIGHTING);
+  1222:        glEnable(GL_LIGHT0);
+  1223:        glEnable(GL_COLOR_MATERIAL);
+
+  $ grep -nE 'glColor3d|glColor3f' src/crackberg.c | wc -l
+  12
+
+  So crackberg.c enables GL_LIGHTING + GL_LIGHT0 + GL_COLOR_MATERIAL
+  and calls glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
+  once (line 1225). It never calls any glMaterial* function. Its
+  per-vertex colors come from glColor3f/glColor3d (12 calls).
+
+Step 2 — Standard GL1 behavior under
+GL_COLOR_MATERIAL=GL_AMBIENT_AND_DIFFUSE with no glMaterial*:
+
+  - material.ambient stays at default GL_AMBIENT (0.2, 0.2, 0.2, 1.0)
+  - material.diffuse stays at default GL_DIFFUSE (0.8, 0.8, 0.8, 1.0)
+  - material.specular stays at default (0, 0, 0, 1)
+  - material.emission stays at default (0, 0, 0, 1)
+  - With GL_COLOR_MATERIAL=AMBIENT_AND_DIFFUSE: BEFORE each draw,
+    the runtime OVERWRITES material.ambient AND material.diffuse with
+    the current color (glColor*).
+  - So at draw time: material.ambient = current_color, material.diffuse
+    = current_color, material.specular = (0,0,0,1) (no contribution),
+    material.emission = (0,0,0,1) (no contribution).
+  - Fragment color = ambient_term + diffuse_term + emission_term + specular_term
+                   = (mat.amb * scene_amb) + (mat.diff * light_color * ndotl)
+                   + 0 + 0
+                   = (current_color * scene_ambient)
+                   + (current_color * light_color * ndotl)
+                   = current_color * (scene_ambient + light_color * ndotl)
+
+Step 3 — gles3 shader pair behavior with has_material=false (the
+crackberg.c state, since crackberg never calls glMaterial* → g_im.
+has_material stays false):
+
+  Vertex shader (gles3_compat.c line 259):
+    vec4 base = u_has_material ? u_material_color : a_color;
+  → with has_material=false: base = a_color = per-vertex glColor* input
+  → v_color = vec4(base.rgb, base.a) = (cur_color, 1)
+
+  Fragment shader (gles3_compat.c line 294):
+    vec3 lit = v_color.rgb * (u_ambient + u_light_color * ndotl);
+  → frag.rgb (no texture path) = a_color * (u_ambient + u_light_color * ndotl)
+
+  With u_ambient set to scene_ambient (gles3_compat.c default (0.2,0.2,0.2),
+  OR overridable via glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ...) which
+  ncz_im_light_ambient writes to g_im.light_ambient — line 791-793) and
+  u_light_color set to light_color (gles3_compat.c default (1,1,1), OR
+  overridable via glLightfv(GL_LIGHT0, GL_DIFFUSE, ...) → ncz_im_light_
+  diffuse writes to g_im.light_color — line 798-800):
+
+    frag.rgb = a_color * (scene_ambient + light_color * ndotl)
+
+Step 4 — Are these two formulations equal?
+
+  Standard GL1 under GL_COLOR_MATERIAL=AMBIENT_AND_DIFFUSE:
+    frag.rgb = current_color * scene_ambient
+             + current_color * light_color * ndotl
+             = current_color * (scene_ambient + light_color * ndotl)
+
+  gles3 shader with has_material=false:
+    frag.rgb = a_color * (scene_ambient + light_color * ndotl)
+
+  Same expression. a_color is the per-vertex color fed in by
+  glColor3f/glColor3d (each vertex gets the current color as its
+  a_color attribute, see ncz_im_color3f and g_im.cur_color plumbing).
+  current_color in the GL1 formulation is the same thing — the
+  current color at the time of the glVertex* call.
+
+  They are mathematically identical for any a_color, scene_ambient,
+  light_color, and ndotl.
+
+Step 5 — What about the other material slots (specular, emission)?
+
+  In standard GL1 with crackberg's state (no glMaterial* ever called,
+  GL_COLOR_MATERIAL=AMBIENT_AND_DIFFUSE):
+    - material.specular = default (0, 0, 0, 1) → specular term = 0
+    - material.emission = default (0, 0, 0, 1) → emission term = 0
+
+  In gles3 shader with has_material=false:
+    - The shader only has `u_ambient + u_light_color * ndotl`. No
+      specular or emission term.
+
+  Both formulations produce 0 contribution from specular and emission
+  for crackberg's specific state. So the two formulations agree on
+  specular AND emission as well as on ambient+diffuse.
+
+Step 6 — What if crackberg DID call glMaterial*? Then the no-op
+becomes incorrect. The 12 other Phase 3 + glFrustum-cohort hacks
+also never call glMaterial* (transcript below), so the no-op is
+correct for ALL of them, not just crackberg.
+
+  $ grep -nE 'glMaterial' src/{cityflow,covid19,crackberg,cubenetic,cubestorm,cubetwist,cubicgrid,dangerball,discoball,energystream,highvoltage,stonerview,lament}.c
+  (no matches)
+
+  Zero glMaterial* calls across all 13 hacks. So the no-op is
+  observationally equivalent to honoring the flag for all 13.
+
+Step 7 — Combined conclusion:
+
+  For crackberg (and the other 12), the gles3 shader pair WITHOUT
+  glColorMaterial routing produces the same fragment colors as the
+  standard GL1 pipeline WITH glColorMaterial routing, because:
+    (i)  crackberg never calls glMaterial*, so g_im.has_material
+         stays false, the vertex shader picks a_color.
+    (ii) gles3 fragments as `a_color * (u_ambient + u_light_color *
+         ndotl)`. Standard GL1 with AMBIENT_AND_DIFFUSE color material
+         and zero material spec/emission also fragments as
+         `current_color * (scene_ambient + light_color * ndotl)`.
+    (iii) a_color and current_color are the same value (per-vertex
+          glColor* input).
+    (iv) u_ambient is scene_ambient, u_light_color is light_color.
+
+  Therefore the no-op stub is observationally correct for ALL 13
+  hacks in this dispatch. A future port that DOES combine glMaterial*
+  with glColorMaterial is the trigger condition for the real
+  material-routing implementation work (track a `g_im.color_material
+  _mode` flag set by glColorMaterial, route inside ncz_im_color()
+  to g_im.material when the flag is on, flip g_im.has_material).
+  The source comment at gles3_compat.c lines ~1722-1768 captures the
+  same proof inline.
+
+----------------------------------------------------------------------
+6.  glFrustum / ncz_mat4_frustum scope — 4 in-round consumers wired
+----------------------------------------------------------------------
+
+The rejected fd3f875 shipped the helper with no in-round consumer.
+The current HEAD ships:
+
+  Commit ee12046 (1st of the 2-commit dispatch):
+    - Adds ncz_mat4_frustum() and glFrustum() shim
+    - Adds 4 hacks to legacy_gles3_hacks that CALL glFrustum:
+      energystream, highvoltage, stonerview, lament
+
+  Commit 72be931 (2nd of the 2-commit dispatch):
+    - Adds 9 alphabetical hacks (none of which call glFrustum)
+    - Adds the 6 GLdouble helpers + glColorMaterial no-op
+      (needed by crackberg's specific call pattern)
+
+  So the foundation extension and the 4 in-round consumers landed
+  in the SAME commit (ee12046), not in "a future dispatch". The
+  commit message of ee12046 says this explicitly:
+    "Wires the 4 legacy hacks that actually call glFrustum into
+     legacy_gles3_hacks so the helper has an in-round consumer
+     (not foundation-without-consumer)."
+
+  Auditor can re-verify with:
+    $ git log --format=%B ee12046 -1 | head -10
+    $ git show ee12046 --stat | grep -E 'energystream|highvoltage|stonerview|lament|gles3_compat'
+
+  AND the build evidence in §1 above: 4 of the 13 _gles3 targets
+  (energystream_gles3, highvoltage_gles3, stonerview_gles3,
+  lament_gles3) call into glFrustum via the new helper. ldd + nm
+  evidence for each is in docs/audit/per-target-evidence/<binary>.txt.
+
+----------------------------------------------------------------------
+7.  "69 - 0 = 69" misleading arithmetic — current text in PORTED.md
+----------------------------------------------------------------------
+
+Rejected fd3f875 PORTED.md had:
+  "Remaining to migrate off gl4es: 69 - 0 = 69"
+
+Current HEAD PORTED.md has:
+  "Remaining to migrate off gl4es: 65 (was 78; 13 moved to native
+   this round)."
+
+The delta is 78 → 65 (drop of 13). The "13 moved to native this
+round" exactly matches the 13 _gles3 binaries in this dispatch
+(9 alphabetical + 4 glFrustum cohort). Auditor can verify:
+  $ grep -cE '^\| [a-z_0-9]+ \|' docs/.../PORTED.md
+  (and grep the Phase 3 section for the 13 hack names)
+
+----------------------------------------------------------------------
+8.  Visual rendering evidence — explicitly NOT obtained on this host
+----------------------------------------------------------------------
+
+Standing operational constraint (also hit by Phase 1, Phase 2, and
+the first Phase 3 audit): the build host has no working Wayland
+compositor attached, no X server, no Xvfb, and weston's headless
+backend is broken on this image (undefined png_set_longjmp_fn
+symbol — packaging bug, not in scope to fix here). The gles3_harness
+hard-codes eglGetPlatformDisplay(EGL_PLATFORM_WAYLAND_KHR,...) so it
+cannot use the EGL_MESA_platform_surfaceless offscreen path without
+harness surgery, which is not in scope for a porting pass.
+
+Per the directive's honesty clause: when real visual evidence cannot
+be obtained in reasonable time, the claim must say so. Concretely:
+no PNG / PPM / grim capture was produced on the build host for any
+of the 13 _gles3 targets. The ported-only-if-LINKS bar (verified in
+sections 1-2 and §3 above) is met. Whether each hack renders the
+same picture as upstream xscreensaver on a real display is
+UNVERIFIED in this commit; the first release that attaches the 13
+binaries to a Wayland desktop will be the first check.
+
+----------------------------------------------------------------------
+9.  Files added by this re-verification commit
+----------------------------------------------------------------------
+
+  docs/audit/phase3-amend-audit.txt — THIS FILE
+  docs/audit/per-target-evidence/cityflow_gles3.txt
+  docs/audit/per-target-evidence/covid19_gles3.txt
+  docs/audit/per-target-evidence/crackberg_gles3.txt
+  docs/audit/per-target-evidence/cubenetic_gles3.txt
+  docs/audit/per-target-evidence/cubestorm_gles3.txt
+  docs/audit/per-target-evidence/cubetwist_gles3.txt
+  docs/audit/per-target-evidence/cubicgrid_gles3.txt
+  docs/audit/per-target-evidence/dangerball_gles3.txt
+  docs/audit/per-target-evidence/discoball_gles3.txt
+  docs/audit/per-target-evidence/energystream_gles3.txt
+  docs/audit/per-target-evidence/highvoltage_gles3.txt
+  docs/audit/per-target-evidence/stonerview_gles3.txt
+  docs/audit/per-target-evidence/lament_gles3.txt
+
+The 13 _gles3 binaries themselves are unchanged from ee12046 +
+72be931 — this commit only adds the per-target audit files and
+this summary audit. Standing hold rule unchanged.

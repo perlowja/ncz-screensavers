@@ -1,0 +1,24 @@
+=== cityflow_gles3 — per-target evidence (Phase 3 dispatch re-verification, 2026-08-23) ===
+
+--- ldd (filtered to GL libs) ---
+	libwayland-egl.so.1 => /lib/aarch64-linux-gnu/libwayland-egl.so.1 (0x0000f7a944640000)
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f7a944600000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f7a9445b0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f7a944180000)
+libgl4es.so count: 0
+
+--- nm: vendored symbol check ---
+00000000000305c0 D cityflow_xscreensaver_function_table
+vendored symbol count: 1
+
+--- readelf -d: NEEDED entries (verifies dynamic loader contract) ---
+ 0x0000000000000001 (NEEDED)             Shared library: [libwayland-client.so.0]
+ 0x0000000000000001 (NEEDED)             Shared library: [libwayland-egl.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libEGL.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libGLESv2.so.2]
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]
+
+--- summary ---
+VERIFIED: native GLES3 port. No libgl4es.so. Vendored hack source linked in.

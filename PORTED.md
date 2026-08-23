@@ -195,19 +195,21 @@ consumers needed):
   is no duplicate-symbol link risk.
 
 - `glColorMaterial` (also used by `crackberg`) is a no-op stub.
-  The shader pair's material plumbing (`gles3_compat.c` lines
-  757-767 ncz_im_material, 1084-1085 uniform writes, 1294-1295 /
-  1330-1331 / 1399 / 1420 mesh-buffer snapshots) flips the
-  `u_has_material` uniform IFF `g_im.has_material` is true.
-  `g_im.has_material` is set to true ONLY inside `ncz_im_material`
-  (line 761), which is reachable ONLY from `glMaterial*` calls.
-  `crackberg.c` never calls `glMaterial*` (verified by
-  `grep -nE glMaterial src/crackberg.c` returning zero matches), so
-  `g_im.has_material` stays false from init to teardown and the
-  vertex shader's `vec4 base = u_has_material ? u_material_color
-  : a_color` always picks `a_color` (per-vertex color from
-  `glColor*`). Identical fragment output with or without honoring
-  the GL_COLOR_MATERIAL flag. The 12 other Phase 3 + glFrustum-
+  The shader pair's material plumbing (`gles3_compat.c`
+  `ncz_im_material` lines 754-759 with the `g_im.has_material = true`
+  flip at line 758, plus the three uniform-write sites at lines
+  1081-1082, 1291-1292, 1327-1328) flips the `u_has_material`
+  uniform IFF `g_im.has_material` is true. `g_im.has_material` is
+  set to true ONLY inside `ncz_im_material` (line 758), which is
+  reachable ONLY from `glMaterial*` calls (declared at lines
+  1628, 1636, 1643). `crackberg.c` never calls `glMaterial*`
+  (verified by `grep -nE glMaterial src/crackberg.c` returning zero
+  matches), so `g_im.has_material` stays false from init to
+  teardown and the vertex shader's
+  `vec4 base = u_has_material ? u_material_color : a_color`
+  always picks `a_color` (per-vertex color from `glColor*`).
+  Identical fragment output with or without honoring the
+  GL_COLOR_MATERIAL flag. The 12 other Phase 3 + glFrustum-
   cohort hacks also never call `glColorMaterial` (full transcript
   in `docs/audit/phase3-fix-audit.txt` §5 Step 3), so the only
   binary whose link is influenced by this stub is crackberg, and
@@ -239,7 +241,7 @@ UTC after this commit) captures for all 13 `_gles3` targets:
       returns the one call site at line 1225; combined with the
       GLSL excerpt from VERT_SHADER (line 259) and FRAG_SHADER
       (line 294) and the g_im.has_material flip point in
-      `ncz_im_material` (lines 757-767, line 761 specifically),
+      `ncz_im_material` (lines 754-759, line 758 specifically),
       this proves the no-op is observationally equivalent to
       honoring the GL_COLOR_MATERIAL flag for crackberg's specific
       usage. The source comment at gles3_compat.c lines ~1722-1768

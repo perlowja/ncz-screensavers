@@ -280,22 +280,22 @@ Targets: 13 _gles3 binaries total — 9 alphabetical-from-legacy +
     "true" when g_im.has_material is true.
 
   Step 5 — g_im.has_material only flips to true via ncz_im_material()
-  (gles3_compat.c line 757):
+  (gles3_compat.c line 758):
     $ grep -n 'g_im.has_material = ' src/gles3_compat.c
-    761:        g_im.has_material = true;
+    758:        g_im.has_material = true;
 
-    (One write site — line 761 in ncz_im_material, inside the
+    (One write site — line 758 in ncz_im_material, inside the
     pname == GL_AMBIENT_AND_DIFFUSE branch.)
 
   Step 6 — callers of ncz_im_material (grep -nE 'ncz_im_material' src/gles3_compat.c):
-    757:void ncz_im_material(GLenum face, GLenum pname, const float *value) {
-    1634:        ncz_im_material(face, pname, vv);
-    1642:        ncz_im_material(face, pname, vv);
-    1647:    ncz_im_material(face, pname, v);
-    1740: *      to true ONLY via ncz_im_material() (lines 757-767), which is
+    754:void ncz_im_material(GLenum face, GLenum pname, const float *value) {
+    1631:        ncz_im_material(face, pname, vv);
+    1639:        ncz_im_material(face, pname, vv);
+    1644:    ncz_im_material(face, pname, v);
+    1740: *      to true ONLY via ncz_im_material() (lines 754-759), which is
 
-    Only lines 757 (definition), 1634 (glMaterialf), 1642 (glMateriali),
-    1647 (glMaterialfv) — three call sites, all from glMaterial*.
+    Only lines 754 (definition), 1631 (glMaterialf), 1639 (glMateriali),
+    1644 (glMaterialfv) — three call sites, all from glMaterial*.
     glColor* never touches ncz_im_material and never touches
     g_im.has_material.
 
