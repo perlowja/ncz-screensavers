@@ -53,6 +53,13 @@ dep_wayland_egl    = dependency('wayland-egl',    required: true)
 dep_egl            = dependency('egl',            required: true)
 dep_glesv2         = dependency('glesv2',         required: true)
 
+# libm — vendored xscreensaver code uses cosf/sinf/sqrtf/etc., and the
+# GLES3 helper layer (gles3_compat.c's matrix stack, immediate-mode
+# normal calculation) does too. Neither libGLESv2 nor libwayland-client
+# drags libm in transitively, so we declare it explicitly.
+cc = meson.get_compiler('c')
+dep_m = cc.find_library('m', required: false)
+
 # GL4ES dependency — optional. We DO NOT use pkg-config because GL4ES
 # upstream doesn't ship a .pc file. Detection strategy:
 #   1. If `gl4es-lib-dir` is 'auto', probe the standard install locations:
@@ -145,6 +152,14 @@ if opt_gl4es
     gl4es_bundle_dir = meson.current_build_dir() / 'gl4es'
     run_command('mkdir', '-p', gl4es_bundle_dir, check: true)
     run_command('cp', gl4es_lib_path, gl4es_bundle_dir / 'libGL.so.1', check: true)
+else
+    # gl4es disabled. The xscreensaver-shim path (legacy 88 + glmatrix_demo)
+    # still references gl4es_dir in its link_args / build_rpath so the
+    # binary carries gl4es alongside it — those references are dead when
+    # the feature is off, so we synthesize an empty placeholder. Once the
+    # final Phase 4+ of the migration removes the gl4es-routed path
+    # entirely, this block goes away too.
+    gl4es_dir = ''
 endif
 
 # libpng — required for xscreensaver-shim (PNG textures via image_data_to_ximage).
@@ -509,6 +524,20 @@ if opt_xscreensaver
     # rely on glMultMatrixf/glTranslated which don't exist in GLES3).
     common_gles3_c_args = vendored_c_args + ['-DNCZ_GLES3_BUILD=1']
 
+    # Shared GLES3-native dependency list: Wayland + EGL + GLESv2 + libpng
+    # (for image_data_to_ximage on hacks that need texture decoding)
+    # + libm (vendored xscreensaver code and gles3_compat.c use
+    # cosf/sinf/sqrtf etc — neither libGLESv2 nor libwayland-client
+    # drags libm in transitively on Debian aarch64).
+    common_gles3_deps = [
+        dep_wayland_client,
+        dep_wayland_egl,
+        dep_egl,
+        dep_glesv2,
+        dep_png,
+        dep_m,
+    ]
+
     # Boing — simplest GL1 pilot. Uses immediate-mode helpers + matrix
     # stack + lighting + ortho projection. Zero model dependencies.
     executable(
@@ -518,13 +547,7 @@ if opt_xscreensaver
             'src/gles3_boing.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: common_gles3_c_args + [
             # gles3_boing emits `gles3boing_xscreensaver_function_table`
             # via XSCREENSAVER_MODULE_2.
@@ -555,13 +578,7 @@ if opt_xscreensaver
             'src/yarandom.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: common_gles3_c_args + [
             '-DHACK_TABLE=gles3companioncube_xscreensaver_function_table',
         ],
@@ -610,13 +627,7 @@ if opt_xscreensaver
             'src/etruscanvenus.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: upstream_gles3_c_args + [
             '-DHACK_TABLE=etruscanvenus_xscreensaver_function_table',
         ],
@@ -631,13 +642,7 @@ if opt_xscreensaver
             'src/hypertorus.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: upstream_gles3_c_args + [
             '-DHACK_TABLE=hypertorus_xscreensaver_function_table',
         ],
@@ -652,13 +657,7 @@ if opt_xscreensaver
             'src/klein.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: upstream_gles3_c_args + [
             '-DHACK_TABLE=klein_xscreensaver_function_table',
         ],
@@ -673,13 +672,7 @@ if opt_xscreensaver
             'src/projectiveplane.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: upstream_gles3_c_args + [
             '-DHACK_TABLE=projectiveplane_xscreensaver_function_table',
         ],
@@ -694,13 +687,7 @@ if opt_xscreensaver
             'src/romanboy.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: upstream_gles3_c_args + [
             '-DHACK_TABLE=romanboy_xscreensaver_function_table',
         ],
@@ -728,13 +715,7 @@ if opt_xscreensaver
             'src/image_data_to_ximage.c',
         ]) + gen_sources,
         include_directories: inc,
-        dependencies: [
-            dep_wayland_client,
-            dep_wayland_egl,
-            dep_egl,
-            dep_glesv2,
-            dep_png,
-        ],
+        dependencies: common_gles3_deps,
         c_args: upstream_gles3_c_args + [
             '-DHACK_TABLE=sphereeversion_xscreensaver_function_table',
         ],
