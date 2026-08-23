@@ -17,7 +17,7 @@ remains available while the native fan-out completes. They will be
 deleted in the final Phase 4+ step once every legacy hack has a
 verified native port.
 
-## Ported (86 legacy gl4es-routed)
+## Ported (78 legacy gl4es-routed)
 
 These 86 build as `<name>_demo` binaries when `-Dgl4es=enabled` is
 passed AND the system has gl4es installed at a known path. On hosts
@@ -28,7 +28,6 @@ section) are built.
 |---|---|
 | antspotlight | rotator.c, sphere.c, tube.c, yarandom.c |
 | bouncingcow | cow_face.c, cow_hide.c, cow_hoofs.c, cow_horns.c, cow_tail.c, cow_udder.c, gllist.c, rotator.c, yarandom.c |
-| cubestack | rotator.c, yarandom.c |
 | cubestorm | rotator.c, yarandom.c |
 | cubetwist | rotator.c, yarandom.c |
 | dangerball | rotator.c, sphere.c, tube.c, yarandom.c |
@@ -106,9 +105,9 @@ section) are built.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Ported (17 GLES3-native, no gl4es)
+## Ported (18 GLES3-native, no gl4es)
 
-These 17 build as `<name>_gles3` binaries linked directly against
+These 18 build as `<name>_gles3` binaries linked directly against
 system libGLESv2 / libEGL — no libGL.so.1, no gl4es, no translation
 shim. The vendored xscreensaver source compiles against the GLES3
 compat layer (`gles3_compat.h`) which routes every glBegin/glVertex/
@@ -126,9 +125,9 @@ display-list recorder). Hand-written ports in `src/gles3_boing.c` /
 with multiple `grim` captures — see GLES3-MIGRATION-PHASE1.md for
 the full verification trail.
 
-### Phase 2 mechanical ports (9 new this round)
+### Phase 2 mechanical ports (10 new this round)
 
-These 9 use the same vendored xscreensaver source as the
+These 10 use the same vendored xscreensaver source as the
 gl4es-routed `_demo` binary; the only thing different is that
 they are now built against the GLES3-native path with no source
 edits to the vendored hack. The active stubs in `gles3_compat.c`
@@ -156,6 +155,7 @@ established ported-only-if-LINKS rule.
 | companion_gles3 | companion_disc.c, companion_heart.c, companion_quad.c, rotator.c, yarandom.c |
 | crumbler_gles3 | quickhull.c, rotator.c, yarandom.c |
 | cube21_gles3 | - |
+| cubestack_gles3 | rotator.c, yarandom.c |
 
 ### Upstream xscreensaver 6.00+ GLES3 rewrites (6 Carsten Steger hacks)
 
@@ -174,9 +174,9 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **103** (86 gl4es-routed + 17 GLES3-native).
-GLES3-native count: 2 (Phase 1) + 9 (Phase 2 mechanical) + 6 (Phase 1+ upstream) = 17.
-Remaining to migrate off gl4es: 86 - 9 = 77.
+Total ported: **96** (78 gl4es-routed + 18 GLES3-native).
+GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 6 (Phase 1+ upstream) = 18.
+Remaining to migrate off gl4es: 78 - 10 = 68.
 
 ## Deferred (2)
 

@@ -620,6 +620,7 @@ if opt_xscreensaver
         {'name': 'chompytower',   'src': 'src/chompytower.c',    'extras': ['src/doubletime.c', 'src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/spline.c', 'src/teeth_model.c', 'src/yarandom.c']},
         {'name': 'crumbler',      'src': 'src/crumbler.c',       'extras': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'cube21',        'src': 'src/cube21.c',         'extras': []},
+        {'name': 'cubestack',     'src': 'src/cubestack.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     ]
 
     foreach h : legacy_gles3_hacks
