@@ -621,6 +621,10 @@ if opt_xscreensaver
         {'name': 'crumbler',      'src': 'src/crumbler.c',       'extras': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'cube21',        'src': 'src/cube21.c',         'extras': []},
         {'name': 'cubestack',     'src': 'src/cubestack.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'energystream',  'src': 'src/energystream.c',   'extras': ['src/rotator.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'highvoltage',   'src': 'src/highvoltage.c',    'extras': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
+        {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'lament',        'src': 'src/lament.c',         'extras': ['src/gllist.c', 'src/lament_model.c', 'src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
     ]
 
     foreach h : legacy_gles3_hacks

@@ -164,6 +164,10 @@ void ncz_mat4_ortho(nczMat4 m,
                     float left, float right,
                     float bottom, float top,
                     float znear, float zfar);
+void ncz_mat4_frustum(nczMat4 m,
+                      float left, float right,
+                      float bottom, float top,
+                      float znear, float zfar);
 void ncz_mat4_lookAt(nczMat4 m,
                      float ex, float ey, float ez,
                      float cx, float cy, float cz,

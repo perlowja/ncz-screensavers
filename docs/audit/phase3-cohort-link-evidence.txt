@@ -1,0 +1,111 @@
+=== Phase 3 cohort (foundation + 4 glFrustum consumers) — link evidence ===
+Date:                2026-08-23 16:14 UTC
+Host:                tydeus (aarch64-linux-gnu)
+Commit: this commit (1 of 2 in the Phase 3 dispatch)
+Targets: 4 _gles3 binaries — energystream_gles3, highvoltage_gles3,
+                            stonerview_gles3, lament_gles3
+
+This commit adds the `ncz_mat4_frustum` matrix builder + `glFrustum`
+shim in `gles3_compat.c` (and the matching declaration in
+`gles3_compat.h`), then wires those 4 consumers into
+`legacy_gles3_hacks` so the helper is not foundation-without-in-
+round-consumer. The companion audit for the 2nd commit (the 9
+alphabetical ports + crackberg foundations) is in
+`phase3-fix-audit.txt`.
+
+----------------------------------------------------------------------
+1.  Build / link evidence
+----------------------------------------------------------------------
+
+  $ touch src/gles3_compat.c
+  $ cd build && ninja energystream_gles3 highvoltage_gles3 \
+                          stonerview_gles3 lament_gles3
+
+  [output]
+
+[1/8] Compiling C object energystream_gles3.p/src_gles3_compat.c.o
+[2/8] Compiling C object lament_gles3.p/src_gles3_compat.c.o
+[3/8] Compiling C object highvoltage_gles3.p/src_gles3_compat.c.o
+[4/8] Compiling C object stonerview_gles3.p/src_gles3_compat.c.o
+[5/8] Linking target energystream_gles3
+[6/8] Linking target lament_gles3
+[7/8] Linking target highvoltage_gles3
+[8/8] Linking target stonerview_gles3
+
+
+  (8-step run: 4 Compiling C object <t>_gles3.p/src_gles3_compat.c.o
+  lines followed by 4 Linking target <t>_gles3 lines, all exit 0,
+  no undefined-reference errors. Only the standard GL_NO_ERROR /
+  GL_FALSE / GL_TRUE / GL_ZERO / GL_ONE / GL_NONE redefinition
+  warnings from src/gl4es_include/GL/gl.h colliding with
+  /usr/include/GLES3/gl32.h — pre-existing in the project since
+  77a24be, not relevant to link success.)
+
+  Per-binary ELF existence:
+    energystream_gles3  263176 B  ELF 64-bit LSB pie executable, ARM aarch64
+    highvoltage_gles3   739736 B  ELF 64-bit LSB pie executable, ARM aarch64
+    stonerview_gles3    266608 B  ELF 64-bit LSB pie executable, ARM aarch64
+    lament_gles3       1275248 B  ELF 64-bit LSB pie executable, ARM aarch64
+
+----------------------------------------------------------------------
+2.  No-libgl4es evidence (ldd)
+----------------------------------------------------------------------
+
+  --- energystream_gles3 ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f016f7810000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f016f77c0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f016f7390000)
+  libgl4es.so present: 0
+
+  --- highvoltage_gles3 ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e51549d10000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e51549cc0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e51549890000)
+  libgl4es.so present: 0
+
+  --- stonerview_gles3 ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f5925f970000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f5925f920000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f5925f4f0000)
+  libgl4es.so present: 0
+
+  --- lament_gles3 ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e3e674930000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e3e6748e0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e3e674450000)
+  libgl4es.so present: 0
+
+
+  (Every binary shows the libEGL + libGLESv2 + libGLdispatch
+  triplet, libgl4es.so count = 0. lament additionally pulls
+  libpng16.so because it calls image_data_to_ximage() to decode
+  the embedded PNG.)
+
+----------------------------------------------------------------------
+3.  Vendored-source symbol evidence (nm)
+----------------------------------------------------------------------
+
+  energystream_gles3:
+0000000000030608 D energystream_xscreensaver_function_table
+  highvoltage_gles3:
+00000000000a0528 D highvoltage_xscreensaver_function_table
+  stonerview_gles3:
+0000000000030500 D stonerview_xscreensaver_function_table
+  lament_gles3:
+00000000001205f0 D lament_xscreensaver_function_table
+
+----------------------------------------------------------------------
+4.  Why this is a 1st-class foundation commit, not 2nd-class groundwork
+----------------------------------------------------------------------
+
+  [medium] glFrustum-scope finding from the rejected fd3f875
+  review: "ships a foundation extension with no in-round consumer"
+  → addressed by wiring all 4 known consumers in the SAME round.
+  This means a future regression in ncz_mat4_frustum will surface
+  in 4 known named binaries (energystream, highvoltage, stonerview,
+  lament), not just one future unknown. Bisection stays clean.
+
+  Visual rendering evidence not obtained on this build host (same
+  constraint as the rest of the Phase 2 / Phase 3 audits: no
+  working Wayland compositor). The ported-only-if-LINKS bar is met
+  via the link/ldd/nm evidence above.

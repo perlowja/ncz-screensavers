@@ -17,9 +17,9 @@ remains available while the native fan-out completes. They will be
 deleted in the final Phase 4+ step once every legacy hack has a
 verified native port.
 
-## Ported (78 legacy gl4es-routed)
+## Ported (74 legacy gl4es-routed)
 
-These 86 build as `<name>_demo` binaries when `-Dgl4es=enabled` is
+These 74 build as `<name>_demo` binaries when `-Dgl4es=enabled` is
 passed AND the system has gl4es installed at a known path. On hosts
 without gl4es (most), only the native `_gles3` binaries (next
 section) are built.
@@ -38,7 +38,6 @@ section) are built.
 | cubenetic | rotator.c, yarandom.c |
 | discoball | rotator.c, yarandom.c |
 | dnalogo | normals.c, rotator.c, sphere.c, tube.c, yarandom.c |
-| energystream | rotator.c, yarandom.c |
 | fliptext | - |
 | flyingtoasters | gllist.c, toast.c, toast2.c, toaster.c, toaster_base.c, toaster_handle.c, toaster_handle2.c, toaster_jet.c, toaster_knob.c, toaster_slots.c, toaster_wing.c, yarandom.c |
 | geodesicgears | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
@@ -74,11 +73,9 @@ section) are built.
 | headroom | gllist.c, headroom_model.c, rotator.c, skull_model.c, yarandom.c |
 | hexstrut | rotator.c, yarandom.c |
 | hextrail | rotator.c, yarandom.c |
-| highvoltage | gllist.c, highvoltage_model.c, normals.c, tube.c |
 | hydrostat | sphere.c |
 | hypnowheel | rotator.c, yarandom.c |
 | kallisti | gllist.c, kallisti_model.c, rotator.c, yarandom.c |
-| lament | gllist.c, image_data_to_ximage.c, lament_model.c, normals.c, rotator.c, yarandom.c |
 | lavalite | marching.c, normals.c, rotator.c, yarandom.c |
 | lockward | - |
 | menger | rotator.c, yarandom.c |
@@ -97,7 +94,6 @@ section) are built.
 | splodesic | rotator.c, yarandom.c |
 | starwars | glut_stroke.c, glut_swidth.c, yarandom.c |
 | squirtorus | easing.c, normals.c, spline.c, yarandom.c |
-| stonerview | stonerview-move.c, stonerview-osc.c, stonerview-view.c, yarandom.c |
 | timetunnel | rotator.c, yarandom.c |
 | topblock | sphere.c, tube.c |
 | tronbit | doubletime.c, gllist.c, rotator.c, sphere.c, tronbit_idle1.c, tronbit_idle2.c, tronbit_no.c, tronbit_yes.c, yarandom.c |
@@ -105,9 +101,9 @@ section) are built.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Ported (18 GLES3-native, no gl4es)
+## Ported (22 GLES3-native, no gl4es)
 
-These 18 build as `<name>_gles3` binaries linked directly against
+These 22 build as `<name>_gles3` binaries linked directly against
 system libGLESv2 / libEGL — no libGL.so.1, no gl4es, no translation
 shim. The vendored xscreensaver source compiles against the GLES3
 compat layer (`gles3_compat.h`) which routes every glBegin/glVertex/
@@ -157,6 +153,35 @@ established ported-only-if-LINKS rule.
 | cube21_gles3 | - |
 | cubestack_gles3 | rotator.c, yarandom.c |
 
+### Phase 3 cohort (4 new this round, 1 deferred)
+
+The first batch from the Phase 3 alphabetical sweep — 4 legacy hacks
+that call `glFrustum(...)` directly, which needed the
+`ncz_mat4_frustum` matrix builder + `glFrustum` shim added to
+`gles3_compat.c` in this commit. They are mechanical ports, no
+source edits inside any of the 4 vendored `.c` files:
+
+| hack | companion sources |
+|---|---|
+| energystream_gles3  | rotator.c, yarandom.c |
+| highvoltage_gles3   | gllist.c, highvoltage_model.c, normals.c, tube.c |
+| stonerview_gles3    | stonerview-view.c, stonerview-move.c, stonerview-osc.c, yarandom.c |
+| lament_gles3        | gllist.c, lament_model.c, image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
+
+The remaining 9 alphabetical entries from the same Phase 3 batch
+(cityflow, covid19, crackberg, cubenetic, cubestorm, cubetwist,
+cubicgrid, dangerball, discoball) ship in a follow-up commit that
+also extends `gles3_compat.c` with the 6 GLdouble immediate-mode
+stubs (glVertex3d, glVertex3dv, glColor3d, glColor3dv, glNormal3d,
+glNormal3dv — needed by crackberg) and the glColorMaterial no-op
+stub (also needed by crackberg). The 10th alphabetical entry,
+dnalogo, stays deferred — same GLU-tessellator blocker as before.
+
+Co-located evidence for this commit's 4 ports is in
+`docs/audit/phase3-cohort-link-evidence.txt`. The full Phase 3
+audit (with the 9 alphabetical ports + crackberg foundations) is in
+`docs/audit/phase3-fix-audit.txt` (follow-up commit).
+
 ### Upstream xscreensaver 6.00+ GLES3 rewrites (6 Carsten Steger hacks)
 
 Already real GLSL/GLES3 shader code upstream, ported directly to the
@@ -174,9 +199,9 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **96** (78 gl4es-routed + 18 GLES3-native).
-GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 6 (Phase 1+ upstream) = 18.
-Remaining to migrate off gl4es: 78 - 10 = 68.
+Total ported: **96** (74 gl4es-routed + 22 GLES3-native).
+GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 4 (Phase 3 cohort) + 6 (Phase 1+ upstream) = 22.
+Remaining to migrate off gl4es: 74 (was 78; 4 moved to native this round).
 
 ## Deferred (2)
 

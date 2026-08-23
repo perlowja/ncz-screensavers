@@ -562,6 +562,42 @@ void ncz_mat4_ortho(nczMat4 m,
     memcpy(m, r, sizeof r);
 }
 
+/* Standard column-major perspective frustum. glFrustum equivalent.
+ *
+ * Constructs the same matrix as glFrustum(left, right, bottom, top,
+ * near, far): a perspective projection where the view volume is the
+ * truncated pyramid with x in [left, right], y in [bottom, top], and
+ * z in [-near, -far] (the GL1 right-handed coords, pre-multiplied by
+ * the typical glTranslate-z-by-neg convention; the resulting NDC z
+ * still spans [-1, 1] from near to far).
+ *
+ * Required by 4 legacy hacks that all call glFrustum but were not
+ * covered by the gluPerspective stub (which only handles the
+ * symmetric case): energystream (narrow asymmetric, glFrustum(-.6f,
+ * .6f, -.45f, .45f, 1, 1000)), highvoltage (per-frame variable
+ * frustum widths driven by the audio analyzer), stonerview and
+ * lament (both use the glFrustum(-1, 1, -h, h, 5, 60) wide-screen
+ * shape that gluPerspective would also produce but the hacks reach
+ * for glFrustum directly). All 4 are wired into legacy_gles3_hacks
+ * in the same dispatch as this helper, so it is not a
+ * foundation-without-in-round-consumer. */
+void ncz_mat4_frustum(nczMat4 m,
+                      float left, float right,
+                      float bottom, float top,
+                      float znear, float zfar) {
+    nczMat4 r;
+    memset(r, 0, sizeof r);
+    r[0]  =  2.0f * znear / (right - left);
+    r[2]  =  (right + left) / (right - left);
+    r[5]  =  2.0f * znear / (top - bottom);
+    r[6]  =  (top + bottom) / (top - bottom);
+    r[10] = -(zfar + znear) / (zfar - znear);
+    r[11] = -1.0f;
+    r[14] = -(2.0f * zfar * znear) / (zfar - znear);
+    r[15] =  0.0f;
+    memcpy(m, r, sizeof r);
+}
+
 void ncz_mat4_lookAt(nczMat4 m,
                      float ex, float ey, float ez,
                      float cx, float cy, float cz,
@@ -1548,6 +1584,12 @@ void glOrtho(GLdouble l, GLdouble r, GLdouble b, GLdouble t,
              GLdouble n, GLdouble f) {
     ncz_mat_stack_ortho(g_proj_stack_ptr, (float)l, (float)r, (float)b,
                         (float)t, (float)n, (float)f);
+}
+void glFrustum(GLdouble l, GLdouble r, GLdouble b, GLdouble t,
+               GLdouble n, GLdouble f) {
+    ncz_mat4_frustum(g_proj_stack_ptr->m[g_proj_stack_ptr->top],
+                     (float)l, (float)r, (float)b,
+                     (float)t, (float)n, (float)f);
 }
 void glClearDepth(GLdouble d) { (void)d; /* GLES3 uses glClearDepthf */ }
 
