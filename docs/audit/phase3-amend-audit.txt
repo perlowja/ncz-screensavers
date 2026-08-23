@@ -427,3 +427,35 @@ binaries to a Wayland desktop will be the first check.
 The 13 _gles3 binaries themselves are unchanged from ee12046 +
 72be931 — this commit only adds the per-target audit files and
 this summary audit. Standing hold rule unchanged.
+
+=== Post-push re-verification (1f1b70e, 2026-08-23 16:27 UTC) ===
+
+After force-push to origin/master (HEAD = 1f1b70e), re-ran the same
+13-target validation sweep to confirm the audit-evidence commit
+survives a clean tree rebuild:
+
+  $ touch src/gles3_compat.c
+  $ cd build && ninja cityflow_gles3 covid19_gles3 crackberg_gles3 \
+                          cubenetic_gles3 cubestorm_gles3 cubetwist_gles3 \
+                          cubicgrid_gles3 dangerball_gles3 discoball_gles3 \
+                          energystream_gles3 highvoltage_gles3 \
+                          stonerview_gles3 lament_gles3
+  exit code: 0
+  26 steps total: 13 "Compiling C object" lines + 13 "Linking target" lines
+
+  $ for t in <13>; do ldd build/$t | grep -ci gl4es; done
+  Result for all 13: 0
+
+  $ for t in <13>; do nm build/$t | grep -c ${t%_gles3}_xscreensaver_function_table; done
+  Result for all 13: 1
+
+  $ for t in <13>; do readelf -d build/$t | grep NEEDED | grep -E 'libGL\.so\.1|libgl4es\.so'; done
+  Result for all 13: empty (no libGL.so.1 / libgl4es.so DT_NEEDED entries)
+
+So all 13 _gles3 binaries still link cleanly, still carry zero
+libgl4es.so in their ldd output, AND have no libGL.so.1 / libgl4es.so
+in their ELF DT_NEEDED entries. The post-push state matches what
+this audit file claims.
+
+Standing hold rule unchanged: no ISO rebake until fresh full-88
+verification passes against a real Wayland compositor.
