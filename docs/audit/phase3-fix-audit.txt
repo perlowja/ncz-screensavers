@@ -1,5 +1,5 @@
 === Phase 3 native GLES3 ports — post-fix audit (replacement for fd3f875 + a38f066) ===
-Date:                2026-08-23 16:11 UTC
+Date:                2026-08-23 16:19 UTC
 Host:                tydeus (aarch64-linux-gnu)
 Commit under review: this commit (1 of 2: foundation + 4 glFrustum consumers,
                                 2 of 2: 9 alphabetical-from-legacy ports)
@@ -370,3 +370,32 @@ Targets: 13 _gles3 binaries total — 9 alphabetical-from-legacy +
   zero libgl4es.so in their ldd output (section 2). The vendored hack
   sources remain untouched (every binary's nm symbol at section 3 is
   emitted from the original xscreensaver source files).
+
+
+=== Post-push re-verification (72be931 / ee12046, 2026-08-23 16:19 UTC) ===
+
+After force-push to origin/master, re-ran the same validation
+sweep to confirm the patches survive a clean tree rebuild:
+
+  $ rm build/cityflow_gles3 build/covid19_gles3 ... build/lament_gles3
+  $ cd build && ninja cityflow_gles3 covid19_gles3 crackberg_gles3 \
+                          cubenetic_gles3 cubestorm_gles3 cubetwist_gles3 \
+                          cubicgrid_gles3 dangerball_gles3 discoball_gles3 \
+                          energystream_gles3 highvoltage_gles3 \
+                          stonerview_gles3 lament_gles3
+  exit code: 0
+  13 "Linking target <t>_gles3" lines emitted, all exit 0.
+
+  $ for t in cityflow_gles3 covid19_gles3 crackberg_gles3 ...; do
+      ldd build/$t | grep -ci gl4es
+    done
+  Result for all 13: 0
+
+  $ for t in cityflow_gles3 ...; do
+      nm build/$t | grep -c ${t%_gles3}_xscreensaver_function_table
+    done
+  Result for all 13: 1
+
+So all 13 _gles3 binaries ship in /usr/bin-able state with no
+gl4es, vendored source actually compiled in. Standing hold rule
+unchanged.

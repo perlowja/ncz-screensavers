@@ -1,5 +1,5 @@
 === Phase 3 cohort (foundation + 4 glFrustum consumers) — link evidence ===
-Date:                2026-08-23 16:14 UTC
+Date:                2026-08-23 16:19 UTC
 Host:                tydeus (aarch64-linux-gnu)
 Commit: this commit (1 of 2 in the Phase 3 dispatch)
 Targets: 4 _gles3 binaries — energystream_gles3, highvoltage_gles3,
