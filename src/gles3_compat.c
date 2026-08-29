@@ -51,6 +51,7 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include <dlfcn.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -97,6 +98,12 @@
 #endif
 #ifndef GL_TRIANGLE_STRIP
 #define GL_TRIANGLE_STRIP                    0x0005
+#endif
+#ifndef GL_LINE_STRIP
+#define GL_LINE_STRIP                        0x0003
+#endif
+#ifndef GL_QUAD_STRIP
+#define GL_QUAD_STRIP                        0x0008
 #endif
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH                       0x0B20
@@ -225,6 +232,33 @@ typedef struct {
 } ncz_runtime;
 
 static ncz_runtime g_rt = { 0 };
+
+/* Real (libGLESv2) glDrawArrays pointer, looked up via dlsym(RTLD_NEXT).
+ *
+ * gles3_compat.c defines its own glDrawArrays (the GL1 client-array wrapper
+ * at the bottom of this file). The local symbol shadows libGLESv2's at
+ * link time because object files appear before libraries in the link line.
+ * Inside the immediate-mode flush (im_flush_as_draw) we MUST call the real
+ * GLES3 glDrawArrays to issue the actual GPU draw — calling our own wrapper
+ * from there would recurse: glDrawArrays (local) -> ncz_im_end ->
+ * im_flush_as_draw -> glDrawArrays (local) -> ... -> SIGSEGV from stack
+ * exhaustion. This is precisely what crashed molecule at first draw: the
+ * vendored sphere.c / tube.c helpers enable client vertex arrays and then
+ * call glDrawArrays with a non-zero count, our wrapper walks the client
+ * arrays into the im buffer and calls ncz_im_end, which falls into the
+ * non-recording path and recurses through the local symbol.
+ *
+ * RTLD_NEXT finds the next occurrence of the symbol after this .so in the
+ * caller's link map; for a binary linked against libGLESv2.so.2, that's
+ * libGLESv2's glDrawArrays. The lookup happens once at runtime init, so
+ * the per-frame cost is one indirect call. */
+static void (*real_glDrawArrays)(GLenum mode, GLint first, GLsizei count) = NULL;
+
+/* Same issue, same fix: gllist draw (gllist_draw_with_prim below) can call
+ * glDrawArrays when client arrays are still bound from earlier immediate-mode
+ * work, and our local wrapper would recurse through ncz_im_end. */
+static void (*real_glDrawElements)(GLenum mode, GLsizei count, GLenum type,
+                                   const void *indices) = NULL;
 
 /* Forward declarations so the runtime init can reach the matrix-stack
  * helpers below. */
@@ -368,6 +402,29 @@ static int compile_program(void) {
 int ncz_gles3_runtime_init(void) {
     if (g_rt.initialized) return 0;
     memset(&g_rt, 0, sizeof g_rt);
+
+    /* Resolve libGLESv2's real glDrawArrays / glDrawElements BEFORE we set
+     * g_rt.initialized, so that any failure is caught and propagated. We
+     * dlerror() clear first so a previous lookup's error doesn't taint
+     * this one; if dlsym returns NULL we fail the whole init (the render
+     * would crash anyway the first time those symbols are called). */
+    dlerror();
+    real_glDrawArrays = (void (*)(GLenum, GLint, GLsizei))
+        dlsym(RTLD_NEXT, "glDrawArrays");
+    if (!real_glDrawArrays) {
+        fprintf(stderr, "gles3_compat: dlsym(RTLD_NEXT, glDrawArrays) failed: %s\n",
+                dlerror());
+        return -1;
+    }
+    dlerror();
+    real_glDrawElements = (void (*)(GLenum, GLsizei, GLenum, const void *))
+        dlsym(RTLD_NEXT, "glDrawElements");
+    if (!real_glDrawElements) {
+        fprintf(stderr, "gles3_compat: dlsym(RTLD_NEXT, glDrawElements) failed: %s\n",
+                dlerror());
+        return -1;
+    }
+
     if (compile_program() < 0) return -1;
     fprintf(stderr, "[diag] gles3_compat: shader program %u compiled\n", g_rt.program);
 
@@ -1058,9 +1115,46 @@ static void im_flush_as_draw(void) {
         free(heap_idx);
         prim = GL_TRIANGLES;
         count = nidx;
+    } else if (g_im.primitive == GL_QUAD_STRIP) {
+        /* GL_QUAD_STRIP: N vertices -> (N/2 - 1) quads, each sharing 2
+         * verts with the previous. We expand to triangles. Quad i uses
+         * vertices v[2i], v[2i+1], v[2i+2], v[2i+3]; we emit two
+         * triangles per quad, matching the GL1 winding that the rest
+         * of the GLES3 pipeline already accepts for GL_QUADS. */
+        int nquads = g_im.vertex_count / 2 - 1;
+        if (nquads > 0) {
+            GLsizei nidx = nquads * 6;
+            GLuint  stack_idx[1024];
+            GLuint *idx = stack_idx;
+            GLuint *heap_idx = NULL;
+            if ((size_t)nidx > sizeof(stack_idx) / sizeof(stack_idx[0])) {
+                heap_idx = (GLuint *)malloc(nidx * sizeof(GLuint));
+                idx = heap_idx;
+            }
+            for (int q = 0; q < nquads; q++) {
+                GLuint v0 = (GLuint)(q * 2);
+                idx[q*6 + 0] = v0 + 0;
+                idx[q*6 + 1] = v0 + 1;
+                idx[q*6 + 2] = v0 + 2;
+                idx[q*6 + 3] = v0 + 1;
+                idx[q*6 + 4] = v0 + 3;
+                idx[q*6 + 5] = v0 + 2;
+            }
+            glGenBuffers(1, &quad_ibo);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad_ibo);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                         (GLsizeiptr)(nidx * sizeof(GLuint)), idx, GL_STREAM_DRAW);
+            free(heap_idx);
+            prim = GL_TRIANGLES;
+            count = nidx;
+        } else {
+            /* Fewer than 4 verts — nothing to draw. */
+            return;
+        }
     } else if (g_im.primitive == GL_TRIANGLES ||
                g_im.primitive == GL_LINES ||
                g_im.primitive == GL_LINE_LOOP ||
+               g_im.primitive == GL_LINE_STRIP ||
                g_im.primitive == GL_TRIANGLE_FAN ||
                g_im.primitive == GL_TRIANGLE_STRIP) {
         prim = g_im.primitive;
@@ -1089,14 +1183,16 @@ static void im_flush_as_draw(void) {
     if (g_rt.u_use_flat >= 0) glUniform1i(g_rt.u_use_flat, g_im.use_flat ? 1 : 0);
 
     /* THE DRAW CALL — must be issued while the program is bound and the
-     * VAO + IBO (if any) are bound. */
+     * VAO + IBO (if any) are bound. We call libGLESv2's real
+     * glDrawElements / glDrawArrays here (not our local wrappers), see
+     * the comment at real_glDrawArrays above for the recursion reason. */
     if (quad_ibo) {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad_ibo);
-        glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, NULL);
+        real_glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, NULL);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glDeleteBuffers(1, &quad_ibo);
     } else {
-        glDrawArrays(prim, 0, count);
+        real_glDrawArrays(prim, 0, count);
     }
 
     glBindVertexArray(0);
@@ -1205,13 +1301,24 @@ int nczGLList_upload(const struct gllist *list, nczGLListChain *out) {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         /* Pre-build the wireframe index buffer. */
-        if (l->primitive == GL_QUADS || l->primitive == GL_TRIANGLES) {
-            int verts_per = (l->primitive == GL_QUADS) ? 4 : 3;
-            int groups = l->points / verts_per;
+        if (l->primitive == GL_QUADS || l->primitive == GL_TRIANGLES ||
+            l->primitive == GL_QUAD_STRIP) {
+            int verts_per;
+            int groups;
+            if (l->primitive == GL_QUAD_STRIP) {
+                verts_per = 4;  /* each quad drawn as a 4-vert loop */
+                groups = (l->points / 2) - 1;
+                if (groups < 0) groups = 0;
+            } else {
+                verts_per = (l->primitive == GL_QUADS) ? 4 : 3;
+                groups = l->points / verts_per;
+            }
             GLsizei nidx = groups * verts_per * 2;  /* each edge = 2 indices */
             GLuint *idx = (GLuint *)malloc(nidx * sizeof(GLuint));
             for (int g = 0; g < groups; g++) {
-                GLuint base = (GLuint)(g * verts_per);
+                GLuint base = (l->primitive == GL_QUAD_STRIP)
+                              ? (GLuint)(g * 2)   /* quad g uses v[2g..2g+3] */
+                              : (GLuint)(g * verts_per);
                 for (int v = 0; v < verts_per; v++) {
                     idx[g * verts_per * 2 + v * 2 + 0] = base + v;
                     idx[g * verts_per * 2 + v * 2 + 1] = base + ((v + 1) % verts_per);
@@ -1245,6 +1352,30 @@ int nczGLList_upload(const struct gllist *list, nczGLListChain *out) {
                          idx, GL_STATIC_DRAW);
             free(idx);
             node->tri_icount = nidx;
+        } else if (l->primitive == GL_QUAD_STRIP) {
+            /* Same triangulation as im_flush_as_draw above: each pair
+             * of edges in the strip becomes two triangles. */
+            int nquads = (l->points / 2) - 1;
+            if (nquads > 0) {
+                GLsizei nidx = nquads * 6;
+                GLuint *idx = (GLuint *)malloc(nidx * sizeof(GLuint));
+                for (int q = 0; q < nquads; q++) {
+                    GLuint v0 = (GLuint)(q * 2);
+                    idx[q*6 + 0] = v0 + 0;
+                    idx[q*6 + 1] = v0 + 1;
+                    idx[q*6 + 2] = v0 + 2;
+                    idx[q*6 + 3] = v0 + 1;
+                    idx[q*6 + 4] = v0 + 3;
+                    idx[q*6 + 5] = v0 + 2;
+                }
+                glGenBuffers(1, &node->tri_ibo);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, node->tri_ibo);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                             (GLsizeiptr)(nidx * sizeof(GLuint)),
+                             idx, GL_STATIC_DRAW);
+                free(idx);
+                node->tri_icount = nidx;
+            }
         }
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
@@ -1268,10 +1399,10 @@ static void gllist_draw_with_prim(nczGLListNode *n, GLenum prim, GLuint ibo, GLs
     glBindVertexArray(n->vao);
     if (ibo) {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-        glDrawElements(prim, icount, GL_UNSIGNED_INT, NULL);
+        real_glDrawElements(prim, icount, GL_UNSIGNED_INT, NULL);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     } else {
-        glDrawArrays(prim, 0, n->count);
+        real_glDrawArrays(prim, 0, n->count);
     }
     glBindVertexArray(0);
 }
@@ -1300,10 +1431,12 @@ void nczGLList_draw(const nczGLListChain *chain) {
 
     for (int i = 0; i < chain->count; i++) {
         nczGLListNode *n = &chain->nodes[i];
-        if (n->primitive == GL_QUADS) {
+        if (n->primitive == GL_QUADS || n->primitive == GL_QUAD_STRIP) {
             gllist_draw_with_prim(n, GL_TRIANGLES, n->tri_ibo, n->tri_icount);
         } else if (n->primitive == GL_LINES || n->primitive == GL_POINTS) {
             gllist_draw_with_prim(n, n->primitive, 0, 0);
+        } else if (n->primitive == GL_LINE_STRIP) {
+            gllist_draw_with_prim(n, GL_LINE_STRIP, 0, 0);
         } else if (n->primitive == GL_TRIANGLES) {
             gllist_draw_with_prim(n, GL_TRIANGLES, 0, 0);
         } else {
@@ -1339,6 +1472,8 @@ void nczGLList_draw_wire(const nczGLListChain *chain) {
         nczGLListNode *n = &chain->nodes[i];
         if (n->primitive == GL_LINES || n->primitive == GL_POINTS) {
             gllist_draw_with_prim(n, n->primitive, 0, 0);
+        } else if (n->primitive == GL_LINE_STRIP) {
+            gllist_draw_with_prim(n, GL_LINE_STRIP, 0, n->count);
         } else if (n->wire_ibo) {
             gllist_draw_with_prim(n, GL_LINES, n->wire_ibo, n->wire_icount);
         } else {

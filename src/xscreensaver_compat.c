@@ -232,8 +232,27 @@ static void frand_init(void) {
     gettimeofday(&tv, NULL);
     seed = (unsigned int)(tv.tv_sec ^ tv.tv_usec ^ ((unsigned int)getpid() << 16));
     srandom(seed);
-    frand_max = (double)((unsigned long)random() >> 16);  /* 0..0xFFFF */
-    if (frand_max < 1.0) frand_max = 1.0;
+    /*
+     * frand(n) must return a value uniformly distributed in [0, n). We
+     * approximate that by shifting random() down to its top 16 bits (so
+     * the result is in [0, 65535]) and dividing by 65536.0.
+     *
+     * The historical version calibrated frand_max to one specific
+     * random() output and used it as the divisor. That calibration was
+     * broken: if the very first random() after srandom returned a value
+     * smaller than 0x00010000, frand_max became 0 (clamped to 1), and
+     * every subsequent frand(n) call returned n * random() (i.e. up to
+     * ~n * 65535) instead of n. That is exactly why gears was aborting
+     * inside its data-validation assertions: tooth_w, tooth_h, nteeth
+     * and the resulting r/inner_r were all inflated by ~4-9x over
+     * their intended values, so the final `if (g->inner_r > g->r) abort()`
+     * fired on the very first gear.
+     *
+     * Using a fixed 65536.0 divisor removes the calibration entirely;
+     * the bias it introduced (a small fraction of the lowest bucket
+     * mapping to a slightly wider range) is irrelevant for visuals.
+     */
+    frand_max = 65536.0;
     frand_initialized = 1;
 }
 
