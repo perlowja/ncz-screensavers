@@ -132,6 +132,19 @@
 #ifndef GL_SPECULAR
 #define GL_SPECULAR                          0x1202
 #endif
+#ifndef GL_MODELVIEW
+#define GL_MODELVIEW                          0x1700
+#endif
+#ifndef GL_PROJECTION
+#define GL_PROJECTION                         0x1701
+#endif
+#ifndef GL_MODELVIEW_MATRIX
+#define GL_MODELVIEW_MATRIX                   0x0BA6
+#endif
+#ifndef GL_PROJECTION_MATRIX
+#define GL_PROJECTION_MATRIX                  0x0BA7
+#endif
+
 
 /* ----------------------------------------------------------------------- */
 /* Section 1 — GLES3 runtime singleton                                     */
@@ -194,7 +207,7 @@ typedef struct {
      * glBegin/glEnd pairs within one glNewList/glEndList produce
      * multiple ops — they replay in order on glCallList. */
     nczDL  *rec_dl;
-    float   rec_batch_verts[16 * 12];
+    float   rec_batch_verts[SCRATCH_VERT_CAP * 12];
     int     rec_batch_count;
     bool    has_material;
     float   material[4];
@@ -259,6 +272,8 @@ static void (*real_glDrawArrays)(GLenum mode, GLint first, GLsizei count) = NULL
  * work, and our local wrapper would recurse through ncz_im_end. */
 static void (*real_glDrawElements)(GLenum mode, GLsizei count, GLenum type,
                                    const void *indices) = NULL;
+static void (*real_glGetFloatv)(GLenum pname, GLfloat *data) = NULL;
+static void (*real_glGetIntegerv)(GLenum pname, GLint *data) = NULL;
 
 /* Forward declarations so the runtime init can reach the matrix-stack
  * helpers below. */
@@ -425,6 +440,23 @@ int ncz_gles3_runtime_init(void) {
         return -1;
     }
 
+    dlerror();
+    real_glGetFloatv = (void (*)(GLenum, GLfloat *))
+        dlsym(RTLD_NEXT, "glGetFloatv");
+    if (!real_glGetFloatv) {
+        fprintf(stderr, "gles3_compat: dlsym(RTLD_NEXT, glGetFloatv) failed: %s\n",
+                dlerror());
+        return -1;
+    }
+    dlerror();
+    real_glGetIntegerv = (void (*)(GLenum, GLint *))
+        dlsym(RTLD_NEXT, "glGetIntegerv");
+    if (!real_glGetIntegerv) {
+        fprintf(stderr, "gles3_compat: dlsym(RTLD_NEXT, glGetIntegerv) failed: %s\n",
+                dlerror());
+        return -1;
+    }
+
     if (compile_program() < 0) return -1;
     fprintf(stderr, "[diag] gles3_compat: shader program %u compiled\n", g_rt.program);
 
@@ -550,7 +582,7 @@ void ncz_mat4_translate(nczMat4 m, float x, float y, float z) {
     ncz_mat4_identity(t);
     t[12] = x; t[13] = y; t[14] = z;
     nczMat4 r;
-    ncz_mat4_multiply(r, m, t);
+    ncz_mat4_multiply(r, t, m);
     memcpy(m, r, sizeof r);
 }
 
@@ -559,7 +591,7 @@ void ncz_mat4_scale(nczMat4 m, float sx, float sy, float sz) {
     ncz_mat4_identity(s);
     s[0]=sx; s[5]=sy; s[10]=sz;
     nczMat4 r;
-    ncz_mat4_multiply(r, m, s);
+    ncz_mat4_multiply(r, s, m);
     memcpy(m, r, sizeof r);
 }
 
@@ -578,7 +610,7 @@ void ncz_mat4_rotate(nczMat4 m, float deg, float ax, float ay, float az) {
     r[8]=t*x*z + s*y;   r[9]=t*y*z - s*x; r[10]=t*z*z + c;  r[11]=0;
     r[12]=0; r[13]=0; r[14]=0; r[15]=1;
     nczMat4 out;
-    ncz_mat4_multiply(out, m, r);
+    ncz_mat4_multiply(out, r, m);
     memcpy(m, out, sizeof out);
 }
 
@@ -676,12 +708,12 @@ void ncz_mat4_lookAt(nczMat4 m,
         sz,    uz2,   -fz,   0.0f,
         0.0f,  0.0f,  0.0f,  1.0f,
     };
-    ncz_mat4_multiply(m, r, (nczMat4){
+    ncz_mat4_multiply(m, (nczMat4){
         1,0,0,0,
         0,1,0,0,
         0,0,1,0,
         -ex,-ey,-ez,1,
-    });
+    }, r);
 }
 
 void ncz_mat_stack_init(nczMatStack *s) {
@@ -751,8 +783,8 @@ const float *ncz_mat_stack_projection(nczMatStack *s) {
 }
 
 const float *ncz_mat_stack_mvp(nczMatStack *s, nczMat4 out) {
-    ncz_mat4_multiply(out, g_ms.proj_stack.m[g_ms.proj_stack.top],
-                          g_ms.model_stack.m[g_ms.model_stack.top]);
+    ncz_mat4_multiply(out, g_ms.model_stack.m[g_ms.model_stack.top],
+                          g_ms.proj_stack.m[g_ms.proj_stack.top]);
     return out;
 }
 
@@ -905,6 +937,52 @@ static nczDL *dl_lookup(int id) {
     return &g_dl_pool[id];
 }
 
+static nczDL_Rec *dl_append_op(nczDL_Op op) {
+    if (!g_im.recording || !g_im.rec_dl) return NULL;
+    nczDL *dl = g_im.rec_dl;
+    if (dl->n_ops >= dl->max_ops) {
+        int new_max = dl->max_ops > 0 ? dl->max_ops * 2 : 1024;
+        nczDL_Rec *new_ops = (nczDL_Rec *)realloc(
+            dl->ops, (size_t)new_max * sizeof(*dl->ops));
+        if (!new_ops) return NULL;
+        memset(new_ops + dl->max_ops, 0,
+               (size_t)(new_max - dl->max_ops) * sizeof(*new_ops));
+        dl->ops = new_ops;
+        dl->max_ops = new_max;
+    }
+    nczDL_Rec *r = &dl->ops[dl->n_ops++];
+    memset(r, 0, sizeof(*r));
+    r->op = op;
+    return r;
+}
+
+static void dl_record_matrix_mode(GLenum mode) {
+    nczDL_Rec *r = dl_append_op(NCZ_DL_OP_MATRIX_MODE);
+    if (r) r->mode = mode;
+}
+
+static void dl_record_simple(nczDL_Op op) {
+    (void)dl_append_op(op);
+}
+
+static void dl_record_mult_matrix(const GLfloat *m) {
+    nczDL_Rec *r = dl_append_op(NCZ_DL_OP_MULT_MATRIX);
+    if (r) memcpy(r->matrix, m, sizeof(r->matrix));
+}
+
+static void dl_record_material(GLenum face, GLenum pname, const GLfloat *v) {
+    nczDL_Rec *r = dl_append_op(NCZ_DL_OP_MATERIAL);
+    if (!r) return;
+    r->face = face;
+    r->pname = pname;
+    memcpy(r->material_ambdiff, v, sizeof(r->material_ambdiff));
+}
+
+static void dl_record_color(const GLfloat *v) {
+    nczDL_Rec *r = dl_append_op(NCZ_DL_OP_COLOR);
+    if (r) memcpy(r->color, v, sizeof(r->color));
+}
+
 GLuint glGenLists(GLsizei range) {
     /* Allocate `range` consecutive handles from the pool. Return the
      * first, or 0 on failure (matches GL semantics). */
@@ -983,7 +1061,7 @@ void ncz_im_begin(GLenum primitive) {
 
 static float *im_push_vertex(float x, float y, float z) {
     if (g_im.recording) {
-        if (g_im.rec_batch_count >= 16) return NULL;  /* batch full */
+        if (g_im.rec_batch_count >= SCRATCH_VERT_CAP) return NULL;  /* batch full */
         float *v = g_im.rec_batch_verts + g_im.rec_batch_count * 12;
         v[0] = x; v[1] = y; v[2] = z;
         v[3] = g_im.cur_normal[0];
@@ -1516,13 +1594,12 @@ int ncz_dl_new(nczDL *dl) {
 
 void ncz_dl_end(nczDL *dl) {
     (void)dl;
-    /* No-op in Phase 1 — see file-level comment. */
 }
 
 int ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain) {
     if (!dl || !chain) return -1;
-    if (dl->n_ops >= dl->max_ops) return -1;
-    nczDL_Rec *r = &dl->ops[dl->n_ops++];
+    nczDL_Rec *r = dl_append_op(NCZ_DL_OP_GLLIST);
+    if (!r) return -1;
     r->chain = chain;
     r->vcount = 0;
     r->primitive = 0;
@@ -1540,13 +1617,17 @@ int ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain) {
 int ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
                        const float *verts, int vcount) {
     if (!dl || !verts || vcount <= 0) return -1;
-    if (vcount > 16) vcount = 16;  /* rec capacity */
-    if (dl->n_ops >= dl->max_ops) return -1;
-    nczDL_Rec *r = &dl->ops[dl->n_ops++];
+    nczDL_Rec *r = dl_append_op(NCZ_DL_OP_INLINE);
+    if (!r) return -1;
+    r->verts = (float *)malloc((size_t)vcount * 12 * sizeof(float));
+    if (!r->verts) {
+        dl->n_ops--;
+        return -1;
+    }
     r->chain = NULL;
     r->primitive = primitive;
     r->vcount = vcount;
-    memcpy(r->verts, verts, vcount * 12 * sizeof(float));
+    memcpy(r->verts, verts, (size_t)vcount * 12 * sizeof(float));
     memcpy(r->color, g_im.cur_color, sizeof r->color);
     memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
     r->has_material = g_im.has_material;
@@ -1556,20 +1637,34 @@ int ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
 
 void ncz_dl_call(const nczDL *dl) {
     if (!dl || dl->n_ops == 0) return;
-    /* Iterate ops; for chain ops, replay via gllist draw; for inline
-     * ops, push into the ncz_im accumulator and draw. */
     for (int i = 0; i < dl->n_ops; i++) {
         const nczDL_Rec *r = &dl->ops[i];
-        if (r->chain) {
-            /* Color/material state is the snapshot at recording time,
-             * but the LIVE color/material state is what the renderer
-             * actually wants to use. The hack calls glMaterialfv
-             * right before glCallList, so we honor the live state. */
-            nczGLList_draw(r->chain);
-        } else {
-            /* Inline batch. The recorded vertices carry pos+normal+
-             * color+uv in our 12-float-per-vertex format; replay by
-             * walking them into ncz_im in the same order. */
+        switch (r->op) {
+        case NCZ_DL_OP_MATRIX_MODE:
+            glMatrixMode(r->mode);
+            break;
+        case NCZ_DL_OP_PUSH_MATRIX:
+            glPushMatrix();
+            break;
+        case NCZ_DL_OP_POP_MATRIX:
+            glPopMatrix();
+            break;
+        case NCZ_DL_OP_LOAD_IDENTITY:
+            glLoadIdentity();
+            break;
+        case NCZ_DL_OP_MULT_MATRIX:
+            glMultMatrixf(r->matrix);
+            break;
+        case NCZ_DL_OP_MATERIAL:
+            ncz_im_material(r->face, r->pname, r->material_ambdiff);
+            break;
+        case NCZ_DL_OP_COLOR:
+            ncz_im_color4fv(r->color);
+            break;
+        case NCZ_DL_OP_GLLIST:
+            if (r->chain) nczGLList_draw(r->chain);
+            break;
+        case NCZ_DL_OP_INLINE:
             ncz_im_begin(r->primitive ? r->primitive : GL_TRIANGLES);
             for (int v = 0; v < r->vcount; v++) {
                 const float *p = &r->verts[v*12];
@@ -1579,12 +1674,16 @@ void ncz_dl_call(const nczDL *dl) {
                 ncz_im_vertex3f(p[0], p[1], p[2]);
             }
             ncz_im_end();
+            break;
         }
     }
 }
 
 void ncz_dl_free(nczDL *dl) {
     if (!dl) return;
+    for (int i = 0; i < dl->n_ops; i++) {
+        if (dl->ops[i].op == NCZ_DL_OP_INLINE) free(dl->ops[i].verts);
+    }
     free(dl->ops);
     memset(dl, 0, sizeof *dl);
 }
@@ -1680,53 +1779,90 @@ EGLConfig ncz_gles3_choose_config(EGLDisplay dpy) {
  */
 
 void glMatrixMode(GLenum mode) {
-    (void)mode;
-    /* ncz_mat_stack tracks mode internally — accepted but inert here. */
+    if (g_im.recording) {
+        dl_record_matrix_mode(mode);
+        return;
+    }
+    if (mode == GL_MODELVIEW) {
+        ncz_ms_set_active(0);
+    } else if (mode == GL_PROJECTION) {
+        ncz_ms_set_active(1);
+    }
 }
 void glLoadIdentity(void) {
-    ncz_mat_stack_load_identity(g_model_stack_ptr);
+    if (g_im.recording) {
+        dl_record_simple(NCZ_DL_OP_LOAD_IDENTITY);
+        return;
+    }
+    ncz_mat_stack_load_identity(ncz_ms_active());
 }
-void glPushMatrix(void)  { ncz_mat_stack_push(g_model_stack_ptr); }
-void glPopMatrix(void)   { ncz_mat_stack_pop(g_model_stack_ptr);  }
-void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
-    ncz_mat_stack_rotate(g_model_stack_ptr, (float)angle, (float)x,
-                         (float)y, (float)z);
+void glPushMatrix(void)  {
+    if (g_im.recording) {
+        dl_record_simple(NCZ_DL_OP_PUSH_MATRIX);
+        return;
+    }
+    ncz_mat_stack_push(ncz_ms_active());
 }
-void glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
-    ncz_mat_stack_translate(g_model_stack_ptr, (float)x, (float)y, (float)z);
-}
-void glScalef(GLfloat x, GLfloat y, GLfloat z) {
-    ncz_mat_stack_scale(g_model_stack_ptr, (float)x, (float)y, (float)z);
-}
-void glScaled(GLdouble x, GLdouble y, GLdouble z) {
-    ncz_mat_stack_scale(g_model_stack_ptr, (float)x, (float)y, (float)z);
-}
-void glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdouble z) {
-    ncz_mat_stack_rotate(g_model_stack_ptr, (float)angle, (float)x,
-                         (float)y, (float)z);
-}
-void glTranslated(GLdouble x, GLdouble y, GLdouble z) {
-    ncz_mat_stack_translate(g_model_stack_ptr, (float)x, (float)y, (float)z);
+void glPopMatrix(void)   {
+    if (g_im.recording) {
+        dl_record_simple(NCZ_DL_OP_POP_MATRIX);
+        return;
+    }
+    ncz_mat_stack_pop(ncz_ms_active());
 }
 void glMultMatrixf(const GLfloat *m) {
+    nczMatStack *active = ncz_ms_active();
     nczMat4 mm;
+    if (g_im.recording) {
+        dl_record_mult_matrix(m);
+        return;
+    }
     for (int i = 0; i < 16; i++) mm[i] = (float)m[i];
-    ncz_mat4_multiply(g_model_stack_ptr->m[g_model_stack_ptr->top],
-                      g_model_stack_ptr->m[g_model_stack_ptr->top], mm);
+    ncz_mat4_multiply(active->m[active->top], mm, active->m[active->top]);
+}
+void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
+    nczMat4 mm;
+    ncz_mat4_identity(mm);
+    ncz_mat4_rotate(mm, (float)angle, (float)x, (float)y, (float)z);
+    glMultMatrixf(mm);
+}
+void glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
+    nczMat4 mm;
+    ncz_mat4_identity(mm);
+    ncz_mat4_translate(mm, (float)x, (float)y, (float)z);
+    glMultMatrixf(mm);
+}
+void glScalef(GLfloat x, GLfloat y, GLfloat z) {
+    nczMat4 mm;
+    ncz_mat4_identity(mm);
+    ncz_mat4_scale(mm, (float)x, (float)y, (float)z);
+    glMultMatrixf(mm);
+}
+void glScaled(GLdouble x, GLdouble y, GLdouble z) {
+    glScalef((GLfloat)x, (GLfloat)y, (GLfloat)z);
+}
+void glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdouble z) {
+    glRotatef((GLfloat)angle, (GLfloat)x, (GLfloat)y, (GLfloat)z);
+}
+void glTranslated(GLdouble x, GLdouble y, GLdouble z) {
+    glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
 }
 
 void glOrtho(GLdouble l, GLdouble r, GLdouble b, GLdouble t,
              GLdouble n, GLdouble f) {
-    ncz_mat_stack_ortho(g_proj_stack_ptr, (float)l, (float)r, (float)b,
-                        (float)t, (float)n, (float)f);
+    nczMat4 mm;
+    ncz_mat4_ortho(mm, (float)l, (float)r, (float)b, (float)t,
+                  (float)n, (float)f);
+    glMultMatrixf(mm);
 }
 void glFrustum(GLdouble l, GLdouble r, GLdouble b, GLdouble t,
                GLdouble n, GLdouble f) {
-    ncz_mat4_frustum(g_proj_stack_ptr->m[g_proj_stack_ptr->top],
-                     (float)l, (float)r, (float)b,
+    nczMat4 mm;
+    ncz_mat4_frustum(mm, (float)l, (float)r, (float)b,
                      (float)t, (float)n, (float)f);
+    glMultMatrixf(mm);
 }
-void glClearDepth(GLdouble d) { (void)d; /* GLES3 uses glClearDepthf */ }
+void glClearDepth(GLdouble d) { glClearDepthf((GLfloat)d); }
 
 void glPushAttrib(GLbitfield mask) { (void)mask; }
 void glPopAttrib(void)             { }
@@ -1762,20 +1898,21 @@ void glLightf(GLenum light, GLenum pname, GLfloat v) {
 }
 void glMaterialf(GLenum face, GLenum pname, GLfloat v) {
     if (pname == GL_AMBIENT_AND_DIFFUSE) {
-        float vv[4] = { v, v, v, 1.0f };
-        ncz_im_material(face, pname, vv);
+        GLfloat vv[4] = { v, v, v, 1.0f };
+        glMaterialfv(face, pname, vv);
         return;
     }
     /* GL_SHININESS, GL_SPECULAR etc. — ignored in this initial pass. */
 }
 void glMateriali(GLenum face, GLenum pname, GLint v) {
     if (pname == GL_AMBIENT_AND_DIFFUSE) {
-        float vv[4] = { (float)v, (float)v, (float)v, 1.0f };
-        ncz_im_material(face, pname, vv);
+        GLfloat vv[4] = { (float)v, (float)v, (float)v, 1.0f };
+        glMaterialfv(face, pname, vv);
         return;
     }
 }
 void glMaterialfv(GLenum face, GLenum pname, const GLfloat *v) {
+    if (g_im.recording) dl_record_material(face, pname, v);
     ncz_im_material(face, pname, v);
 }
 void glTexEnvf(GLenum target, GLenum pname, GLfloat v) {
@@ -1809,7 +1946,19 @@ void glTexGenfv(GLenum coord, GLenum pname, const GLfloat *v) {
 void glHint(GLenum target, GLenum mode) { (void)target; (void)mode; }
 void glLineStipple(GLint f, GLushort p) { (void)f; (void)p; }
 void glLineWidth(GLfloat w)             { (void)w; }
-void glGetDoublev(GLenum p, GLdouble *v){ (void)p; (void)v; }
+void glGetDoublev(GLenum p, GLdouble *v){
+    const nczMat4 *m = NULL;
+    if (p == GL_MODELVIEW_MATRIX) {
+        m = &g_ms.model_stack.m[g_ms.model_stack.top];
+    } else if (p == GL_PROJECTION_MATRIX) {
+        m = &g_ms.proj_stack.m[g_ms.proj_stack.top];
+    }
+    if (m) {
+        for (int i = 0; i < 16; i++) v[i] = (GLdouble)(*m)[i];
+    } else if (v) {
+        memset(v, 0, 16 * sizeof(*v));
+    }
+}
 
 /* Immediate-mode stubs — these route every glBegin/glVertex/glColor/
  * glNormal/glTexCoord call through the ncz_im_* immediate-mode
@@ -1827,16 +1976,23 @@ void glVertex3f(GLfloat x, GLfloat y, GLfloat z) { ncz_im_vertex3f(x, y, z); }
 void glVertex2f(GLfloat x, GLfloat y) { ncz_im_vertex3f(x, y, 0.0f); }
 void glVertex3d(GLdouble x, GLdouble y, GLdouble z) { ncz_im_vertex3f((GLfloat)x, (GLfloat)y, (GLfloat)z); }
 void glVertex3dv(const GLdouble *v)   { ncz_im_vertex3f((GLfloat)v[0], (GLfloat)v[1], (GLfloat)v[2]); }
-void glColor3fv(const GLfloat *c)     { ncz_im_color3fv(c); }
-void glColor3f(GLfloat r, GLfloat g, GLfloat b)  { ncz_im_color3f(r, g, b); }
-void glColor3d(GLdouble r, GLdouble g, GLdouble b) { ncz_im_color3f((GLfloat)r, (GLfloat)g, (GLfloat)b); }
-void glColor3dv(const GLdouble *c)    { ncz_im_color3f((GLfloat)c[0], (GLfloat)c[1], (GLfloat)c[2]); }
-void glColor4fv(const GLfloat *c)     { ncz_im_color4fv(c); }
-void glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    ncz_im_color4f(r, g, b, a);
+void glColor4fv(const GLfloat *c) {
+    if (g_im.recording) dl_record_color(c);
+    ncz_im_color4fv(c);
 }
+void glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+    GLfloat c[4] = { r, g, b, a };
+    glColor4fv(c);
+}
+void glColor3fv(const GLfloat *c) {
+    GLfloat cc[4] = { c[0], c[1], c[2], 1.0f };
+    glColor4fv(cc);
+}
+void glColor3f(GLfloat r, GLfloat g, GLfloat b)  { glColor4f(r, g, b, 1.0f); }
+void glColor3d(GLdouble r, GLdouble g, GLdouble b) { glColor4f((GLfloat)r, (GLfloat)g, (GLfloat)b, 1.0f); }
+void glColor3dv(const GLdouble *c)    { glColor4f((GLfloat)c[0], (GLfloat)c[1], (GLfloat)c[2], 1.0f); }
 void glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a) {
-    ncz_im_color4f(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+    glColor4f(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 }
 void glNormal3fv(const GLfloat *v)    { ncz_im_normal3f(v[0], v[1], v[2]); }
 void glNormal3f(GLfloat x, GLfloat y, GLfloat z) { ncz_im_normal3f(x, y, z); }
@@ -2038,13 +2194,25 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer) {
 void glPointSize(GLfloat size)   { (void)size; /* future: uniform */ }
 void glDrawBuffer(GLenum buf)    { (void)buf;  /* single-buffer: front==back */ }
 
-void glGetFloatv(GLenum p, GLfloat *v) { (void)p; (void)v; }
-void glGetIntegerv(GLenum p, GLint *v) {
-    /* Stub: many hacks call glGetIntegerv(GL_TEXTURE_BINDING_2D, ...)
-     * etc. for diagnostics. Zero everything. */
-    (void)p;
-    if (v) *v = 0;
+void glGetFloatv(GLenum p, GLfloat *v) {
+    if (p == GL_MODELVIEW_MATRIX) {
+        memcpy(v, g_ms.model_stack.m[g_ms.model_stack.top], sizeof(nczMat4));
+    } else if (p == GL_PROJECTION_MATRIX) {
+        memcpy(v, g_ms.proj_stack.m[g_ms.proj_stack.top], sizeof(nczMat4));
+    } else if (real_glGetFloatv) {
+        real_glGetFloatv(p, v);
+    } else if (v) {
+        memset(v, 0, 16 * sizeof(*v));
+    }
 }
+void glGetIntegerv(GLenum p, GLint *v) {
+    if (real_glGetIntegerv) {
+        real_glGetIntegerv(p, v);
+    } else if (v) {
+        *v = 0;
+    }
+}
+
 
 /* The gluPerspective / gluLookAt that the FF fallback uses are already
  * provided as no-op stubs in xscreensaver_compat.c when

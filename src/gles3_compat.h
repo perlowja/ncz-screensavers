@@ -408,9 +408,17 @@ typedef enum {
     NCZ_DL_OP_GLLIST,    /* draw a previously-uploaded gllist chain */
     NCZ_DL_OP_INLINE,    /* inline immediate-mode batch (primitive +
                             up to 16 verts × 12 floats each) */
+    NCZ_DL_OP_MATRIX_MODE,
+    NCZ_DL_OP_PUSH_MATRIX,
+    NCZ_DL_OP_POP_MATRIX,
+    NCZ_DL_OP_LOAD_IDENTITY,
+    NCZ_DL_OP_MULT_MATRIX,
+    NCZ_DL_OP_MATERIAL,
+    NCZ_DL_OP_COLOR,
 } nczDL_Op;
 
 typedef struct {
+    nczDL_Op op;
     /* For GLLIST: pointer to the chain (uploaded at init, stable ptr).
      * For INLINE: NULL. */
     const nczGLListChain *chain;
@@ -418,13 +426,17 @@ typedef struct {
      * float per-vertex format (pos3 + normal3 + color4 + uv2).
      * Plenty for what the legacy hacks emit in one glBegin/glEnd. */
     GLenum  primitive;          /* GL_TRIANGLES / GL_QUADS / GL_LINES / etc. */
-    float   verts[16 * 12];     /* 12 floats per vertex */
+    float  *verts;               /* 12 floats per vertex */
     int     vcount;
     /* Color/material snapshot at recording time. */
     float   color[4];
     float   material_ambdiff[4];
     bool    has_material;
     bool    lit;
+    GLenum  mode;
+    GLenum  face;
+    GLenum  pname;
+    nczMat4 matrix;
 } nczDL_Rec;
 
 typedef struct {
