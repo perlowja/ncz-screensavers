@@ -631,9 +631,15 @@ if opt_xscreensaver
         {'name': 'dangerball',    'src': 'src/dangerball.c',     'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'discoball',     'src': 'src/discoball.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'energystream',  'src': 'src/energystream.c',   'extras': ['src/rotator.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'gears',         'src': 'src/gears.c',          'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'geodesic',      'src': 'src/geodesic.c',       'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'glblur',        'src': 'src/glblur.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'hexstrut',      'src': 'src/hexstrut.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'highvoltage',   'src': 'src/highvoltage.c',    'extras': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
-        {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'hypnowheel',    'src': 'src/hypnowheel.c',     'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'lament',        'src': 'src/lament.c',         'extras': ['src/gllist.c', 'src/lament_model.c', 'src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'menger',        'src': 'src/menger.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
     ]
 
     foreach h : legacy_gles3_hacks
