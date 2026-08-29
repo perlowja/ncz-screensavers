@@ -27,6 +27,15 @@
  * calls are translated.
  */
 
+#define DEFAULTS	"*delay:	30000       \n" \
+			"*showFPS:      False       \n" \
+			"*count:        3           \n" \
+			"*wireframe:    False       \n" \
+
+#define release_companion 0
+
+#define release_cube 0
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,15 +46,6 @@
 #include "xscreensaver_compat.h"
 #include "gllist.h"   /* for struct gllist (already includes xlockmoreI.h) */
 #include "rotator.h"
-
-#define DEFAULTS	"*delay:	30000       \n" \
-			"*showFPS:      False       \n" \
-			"*count:        3           \n" \
-			"*wireframe:    False       \n" \
-
-#define release_companion 0
-
-#define release_cube 0
 
 #define DEF_SPEED  "1.0"
 #define DEF_SPIN   "False"
@@ -445,7 +445,9 @@ init_cube (ModeInfo *mi)
    * bp->cube_polys is filled in lazily on the first draw_cube. */
   bp->cube_polys = 0;
 
-  bp->nfloaters = MI_COUNT(mi);
+  bp->nfloaters = get_integer_resource(mi->dpy, "count", "Integer");
+  if (bp->nfloaters <= 0)
+    bp->nfloaters = 3;
   bp->floaters = (floater *)calloc(bp->nfloaters, sizeof(floater));
 
   for (i = 0; i < bp->nfloaters; i++)
@@ -522,7 +524,6 @@ draw_floater (ModeInfo *mi, floater *f)
     bp->cube_polys = build_cube(mi);
   else
     build_cube(mi);
-
   mi->polygon_count += bp->cube_polys;
 
   ncz_mat_stack_pop(g_model_stack_ptr);

@@ -923,7 +923,7 @@ void ncz_im_set_chain_for_recording(const nczGLListChain *chain) {
 /* glEndList stops recording; glCallList replays via ncz_dl_call.         */
 /* ----------------------------------------------------------------------- */
 
-#define NCZ_DL_POOL_SIZE 64
+#define NCZ_DL_POOL_SIZE 1024
 
 static nczDL  g_dl_pool[NCZ_DL_POOL_SIZE] = {0};
 static bool   g_dl_pool_used[NCZ_DL_POOL_SIZE] = {0};

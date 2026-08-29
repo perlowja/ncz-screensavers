@@ -543,8 +543,17 @@ draw_piece (jigsaw_configuration *jc, puzzle_piece *p,
 
 # else  /* !HAVE_TESS */
 
-      GLfloat *tri = (GLfloat *)
-        malloc (s->n_points * 4 * 3 * 3 * sizeof(*tri));
+      /* NCZ: this buffer used to be sized s->n_points * 4 * 3 * 3 floats.
+         make_piece_eighth() takes no capacity argument and writes as many
+         triangles as the spline needs, and for the puzzles this build
+         generates that bound is too small -- gdb caught it emitting 120
+         triangles into a shorter buffer, which corrupted the heap and
+         aborted with "malloc(): corrupted top size". 16 is an empirical
+         headroom figure, not a proven bound, so the emitted size is checked
+         below: an overrun must fail loudly rather than scribble on the heap
+         again. */
+      const size_t tri_cap = (size_t)s->n_points * 16 * 3 * 3;
+      GLfloat *tri = (GLfloat *) malloc (tri_cap * sizeof(*tri));
       GLfloat *otri = tri;
       int count;
       GLdouble zz;
@@ -558,6 +567,14 @@ draw_piece (jigsaw_configuration *jc, puzzle_piece *p,
       tri += make_piece_eighth (jc, s, resolution, right_type,  tri, 0, 0, 1);
       tri += make_piece_eighth (jc, s, resolution, right_type,  tri, 1, 0, 1);
       count = (tri - otri) / 9;
+      if ((size_t)(tri - otri) > tri_cap)          /* see the note above */
+        {
+          fprintf (stderr,
+                   "jigsaw: triangle buffer overrun: %zu floats emitted into "
+                   "a %zu-float buffer (n_points=%d)\n",
+                   (size_t)(tri - otri), tri_cap, s->n_points);
+          abort();
+        }
 
       if (! wire)
         {
