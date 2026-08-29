@@ -639,6 +639,7 @@ if opt_xscreensaver
         {'name': 'glsnake',       'src': 'src/glsnake.c',        'extras': []},
         {'name': 'gravitywell',   'src': 'src/gravitywell.c',    'extras': []},
         {'name': 'hexstrut',      'src': 'src/hexstrut.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'hextrail',      'src': 'src/hextrail.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'highvoltage',   'src': 'src/highvoltage.c',    'extras': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
         {'name': 'hilbert',       'src': 'src/hilbert.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
         {'name': 'hydrostat',     'src': 'src/hydrostat.c',      'extras': ['src/sphere.c']},
@@ -652,9 +653,16 @@ if opt_xscreensaver
         {'name': 'menger',        'src': 'src/menger.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'moebiusgears',  'src': 'src/moebiusgears.c',   'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'molecule',      'src': 'src/molecule.c',       'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'noof',          'src': 'src/noof.c',           'extras': ['src/pow2.c']},
+        {'name': 'papercube',     'src': 'src/papercube.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'peepers',       'src': 'src/peepers.c',        'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'quasicrystal',  'src': 'src/quasicrystal.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'spheremonics',  'src': 'src/spheremonics.c',   'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'splodesic',     'src': 'src/splodesic.c',      'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'squirtorus',    'src': 'src/squirtorus.c',     'extras': ['src/easing.c', 'src/normals.c', 'src/spline.c', 'src/yarandom.c']},
         {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'tronbit',       'src': 'src/tronbit.c',        'extras': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
+        {'name': 'voronoi',       'src': 'src/voronoi.c',        'extras': []},
     ]
 
     foreach h : legacy_gles3_hacks

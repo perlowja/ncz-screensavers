@@ -433,6 +433,8 @@ typedef struct {
     float   material_ambdiff[4];
     bool    has_material;
     bool    lit;
+    bool    has_texture;
+    GLuint  bound_tex;
     GLenum  mode;
     GLenum  face;
     GLenum  pname;

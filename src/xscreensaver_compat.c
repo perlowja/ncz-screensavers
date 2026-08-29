@@ -905,9 +905,9 @@ void load_texture_async(Screen *screen, Window window, GLXContext glx_context,
         for (px = 0; px < TEX_W; px++) {
             size_t off = ((size_t)py * TEX_W + (size_t)px) * 4;
             int checker = ((px / 8) + (py / 8)) & 1;
-            pixels[off + 0] = checker ? 0x30 : 0x10;
-            pixels[off + 1] = checker ? 0x38 : 0x18;
-            pixels[off + 2] = checker ? 0x40 : 0x20;
+            pixels[off + 0] = checker ? 0xd0 : 0x60;
+            pixels[off + 1] = checker ? 0xe0 : 0x70;
+            pixels[off + 2] = checker ? 0xf0 : 0x90;
             pixels[off + 3] = 0xff;
         }
     }

@@ -534,6 +534,10 @@ init_gw (ModeInfo *mi)
   if (! bp->grid || ! bp->vtx || ! bp->col || ! bp->segs) abort();
 
   bp->nstars = MI_COUNT(mi);
+  if (bp->nstars <= 0)
+    bp->nstars = get_integer_resource (mi->dpy, "count", "Count");
+  if (bp->nstars <= 0)
+    bp->nstars = 15;
   bp->stars = (star *) calloc (bp->nstars, sizeof (star));
 
   for (i = 0; i < bp->nstars; i++)

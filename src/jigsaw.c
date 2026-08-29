@@ -1411,6 +1411,7 @@ init_jigsaw (ModeInfo *mi)
   jc->trackball = gltrackball_init (False);
   jc->rot = make_rotator (0, 0, 0, 0, speed * 0.002, True);
   jc->texfont = load_texture_font (MI_DISPLAY(mi), "font");
+  glGenTextures (1, &jc->texid);
 
   jc->state = PUZZLE_LOADING_MSG;
 
@@ -1478,6 +1479,7 @@ draw_jigsaw (ModeInfo *mi)
       if (! wire)
         {
           glEnable (GL_TEXTURE_2D);
+          glBindTexture (GL_TEXTURE_2D, jc->texid);
           glEnable (GL_BLEND);
           glEnable (GL_LIGHTING);
           glEnable (GL_LIGHT0);

@@ -227,6 +227,7 @@ static ncz_im_state g_im = { 0 };
 typedef struct {
     GLuint  program;
     GLint   u_mvp;
+    GLint   u_modelview;
     GLint   u_light_dir;
     GLint   u_light_color;
     GLint   u_ambient;
@@ -274,6 +275,9 @@ static void (*real_glDrawElements)(GLenum mode, GLsizei count, GLenum type,
                                    const void *indices) = NULL;
 static void (*real_glGetFloatv)(GLenum pname, GLfloat *data) = NULL;
 static void (*real_glGetIntegerv)(GLenum pname, GLint *data) = NULL;
+static void (*real_glEnable)(GLenum cap) = NULL;
+static void (*real_glDisable)(GLenum cap) = NULL;
+static void (*real_glBindTexture)(GLenum target, GLuint texture) = NULL;
 
 /* Forward declarations so the runtime init can reach the matrix-stack
  * helpers below. */
@@ -289,6 +293,7 @@ static const char *VERT_SHADER =
     "in vec4 a_color;\n"
     "in vec2 a_uv;\n"
     "uniform mat4 u_mvp;\n"
+    "uniform mat4 u_modelview;\n"
     "uniform vec3 u_light_dir;\n"
     "uniform vec3 u_light_color;\n"
     "uniform vec3 u_ambient;\n"
@@ -303,8 +308,9 @@ static const char *VERT_SHADER =
     "out vec2 v_uv;\n"
     "void main() {\n"
     "  gl_Position = u_mvp * vec4(a_pos, 1.0);\n"
-    "  v_normal = a_normal;\n"
-    "  v_flat_normal = a_normal;\n"
+    "  vec3 N = mat3(u_modelview) * a_normal;\n"
+    "  v_normal = N;\n"
+    "  v_flat_normal = N;\n"
     "  vec4 base = u_has_material ? u_material_color : a_color;\n"
     "  v_color = vec4(base.rgb, base.a);\n"
     "  v_uv = a_uv;\n"
@@ -327,6 +333,7 @@ static const char *FRAG_SHADER =
     "out vec4 frag;\n"
     "void main() {\n"
     "  vec3 N = u_use_flat ? v_flat_normal : v_normal;\n"
+    "  if (!gl_FrontFacing) N = -N;\n"
     "  /* Defensive: zero-length normals normalize to NaN. Fall back to\n"
     "   * (0,0,1) so the diffuse term still has a defined direction. */\n"
     "  if (dot(N, N) < 1e-12) N = vec3(0.0, 0.0, 1.0);\n"
@@ -338,7 +345,7 @@ static const char *FRAG_SHADER =
     "   * first boing pilot on 2026-08-20. */\n"
     "  vec3 Ldir = u_light_dir;\n"
     "  if (dot(Ldir, Ldir) < 1e-12) Ldir = vec3(0.0, 0.0, 1.0);\n"
-    "  vec3 L = normalize(-Ldir);\n"
+    "  vec3 L = normalize(Ldir);\n"
     "  float ndotl = max(dot(N, L), 0.0);\n"
     "  vec3 lit = v_color.rgb * (u_ambient + u_light_color * ndotl);\n"
     "  if (u_has_texture) {\n"
@@ -396,6 +403,7 @@ static int compile_program(void) {
     g_rt.program = p;
 #define U(x) g_rt.u_##x = glGetUniformLocation(p, "u_" #x)
     U(mvp);
+    U(modelview);
     U(light_dir);
     U(light_color);
     U(ambient);
@@ -456,6 +464,10 @@ int ncz_gles3_runtime_init(void) {
                 dlerror());
         return -1;
     }
+    dlerror();
+    real_glEnable = (void (*)(GLenum))dlsym(RTLD_NEXT, "glEnable");
+    real_glDisable = (void (*)(GLenum))dlsym(RTLD_NEXT, "glDisable");
+    real_glBindTexture = (void (*)(GLenum, GLuint))dlsym(RTLD_NEXT, "glBindTexture");
 
     if (compile_program() < 0) return -1;
     fprintf(stderr, "[diag] gles3_compat: shader program %u compiled\n", g_rt.program);
@@ -1247,6 +1259,8 @@ static void im_flush_as_draw(void) {
     nczMat4 mvp;
     ncz_mat_stack_mvp(g_model_stack_ptr, mvp);
     if (g_rt.u_mvp >= 0)        glUniformMatrix4fv(g_rt.u_mvp, 1, GL_FALSE, mvp);
+    if (g_rt.u_modelview >= 0)  glUniformMatrix4fv(g_rt.u_modelview, 1, GL_FALSE,
+                                                   g_ms.model_stack.m[g_ms.model_stack.top]);
     if (g_rt.u_light_dir >= 0)  glUniform3fv(g_rt.u_light_dir, 1, g_im.light_dir);
     if (g_rt.u_light_color >= 0) glUniform3fv(g_rt.u_light_color, 1, g_im.light_color);
     if (g_rt.u_ambient >= 0)    glUniform3fv(g_rt.u_ambient, 1, g_im.light_ambient);
@@ -1494,6 +1508,8 @@ void nczGLList_draw(const nczGLListChain *chain) {
     nczMat4 mvp;
     ncz_mat_stack_mvp(&g_ms.model_stack, mvp);
     glUniformMatrix4fv(g_rt.u_mvp, 1, GL_FALSE, mvp);
+    glUniformMatrix4fv(g_rt.u_modelview, 1, GL_FALSE,
+                       g_ms.model_stack.m[g_ms.model_stack.top]);
     glUniform3fv(g_rt.u_light_dir, 1, g_im.light_dir);
     glUniform3fv(g_rt.u_light_color, 1, g_im.light_color);
     glUniform3fv(g_rt.u_ambient, 1, g_im.light_ambient);
@@ -1532,6 +1548,8 @@ void nczGLList_draw_wire(const nczGLListChain *chain) {
     nczMat4 mvp;
     ncz_mat_stack_mvp(&g_ms.model_stack, mvp);
     glUniformMatrix4fv(g_rt.u_mvp, 1, GL_FALSE, mvp);
+    glUniformMatrix4fv(g_rt.u_modelview, 1, GL_FALSE,
+                       g_ms.model_stack.m[g_ms.model_stack.top]);
     glUniform3fv(g_rt.u_light_dir, 1, g_im.light_dir);
     glUniform3fv(g_rt.u_light_color, 1, g_im.light_color);
     glUniform3fv(g_rt.u_ambient, 1, g_im.light_ambient);
@@ -1607,6 +1625,8 @@ int ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain) {
     memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
     r->has_material = g_im.has_material;
     r->lit = g_im.lit;
+    r->has_texture = g_im.has_texture;
+    r->bound_tex = g_im.bound_tex;
     return 0;
 }
 
@@ -1632,6 +1652,8 @@ int ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
     memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
     r->has_material = g_im.has_material;
     r->lit = g_im.lit;
+    r->has_texture = g_im.has_texture;
+    r->bound_tex = g_im.bound_tex;
     return 0;
 }
 
@@ -1662,18 +1684,48 @@ void ncz_dl_call(const nczDL *dl) {
             ncz_im_color4fv(r->color);
             break;
         case NCZ_DL_OP_GLLIST:
-            if (r->chain) nczGLList_draw(r->chain);
+            if (r->chain) {
+                bool old_has_material = g_im.has_material;
+                bool old_lit = g_im.lit;
+                bool old_has_texture = g_im.has_texture;
+                GLuint old_bound_tex = g_im.bound_tex;
+                memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
+                g_im.has_material = r->has_material;
+                g_im.lit = r->lit;
+                g_im.has_texture = r->has_texture;
+                g_im.bound_tex = r->bound_tex;
+                nczGLList_draw(r->chain);
+                g_im.has_material = old_has_material;
+                g_im.lit = old_lit;
+                g_im.has_texture = old_has_texture;
+                g_im.bound_tex = old_bound_tex;
+            }
             break;
         case NCZ_DL_OP_INLINE:
-            ncz_im_begin(r->primitive ? r->primitive : GL_TRIANGLES);
-            for (int v = 0; v < r->vcount; v++) {
-                const float *p = &r->verts[v*12];
-                ncz_im_normal3f(p[3], p[4], p[5]);
-                ncz_im_color4f (p[6], p[7], p[8], p[9]);
-                ncz_im_tex_coord2f(p[10], p[11]);
-                ncz_im_vertex3f(p[0], p[1], p[2]);
+            {
+                bool old_has_material = g_im.has_material;
+                bool old_lit = g_im.lit;
+                bool old_has_texture = g_im.has_texture;
+                GLuint old_bound_tex = g_im.bound_tex;
+                memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
+                g_im.has_material = r->has_material;
+                g_im.lit = r->lit;
+                g_im.has_texture = r->has_texture;
+                g_im.bound_tex = r->bound_tex;
+                ncz_im_begin(r->primitive ? r->primitive : GL_TRIANGLES);
+                for (int v = 0; v < r->vcount; v++) {
+                    const float *p = &r->verts[v*12];
+                    ncz_im_normal3f(p[3], p[4], p[5]);
+                    ncz_im_color4f (p[6], p[7], p[8], p[9]);
+                    ncz_im_tex_coord2f(p[10], p[11]);
+                    ncz_im_vertex3f(p[0], p[1], p[2]);
+                }
+                ncz_im_end();
+                g_im.has_material = old_has_material;
+                g_im.lit = old_lit;
+                g_im.has_texture = old_has_texture;
+                g_im.bound_tex = old_bound_tex;
             }
-            ncz_im_end();
             break;
         }
     }
@@ -1870,6 +1922,45 @@ void glPushClientAttrib(GLbitfield m) { (void)m; }
 void glPopClientAttrib(void)         { }
 void glClientActiveTexture(GLenum t) { (void)t; }
 
+void glEnable(GLenum cap) {
+    if (cap == GL_TEXTURE_2D) {
+        g_im.has_texture = (g_im.bound_tex != 0);
+        return;
+    }
+    if (cap == GL_LIGHTING || cap == GL_LIGHT0) {
+        g_im.lit = true;
+        return;
+    }
+    if (cap == GL_NORMALIZE || cap == GL_LINE_SMOOTH ||
+        cap == GL_FOG || cap == GL_COLOR_MATERIAL)
+        return;
+    if (real_glEnable)
+        real_glEnable(cap);
+}
+
+void glDisable(GLenum cap) {
+    if (cap == GL_TEXTURE_2D) {
+        g_im.has_texture = false;
+        return;
+    }
+    if (cap == GL_LIGHTING) {
+        g_im.lit = false;
+        return;
+    }
+    if (cap == GL_LIGHT0 || cap == GL_NORMALIZE || cap == GL_LINE_SMOOTH ||
+        cap == GL_FOG || cap == GL_COLOR_MATERIAL)
+        return;
+    if (real_glDisable)
+        real_glDisable(cap);
+}
+
+void glBindTexture(GLenum target, GLuint texture) {
+    if (target == GL_TEXTURE_2D)
+        ncz_im_bind_texture(target, texture);
+    if (real_glBindTexture)
+        real_glBindTexture(target, texture);
+}
+
 void glShadeModel(GLenum mode)           { ncz_im_shade_model(mode); }
 void glPolygonMode(GLenum face, GLenum m){ (void)face; (void)m; }
 void glLightModelfv(GLenum p, const GLfloat *v) { (void)p; (void)v; }
@@ -1947,6 +2038,31 @@ void glTexGenfv(GLenum coord, GLenum pname, const GLfloat *v) {
 void glHint(GLenum target, GLenum mode) { (void)target; (void)mode; }
 void glLineStipple(GLint f, GLushort p) { (void)f; (void)p; }
 void glLineWidth(GLfloat w)             { (void)w; }
+/* glColorMask — GLES3 has this, declared in <GLES3/gl32.h>. The
+ * squirtorus legacy hack calls it to fade the trail out by lowering
+ * alpha channel write; the GLES3 build links against the real one
+ * declared in the system header, so no stub needed here. */
+
+/* glLogicOp — quasicrystal.c calls this to XOR-combine successive
+ * frame layers (the "quasicrystal" diffraction pattern). GLES3 has
+ * no glLogicOp in the core profile (the desktop GL_COLOR_LOGIC_OP
+ * extension is gone). KNOWN VISUAL INACCURACY: this is a discard
+ * stub — the XOR blend is silently dropped, so successive layers
+ * overwrite each other instead of compositing. The geometry still
+ * draws and animates, but the diffraction pattern is not visible. */
+void glLogicOp(GLenum op)               { (void)op; }
+
+/* glTexImage1D — quasicrystal.c uses a 1-D texture as a lookup table
+ * for the diffraction pattern's row offsets. GLES3 has no 1-D
+ * textures (only 2-D / 3-D). KNOWN VISUAL INACCURACY: this is a
+ * discard stub — the lookup table is never uploaded, so the
+ * diffraction pattern is uniform rather than per-row modulated. */
+void glTexImage1D(GLenum target, GLint level, GLint internalFormat,
+                  GLsizei width, GLint border, GLenum format, GLenum type,
+                  const GLvoid *pixels) {
+    (void)target; (void)level; (void)internalFormat;
+    (void)width; (void)border; (void)format; (void)type; (void)pixels;
+}
 void glGetDoublev(GLenum p, GLdouble *v){
     const nczMat4 *m = NULL;
     if (p == GL_MODELVIEW_MATRIX) {
@@ -2001,6 +2117,11 @@ void glNormal3d(GLdouble x, GLdouble y, GLdouble z) { ncz_im_normal3f((GLfloat)x
 void glNormal3dv(const GLdouble *v)   { ncz_im_normal3f((GLfloat)v[0], (GLfloat)v[1], (GLfloat)v[2]); }
 void glTexCoord2fv(const GLfloat *v)  { ncz_im_tex_coord2f(v[0], v[1]); }
 void glTexCoord2f(GLfloat u, GLfloat v){ ncz_im_tex_coord2f(u, v); }
+/* glTexCoord2d — same as glTexCoord2f, narrows GLdouble to GLfloat.
+ * papercube.c uses this to feed its GLdouble vertex/texcoord stream;
+ * the immediate-mode ncz_im_tex_coord2f accepts floats. */
+void glTexCoord2d(GLdouble u, GLdouble v) { ncz_im_tex_coord2f((GLfloat)u, (GLfloat)v); }
+void glTexCoord2dv(const GLdouble *v)    { ncz_im_tex_coord2f((GLfloat)v[0], (GLfloat)v[1]); }
 void glEdgeFlag(GLboolean f)          { (void)f; }
 
 /* glColorMaterial — GL1 selector that, when enabled, routes the
@@ -2081,20 +2202,23 @@ static struct {
     const GLfloat *texcoord_ptr;
     GLsizei texcoord_stride;
     GLsizei texcoord_size;
-    bool enabled[3];  /* VERTEX_ARRAY=0, NORMAL_ARRAY=1, TEXCOORD_ARRAY=2 */
+    const GLfloat *color_ptr;
+    GLsizei color_stride;
+    GLsizei color_size;
+    bool enabled[4];  /* VERTEX_ARRAY=0, NORMAL_ARRAY=1, TEXCOORD_ARRAY=2, COLOR_ARRAY=3 */
 } g_client_vao;
 
 void glEnableClientState(GLenum array) {
     if (array == GL_VERTEX_ARRAY)        g_client_vao.enabled[0] = true;
     else if (array == GL_NORMAL_ARRAY)   g_client_vao.enabled[1] = true;
     else if (array == GL_TEXTURE_COORD_ARRAY) g_client_vao.enabled[2] = true;
-    else if (array == GL_COLOR_ARRAY)    { /* ignored — color is per-vertex current color */ }
+    else if (array == GL_COLOR_ARRAY)    g_client_vao.enabled[3] = true;
 }
 void glDisableClientState(GLenum array) {
     if (array == GL_VERTEX_ARRAY)        g_client_vao.enabled[0] = false;
     else if (array == GL_NORMAL_ARRAY)   g_client_vao.enabled[1] = false;
     else if (array == GL_TEXTURE_COORD_ARRAY) g_client_vao.enabled[2] = false;
-    else if (array == GL_COLOR_ARRAY)    { }
+    else if (array == GL_COLOR_ARRAY)    g_client_vao.enabled[3] = false;
 }
 void glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr) {
     if (type != GL_FLOAT) return;  /* only FLOAT supported by GLES3 too */
@@ -2113,15 +2237,11 @@ void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pt
     g_client_vao.texcoord_size = size;
     g_client_vao.texcoord_stride = stride ? stride : size * sizeof(GLfloat);
 }
-/* glColorPointer: GLES3 has no GL_COLOR_ARRAY client state. We track the
- * pointer here only so calls link; per-vertex color is intentionally a no-op
- * for the same reason as GL_COLOR_ARRAY in glEnableClientState above (color
- * comes from the current color set by glColor3f/glColor4f, not from a per-
- * vertex array). gravitywell.c calls this at line 399/627 to feed per-vertex
- * colors through the legacy array path; visually we discard the colors and
- * accept whatever the current color was at glDrawArrays time. */
 void glColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr) {
-    (void)size; (void)type; (void)stride; (void)ptr;
+    if (type != GL_FLOAT || size < 3 || size > 4) return;
+    g_client_vao.color_ptr = (const GLfloat *)ptr;
+    g_client_vao.color_size = size;
+    g_client_vao.color_stride = stride ? stride : size * sizeof(GLfloat);
 }
 
 /* glDrawArrays — handles both the immediate-mode path (when no client
@@ -2149,18 +2269,31 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     const GLfloat *tp = g_client_vao.texcoord_ptr
         ? g_client_vao.texcoord_ptr + first * (g_client_vao.texcoord_stride / sizeof(GLfloat))
         : NULL;
+    const GLfloat *cp = (g_client_vao.enabled[3] && g_client_vao.color_ptr)
+        ? g_client_vao.color_ptr + first * (g_client_vao.color_stride / sizeof(GLfloat))
+        : NULL;
     int vstep = g_client_vao.vertex_stride / sizeof(GLfloat);
     int nstep = g_client_vao.normal_stride / sizeof(GLfloat);
     int tstep = g_client_vao.texcoord_stride / sizeof(GLfloat);
+    int cstep = g_client_vao.color_stride / sizeof(GLfloat);
+    bool saved_has_material = g_im.has_material;
+
+    if (cp)
+        g_im.has_material = false;
+
     for (int i = 0; i < count; i++) {
         if (np) ncz_im_normal3f(np[0], np[1], np[2]);
         if (tp) ncz_im_tex_coord2f(tp[0], (ts >= 2) ? tp[1] : 0.0f);
+        if (cp) ncz_im_color4f(cp[0], cp[1], cp[2],
+                               (g_client_vao.color_size >= 4) ? cp[3] : 1.0f);
         ncz_im_vertex3f(vp[0], (vs >= 2) ? vp[1] : 0.0f, (vs >= 3) ? vp[2] : 0.0f);
         vp += vstep;
         if (np) np += nstep;
         if (tp) tp += tstep;
+        if (cp) cp += cstep;
     }
     ncz_im_end();
+    g_im.has_material = saved_has_material;
 }
 
 /* glInterleavedArrays — GL1 convenience for setting up V/N/C/T
@@ -2176,13 +2309,7 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer) {
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_COLOR_ARRAY);
         glVertexPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p + 3);
-        /* Color is "current color" in this format — we set it from
-         * the per-vertex color data implicitly via a separate path,
-         * but xscreensaver's gllist pattern is that color is the
-         * per-vertex material set via glColor (or, here, ncz_im_color).
-         * In practice, GL_C3F_V3F is unused by gllist.c's renderList
-         * path — both companion_quad/disc/heart use GL_N3F_V3F. We
-         * still wire it up so the link succeeds. */
+        glColorPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p);
     } else if (format == GL_N3F_V3F) {
         const GLfloat *p = (const GLfloat *)pointer;
         glEnableClientState(GL_VERTEX_ARRAY);
