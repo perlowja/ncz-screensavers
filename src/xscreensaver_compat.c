@@ -58,24 +58,21 @@
 /* glu* — small subset of GLU. gluPerspective + gluLookAt are the only
  * ones used by glmatrix.c; expand as future ports need more.
  *
- * In the gl4es path (default) these wrap glMultMatrixf / glTranslated,
- * which gl4es provides. In the GLES3 path (NCZ_GLES3_BUILD defined),
- * they are empty — ported hacks reach gluPerspective / gluLookAt via
- * ncz_mat_stack_perspective / ncz_mat_stack_lookAt in
  * gles3_compat.{h,c}, and the link doesn't pull in libGL.so.1. */
-#ifdef NCZ_GLES3_BUILD
-void gluPerspective(GLdouble fovy, GLdouble aspect,
-                    GLdouble zNear, GLdouble zFar) {
-    (void)fovy; (void)aspect; (void)zNear; (void)zFar;
-}
-void gluLookAt(GLdouble ex, GLdouble ey, GLdouble ez,
-               GLdouble cx, GLdouble cy, GLdouble cz,
-               GLdouble ux, GLdouble uy, GLdouble uz) {
-    (void)ex; (void)ey; (void)ez;
-    (void)cx; (void)cy; (void)cz;
-    (void)ux; (void)uy; (void)uz;
-}
-#else
+/* gluPerspective / gluLookAt are implemented once, for both paths.
+ *
+ * They used to be empty in the NCZ_GLES3_BUILD path, on the assumption that a
+ * ported hack would call ncz_mat_stack_perspective / ncz_mat_stack_lookAt
+ * directly instead. That holds for hacks whose call sites were rewritten, but
+ * it silently breaks any hack that still calls the GLU spelling: the
+ * projection is simply never set, the binary links, and the hack renders
+ * wrong. jigsaw hit exactly this.
+ *
+ * The bodies below need only glMultMatrixf and glTranslated, and
+ * gles3_compat.c implements both for the GLES3 path
+ * (gles3_compat.c:1573 and :1576), so one implementation serves both. A hack
+ * whose call sites were ported to ncz_mat_stack_* does not call these at all,
+ * so nothing is applied twice. */
 void gluPerspective(GLdouble fovy, GLdouble aspect,
                     GLdouble zNear, GLdouble zFar) {
     GLdouble f = 1.0 / tan(fovy * M_PI / 360.0);  /* fovy/2 in radians */
@@ -115,7 +112,7 @@ void gluLookAt(GLdouble ex, GLdouble ey, GLdouble ez,
     glMultMatrixf(m);
     glTranslated(-ex, -ey, -ez);
 }
-#endif /* NCZ_GLES3_BUILD */
+
 
 int gluProject(GLdouble objx, GLdouble objy, GLdouble objz,
                const GLdouble model[16], const GLdouble proj[16],
