@@ -1873,6 +1873,7 @@ void glClientActiveTexture(GLenum t) { (void)t; }
 void glShadeModel(GLenum mode)           { ncz_im_shade_model(mode); }
 void glPolygonMode(GLenum face, GLenum m){ (void)face; (void)m; }
 void glLightModelfv(GLenum p, const GLfloat *v) { (void)p; (void)v; }
+void glLightModeliv(GLenum p, const GLint *v)    { (void)p; (void)v; }
 void glLightModeli(GLenum p, GLint v)    { (void)p; (void)v; }
 void glLightfv(GLenum light, GLenum pname, const GLfloat *v) {
     switch (pname) {
@@ -2111,6 +2112,16 @@ void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pt
     g_client_vao.texcoord_ptr = (const GLfloat *)ptr;
     g_client_vao.texcoord_size = size;
     g_client_vao.texcoord_stride = stride ? stride : size * sizeof(GLfloat);
+}
+/* glColorPointer: GLES3 has no GL_COLOR_ARRAY client state. We track the
+ * pointer here only so calls link; per-vertex color is intentionally a no-op
+ * for the same reason as GL_COLOR_ARRAY in glEnableClientState above (color
+ * comes from the current color set by glColor3f/glColor4f, not from a per-
+ * vertex array). gravitywell.c calls this at line 399/627 to feed per-vertex
+ * colors through the legacy array path; visually we discard the colors and
+ * accept whatever the current color was at glDrawArrays time. */
+void glColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr) {
+    (void)size; (void)type; (void)stride; (void)ptr;
 }
 
 /* glDrawArrays — handles both the immediate-mode path (when no client
