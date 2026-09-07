@@ -661,6 +661,7 @@ if opt_xscreensaver
         {'name': 'noof',          'src': 'src/noof.c',           'extras': ['src/pow2.c']},
         {'name': 'papercube',     'src': 'src/papercube.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'peepers',       'src': 'src/peepers.c',        'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'polyhedra-gl',  'src': 'src/polyhedra-gl.c',   'extras': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'c_args_extra': ['-DHAVE_JWZGLES'], 'table': 'polyhedra'},
         {'name': 'quasicrystal',  'src': 'src/quasicrystal.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'spheremonics',  'src': 'src/spheremonics.c',   'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'splodesic',     'src': 'src/splodesic.c',      'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
@@ -705,7 +706,17 @@ if opt_xscreensaver
             include_directories: inc,
             dependencies: common_gles3_deps,
             c_args: common_gles3_c_args + h.get('c_args_extra', []) + [
-                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
+                # The hack's <table>_xscreensaver_function_table symbol is
+                # emitted by XSCREENSAVER_MODULE(<class>, <prefix>) at the
+                # bottom of the vendored .c. Most hacks use the bare
+                # <name> as the table identifier (so
+                # <name>_xscreensaver_function_table); a few use a
+                # different stem (polyhedra-gl's vendored file uses
+                # XSCREENSAVER_MODULE("Polyhedra", polyhedra) → the table
+                # is named polyhedra_xscreensaver_function_table, not
+                # polyhedra-gl_xscreensaver_function_table). The 'table'
+                # dict key overrides the default when they differ.
+                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
             ],
             install: false,
         )

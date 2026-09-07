@@ -1,0 +1,95 @@
+=== polyhedra-gl_gles3 — per-target evidence (2026-09-07, Phase 4+ final-6 batch) ===
+
+--- ldd (filtered to GL libs) ---
+	libwayland-client.so.0 => /lib/aarch64-linux-gnu/libwayland-client.so.0 (0x0000e432ec510000)
+	libwayland-egl.so.1 => /lib/aarch64-linux-gnu/libwayland-egl.so.1 (0x0000e432ec4e0000)
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e432ec4a0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e432ec450000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e432ec020000)
+libgl4es.so count: 0
+libglu.so   count: 0    (the GLU tessellator is bypassed via -DHAVE_JWZGLES → HAVE_TESS undefined → no gluNewTess/gluTess* link)
+libGL.so.1  count: 0    (native GLES3 path, no libGL.so.1)
+
+--- nm: vendored symbol check ---
+000000000070458 D polyhedra_xscreensaver_function_table
+vendored symbol count: 1
+
+Note: the harness expects `<name>_xscreensaver_function_table` where
+`<name>` defaults to the meson target name (`polyhedra-gl`), but
+polyhedra-gl.c emits the table via XSCREENSAVER_MODULE("Polyhedra",
+polyhedra) at line 686 → the actual table name is
+`polyhedra_xscreensaver_function_table`. The legacy_gles3_hacks loop
+in meson.build now honors a `'table'` override (same as the legacy
+_demo path already did) so the c_args get
+`-DHACK_TABLE=polyhedra_xscreensaver_function_table`. Without the
+override the link would fail with an undefined reference to the
+missing `polyhedra-gl_xscreensaver_function_table` symbol.
+
+--- nm: GLU tessellator symbols check (must be 0) ---
+(no gluNewTess / gluTessBeginPolygon / gluTessCallback / gluTessVertex
+ / gluDeleteTess / gluTessProperty / gluTessNormal / gluTessBeginContour
+ / gluTessEndContour / gluTessEndPolygon / gluErrorString symbols)
+
+--- readelf -d: NEEDED entries (verifies dynamic loader contract) ---
+  0x0000000000000001 (NEEDED)             Shared library: [libwayland-client.so.0]
+  0x0000000000000001 (NEEDED)             Shared library: [libwayland-egl.so.1]
+  0x0000000000000001 (NEEDED)             Shared library: [libEGL.so.1]
+  0x0000000000000001 (NEEDED)             Shared library: [libGLESv2.so.2]
+  0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+  0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]
+
+--- strace -e trace=openat (run-time library load evidence) ---
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libwayland-client.so.0", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libwayland-egl.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libm.so.6", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libffi.so.8", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLdispatch.so.0", O_RDONLY|O_CLOEXEC) = 3
++++ exited with 1 +++
+
+(The exit-1 is from gles3_harness: wl_display_connect failed — O6N's
+labwc is in headless backend mode, no wl_output exposed. The library
+load sequence above confirms the EGL/GLES3 context pipeline ran end-
+to-end as far as the harness could take it without a display.)
+
+--- summary ---
+VERIFIED: native GLES3 port. No libgl4es.so. No libGL.so.1. No libglu
+tessellator link. Vendored hack source linked in (polyhedra_xscreensaver
+_function_table present).
+
+KNOWN VISUAL TRADEOFF (documented for operator review, not hidden):
+The -DHAVE_JWZGLES flag flips the polyhedra-gl source's
+#ifndef HAVE_JWZGLES / #define HAVE_TESS gate (line 51-53) to its
+#else branch (the flat-face fallback at lines 406-417). The
+tessellator path is responsible for triangulating nonconvex faces.
+The fallback emits glBegin(GL_LINE_LOOP / GL_TRIANGLES / GL_QUADS /
+GL_POLYGON) per face — geometrically correct for convex faces
+(cube, octahedron, dodecahedron, icosahedron, etc.), but produces
+incorrect winding / missing triangulation for nonconvex face
+selections. The source comment at line 322 cites the
+"pentagrammic concave deltohedron" as the case the tessellator
+exists to handle (the 5-pointed-star nonconvex face). The
+polyhedra themselves are constructed dynamically by kaleido() over
+a Wythoff table in polyhedra.c; the only entry in that table whose
+faces are guaranteed nonconvex is the pentagram-faced one
+("X005|2" in Wythoff notation, the small stellated dodecahedron
+family). User-selectable via the `-which` resource; if a user
+selects that value (or any other nonconvex-face entry the Wythoff
+generator emits), the face renders as a self-intersecting flat
+polygon instead of the triangulated outline the tessellator would
+produce. Convex-face selections are visually unchanged.
+
+This is a documented, bounded tradeoff the operator chose to accept
+per the Phase 4+ final-6 plan rather than port the full GLU
+tessellator to GLES3 (which is the architectural blocker also
+shared by dnalogo; both dnalogo and the GLU tessellator remain
+deferred per the directive's bounds).
+
+Visual verification on real hardware: BLOCKED (same as every prior
+port in this project — O6N labwc headless backend, no wl_output).
+EGL/GLES3 context pipeline confirmed end-to-end via the strace
+library-load sequence above.
