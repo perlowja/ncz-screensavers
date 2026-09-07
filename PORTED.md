@@ -306,6 +306,40 @@ deferred until a real compositor is available.
 | splitflap_gles3      | gllist.c, rotator.c, splitflap_obj.c, yarandom.c |
 | starwars_gles3       | glut_stroke.c, glut_swidth.c, yarandom.c |
 | winduprobot_gles3    | gllist.c, image_data_to_ximage.c, involute.c, normals.c, robot.c, robot-wireframe.c, sphere.c, yarandom.c |
+| fliptext_gles3        | - |
+| gears_gles3           | involute.c, normals.c, rotator.c, tube.c, yarandom.c |
+| geodesic_gles3        | normals.c, rotator.c, yarandom.c |
+| glblur_gles3          | rotator.c, yarandom.c |
+| glcells_gles3         | - |
+| glknots_gles3         | rotator.c, tube.c, yarandom.c |
+| glschool_gles3        | glschool_alg.c, glschool_gl.c, sphere.c, tube.c, yarandom.c |
+| glsnake_gles3         | - |
+| gravitywell_gles3     | - |
+| hexstrut_gles3        | rotator.c, yarandom.c |
+| hextrail_gles3        | rotator.c, yarandom.c |
+| hilbert_gles3         | rotator.c, sphere.c, tube.c, yarandom.c |
+| hydrostat_gles3       | sphere.c |
+| hypnowheel_gles3      | rotator.c, yarandom.c |
+| jigsaw_gles3          | normals.c, rotator.c, spline.c, yarandom.c |
+| juggler3d_gles3       | rotator.c, sphere.c, tube.c, yarandom.c |
+| kaleidocycle_gles3    | normals.c, rotator.c, yarandom.c |
+| lockward_gles3        | - |
+| mapscroller_gles3     | easing.c |
+| menger_gles3          | rotator.c, yarandom.c |
+| moebiusgears_gles3    | involute.c, normals.c, rotator.c, yarandom.c |
+| molecule_gles3        | rotator.c, sphere.c, tube.c, yarandom.c |
+| noof_gles3            | pow2.c |
+| papercube_gles3       | rotator.c, yarandom.c |
+| peepers_gles3         | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
+| quasicrystal_gles3    | rotator.c, yarandom.c |
+| rubikblocks_gles3     | rotator.c, yarandom.c |
+| spheremonics_gles3    | normals.c, rotator.c, yarandom.c |
+| splodesic_gles3       | normals.c, rotator.c, yarandom.c |
+| squirtorus_gles3      | easing.c, normals.c, spline.c, yarandom.c |
+| tangram_gles3         | tangram_shapes.c |
+| topblock_gles3        | sphere.c, tube.c |
+| tronbit_gles3         | doubletime.c, gllist.c, rotator.c, sphere.c, tronbit_idle1.c, tronbit_idle2.c, tronbit_no.c, tronbit_yes.c, yarandom.c |
+| voronoi_gles3         | - |
 
 ### Upstream xscreensaver 6.00+ GLES3 rewrites (6 Carsten Steger hacks)
 
@@ -324,9 +358,11 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **119** (65 gl4es-routed + 54 GLES3-native).
-GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) + 23 (Phase 4 mechanical — 12 + 11 alphabetical this round) = 54.
-Remaining to migrate off gl4es: 42 (was 65; 23 moved to native this round).
+Total ported: **94 unique hacks** (65 legacy gl4es-routed + 88 GLES3-native − 59 dual-listed).
+GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) + 57 (Phase 4 + Round 11 — 5+8+9+13+12+12 alphabetical batches 590a7fe→ef6d0dd→1737154→25cdc4e) = 88.
+Remaining to migrate off gl4es: 6 (was 65; 59 moved to native across all rounds).
+
+Of the 88 native ports, 59 are dual-listed (have both `_demo` and `_gles3` binaries — the _demo will be deleted in the final Phase 4+ step per the directive). The other 29 are native-only (boing, companion, the 6 Phase 1+ upstream Carsten Steger hacks, plus 23 hacks that had no gl4es-routed `_demo` registered).
 
 ## Deferred (6)
 
