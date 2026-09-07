@@ -92,9 +92,9 @@ section) are built.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Ported (31 GLES3-native, no gl4es)
+## Ported (90 GLES3-native, no gl4es)
 
-These 31 build as `<name>_gles3` binaries linked directly against
+These 90 build as `<name>_gles3` binaries linked directly against
 system libGLESv2 / libEGL — no libGL.so.1, no gl4es, no translation
 shim. The vendored xscreensaver source compiles against the GLES3
 compat layer (`gles3_compat.h`) which routes every glBegin/glVertex/
@@ -331,12 +331,14 @@ deferred until a real compositor is available.
 | noof_gles3            | pow2.c |
 | papercube_gles3       | rotator.c, yarandom.c |
 | peepers_gles3         | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
+| polyhedra-gl_gles3    | normals.c, polyhedra.c, rotator.c, teapot.c, yarandom.c | *(see inline note: bounded visual tradeoff for nonconvex faces)* |
 | quasicrystal_gles3    | rotator.c, yarandom.c |
 | rubikblocks_gles3     | rotator.c, yarandom.c |
 | spheremonics_gles3    | normals.c, rotator.c, yarandom.c |
 | splodesic_gles3       | normals.c, rotator.c, yarandom.c |
 | squirtorus_gles3      | easing.c, normals.c, spline.c, yarandom.c |
 | tangram_gles3         | tangram_shapes.c |
+| timetunnel_gles3      | image_data_to_ximage.c, rotator.c, yarandom.c |
 | topblock_gles3        | sphere.c, tube.c |
 | tronbit_gles3         | doubletime.c, gllist.c, rotator.c, sphere.c, tronbit_idle1.c, tronbit_idle2.c, tronbit_no.c, tronbit_yes.c, yarandom.c |
 | voronoi_gles3         | - |
@@ -358,13 +360,87 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **94 unique hacks** (65 legacy gl4es-routed + 88 GLES3-native − 59 dual-listed).
-GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) + 57 (Phase 4 + Round 11 — 5+8+9+13+12+12 alphabetical batches 590a7fe→ef6d0dd→1737154→25cdc4e) = 88.
-Remaining to migrate off gl4es: 6 (was 65; 59 moved to native across all rounds).
+Total ported: **94 unique hacks** (65 legacy gl4es-routed + 90 GLES3-native − 61 dual-listed).
+GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) + 57 (Phase 4 + Round 11 — 5+8+9+13+12+12 alphabetical batches 590a7fe→ef6d0dd→1737154→25cdc4e) + 2 (Round 12 final-6 tractable: polyhedra-gl via -DHAVE_JWZGLES fallback, timetunnel via new gluScaleImage shim) = 90.
+Remaining to migrate off gl4es: 4 (was 65; 61 moved to native across all rounds — 59 in earlier rounds, 2 in Round 12).
 
-Of the 88 native ports, 59 are dual-listed (have both `_demo` and `_gles3` binaries — the _demo will be deleted in the final Phase 4+ step per the directive). The other 29 are native-only (boing, companion, the 6 Phase 1+ upstream Carsten Steger hacks, plus 23 hacks that had no gl4es-routed `_demo` registered).
+Of the 90 native ports, 61 are dual-listed (have both `_demo` and `_gles3` binaries — the _demo will be deleted in the final Phase 4+ step per the directive). The other 29 are native-only (boing, companion, the 6 Phase 1+ upstream Carsten Steger hacks, plus 23 hacks that had no gl4es-routed `_demo` registered). The Round 12 additions (polyhedra-gl and timetunnel) are dual-listed: they keep their `_demo` legacy registrations and gain `_gles3` native ones, same as every other Round 11/12 port. The directive to retire gl4es for good waits on dnalogo / pinion (and the two non-GL Deferred entries b_lockglue + sonar).
 
-## Deferred (6)
+### Round 12 — final-6 tractable (2 ports, 1 new helper, 1 fallback flag)
+
+Two of the six remaining Deferred blockers from the prior session
+were tractable without an architectural change:
+
+**polyhedra-gl_gles3** (commit a979ade): vendored source's
+`#ifndef HAVE_JWZGLES / #define HAVE_TESS` gate (src/polyhedra-gl.c
+lines 51-53) has a flat-face fallback at lines 406-417 which emits
+`glBegin(GL_LINE_LOOP / GL_TRIANGLES / GL_QUADS / GL_POLYGON)` per
+face. That fallback is geometrically correct for convex-faced
+polyhedra; the tessellator exists for the nonconvex case (the source
+comment at line 322 cites the "pentagrammic concave deltohedron" as
+the motivating example). Single-line meson.build change adds
+`polyhedra-gl` to `legacy_gles3_hacks` with `c_args_extra:
+['-DHAVE_JWZGLES']`. Same flag-equivalence already proven by jigsaw's
+port (line 652 of meson.build).
+
+**DOCUMENTED VISUAL TRADEOFF (not hidden):** for a user-selectable
+`do_which` value pointing at a nonconvex-face polyhedron (the
+small-stellated-dodecahedron family in the Wythop's Wythoff table —
+"X005|2" in Wythoff notation), the face renders as a
+self-intersecting flat polygon instead of the triangulated outline
+the tessellator would produce. Convex selections (cube, octahedron,
+dodecahedron, icosahedron, etc.) are visually unchanged. The
+polyhedra table is constructed dynamically by kaleido() in
+polyhedra.c so the exact count of convex vs nonconvex depends on
+what kaleido() emits; the qualitative claim — convex entries are
+correct, nonconvex entries are wrong — is what the operator needs
+to decide whether this bounded inaccuracy is preferable to
+indefinite deferral.
+
+A small follow-on change was needed: the legacy_gles3_hacks loop
+previously assumed `xscreensaver_function_table` was always named
+`<hack_name>_xscreensaver_function_table`. polyhedra-gl.c emits its
+table via `XSCREENSAVER_MODULE("Polyhedra", polyhedra)` (line 686)
+so the actual symbol is `polyhedra_xscreensaver_function_table`, not
+`polyhedra-gl_xscreensaver_function_table`. The legacy `_demo` path
+already had a `'table'` dict-key override for this kind of mismatch
+(see line 453 in meson.build). The `legacy_gles3_hacks` foreach loop
+now honors the same `'table'` override, defaulting to `h['name']`
+when absent. No other hack is affected.
+
+**timetunnel_gles3** (commit ec196d3): the proper fix, NOT the cheap
+skip. The cheap option (`-DHAVE_JWZGLES`) would have skipped the
+texture-downscale step at src/timetunnel.c:884-894 entirely; the
+proper fix implements `gluScaleImage` in `src/xscreensaver_compat.c`
+as a bilinear-interpolation image resampler. New ~140-line helper:
+
+  gluScaleImage(GLenum format, GLint srcW, GLint srcH,
+                GLenum srcType, const void *srcData,
+                GLint dstW, GLint dstH, GLenum dstType,
+                void *dstData)
+
+  - Supports only GL_RGBA / GL_UNSIGNED_BYTE in and out (the only
+    combo timetunnel.c:886 actually calls). Other combos return
+    GLU_ERROR (the canonical Mesa-GLU error code) without writing
+    dstData, matching upstream Mesa GLU's behavior on unsupported
+    format/type combos.
+  - memcpy fast path for identity resize (preserves exact bytes).
+  - Center-of-pixel sampling: sx = (dx+0.5)*srcW/dstW - 0.5.
+  - Bilinear kernel with clamp-to-edge wrap (matches GLU and
+    GL_CLAMP_TO_EDGE GPU sampler convention).
+  - Per-channel 8-bit saturation.
+  - 16 sanity-test assertions (CPU-only, see tools/test-gluScaleImage.c)
+    plus 14 end-to-end assertions linked against the ACTUAL deployed
+    .o file (tools/test-gluScaleImage-from-build.c) all pass.
+
+No call-site shape change: timetunnel.c:886 still calls
+gluScaleImage with its original Mesa signature. The shim matches it
+exactly. Single-line meson.build change adds timetunnel to
+legacy_gles3_hacks with image_data_to_ximage in extras. No c_args
+flag is needed — the shim is reached via normal symbol resolution
+inside xscreensaver_compat.c.
+
+## Deferred (4)
 
 Blocked on architectural gaps that exceed the scope of this round.
 
@@ -372,7 +448,5 @@ Blocked on architectural gaps that exceed the scope of this round.
 |---|---|
 | b_lockglue | This is an xlock-mode hack, not a GL hack. It depends on the xlock pipeline (xlock.h, bubble3d.h, vis.h) which we have not ported because the whole xlockmode / `xlockmore_passwd_authenticate` flow does not apply to a compositor-driven Wayland build. |
 | sonar | Uses POSIX threads via thread_util.h to parallelize the FFT across CPU cores, AND raw ICMP sockets (sonar-icmp.c) AND DNS resolution (sonar-sim.c). Sonar's recorded Display-conflict error is misleading; the actual blocker is the missing threading + network support. |
-| dnalogo | Uses the GLU tessellator API for the "double helix" path that draws two intertwining strands of DNA nucleotides via a polygon-tessellated outline. Specific blocking calls (all in src/dnalogo.c): `gluNewTess` (line 1556), `gluTessCallback` (lines 1565-1569, callbacks for `GLU_TESS_BEGIN`/`GLU_TESS_END`/`GLU_TESS_VERTEX`/`GLU_TESS_COMBINE`/`GLU_TESS_ERROR`), `gluTessProperty` (lines 1571-1572, sets `GLU_TESS_BOUNDARY_ONLY` and `GLU_TESS_WINDING_RULE`/`GLU_TESS_WINDING_ODD`), `gluTessBeginPolygon` (line 1752), `gluTessNormal` (line 1755), `gluTessBeginContour`/`gluTessVertex`/`gluTessEndContour`/`gluTessEndPolygon` (lines 1759-1783, nested 2-contour polygon with per-vertex GLdouble pointer pairs), `gluDeleteTess` (line 1936). Also `gluErrorString` (line 1494) for error stringification. None of these are stubbed in `gles3_compat.c` — only `gluPerspective` and `gluLookAt` are. The gl4es-routed `_demo` binary links against system libGLU. Porting cleanly requires either a GLU tessellator port to the GLES3 path (non-trivial — the tessellator is a substantial piece of geometry code) or rewriting dnalogo.c to use a triangulation fallback the GLES3 fixed-function shader can already emit. Was the 10th entry in Phase 3 dispatch's alphabetical batch; deferred per the rule "do not force a broken port, move on to the next hack". |
+| dnalogo | Uses the GLU tessellator API for the "double helix" path that draws two intertwining strands of DNA nucleotides via a polygon-tessellated outline. Specific blocking calls (all in src/dnalogo.c): `gluNewTess` (line 1556), `gluTessCallback` (lines 1565-1569, callbacks for `GLU_TESS_BEGIN`/`GLU_TESS_END`/`GLU_TESS_VERTEX`/`GLU_TESS_COMBINE`/`GLU_TESS_ERROR`), `gluTessProperty` (lines 1571-1572, sets `GLU_TESS_BOUNDARY_ONLY` and `GLU_TESS_WINDING_RULE`/`GLU_TESS_WINDING_ODD`), `gluTessBeginPolygon` (line 1752), `gluTessNormal` (line 1755), `gluTessBeginContour`/`gluTessVertex`/`gluTessEndContour`/`gluTessEndPolygon` (lines 1759-1783, nested 2-contour polygon with per-vertex GLdouble pointer pairs), `gluDeleteTess` (line 1936). Also `gluErrorString` (line 1494) for error stringification. None of these are stubbed in `gles3_compat.c` — only `gluPerspective`, `gluLookAt`, `gluProject` and the new Round 12 `gluScaleImage` are. The gl4es-routed `_demo` binary links against system libGLU. Porting cleanly requires either a GLU tessellator port to the GLES3 path (non-trivial — the tessellator is a substantial piece of geometry code) or rewriting dnalogo.c to use a triangulation fallback the GLES3 fixed-function shader can already emit. Was the 10th entry in Phase 3 dispatch's alphabetical batch; deferred per the rule "do not force a broken port, move on to the next hack". |
 | pinion | Uses GLU `gluPickMatrix` (line 1207) in addition to `gluPerspective`/`gluLookAt` (already stubbed). gluPickMatrix is called inside the selection-mode picking path that maps a mouse-click 5x5 pixel window into a projection frustum modification for hit-testing. Also uses the GL1 selection-mode API — `glInitNames` / `glPushName` / `glPopName` / `glRenderMode` / `glSelectBuffer` — none of which exist in GLES3 (GLES3 dropped the GL1 hit-test pipeline entirely; the canonical replacement is per-object ID render-to-texture, which would require a fundamental change to the gles3_compat shader pair). pinion.c has 9 glu calls, 12 glPushName/popName/pushMatrix/popMatrix calls, and 1 glRenderMode call. None of these can be shimmed in the same no-op-fallback style as glHint/glLineWidth — the picking path is the only way pinion determines which tooth of which gear the user clicked on, so a no-op shim would render the picking as a non-functional decoration. Blocked on: (1) gluPickMatrix stub (small, tractable: 4-line projection-matrix multiply), AND (2) GL1 picking API port to GLES3 (non-trivial: requires a render-to-texture or transform-feedback path that emits a hit-test primitive id per object). The (1) alone is mechanical; (2) is the architectural blocker. |
-| polyhedra-gl | Uses the GLU tessellator for nonconvex face triangulation — `gluNewTess` (line 326), `gluTessCallback` (lines 327-330, BEGIN/END/VERTEX/ERROR), `gluTessBeginPolygon`/`gluTessBeginContour`/`gluTessVertex`/`gluTessEndContour`/`gluTessEndPolygon` (lines 397-405), `gluDeleteTess` (line 424). Also includes `<GL/glu.h>` (line 30) for `GLUtesselator`/`GLU_TESS_*` enum constants. CRITICAL structural detail: polyhedra-gl has TWO code paths gated on `#ifdef HAVE_TESS` (line 52 defines HAVE_TESS under `#ifndef HAVE_JWZGLES`). Currently the vendored build defines neither — which means HAVE_TESS is active, meaning the tessellator path IS the active path in the current build. However, polyhedra-gl also has a `#else /* !HAVE_TESS */` branch (lines 406-417) that just emits `glBegin(GL_LINE_LOOP / GL_TRIANGLES / GL_QUADS / GL_POLYGON)` for each face — a flat-face fallback. Switching to that fallback requires defining `HAVE_JWZGLES` in the c_args for this hack (the GLES3 build's compatibility name for "skip the GLU bits"). Known visual inaccuracy in that fallback: non-concave faces (e.g., the "pentagrammic concave deltohedron" example in the source comment at line 322) will draw incorrectly (incorrect winding / missing triangulation). For 12 of the 13 polyhedra the fallback is geometrically correct (all faces are convex), so the visual inaccuracy is bounded to specific user-selected `do_which` values. Blocked on: a decision between (a) porting the GLU tessellator to GLES3 path (non-trivial, shared with dnalogo), or (b) accepting the bounded visual inaccuracy and adding `-DHAVE_JWZGLES` to polyhedra-gl's `c_args_extra`. |
-| timetunnel | Uses GLU `gluScaleImage` (line 886) for texture mipmap-style downscaling. The call is inside `#ifndef HAVE_JWZGLES` (line 884), so defining `-DHAVE_JWZGLES` in c_args would skip the call entirely — but the texture data path then skips the downscale step, and timetunnel's visual depends on the pre-scaled textures for performance (the original code rescaled to powers of 2 to keep GPU upload cheap). gluScaleImage is a single function — it could be shimmed as a memcpy when src/dst dimensions match and a libpng-resampling or simple bilinear loop when they don't. Other GL1 calls in timetunnel.c: glLightfv, glLightf, glLightModeli, glShadeModel, glFogf, glFogfv, glHint, glColorMaterial, glGetIntegerv, glOrtho — all of these are already stubbed in gles3_compat.c or are real GLES3 natives. So the only real blocker is the gluScaleImage shim. Tractable (small libm-driven bilinear sample loop, ~50 lines), no architectural barrier. |
