@@ -667,6 +667,7 @@ if opt_xscreensaver
         {'name': 'splodesic',     'src': 'src/splodesic.c',      'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'squirtorus',    'src': 'src/squirtorus.c',     'extras': ['src/easing.c', 'src/normals.c', 'src/spline.c', 'src/yarandom.c']},
         {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'timetunnel',    'src': 'src/timetunnel.c',     'extras': ['src/image_data_to_ximage.c', 'src/rotator.c', 'src/yarandom.c']},
         {'name': 'tronbit',       'src': 'src/tronbit.c',        'extras': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
         {'name': 'voronoi',       'src': 'src/voronoi.c',        'extras': []},
         # Round 11 batch — alphabetical-by-name, 12 new native GLES3 ports

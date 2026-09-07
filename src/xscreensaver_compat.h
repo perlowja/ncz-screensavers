@@ -779,6 +779,18 @@ extern int  gluProject(GLdouble objx, GLdouble objy, GLdouble objz,
                        const GLint viewport[4],
                        GLdouble *winx, GLdouble *winy, GLdouble *winz);
 
+/* gluScaleImage — bilinear-interpolation image resampler. Currently
+ * supports only GL_RGBA / GL_UNSIGNED_BYTE in and out (the only
+ * combo timetunnel.c:886 actually calls); other format/type combos
+ * return GLU_ERROR without writing dstData. Implementation in
+ * xscreensaver_compat.c. See the in-source comment there for the
+ * full contract and edge-case behavior. */
+extern int  gluScaleImage(GLenum format,
+                          GLint srcW, GLint srcH, GLenum srcType,
+                          const void *srcData,
+                          GLint dstW, GLint dstH, GLenum dstType,
+                          void *dstData);
+
 /* ----------------------------------------------------------------------- */
 /* Section 8 — GLX passthroughs (these are the key bridge to EGL)          */
 /* ----------------------------------------------------------------------- */

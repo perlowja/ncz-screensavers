@@ -151,6 +151,175 @@ int gluProject(GLdouble objx, GLdouble objy, GLdouble objz,
     return 1;
 }
 
+/* gluScaleImage — bilinear-interpolation image resampler. Mesa-GLU
+ * implements this with GLU's internal pixel-pack pipeline; GLES3 has
+ * no equivalent (the GLES3 path's texture-upload is glTexImage2D with
+ * the user's data verbatim, and any pre-resize for power-of-2 upload
+ * has to happen CPU-side).
+ *
+ * Currently the only consumer is timetunnel (src/timetunnel.c:886),
+ * which calls it to downscale a non-power-of-2 texture image to the
+ * nearest power of 2 before upload:
+ *
+ *   gluScaleImage(GL_RGBA,
+ *                 teximage->width, teximage->height, GL_UNSIGNED_BYTE,
+ *                 teximage->data,
+ *                 bx, by,
+ *                 GL_UNSIGNED_BYTE, tmpbuf);
+ *
+ * That call site is inside `#ifndef HAVE_JWZGLES`, so a port that
+ * defined HAVE_JWZGLES would skip the rescale entirely and upload a
+ * non-power-of-2 texture — accepted on O6N's Mali-G720-Immortalis
+ * (which is NPOT-texture-capable) but the original code path
+ * explicitly chose to downscale for upload-cost reasons on older
+ * hardware. Implementing the resample keeps that behavior intact.
+ *
+ * Format/type support: only the GL_RGBA / GL_UNSIGNED_BYTE combo
+ * timetunnel uses is implemented. Other format/type combos (e.g.
+ * GL_LUMINANCE, GL_RGB, GL_UNSIGNED_SHORT, GL_FLOAT) return 0
+ * without writing dstData — the call sites in the vendored hacks
+ * don't use them today, and the upstream GLU spec lists this as
+ * GLU_INVALID_ENUM / GLU_INVALID_VALUE behavior, so a return-0-no-
+ * write is the conservative contract.
+ *
+ * Return value: 0 on success, GLU_ERROR (100) on unsupported
+ * format/type. Mirrors the convention of gluPerspective/gluLookAt
+ * which return void; gluProject which returns int (1 on hit, 0 on
+ * clip.w==0). The hack's call site (timetunnel.c:887) ignores the
+ * return value, but we return it for spec fidelity.
+ *
+ * Implementation notes:
+ *   - pixel coords are conventional GL: (0,0) bottom-left,
+ *     srcData is row-major from bottom-left.
+ *   - direct memcpy when srcW == dstW && srcH == dstH (no
+ *     resampling → preserve exact source values).
+ *   - bilinear interpolation between four nearest source pixels,
+ *     with edge replication for source coordinates outside [0, srcW)
+ *     or [0, srcH). Bilinear kernel weights are (1-fx)(1-fy),
+ *     fx(1-fy), (1-fx)fy, fx*fy.
+ *   - the sample point for destination pixel (dx, dy) is
+ *     sx = (dx + 0.5) * (srcW/dstW) - 0.5
+ *     sy = (dy + 0.5) * (srcH/dstH) - 0.5
+ *     which is the GLU / GPU-style "center of pixel" convention;
+ *     matches upstream gluScaleImage behavior.
+ *   - destination buffer is treated as uninitialized; we write
+ *     every pixel exactly once.
+ */
+#define GLU_ERROR 100   /* canonical Mesa GLU error code */
+
+static int
+gluScaleImage_rgba8 (GLint srcW, GLint srcH, const unsigned char *src,
+                     GLint dstW, GLint dstH, unsigned char *dst)
+{
+    GLint dx, dy;
+
+    /* Fast path: identity resize → preserve exact bytes. */
+    if (srcW == dstW && srcH == dstH) {
+        memcpy(dst, src, (size_t)srcW * (size_t)srcH * 4);
+        return 0;
+    }
+
+    /* Per-row/column scale factors in source-pixel units. Use doubles
+     * to avoid losing the +0.5 center-of-pixel offset at small dims. */
+    {
+        const double sx_scale = (double)srcW / (double)dstW;
+        const double sy_scale = (double)srcH / (double)dstH;
+
+        for (dy = 0; dy < dstH; dy++) {
+            double sy = ((double)dy + 0.5) * sy_scale - 0.5;
+            int    sy0, sy1;
+            double fy;
+            GLint  syo0, syo1;     /* clamped source y indices */
+
+            /* Clamp sy to source bounds. GLU clamps destination
+             * samples that fall outside the source image to the
+             * edge pixels (clamp-to-edge, NOT wrap). */
+            if (sy < 0.0)              sy = 0.0;
+            if (sy > (double)(srcH-1)) sy = (double)(srcH - 1);
+
+            sy0 = (int)sy;
+            fy  = sy - (double)sy0;
+            sy1 = sy0 + 1;
+            if (sy1 >= srcH) sy1 = srcH - 1;
+
+            /* Bilinear weights for the two source rows we're
+             * blending between (top row weight = 1-fy). */
+            const double wy0 = 1.0 - fy;
+            const double wy1 = fy;
+
+            for (dx = 0; dx < dstW; dx++) {
+                double sx = ((double)dx + 0.5) * sx_scale - 0.5;
+                int    sx0, sx1;
+                double fx;
+                int    c;
+                unsigned char *d = dst + ((size_t)dy * dstW + dx) * 4;
+                double acc[4];
+
+                if (sx < 0.0)              sx = 0.0;
+                if (sx > (double)(srcW-1)) sx = (double)(srcW - 1);
+
+                sx0 = (int)sx;
+                fx  = sx - (double)sx0;
+                sx1 = sx0 + 1;
+                if (sx1 >= srcW) sx1 = srcW - 1;
+
+                {
+                    const double wx0 = 1.0 - fx;
+                    const double wx1 = fx;
+                    const unsigned char *p00 = src + ((size_t)sy0 * srcW + sx0) * 4;
+                    const unsigned char *p01 = src + ((size_t)sy0 * srcW + sx1) * 4;
+                    const unsigned char *p10 = src + ((size_t)sy1 * srcW + sx0) * 4;
+                    const unsigned char *p11 = src + ((size_t)sy1 * srcW + sx1) * 4;
+
+                    for (c = 0; c < 4; c++) {
+                        acc[c] = wy0 * (wx0 * p00[c] + wx1 * p01[c])
+                               + wy1 * (wx0 * p10[c] + wx1 * p11[c]);
+                    }
+                }
+
+                /* Clamp-and-round to 8-bit. +0.5 rounds, saturate to
+                 * [0, 255] in case the kernel amplifies (shouldn't
+                 * happen with bilinearly-interpolated 8-bit inputs
+                 * — weights sum to 1 — but cheap insurance). */
+                for (c = 0; c < 4; c++) {
+                    int v = (int)(acc[c] + 0.5);
+                    if (v < 0)   v = 0;
+                    if (v > 255) v = 255;
+                    d[c] = (unsigned char)v;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+int gluScaleImage(GLenum format,
+                  GLint srcW, GLint srcH, GLenum srcType,
+                  const void *srcData,
+                  GLint dstW, GLint dstH, GLenum dstType,
+                  void *dstData)
+{
+    /* Only the format/type combo timetunnel uses (src/timetunnel.c:886)
+     * is implemented. Other combos return GLU_ERROR without writing
+     * dstData — the timetunnel call site ignores the return value,
+     * so an "unsupported" failure surfaces as garbage in the scaled
+     * texture, which is the same observable failure mode as the legacy
+     * Mesa gluScaleImage returning GLU_ERROR on an unsupported combo. */
+    if (format != GL_RGBA ||
+        srcType != GL_UNSIGNED_BYTE ||
+        dstType != GL_UNSIGNED_BYTE)
+        return GLU_ERROR;
+
+    if (srcW <= 0 || srcH <= 0 || dstW <= 0 || dstH <= 0)
+        return GLU_ERROR;
+
+    if (srcData == NULL || dstData == NULL)
+        return GLU_ERROR;
+
+    return gluScaleImage_rgba8(srcW, srcH, (const unsigned char *)srcData,
+                               dstW, dstH, (unsigned char *)dstData);
+}
+
 /*
  * g_harness_egl_display / g_harness_egl_surface / g_harness_egl_context —
  * the live EGL objects the harness has created and made current.

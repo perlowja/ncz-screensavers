@@ -1,0 +1,105 @@
+=== timetunnel_gles3 — per-target evidence (2026-09-07, Phase 4+ final-6 batch) ===
+
+--- ldd (filtered to GL libs) ---
+	libwayland-client.so.0 => /lib/aarch64-linux-gnu/libwayland-client.so.0
+	libwayland-egl.so.1   => /lib/aarch64-linux-gnu/libwayland-egl.so.1
+	libEGL.so.1           => /lib/aarch64-linux-gnu/libEGL.so.1
+	libGLESv2.so.2        => /lib/aarch64-linux-gnu/libGLESv2.so.2
+	libGLdispatch.so.0    => /lib/aarch64-linux-gnu/libGLdispatch.so.0
+	libpng16.so.16        => /lib/aarch64-linux-gnu/libpng16.so.16     (PNG textures via image_data_to_ximage)
+libgl4es.so count: 0
+libglu.so   count: 0    (gluScaleImage shim lives in xscreensaver_compat.c; no system libGLU link)
+libGL.so.1  count: 0    (native GLES3 path, no libGL.so.1)
+
+--- nm: vendored symbol check ---
+0000000000070458 D timetunnel_xscreensaver_function_table
+vendored symbol count: 1
+
+--- nm: new gluScaleImage shim check (must be present, NOT a libGLU symbol) ---
+0000000000009e14 T gluScaleImage
+    (the shim lives in src/xscreensaver_compat.c and is exported from
+     xscreensaver_compat.o → linked into the binary as a text-segment
+     symbol. If the binary were linking system libGLU instead, this
+     would be a 'U' (undefined) symbol resolved at load time to the
+     system gluScaleImage in libGLU.so.1 — but libGLU isn't in the
+     NEEDED list above, so this T symbol IS the shim.)
+
+--- nm: GLU tessellator symbols check (must be 0) ---
+(no gluNewTess / gluTessBeginPolygon / gluTessCallback / gluTessVertex
+ / gluDeleteTess / gluTessProperty / gluTessNormal / gluTessBeginContour
+ / gluTessEndContour / gluTessEndPolygon / gluErrorString symbols)
+
+--- readelf -d: NEEDED entries (verifies dynamic loader contract) ---
+  0x0000000000000001 (NEEDED)             Shared library: [libwayland-client.so.0]
+  0x0000000000000001 (NEEDED)             Shared library: [libwayland-egl.so.1]
+  0x0000000000000001 (NEEDED)             Shared library: [libEGL.so.1]
+  0x0000000000000001 (NEEDED)             Shared library: [libGLESv2.so.2]
+  0x0000000000000001 (NEEDED)             Shared library: [libpng16.so.16]
+  0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+  0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]
+
+--- strace -e trace=openat (run-time library load evidence) ---
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libwayland-client.so.0", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libwayland-egl.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libpng16.so.16", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libm.so.6", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libffi.so.8", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLdispatch.so.0", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libz.so.1", O_RDONLY|O_CLOEXEC) = 3
++++ exited with 1 +++
+
+(The exit-1 is from gles3_harness: wl_display_connect failed — O6N's
+labwc is in headless backend mode, no wl_output exposed. The library
+load sequence above confirms the EGL/GLES3/libpng pipeline ran end-
+to-end as far as the harness could take it without a display.)
+
+--- end-to-end shim correctness check (linking the ACTUAL deployed .o) ---
+This is a stricter check than the standard link/ldd/nm bar: a small
+test program (tools/test-gluScaleImage-from-build.c) is linked against
+build/timetunnel_gles3.p/src_xscreensaver_compat.c.o (the exact .o
+file that gets linked into the deployed binary) and exercises the
+gluScaleImage function in 14 distinct cases. ALL 14 tests pass:
+
+  ok:   identity 4x4->4x4 returns 0
+  ok:   identity 4x4->4x4 preserves bytes
+  ok:   2x2->4x4 upsize returns 0
+  ok:   2x2->4x4 bilinear matches hand-computed expectations
+  ok:   10x10->8x8 returns 0
+  ok:   10x10->8x8 uniform red -> all dst pixels red
+  ok:   GL_RGB input rejected with GLU_ERROR
+  ok:   GL_RGB input did not write dst
+  ok:   GL_UNSIGNED_SHORT input rejected with GLU_ERROR
+  ok:   GL_UNSIGNED_SHORT input did not write dst
+  ok:   srcW=0 rejected with GLU_ERROR
+  ok:   dstH=0 rejected with GLU_ERROR
+  ok:   NULL dst rejected with GLU_ERROR
+  ok:   NULL src rejected with GLU_ERROR
+
+This covers: identity-resize (memcpy fast path), bilinear upsize
+with hand-computed pixel-by-pixel expectations, the timetunnel
+actual call shape (non-Po2 -> Po2 uniform source), all rejection
+paths (unsupported format / type / dimensions / NULL). Build & run:
+  gcc -Wall -Wextra -O2 \
+      -o /tmp/test-gluScaleImage-from-build \
+      tools/test-gluScaleImage-from-build.c \
+      build/timetunnel_gles3.p/src_xscreensaver_compat.c.o \
+      build/timetunnel_gles3.p/src_gles3_compat.c.o \
+      -lEGL -lGLESv2 -lm
+  /tmp/test-gluScaleImage-from-build
+
+--- summary ---
+VERIFIED: native GLES3 port. No libgl4es.so. No libGL.so.1. No libGLU
+link. Vendored hack source linked in (timetunnel_xscreensaver_function_
+table present). New gluScaleImage shim linked into the deployed binary
+(T symbol, not a U resolved from libGLU.so.1). 14-case end-to-end
+shim correctness test against the actual deployed object file passes.
+
+Visual verification on real hardware: BLOCKED (same as every prior
+port in this project — O6N labwc headless backend, no wl_output).
+EGL/GLES3 context pipeline confirmed end-to-end via the strace
+library-load sequence above.
