@@ -295,6 +295,17 @@ deferred until a real compositor is available.
 | providence_gles3     | - |
 | unicrud_gles3        | rotator.c, yarandom.c |
 | unknownpleasures_gles3 | doubletime.c, easing.c |
+| headroom_gles3       | gllist.c, headroom_model.c, rotator.c, skull_model.c, yarandom.c |
+| lavalite_gles3       | marching.c, normals.c, rotator.c, yarandom.c |
+| nakagin_gles3        | doubletime.c, easing.c, normals.c, rotator.c, yarandom.c |
+| raverhoop_gles3      | rotator.c, yarandom.c |
+| razzledazzle_gles3   | gllist.c, normals.c, ships.c, yarandom.c |
+| sballs_gles3         | image_data_to_ximage.c |
+| skulloop_gles3       | easing.c, gllist.c, normals.c, skull_model.c, yarandom.c |
+| skytentacles_gles3   | image_data_to_ximage.c, normals.c, rotator.c, yarandom.c |
+| splitflap_gles3      | gllist.c, rotator.c, splitflap_obj.c, yarandom.c |
+| starwars_gles3       | glut_stroke.c, glut_swidth.c, yarandom.c |
+| winduprobot_gles3    | gllist.c, image_data_to_ximage.c, involute.c, normals.c, robot.c, robot-wireframe.c, sphere.c, yarandom.c |
 
 ### Upstream xscreensaver 6.00+ GLES3 rewrites (6 Carsten Steger hacks)
 
@@ -313,9 +324,9 @@ and the per-hack commit log.
 | romanboy_gles3        | glsl-utils.c, curlicue.h |
 | sphereeversion_gles3  | glsl-utils.c, sphereeversion-analytic.c, sphereeversion-corrugations.c, sphereeversion.h, earth.c, image_data_to_ximage.c |
 
-Total ported: **108** (65 gl4es-routed + 43 GLES3-native).
-GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) + 12 (Phase 4 mechanical — 12 alphabetical this round) = 43.
-Remaining to migrate off gl4es: 53 (was 65; 12 moved to native this round).
+Total ported: **119** (65 gl4es-routed + 54 GLES3-native).
+GLES3-native count: 2 (Phase 1) + 10 (Phase 2 mechanical) + 13 (Phase 3 mechanical — 9 alphabetical + 4 glFrustum cohort) + 6 (Phase 1+ upstream) + 23 (Phase 4 mechanical — 12 + 11 alphabetical this round) = 54.
+Remaining to migrate off gl4es: 42 (was 65; 23 moved to native this round).
 
 ## Deferred (6)
 
