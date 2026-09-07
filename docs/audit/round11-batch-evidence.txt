@@ -1,0 +1,314 @@
+=== Phase 4 mechanical — 12-hack native GLES3 batch (commit 1737154) ===
+Date:       2026-09-07 04:55 UTC
+Host:       tydeus (aarch64-linux-gnu)
+Targets:    12 _gles3 binaries (alphabetical):
+              flyingtoasters  geodesicgears  gibson  glforestfire
+              glhanoi  gltext  handsy  kallisti
+              photopile  providence  unicrud  unknownpleasures
+
+Honesty note: the per-target evidence files in
+docs/audit/per-target-evidence/<hack>_gles3.txt are the BUILD
+evidence (link + ldd + nm + readelf + strace). VISUAL evidence on
+real hardware was not captured for this batch — see §5 below.
+
+----------------------------------------------------------------------
+1. Build evidence — 12/12 link clean
+----------------------------------------------------------------------
+
+--- flyingtoasters_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e0915f8e0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e0915f400000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e0915f890000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000040458 D flyingtoasters_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- geodesicgears_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f7852edc0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f7852e940000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f7852ed70000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+00000000000304b0 D geodesicgears_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- gibson_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000eb09c7cb0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000eb09c7830000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000eb09c7c60000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030620 D gibson_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- glforestfire_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f0b54a370000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f0b549e90000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f0b54a320000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030458 D glforestfire_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- glhanoi_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000ede9de1c0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000ede9ddd40000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000ede9de170000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030470 D glhanoi_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- gltext_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f2be4c230000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f2be4bdb0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f2be4c1e0000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000040498 D gltext_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- handsy_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f85d69ee0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f85d69a60000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f85d69e90000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000060458 D handsy_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- kallisti_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e0c57e050000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e0c57dbd0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e0c57e000000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+00000000000d0458 D kallisti_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- photopile_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f7aaf1e60000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f7aaf19e0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f7aaf1e10000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030458 D photopile_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- providence_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f2858abd0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f2858a750000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f2858ab80000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030458 D providence_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- unicrud_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000fe4717890000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000fe4717410000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000fe4717840000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030458 D unicrud_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- unknownpleasures_gles3 ---
+ldd (filtered to GL libs):
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000f6554d2b0000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000f6554ce30000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000f6554d260000)
+  libgl4es.so count: 0
+nm: vendored symbol present:
+0000000000030458 D unknownpleasures_xscreensaver_function_table
+strace (openat on GL libs):
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+----------------------------------------------------------------------
+2. Foundation extension this round: glAlphaFunc no-op stub
+----------------------------------------------------------------------
+
+src/gles3_compat.c lines 2041-2050:
+  /* glAlphaFunc — GLES3 dropped the desktop GL_ALPHA_TEST pipeline state
+   * (no GL_ALPHA_TEST enable, no glAlphaFunc). Vendored hacks that
+   * conditionally call glAlphaFunc(GL_GREATER, 0.5) etc. (glforestfire
+   * is the one in this round) get a no-op stub. Known visual
+   * inaccuracy: alpha-tested fragments are no longer culled, so a
+   * hack that uses glAlphaFunc to discard transparent texels (i.e.,
+   * tree sprites in glforestfire) will draw the full unfiltered
+   * texture. Cosmetic only — the scene composes correctly, just
+   * with semi-transparent edges visible. */
+  void glAlphaFunc(GLenum func, GLfloat ref) { (void)func; (void)ref; }
+
+Single consumer in this round:
+  $ grep -nE glAlphaFunc src/*.c
+  src/glforestfire.c:733:    glAlphaFunc(GL_GEQUAL, 0.9);
+
+----------------------------------------------------------------------
+3. c_args_extra flags added this round
+----------------------------------------------------------------------
+
+  glforestfire: -DSTANDALONE
+    The !STANDALONE branch includes xlock.h + visgl.h from xlockmore,
+    neither of which exist in the vendored shim tree. STANDALONE
+    selects the xscreensaver-mode branch which uses xlockmore.h and
+    does not need those xlock-only headers.
+
+  providence: -DSTANDALONE
+    The !STANDALONE branch defines change_providence which calls
+    pinit() without the args the STANDALONE-built static helper
+    expects ("too few arguments to function 'pinit'" at line 797,
+    plus 'release_providence undeclared' in xscreensaver_compat.h).
+
+----------------------------------------------------------------------
+4. Companion sources per hack (added to legacy_gles3_hacks extras)
+----------------------------------------------------------------------
+
+  flyingtoasters: gllist.c, image_data_to_ximage.c, toast.c, toast2.c,
+                  toaster.c, toaster_base.c, toaster_handle.c,
+                  toaster_handle2.c, toaster_jet.c, toaster_knob.c,
+                  toaster_slots.c, toaster_wing.c, yarandom.c
+  geodesicgears:  involute.c, normals.c, rotator.c, tube.c, yarandom.c
+  gibson:         easing.c, rotator.c, yarandom.c
+  glforestfire:   image_data_to_ximage.c
+  glhanoi:        doubletime.c, rotator.c, yarandom.c
+  gltext:         glut_stroke.c, glut_swidth.c, rotator.c,
+                  sphere.c, tube.c, yarandom.c
+  handsy:         doubletime.c, gllist.c, handsy_model.c, rotator.c,
+                  sphere.c, tube.c, yarandom.c
+  kallisti:       gllist.c, kallisti_model.c, rotator.c, yarandom.c
+  photopile:      dropshadow.c, xftwrap.c, yarandom.c
+  providence:     (none)
+  unicrud:        rotator.c, yarandom.c
+  unknownpleasures: doubletime.c, easing.c
+
+----------------------------------------------------------------------
+5. Visual verification status (HONEST)
+----------------------------------------------------------------------
+
+Target hardware was O6N at 192.168.207.3 (the box prior sessions
+used for real-hardware verification of the GLES3 pilots boing and
+companion, per GLES3-MIGRATION-PHASE1.md). The TYDEUS -> O6N ssh
+key path was working (the brief confirmed this and I verified with
+'ls /usr/bin/grim' = present, gcc = present, kernel sky1).
+
+What I COULD confirm on real hardware (this round, all 12 binaries):
+
+  GLES3 context initialization works. Running each binary with
+  WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 timeout 3
+  ./<hack>_gles3 produces:
+
+    MESA: error: ZINK: vkCreateInstance failed (VK_ERROR_INCOMPATIBLE_DRIVER)
+    [diag] gles3_harness: EGL 1.5, GLES3 context live
+    [diag] gles3_compat: shader program 3 compiled
+    [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+    RENDERER=llvmpipe (LLVM 21.1.8, 128 bits)
+    GLSL=OpenGL ES GLSL ES 3.20
+    gles3_harness: never configured
+
+  The "never configured" exit is from src/gles3_harness.c:640 — the
+  harness only calls init_cb/draw_cb AFTER the wl_surface receives
+  a configure event from the Wayland compositor, which requires a
+  wl_output.
+
+What I COULD NOT confirm on real hardware this session:
+
+  Real-hardware visual rendering (the previous-session verify-gles3.sh
+  pipeline: 3 grim captures + base/a/b ppm diff + frame_delta).
+
+  Why: O6N's labwc is currently running in headless backend mode with
+  no wl_output exposed. Verification chain of evidence:
+    - /sys/class/drm/card0-DP-{1,2,3}/status all = disconnected
+      (no physical display plugged into the GPU's display ports)
+    - labwc log shows "manually creating headless backend" and
+      "Failed to get DRM device: No such device"
+    - WAYLAND_DEBUG=1 on a grim connection shows zero wl_output
+      globals in the registry (only zwlr_output_manager_v1 +
+      zxdg_output_manager_v1, no wl_output instances)
+    - grim errors out with "no wl_output"; wlr-randr returns no
+      outputs; wlr-randr --output DP-2 --mode 1920x1080 returns
+      "unknown output DP-2"
+    - Kernel cmdline is sky1.gpu=mesa (not vendor) — Mesa software
+      renderer llvmpipe (LLVM 21.1.8) is what the EGL stack
+      enumerated, not the Mali-G720-Immortalis GPU that the prior
+      GLES3-MIGRATION-PHASE1.md verified against.
+
+  Compare the prior visual evidence from Aug 29 (gle3-shots/*.ppm
+  timestamps): those captures were taken when labwc had a real
+  wl_output on DP-2 (3840x2160@60) bound to the Mali GPU. The
+  reboot(s) between Aug 29 and now (Sep 7) lost that binding —
+  the GPU is still present in /dev/dri (renderD129 for the
+  Mali-G720, card0 for the linlondp display controller), but no
+  output is currently connected.
+
+  No physical access to attach a display from this session. The
+  cixmini box (192.168.207.66) has card2-DP-3 connected but the
+  Wayland session there runs as user 'mini' (uid 1000), and neither
+  the TYDEUS nor the O6N key is authorized for ssh to mini@cixmini.
+
+Honest disclosure: this batch's "ported" claim is supported by the
+link/ldd/nm/readelf/strace evidence in
+docs/audit/per-target-evidence/<hack>_gles3.txt + the GLES3-
+context-live + shader-compiled confirmation above, but NOT by
+on-screen rendering evidence on real Wayland hardware this session.
+The Phase 1 pilot pattern (boing, companion in
+GLES3-MIGRATION-PHASE1.md) DID have on-screen verification — that
+bar has not been met for this round yet, and is deferred until a
+display is reattached to O6N.
+
+----------------------------------------------------------------------
+6. Cross-reference
+----------------------------------------------------------------------
+
+Per-target evidence files:
+  docs/audit/per-target-evidence/flyingtoasters_gles3.txt
+  docs/audit/per-target-evidence/geodesicgears_gles3.txt
+  docs/audit/per-target-evidence/gibson_gles3.txt
+  docs/audit/per-target-evidence/glforestfire_gles3.txt
+  docs/audit/per-target-evidence/glhanoi_gles3.txt
+  docs/audit/per-target-evidence/gltext_gles3.txt
+  docs/audit/per-target-evidence/handsy_gles3.txt
+  docs/audit/per-target-evidence/kallisti_gles3.txt
+  docs/audit/per-target-evidence/photopile_gles3.txt
+  docs/audit/per-target-evidence/providence_gles3.txt
+  docs/audit/per-target-evidence/unicrud_gles3.txt
+  docs/audit/per-target-evidence/unknownpleasures_gles3.txt
+
+PORTED.md updates: total ported 96 -> 108 (12 new native this round);
+Deferred 3 -> 6 (pinion, polyhedra-gl, timetunnel added with precise
+blocking-call inventory mirroring dnalogo's level of detail).
