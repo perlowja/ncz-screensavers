@@ -681,6 +681,18 @@ if opt_xscreensaver
         {'name': 'providence',     'src': 'src/providence.c',     'extras': [], 'c_args_extra': ['-DSTANDALONE']},
         {'name': 'unicrud',        'src': 'src/unicrud.c',        'extras': ['src/rotator.c', 'src/yarandom.c']},
         {'name': 'unknownpleasures','src': 'src/unknownpleasures.c','extras': ['src/doubletime.c', 'src/easing.c']},
+        # Round 11 batch 2 — alphabetical-by-name, 11 more native GLES3 ports
+        {'name': 'headroom',       'src': 'src/headroom.c',       'extras': ['src/gllist.c', 'src/headroom_model.c', 'src/rotator.c', 'src/skull_model.c', 'src/yarandom.c']},
+        {'name': 'lavalite',       'src': 'src/lavalite.c',       'extras': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'nakagin',        'src': 'src/nakagin.c',        'extras': ['src/doubletime.c', 'src/easing.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'raverhoop',      'src': 'src/raverhoop.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'razzledazzle',   'src': 'src/razzledazzle.c',   'extras': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
+        {'name': 'sballs',         'src': 'src/sballs.c',         'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'skulloop',       'src': 'src/skulloop.c',       'extras': ['src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/skull_model.c', 'src/yarandom.c']},
+        {'name': 'skytentacles',   'src': 'src/skytentacles.c',   'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'splitflap',      'src': 'src/splitflap.c',      'extras': ['src/gllist.c', 'src/rotator.c', 'src/splitflap_obj.c', 'src/yarandom.c']},
+        {'name': 'starwars',       'src': 'src/starwars.c',       'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/yarandom.c']},
+        {'name': 'winduprobot',    'src': 'src/winduprobot.c',    'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/involute.c', 'src/normals.c', 'src/robot.c', 'src/robot-wireframe.c', 'src/sphere.c', 'src/yarandom.c']},
     ]
 
     foreach h : legacy_gles3_hacks
