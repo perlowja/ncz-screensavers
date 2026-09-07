@@ -611,6 +611,11 @@ if opt_xscreensaver
     # 'c_args_extra' are -DSTANDALONE / -DHAVE_JWXYZ / etc. — the
     # include-vs-xlockmore.h choice the vendored sources gate on.
     legacy_gles3_hacks = [
+        {'name': 'rubikblocks',   'src': 'src/rubikblocks.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'topblock',      'src': 'src/topblock.c',      'extras': ['src/sphere.c', 'src/tube.c']},
+        {'name': 'tangram',       'src': 'src/tangram.c',       'extras': ['src/tangram_shapes.c']},
+        {'name': 'glschool',      'src': 'src/glschool.c',      'extras': ['src/glschool_alg.c', 'src/glschool_gl.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'fliptext',       'src': 'src/fliptext.c',       'extras': []},
         {'name': 'antinspect',    'src': 'src/antinspect.c',     'extras': ['src/sphere.c'],                                 'c_args_extra': ['-DSTANDALONE']},
         {'name': 'antspotlight',  'src': 'src/antspotlight.c',   'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
         {'name': 'beats',         'src': 'src/beats.c',          'extras': ['src/sphere.c']},
