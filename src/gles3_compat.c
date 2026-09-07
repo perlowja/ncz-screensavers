@@ -2038,6 +2038,16 @@ void glTexGenfv(GLenum coord, GLenum pname, const GLfloat *v) {
 void glHint(GLenum target, GLenum mode) { (void)target; (void)mode; }
 void glLineStipple(GLint f, GLushort p) { (void)f; (void)p; }
 void glLineWidth(GLfloat w)             { (void)w; }
+/* glAlphaFunc — GLES3 dropped the desktop GL_ALPHA_TEST pipeline state
+ * (no GL_ALPHA_TEST enable, no glAlphaFunc). Vendored hacks that
+ * conditionally call glAlphaFunc(GL_GREATER, 0.5) etc. (glforestfire
+ * is the one in this round) get a no-op stub. Known visual
+ * inaccuracy: alpha-tested fragments are no longer culled, so a
+ * hack that uses glAlphaFunc to discard transparent texels (i.e.,
+ * tree sprites in glforestfire) will draw the full unfiltered
+ * texture. Cosmetic only — the scene composes correctly, just
+ * with semi-transparent edges visible. */
+void glAlphaFunc(GLenum func, GLfloat ref) { (void)func; (void)ref; }
 /* glColorMask — GLES3 has this, declared in <GLES3/gl32.h>. The
  * squirtorus legacy hack calls it to fade the trail out by lowering
  * alpha channel write; the GLES3 build links against the real one

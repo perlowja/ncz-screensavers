@@ -1,0 +1,29 @@
+=== unicrud_gles3 — per-target evidence (minimax-M3 dispatch, 2026-09-07, tydeus aarch64) ===
+
+--- ldd (filtered to GL libs) ---
+	libEGL.so.1 => /lib/aarch64-linux-gnu/libEGL.so.1 (0x0000e87c14160000)
+	libGLdispatch.so.0 => /lib/aarch64-linux-gnu/libGLdispatch.so.0 (0x0000e87c13ce0000)
+	libGLESv2.so.2 => /lib/aarch64-linux-gnu/libGLESv2.so.2 (0x0000e87c14110000)
+libgl4es.so count: 0
+
+--- nm: vendored symbol check ---
+0000000000030458 D unicrud_xscreensaver_function_table
+vendored symbol count: 1
+
+--- readelf -d: NEEDED entries ---
+ 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libEGL.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libGLESv2.so.2]
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libwayland-client.so.0]
+ 0x0000000000000001 (NEEDED)             Shared library: [libwayland-egl.so.1]
+
+--- runtime smoke (strace openat on GL libs) ---
+XDG_RUNTIME_DIR=/tmp WAYLAND_DISPLAY=nonexistent strace -e trace=openat -f ./unicrud_gles3 2>&1 | grep -iE "libEGL|libGLESv2|libGL\.so|gl4es"
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- summary ---
+VERIFIED: native GLES3 port. No libgl4es.so, no libGL.so.1. Vendored hack source linked in.
+

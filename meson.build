@@ -668,6 +668,19 @@ if opt_xscreensaver
         {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
         {'name': 'tronbit',       'src': 'src/tronbit.c',        'extras': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
         {'name': 'voronoi',       'src': 'src/voronoi.c',        'extras': []},
+        # Round 11 batch — alphabetical-by-name, 12 new native GLES3 ports
+        {'name': 'flyingtoasters', 'src': 'src/flyingtoasters.c', 'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/toast.c', 'src/toast2.c', 'src/toaster.c', 'src/toaster_base.c', 'src/toaster_handle.c', 'src/toaster_handle2.c', 'src/toaster_jet.c', 'src/toaster_knob.c', 'src/toaster_slots.c', 'src/toaster_wing.c', 'src/yarandom.c']},
+        {'name': 'geodesicgears',  'src': 'src/geodesicgears.c',  'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'gibson',         'src': 'src/gibson.c',         'extras': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'glforestfire',   'src': 'src/glforestfire.c',   'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'glhanoi',        'src': 'src/glhanoi.c',        'extras': ['src/doubletime.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'gltext',         'src': 'src/gltext.c',         'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'handsy',         'src': 'src/handsy.c',         'extras': ['src/doubletime.c', 'src/gllist.c', 'src/handsy_model.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+        {'name': 'kallisti',       'src': 'src/kallisti.c',       'extras': ['src/gllist.c', 'src/kallisti_model.c', 'src/rotator.c', 'src/yarandom.c']},
+        {'name': 'photopile',      'src': 'src/photopile.c',      'extras': ['src/dropshadow.c', 'src/xftwrap.c', 'src/yarandom.c']},
+        {'name': 'providence',     'src': 'src/providence.c',     'extras': [], 'c_args_extra': ['-DSTANDALONE']},
+        {'name': 'unicrud',        'src': 'src/unicrud.c',        'extras': ['src/rotator.c', 'src/yarandom.c']},
+        {'name': 'unknownpleasures','src': 'src/unknownpleasures.c','extras': ['src/doubletime.c', 'src/easing.c']},
     ]
 
     foreach h : legacy_gles3_hacks
