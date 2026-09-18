@@ -105,6 +105,9 @@
 #ifndef GL_QUAD_STRIP
 #define GL_QUAD_STRIP                        0x0008
 #endif
+#ifndef GL_POLYGON
+#define GL_POLYGON                           0x0009
+#endif
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH                       0x0B20
 #endif
@@ -875,13 +878,22 @@ void ncz_im_light_position(int light, const float *xyz_w) {
         g_im.light_dir[1] = xyz_w[1];
         g_im.light_dir[2] = xyz_w[2];
     } else {
-        /* Treat as point light at origin, direction along negative
-         * of the position. Adequate for the rare case. */
+        /* Point/near-directional light (w != 0, including small non-zero
+         * values like 0.1 that some hacks use as a cheap "almost
+         * directional" light -- menger is one). The shader's dot(N, L)
+         * convention expects L to point FROM the surface TOWARD the
+         * light, same sign as the w==0 branch above stores raw xyz
+         * unnegated. Approximate the true GL1 formula (normalize(
+         * light_pos - vertex_pos), evaluated near the origin where these
+         * hacks place their geometry) as +normalize(xyz) -- NOT negated.
+         * A negated sign here silently flipped every N.L to negative,
+         * clamped to zero by the shader's max(dot(N,L),0.0), and
+         * rendered pure black (menger, 2026-09-18). */
         float len = sqrtf(xyz_w[0]*xyz_w[0] + xyz_w[1]*xyz_w[1] + xyz_w[2]*xyz_w[2]);
         if (len > 1e-6f) {
-            g_im.light_dir[0] = -xyz_w[0] / len;
-            g_im.light_dir[1] = -xyz_w[1] / len;
-            g_im.light_dir[2] = -xyz_w[2] / len;
+            g_im.light_dir[0] = xyz_w[0] / len;
+            g_im.light_dir[1] = xyz_w[1] / len;
+            g_im.light_dir[2] = xyz_w[2] / len;
         }
     }
     g_im.lit = true;
@@ -1248,6 +1260,12 @@ static void im_flush_as_draw(void) {
                g_im.primitive == GL_TRIANGLE_FAN ||
                g_im.primitive == GL_TRIANGLE_STRIP) {
         prim = g_im.primitive;
+    } else if (g_im.primitive == GL_POLYGON) {
+        /* GL_POLYGON fills a single convex polygon fanned from the
+         * first vertex -- identical winding/topology to
+         * GL_TRIANGLE_FAN for a convex, in-order vertex list, so no
+         * index rebuild is needed, just relabel the draw mode. */
+        prim = GL_TRIANGLE_FAN;
     } else {
         fprintf(stderr, "gles3_compat: unhandled primitive 0x%x\n",
                 (unsigned)g_im.primitive);
