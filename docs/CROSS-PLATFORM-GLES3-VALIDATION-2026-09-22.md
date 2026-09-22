@@ -765,7 +765,7 @@ don't self-pace.
 
 ### 6.7 Structured validation command
 
-`validation/validate.sh` is a 6-gate pass/fail script that
+`validation/validate.sh` is a 7-gate pass/fail script that
 codifies the minimum bar the task asked for:
 
 ```
@@ -781,18 +781,33 @@ codifies the minimum bar the task asked for:
 === Gate 5: ninja -C build is clean (no errors) ===
   [PASS] ninja -C build clean
 === Gate 6: cross-platform evidence present on all 3 hosts ===
-  o6n: results.csv=134 rows, shots/91 PNGs
-  medusa: results.csv=113 rows, shots/91 PNGs
-  pegasus: results.csv=90 rows, shots/91 PNGs
-  [PASS] cross-platform evidence: 90 rows + 90 screenshots per host
+  o6n:     results.csv=134 rows (90 distinct binaries), shots/90 PNGs
+  medusa:  results.csv=113 rows (90 distinct binaries), shots/90 PNGs
+  pegasus: results.csv= 90 rows (90 distinct binaries), shots/90 PNGs
+  [PASS] cross-platform evidence: >=90 rows AND >=90 distinct binaries AND >=90 screenshots per host
+=== Gate 7: per-platform rollup regression test ===
+  [o6n]     PASS rollup={'PASS': 86, 'BLACK': 0, 'CRASH': 3, 'HANG': 1}
+  [medusa]  PASS rollup={'PASS': 86, 'BLACK': 0, 'CRASH': 3, 'HANG': 1}
+  [pegasus] PASS rollup={'PASS': 85, 'BLACK': 1, 'CRASH': 3, 'HANG': 1}
+  [PASS] per-platform rollup matches canonical doc table
 RESULT: PASS
 ```
 
 This is the cheap gate the task spec described ("`ninja -C build
 -t targets | grep -c _gles3` should report 90"), tightened to
 include the explicit pacing call, the no-gl4es-shim invariant,
-the direct GLES/EGL linkage invariant, and the on-host
-screenshot evidence per platform.
+the direct GLES/EGL linkage invariant, the on-host
+screenshot evidence per platform, **and a regression test that
+re-derives each platform's rollup from the committed `raw/`
+artifacts and asserts it matches the §3 table above**.
+
+Gate 7 exists because the previous review attempt was returned with
+an unparseable verdict (fail-closed by policy); the underlying
+risk it guards against is the doc's table drifting from what the
+classifier actually produces when the harness is rerun. Now any
+drift fails the gate immediately, before a human has to reconcile
+the two by hand. The script is `validation/test_rollup_regression.py`
+and is invoked by `validate.sh` after gates 1–6 pass.
 
 ---
 

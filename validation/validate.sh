@@ -105,13 +105,20 @@ fi
 
 echo ""
 echo "=== Gate 6: cross-platform evidence present on all 3 hosts ==="
+# Two invariants per platform:
+#   (a) at least 90 total rows (the harness re-runs some binaries; the
+#       3x90 matrix is the canonical comparison surface);
+#   (b) at least 90 DISTINCT binaries covered (the actual contract — a
+#       gate that only checks row count would silently pass if the
+#       harness was re-run against a 30-binary subset).
 EVIDENCE_OK=1
 for plat in o6n medusa pegasus; do
     if [ -f "validation/$plat/raw/results.csv" ]; then
         ROWS=$(tail -n +2 "validation/$plat/raw/results.csv" | wc -l)
-        SHOTS=$(ls validation/$plat/raw/shots/ 2>/dev/null | grep -c '\.png$')
-        echo "  $plat: results.csv=$ROWS rows, shots/$SHOTS PNGs"
-        if [ "$ROWS" -lt 90 ] || [ "$SHOTS" -lt 90 ]; then
+        UNIQUE=$(tail -n +2 "validation/$plat/raw/results.csv" | cut -d, -f1 | sort -u | wc -l)
+        SHOTS=$(ls validation/$plat/raw/shots/*.png 2>/dev/null | grep -v _baseline | wc -l)
+        echo "  $plat: results.csv=$ROWS rows ($UNIQUE distinct binaries), shots/$SHOTS PNGs"
+        if [ "$ROWS" -lt 90 ] || [ "$UNIQUE" -lt 90 ] || [ "$SHOTS" -lt 90 ]; then
             EVIDENCE_OK=0
         fi
     else
@@ -120,15 +127,35 @@ for plat in o6n medusa pegasus; do
     fi
 done
 if [ "$EVIDENCE_OK" = "1" ]; then
-    gate "cross-platform evidence: 90 rows + 90 screenshots per host" 0
+    gate "cross-platform evidence: >=90 rows AND >=90 distinct binaries AND >=90 screenshots per host" 0
 else
-    gate "cross-platform evidence: 90 rows + 90 screenshots per host" 1
+    gate "cross-platform evidence: 90 distinct binaries + 90 screenshots per host" 1
 fi
 
 echo ""
 echo "=== Summary ==="
 echo "  passed: $PASS"
 echo "  failed: $FAIL"
+if [ "$FAIL" = "0" ]; then
+    echo ""
+    echo "=== Gate 7: per-platform rollup regression test ==="
+    # Re-derive each platform's PASS/BLACK/CRASH/HANG rollup from the
+    # committed raw/ artifacts and assert it matches the canonical
+    # numbers in docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md §3.
+    # This catches the failure mode where the harness's classifier
+    # output drifts from what the doc claims (see MEMORY.md "Lessons
+    # Learned" — the reviewer caveat that prompted this safeguard).
+    if python3 validation/test_rollup_regression.py; then
+        gate "per-platform rollup matches canonical doc table" 0
+    else
+        gate "per-platform rollup matches canonical doc table" 1
+        FAIL=$((FAIL + 1))
+    fi
+    echo ""
+    echo "=== Final summary ==="
+    echo "  passed: $PASS"
+    echo "  failed: $FAIL"
+fi
 if [ "$FAIL" = "0" ]; then
     echo "RESULT: PASS"
     exit 0
