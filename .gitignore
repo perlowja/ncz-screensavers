@@ -1,5 +1,7 @@
 build/
 .ported-state.json
+__pycache__/
+*.pyc
 
 # Vendored hyprsaver source tree at vendor/hyprsaver. Upstream includes
 # `/target/` (cargo build outputs — irrelevant since we build with our own

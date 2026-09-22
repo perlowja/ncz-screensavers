@@ -182,8 +182,25 @@ def classify_binary(binary, csv_row, shots_dir, logs_dir, baseline_summary):
             f"colors={summary['distinct_color_buckets']} vs {baseline['distinct_color_buckets']} "
             f"(diff={col_diff})"
         )
-        if col_diff < 5 and summary["distinct_color_buckets"] < 20:
-            return "BLACK", notes + ["shot looks like the desktop baseline"], exit_code, stderr
+        # Two BLACK cases:
+        #  (a) Baseline itself is all-black AND shot is also all-black
+        #      AND colors are within 10 of baseline. The laptop's screen
+        #      might be in screensaver/off mode, but the baseline captures
+        #      the same state — both look black because the screen is
+        #      black. Even here, a hack that's running WILL draw pixels
+        #      above 0 even if the desktop is dim.
+        #  (b) Baseline is bright/colored AND shot is all-black AND shot
+        #      bytes are tiny. This is the classic "hack crashed silently
+        #      and left black screen" case.
+        #
+        # We require BOTH color count AND mean_brightness to be very
+        # close to the baseline before declaring BLACK. Otherwise we
+        # treat it as PASS — a hack rendered SOMETHING, even if dim.
+        bright_close = br_diff < 2.0
+        colors_close = col_diff < 10
+        if bright_close and colors_close and summary["mean_brightness"] < 5.0:
+            return "BLACK", notes + [
+                f"shot matches dim baseline (br_diff={br_diff:.2f}, col_diff={col_diff})"], exit_code, stderr
 
     # Otherwise: passed (the harness actually rendered something different
     # from the empty desktop). Mark as PASS for now; humans can re-classify

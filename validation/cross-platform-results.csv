@@ -1,0 +1,91 @@
+binary,agg,o6n,o6n_verdict,o6n_renderer,medusa,medusa_verdict,medusa_renderer,pegasus,pegasus_verdict,pegasus_renderer,color_max_rel_div_pct,non_dark_max_div_pp
+antinspect_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 100pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),72.7,100.0
+antspotlight_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),83.3,1.3
+beats_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),95.8,8.2
+blinkbox_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.1,14.1
+blocktube_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 69pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.7,68.8
+boing_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),84.0,1.0
+bouncingcow_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.4,21.9
+chompytower_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 35pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.7,34.8
+cityflow_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 100pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),96.8,100.0
+companion_gles3,VISUAL_DIFFERENCE (vendor-dependent BLACK),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,BLACK,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.1,2.6
+covid19_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 40pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),98.1,40.3
+crackberg_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 92pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),85.1,91.9
+crumbler_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),81.2,13.0
+cube21_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 99pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),97.3,99.1
+cubenetic_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.1,2.9
+cubestack_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 59pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),90.0,58.9
+cubestorm_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),92.4,5.8
+cubetwist_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),76.5,9.5
+cubicgrid_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 76pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),95.5,76.3
+dangerball_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.9,24.0
+discoball_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),96.9,4.4
+energystream_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 85pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),95.4,84.5
+etruscanvenus_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),72.4,15.4
+fliptext_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 65pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.8,65.2
+flyingtoasters_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.7,10.5
+gears_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),69.0,2.6
+geodesic_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),92.2,23.5
+geodesicgears_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),81.3,11.5
+gibson_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),89.7,10.2
+glblur_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.8,25.0
+glcells_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.0
+glforestfire_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 100pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),92.3,100.0
+glhanoi_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),36.4,0.4
+glknots_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 94pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),56.8,94.1
+glschool_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 68pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.3,67.6
+glsnake_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.4,13.0
+gltext_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.8,12.7
+gravitywell_gles3,VISUAL_DIFFERENCE (vendor-dependent BLACK),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,BLACK,PASS,Mesa Intel(R) UHD Graphics (CML GT2),97.2,19.6
+handsy_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),62.5,16.2
+headroom_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),95.0,5.3
+hexstrut_gles3,CRASH,CRASH,CRASH,Mali-G720-Immortalis,CRASH,CRASH,AMD Radeon Graphics (radeonsi,CRASH,CRASH,Mesa Intel(R) UHD Graphics (CML GT2),,
+hextrail_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.0
+highvoltage_gles3,CRASH,CRASH,CRASH,Mali-G720-Immortalis,CRASH,CRASH,AMD Radeon Graphics (radeonsi,CRASH,CRASH,Mesa Intel(R) UHD Graphics (CML GT2),,
+hilbert_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.5
+hydrostat_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),0,0.5
+hypertorus_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),35.1,4.7
+hypnowheel_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 92pp),PASS,PASS,,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.0,92.0
+jigsaw_gles3,CRASH,CRASH,CRASH,Mali-G720-Immortalis,CRASH,CRASH,AMD Radeon Graphics (radeonsi,CRASH,CRASH,Mesa Intel(R) UHD Graphics (CML GT2),,
+juggler3d_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),69.2,1.2
+kaleidocycle_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),96.2,8.5
+kallisti_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 62pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.8,62.4
+klein_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 38pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),81.6,37.9
+lament_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),98.8,6.9
+lavalite_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),90.9,4.6
+lockward_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 65pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),95.2,65.4
+mapscroller_gles3,HANG,HANG,HANG,Mali-G720-Immortalis,HANG,HANG,AMD Radeon Graphics (radeonsi,HANG,HANG,Mesa Intel(R) UHD Graphics (CML GT2),,
+menger_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 100pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.0,100.0
+moebiusgears_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.0,13.8
+molecule_gles3,VISUAL_DIFFERENCE (vendor-dependent BLACK),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,BLACK,PASS,Mesa Intel(R) UHD Graphics (CML GT2),66.2,5.2
+nakagin_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),92.3,8.2
+noof_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 44pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.9,43.9
+papercube_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),97.1,13.2
+peepers_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),98.0,15.2
+photopile_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.0
+polyhedra-gl_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),27.3,6.5
+projectiveplane_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),13.3,2.4
+providence_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),83.3,0.2
+quasicrystal_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 85pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.4,84.6
+raverhoop_gles3,VISUAL_DIFFERENCE (vendor-dependent BLACK),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,BLACK,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.3,21.1
+razzledazzle_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 66pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),91.7,66.4
+romanboy_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),85.1,8.3
+rubikblocks_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.2,12.3
+sballs_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 44pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),76.9,44.2
+skulloop_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),97.3,3.3
+skytentacles_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.0
+sphereeversion_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.8,21.4
+spheremonics_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 96pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),81.0,95.9
+splitflap_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),95.0,0.1
+splodesic_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),78.2,2.2
+squirtorus_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 95pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),84.2,94.7
+starwars_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),80.3,10.6
+stonerview_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),78.6,5.6
+tangram_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),93.8,10.2
+timetunnel_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.0
+topblock_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 94pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),31.2,93.8
+tronbit_gles3,PASS,PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),56.2,7.4
+unicrud_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 95pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),51.5,94.7
+unknownpleasures_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 32pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),66.7,32.2
+voronoi_gles3,VISUAL_DIFFERENCE (non_dark ratio varies 100pp),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),99.7,100.0
+winduprobot_gles3,VISUAL_DIFFERENCE (color palette varies),PASS,PASS,Mali-G720-Immortalis,PASS,PASS,AMD Radeon Graphics (radeonsi,PASS,PASS,Mesa Intel(R) UHD Graphics (CML GT2),75.0,0.0

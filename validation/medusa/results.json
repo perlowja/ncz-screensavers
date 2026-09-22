@@ -1,0 +1,1539 @@
+{
+  "baseline": {
+    "size": [
+      3072,
+      1920
+    ],
+    "n_pixels": 5898240,
+    "sampled_n_pixels": 163840,
+    "mean_brightness": 43.82951863606771,
+    "non_dark_ratio": 0.3818115234375,
+    "distinct_color_buckets": 209
+  },
+  "rows": [
+    {
+      "binary": "lockward_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "200687",
+      "stderr_bytes": "0",
+      "wallclock_sec": "3.311358362",
+      "diag_gl_renderer": "",
+      "verdict": "PASS",
+      "notes": "shot brightness=71.9 vs base=43.8 (diff=28.0); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "antinspect_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "24470",
+      "stderr_bytes": "651",
+      "wallclock_sec": "3.279333854",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=236.1 vs base=43.8 (diff=192.2); colors=37 vs 209 (diff=172)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "antspotlight_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "75820",
+      "stderr_bytes": "575",
+      "wallclock_sec": "3.306009282",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.3 vs base=43.8 (diff=43.6); colors=9 vs 209 (diff=200)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "mapscroller_gles3",
+      "exit_code": "137",
+      "screenshot_bytes": "75820",
+      "stderr_bytes": "517",
+      "wallclock_sec": "6.234987224",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "HANG",
+      "notes": "SIGKILL'd after grace period",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "beats_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "44047",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.297947827",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.0 vs base=43.8 (diff=40.8); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "menger_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "22912",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.302005662",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=180.5 vs base=43.8 (diff=136.7); colors=449 vs 209 (diff=240)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "blinkbox_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "501741",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.342399814",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=12.2 vs base=43.8 (diff=31.6); colors=112 vs 209 (diff=97)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "moebiusgears_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "302571",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.317042622",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "blocktube_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "247626",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.323489296",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.9 vs base=43.8 (diff=39.9); colors=139 vs 209 (diff=70)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "molecule_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "131699",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.287285420",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.6 vs base=43.8 (diff=43.2); colors=45 vs 209 (diff=164)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "boing_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "72736",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.297479583",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=8.7 vs base=43.8 (diff=35.1); colors=13 vs 209 (diff=196)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "nakagin_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.303701650",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "bouncingcow_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "68620",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.293642832",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.3 vs base=43.8 (diff=43.5); colors=48 vs 209 (diff=161)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "noof_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.301725658",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "chompytower_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300642120",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "papercube_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "40792",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.279438205",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.5 vs base=43.8 (diff=43.3); colors=10 vs 209 (diff=199)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cityflow_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.304138778",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "peepers_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.304260331",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=12.7 vs base=43.8 (diff=31.1); colors=49 vs 209 (diff=160)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "companion_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300937078",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "photopile_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.315011907",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "covid19_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "61306",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.302822040",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=5.2 vs base=43.8 (diff=38.6); colors=19 vs 209 (diff=190)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "polyhedra-gl_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "401266",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.331912041",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.1 vs base=43.8 (diff=40.7); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "crackberg_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "813645",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.410961752",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=20.1 vs base=43.8 (diff=23.7); colors=2103 vs 209 (diff=1894)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "projectiveplane_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "813645",
+      "stderr_bytes": "484",
+      "wallclock_sec": "3.405372396",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=19.6 vs base=43.8 (diff=24.2); colors=1756 vs 209 (diff=1547)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "crumbler_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "187068",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.312725682",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.2 vs base=43.8 (diff=43.6); colors=3 vs 209 (diff=206)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "providence_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "24949",
+      "stderr_bytes": "575",
+      "wallclock_sec": "3.300532902",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cube21_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "21829",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.275854214",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=255.0 vs base=43.8 (diff=211.2); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "quasicrystal_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "474",
+      "wallclock_sec": "3.304711441",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=7.1 vs base=43.8 (diff=36.7); colors=190 vs 209 (diff=19)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cubenetic_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "98556",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.308015934",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.6 vs base=43.8 (diff=40.3); colors=108 vs 209 (diff=101)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "raverhoop_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.304871129",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cubestack_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "67046",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.284737806",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=26.1 vs base=43.8 (diff=17.7); colors=9 vs 209 (diff=200)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "razzledazzle_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "58996",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.307582198",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cubestorm_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "226718",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.315157274",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.4 vs base=43.8 (diff=40.4); colors=245 vs 209 (diff=36)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "romanboy_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "279438",
+      "stderr_bytes": "484",
+      "wallclock_sec": "3.312742458",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=2.4 vs base=43.8 (diff=41.4); colors=60 vs 209 (diff=149)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cubetwist_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "42550",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.308493796",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=10.1 vs base=43.8 (diff=33.8); colors=12 vs 209 (diff=197)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "rubikblocks_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.301824156",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=17.0 vs base=43.8 (diff=26.9); colors=135 vs 209 (diff=74)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "cubicgrid_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "21031",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.279069897",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=193.0 vs base=43.8 (diff=149.1); colors=6 vs 209 (diff=203)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "sballs_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "50242",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.302161366",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=17.6 vs base=43.8 (diff=26.3); colors=26 vs 209 (diff=183)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "dangerball_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300956176",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "skulloop_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "109447",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.304676878",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=2.5 vs base=43.8 (diff=41.4); colors=38 vs 209 (diff=171)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "discoball_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.323794570",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "skytentacles_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300624845",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "energystream_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "79954",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.299855557",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=31.7 vs base=43.8 (diff=12.1); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "sphereeversion_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "609569",
+      "stderr_bytes": "484",
+      "wallclock_sec": "3.353459645",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "etruscanvenus_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "249230",
+      "stderr_bytes": "484",
+      "wallclock_sec": "3.313740194",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.9 vs base=43.8 (diff=39.9); colors=49 vs 209 (diff=160)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "spheremonics_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.304163615",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=216.4 vs base=43.8 (diff=172.5); colors=10 vs 209 (diff=199)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "fliptext_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.323431601",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "splitflap_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300154398",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=23 vs 209 (diff=186)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "flyingtoasters_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.313434109",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "splodesic_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "138164",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.310898771",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=2.5 vs base=43.8 (diff=41.4); colors=55 vs 209 (diff=154)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "gears_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "31503",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.295040211",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=3.2 vs base=43.8 (diff=40.6); colors=28 vs 209 (diff=181)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "squirtorus_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "655012",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.367402851",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=11.1 vs base=43.8 (diff=32.7); colors=195 vs 209 (diff=14)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "geodesicgears_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "177210",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.322261422",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=38.3 vs base=43.8 (diff=5.5); colors=154 vs 209 (diff=55)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "starwars_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "407067",
+      "stderr_bytes": "479",
+      "wallclock_sec": "3.317677123",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=17.6 vs base=43.8 (diff=26.3); colors=26 vs 209 (diff=183)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "geodesic_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "111167",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.293395892",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=5.8 vs base=43.8 (diff=38.0); colors=53 vs 209 (diff=156)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "stonerview_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "49095",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.301246729",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=2.5 vs base=43.8 (diff=41.4); colors=38 vs 209 (diff=171)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "gibson_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "32934",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.295818889",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=7.7 vs base=43.8 (diff=36.1); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "tangram_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.312952608",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glblur_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300235791",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "timetunnel_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.300631180",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glcells_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.299678822",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "topblock_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "24307",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.273434045",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=216.4 vs base=43.8 (diff=172.5); colors=10 vs 209 (diff=199)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glforestfire_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "99813",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.305142876",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=7.7 vs base=43.8 (diff=36.1); colors=51 vs 209 (diff=158)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "tronbit_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "19623",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.307323933",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=22 vs 209 (diff=187)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glhanoi_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "19623",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.309927152",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=22 vs 209 (diff=187)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "unicrud_gles3",
+      "exit_code": "1",
+      "screenshot_bytes": "223277",
+      "stderr_bytes": "365",
+      "wallclock_sec": "3.220127985",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=6.5 vs base=43.8 (diff=37.4); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glknots_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "223277",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.322946501",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=6.5 vs base=43.8 (diff=37.4); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "unknownpleasures_gles3",
+      "exit_code": "1",
+      "screenshot_bytes": "89982",
+      "stderr_bytes": "358",
+      "wallclock_sec": "3.192263308",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=17.1 vs base=43.8 (diff=26.7); colors=12 vs 209 (diff=197)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glschool_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.301838337",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "voronoi_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.309474485",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "glsnake_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.314453247",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "winduprobot_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.306966019",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "gltext_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.302147726",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "gravitywell_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "427100",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.332634883",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=7.5 vs base=43.8 (diff=36.3); colors=172 vs 209 (diff=37)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "handsy_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "227571",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.312935579",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=4.2 vs base=43.8 (diff=39.6); colors=7 vs 209 (diff=202)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "headroom_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.301524348",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "hexstrut_gles3",
+      "exit_code": "139",
+      "screenshot_bytes": "24470",
+      "stderr_bytes": "381",
+      "wallclock_sec": "3.172740160",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "CRASH",
+      "notes": "crash on renderer: AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.6-2-t2-trixie)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "hextrail_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.302477008",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "highvoltage_gles3",
+      "exit_code": "139",
+      "screenshot_bytes": "50242",
+      "stderr_bytes": "302",
+      "wallclock_sec": "3.201360459",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "CRASH",
+      "notes": "crash on renderer: AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.6-2-t2-trixie)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "hilbert_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "31039",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.318552379",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.5 vs base=43.8 (diff=43.3); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "hydrostat_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "37375",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.303352113",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=1.6 vs base=43.8 (diff=42.2); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "hypertorus_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "595536",
+      "stderr_bytes": "484",
+      "wallclock_sec": "3.397679436",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=21.6 vs base=43.8 (diff=22.2); colors=1009 vs 209 (diff=800)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "hypnowheel_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "200687",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.321918441",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=2.8 vs base=43.8 (diff=41.0); colors=8 vs 209 (diff=201)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "jigsaw_gles3",
+      "exit_code": "134",
+      "screenshot_bytes": "75820",
+      "stderr_bytes": "447",
+      "wallclock_sec": "3.305489169",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "CRASH",
+      "notes": "crash on renderer: AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.6-2-t2-trixie)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "juggler3d_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "48687",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.301856802",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=1.0 vs base=43.8 (diff=42.8); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "kaleidocycle_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "22912",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.307638925",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=1.6 vs base=43.8 (diff=42.3); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "kallisti_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "302571",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.313215042",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=45.5 vs base=43.8 (diff=1.7); colors=16 vs 209 (diff=193)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "klein_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "130764",
+      "stderr_bytes": "484",
+      "wallclock_sec": "3.286337657",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=122.6 vs base=43.8 (diff=78.7); colors=138 vs 209 (diff=71)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "lament_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.307545372",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    },
+    {
+      "binary": "lavalite_gles3",
+      "exit_code": "0",
+      "screenshot_bytes": "17302",
+      "stderr_bytes": "423",
+      "wallclock_sec": "3.304679099",
+      "diag_gl_renderer": "AMD Radeon Graphics (radeonsi",
+      "null": [
+        " navi14",
+        " ACO",
+        " DRM 3.64",
+        " 7.2.6-2-t2-trixie)"
+      ],
+      "verdict": "PASS",
+      "notes": "shot brightness=0.0 vs base=43.8 (diff=43.8); colors=1 vs 209 (diff=208)",
+      "stderr_first200": "[diag] gles3_harness: EGL 1.5, GLES3 context live | [diag] gles3_compat: shader program 3 compiled | [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1 | RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM "
+    }
+  ]
+}

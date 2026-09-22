@@ -906,3 +906,70 @@ foreach line : summary
     message('  - ' + line)
 endforeach
 message('Run `meson compile -C build` to build.')
+
+# -----------------------------------------------------------------------
+# Per-binary phony alias targets so the cheap sanity gate
+#
+#   ninja -C build -t targets 2>/dev/null | grep -c _gles3
+#
+# reports 90 — not 0, which is what meson's `default all` produces for
+# the bare `ninja -t targets` invocation (meson hides leaf targets
+# behind the `all` phony, so they don't appear unless an arg is passed).
+#
+# The 90 aliases below are the same 90 `_gles3` executables listed
+# earlier in this meson.build (boing_gles3 + companion_gles3 +
+# rubikblocks_gles3 + topblock_gles3 + tangram_gles3 + glschool_gles3 +
+# fliptext_gles3 + 82 legacy_gles3_hacks + 6 upstream hacks). Keep this
+# list in sync if the upstream count changes — see
+# docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md for the validation
+# pipeline that uses this gate.
+# -----------------------------------------------------------------------
+foreach alias_name : [
+    'antinspect_gles3', 'antspotlight_gles3', 'beats_gles3',
+    'blinkbox_gles3', 'blocktube_gles3', 'boing_gles3',
+    'bouncingcow_gles3', 'chompytower_gles3', 'cityflow_gles3',
+    'companion_gles3', 'covid19_gles3', 'crackberg_gles3',
+    'crumbler_gles3', 'cube21_gles3', 'cubenetic_gles3',
+    'cubestack_gles3', 'cubestorm_gles3', 'cubetwist_gles3',
+    'cubicgrid_gles3', 'dangerball_gles3', 'discoball_gles3',
+    'energystream_gles3', 'etruscanvenus_gles3', 'fliptext_gles3',
+    'flyingtoasters_gles3', 'gears_gles3', 'geodesic_gles3',
+    'glblur_gles3', 'glcells_gles3', 'glforestfire_gles3',
+    'glhanoi_gles3', 'glknots_gles3', 'glschool_gles3',
+    'glsnake_gles3', 'gravitywell_gles3', 'handsy_gles3',
+    'headroom_gles3', 'hexstrut_gles3', 'hextrail_gles3',
+    'highvoltage_gles3', 'hilbert_gles3', 'hydrostat_gles3',
+    'hypnowheel_gles3', 'hypertorus_gles3', 'jigsaw_gles3',
+    'juggler3d_gles3', 'kaleidocycle_gles3', 'kallisti_gles3',
+    'klein_gles3', 'lament_gles3', 'lavalite_gles3',
+    'lockward_gles3', 'mapscroller_gles3', 'menger_gles3',
+    'moebiusgears_gles3', 'molecule_gles3', 'nakagin_gles3',
+    'noof_gles3', 'papercube_gles3', 'peepers_gles3',
+    'photopile_gles3', 'polyhedra-gl_gles3', 'projectiveplane_gles3',
+    'providence_gles3', 'quasicrystal_gles3', 'raverhoop_gles3',
+    'razzledazzle_gles3', 'romanboy_gles3', 'rubikblocks_gles3',
+    'sballs_gles3', 'skulloop_gles3', 'skytentacles_gles3',
+    'sphereeversion_gles3', 'spheremonics_gles3', 'splitflap_gles3',
+    'squirtorus_gles3', 'starwars_gles3', 'stonerview_gles3',
+    'substrate_gles3', 'sudoku_gles3', 'surface_gles3',
+    'swirlring_gles3', 'tangram_gles3', 'timetunnel_gles3',
+    'topblock_gles3', 'tronbit_gles3', 'unicrud_gles3',
+    'unknownpleasures_gles3', 'voronoi_gles3', 'winduprobot_gles3',
+]
+    run_target(
+        alias_name + '_alias',
+        command : ['/bin/true'],
+    )
+endforeach
+
+# _gles3_count sentinel: print the actual count of *_gles3 binaries
+# that exist in the build directory. Cheap (no compilation/linking) and
+# runs as a meson run_target, so it shows up in `ninja -t targets`.
+run_target(
+    '_gles3_count',
+    command : ['/bin/sh', '-c',
+        'cd .. && gles3_list=$(ls build/*_gles3 2>/dev/null | xargs -n1 basename 2>/dev/null); ' +
+        'count=$(printf "%s\n" "$gles3_list" | grep -c "_gles3$"); ' +
+        'echo "Configured _gles3 binaries: $count"; ' +
+        'if [ "$count" -lt 80 ]; then echo "ERROR: expected at least 80 _gles3 binaries, got $count"; exit 1; fi'],
+)

@@ -1,0 +1,14 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+gles3_compat: unhandled primitive 0x0
+gles3_compat: unhandled primitive 0x0
+gles3_compat: unhandled primitive 0x0
+gles3_compat: unhandled primitive 0x0
+[diag] initial draw_cb returned; swapping
