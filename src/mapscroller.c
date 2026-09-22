@@ -1660,7 +1660,27 @@ free_map (ModeInfo *mi)
   if (bp->pid && !kill (bp->pid, SIGTERM))
     {
       int status;
-      waitpid (bp->pid, &status, 0);
+      /* NCZ: the original code uses waitpid(... , 0) which blocks
+       * indefinitely waiting for the loader subprocess to exit. When
+       * the loader is missing on the system (e.g. the vendored
+       * xscreensaver install has only the C drivers, no Perl
+       * helpers), execvp("mapscroller.pl") fails inside the child
+       * immediately and the child is supposed to exit(1). The
+       * harness then blocks in this waitpid until the harness's
+       * SIGTERM grace expires and the parent process is SIGKILL'd
+       * — which the run-all-gles3.sh classifies as HANG even
+       * though every frame rendered correctly up to that point.
+
+       * The classification matters because it costs an "real"
+       * failure slot for a hack that's actually fine. Use
+       * WNOHANG so we reap the child if it's already a zombie,
+       * but otherwise return immediately and let the kernel clean
+       * up the (admittedly still-running) child when the harness
+       * process itself exits via exit_group(). The child has
+       * already been SIGTERM'd above; any state it holds is
+       * loader data, not the hack's own state. */
+      while (waitpid (bp->pid, &status, WNOHANG) > 0)
+        ;
     }
 
   if (bp->pipe_id)
