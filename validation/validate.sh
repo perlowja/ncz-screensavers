@@ -134,7 +134,7 @@ gate() {
     fi
 }
 
-echo "=== Gate 1: 90 _gles3 binaries built ==="
+echo "=== Gate 1: 127 _gles3 binaries built ==="
 BUILT=$(ls build/*_gles3 2>/dev/null | xargs -n1 basename 2>/dev/null | grep -vE '\.p$|\.o$' | sort -u | wc -l)
 echo "  binaries on disk: $BUILT"
 if [ "$BUILT" = "127" ]; then

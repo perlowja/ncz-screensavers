@@ -30,12 +30,17 @@
 #   bash validation/test_crash_fixes_regression.sh --structural-only
 #
 # Env overrides:
-#   RUN_SECONDS      — runtime duration per target (default 6)
+#   RUN_SECONDS      — runtime duration per target (default 10)
 #   REQUIRED_FRAMES  — minimum frame progress lines required per target
 #                      when a live Wayland session is reachable
-#                      (default 30 — runs long enough to catch
-#                      jigsaw's "crash after 5 frames" shape, the
-#                      brief's specific failure mode)
+#                      (default 8 — the harness emits frame progress
+#                      lines for the first 5 frames then every 60
+#                      frames. 8 frame lines means we got past frame
+#                      #60 (~1 second of rendering), which is well
+#                      past jigsaw's pre-fix crash window. We also
+#                      enforce a "must reach frame #60" check below
+#                      so a run that emits only the first 5 frame
+#                      lines cannot accidentally pass.)
 #   WAIVE_RUNTIME    — set to 1 to skip the runtime evidence requirement
 #                      (only valid when no live Wayland session is
 #                      reachable; documents the gap explicitly without
@@ -70,8 +75,8 @@ for arg in "$@"; do
     esac
 done
 
-RUN_SECONDS="${RUN_SECONDS:-6}"
-REQUIRED_FRAMES="${REQUIRED_FRAMES:-30}"
+RUN_SECONDS="${RUN_SECONDS:-10}"
+REQUIRED_FRAMES="${REQUIRED_FRAMES:-8}"
 WAIVE_RUNTIME="${WAIVE_RUNTIME:-0}"
 
 # The 4 fixes and their pre-fix signatures. Adding a row here
@@ -251,6 +256,21 @@ check_runtime() {
         FAIL=$((FAIL + 1))
         FAILED_TARGETS+=("$target")
         emit_json "$target" "fail" "only $frames frames (need $REQUIRED_FRAMES)" "$frames" "$rc"
+        return
+    fi
+
+    # jigsaw's pre-fix bug was specifically "crashes after 5 real frames
+    # render correctly" (per the brief). A run that emits only the first
+    # 5 frame lines (frame #0..#4) and nothing later could still pass a
+    # naive "got 5 frame lines" check while being exactly the broken
+    # case. Require at least one frame-line past #60 (the next frame
+    # progress line the harness emits, at ~1 second of rendering).
+    if ! grep -qE '\[diag\] frame #(60|120|180|240|300|360|420|480|540|600)\b' "$log"; then
+        printf "  [FAIL] %s: rendered only the initial frames, never reached frame #60 (jigsaw's pre-fix crash window was after 5 frames)\n" \
+            "$target" >&2
+        FAIL=$((FAIL + 1))
+        FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "did not reach frame #60; jigsaw pre-fix crash shape" "$frames" "$rc"
         return
     fi
 
