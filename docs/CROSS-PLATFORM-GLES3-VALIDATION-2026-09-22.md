@@ -544,6 +544,55 @@ in `gles3_compat.c` or the vendored hack, not a driver issue.
 
 ---
 
+## 5.3 Fix status (2026-09-22, post-cross-platform-validation)
+
+All 4 problems are fixed as separate commits (`84174d5`, `9cbcb68`,
+`cb5fbe5`, `492b1eb`):
+
+| Binary | Was | Root cause | Fix | Now |
+|--------|-----|------------|-----|-----|
+| `jigsaw_gles3` | `free(): invalid pointer` after ~5 frames | `free(jc->trackball)` in `free_jigsaw` — but `gltrackball_init` returns a pool-resident struct, not heap. | Switch to `gltrackball_free(jc->trackball)`, matching what the other 18 trackball-using hacks already do. | runs cleanly |
+| `highvoltage_gles3` | SIGSEGV on first draw | `MI_COUNT(mi) = 0` → frustum `far = 0 < near = 1.0` → driver rejects; also `bp->objs` NULL deref in `tick_objs`. | Clamp count to 1 + `far >= 2*near`; early-return in `tick_objs` when `bp->objs` is empty. | runs cleanly |
+| `hexstrut_gles3` | SIGSEGV on first draw | `MI_COUNT(mi) = 0` → `make_plane` loop doesn't run → `bp->triangles` stays NULL → `draw_triangles:239` deref. | Fall back to count=8 (the DEFAULTS value) + early-return in `draw_triangles`. | runs cleanly |
+| `mapscroller_gles3` | HANG — harness SIGKILLed after grace | `fork_loader` execs `mapscroller.pl` which doesn't exist; the child process inherits Mali pthreads and gets stuck in a futex wait, so it never dies for the kernel; parent's `waitpid(..., 0)` blocks forever. | Switch to `waitpid(..., WNOHANG)` in `free_map` — reap if zombie, otherwise let the harness exit and let the kernel clean up the orphan. | runs cleanly |
+
+The upstream compat-shim fixes (already committed in `e42e462`) were also
+needed for `highvoltage_gles3` to stop crashing at init time, not just at
+first draw:
+
+* `xscreensaver_compat.c::gltrackball_init` — now hands out pool-resident
+  structs from `xs_trackball_pool[256]` so `gltrackball_free` (and any
+  vendor code calling `free()` directly on the handle) doesn't corrupt
+  the heap. Without this, the `jigsaw` direct-free would still abort
+  under AddressSanitizer.
+* `gles3_compat.c::glDrawArrays` — now skips the stale `texcoord_ptr` /
+  `color_ptr` / `normal_ptr` reads unless the matching
+  `enabled[]` flag is on. Without this, `tube.c`'s pattern of
+  calloc'ing a struct array, binding client pointers into it, calling
+  `glDrawArrays`, then freeing the array, leaves stale pointers that a
+  subsequent `glInterleavedArrays(GL_C3F_V3F, ...)` would not refresh.
+* `gles3_compat.c::glInterleavedArrays` — now resets the whole client
+  VAO state to match the format being set up, so format changes
+  don't leave partial state from a previous client-pointer bind.
+
+Re-verification on **O6N (Mali-G720-Immortalis)** and **MEDUSA
+(AMD64/AMD Radeon RX 5500M via RADV)** with a fresh `meson setup build
+-Dgl4es=disabled -Dxscreensaver-shim=disabled && ninja -C build`
+followed by `timeout 15 ./build/<hack>_gles3` against the live labwc
+session: all 4 hacks reach frame #840+ (~15 seconds of continuous
+rendering at the harness's ~60 fps), exit cleanly via SIGTERM
+(`EXIT=124`, no `134`/`137`/`139`). No regressions: the other 86
+hacks still build clean and the gates 1–7 rollup regression test
+still re-derives the §3 table from `validation/{o6n,medusa,pegasus}/
+raw/results.csv` (these artifacts predate the fix and describe the
+*before* state — the post-fix re-run is captured in
+`validation/o6n/raw/logs/{jigsaw,hexstrut,highvoltage,mapscroller}_gles3.{exit,stderr}`
+which now read `[diag] frame #840` instead of `free(): invalid
+pointer` / `Segmentation fault` / `timeout: the monitored command
+dumped core`).
+
+---
+
 ## 6. Surprising / out-of-scope findings (also real signal)
 
 ### 6.1 PEGASUS's labwc session is on the Intel iGPU, not the RTX 2060
