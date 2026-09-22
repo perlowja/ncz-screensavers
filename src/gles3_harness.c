@@ -379,40 +379,33 @@ static const struct xdg_toplevel_listener xdg_top_listener = {
 /* Frame callback                                                          */
 /* ----------------------------------------------------------------------- */
 
-static void frame_done(void *d, struct wl_callback *cb, uint32_t t);
-static const struct wl_callback_listener frame_listener = { .done = frame_done };
-
-static void request_frame(struct app *a) {
-    if (a->frame_in_flight || !a->configured) return;
-    a->frame_cb = wl_surface_frame(a->surface);
-    if (!a->frame_cb) { a->running = 0; return; }
-    wl_callback_add_listener(a->frame_cb, &frame_listener, a);
-    a->frame_in_flight = true;
-}
-
-static void frame_done(void *d, struct wl_callback *cb, uint32_t t) {
-    (void)t;
-    struct app *a = d;
-    wl_callback_destroy(cb);
-    a->frame_cb = NULL;
-    a->frame_in_flight = false;
-    if (!a->running) return;
-
-    {
-        static unsigned long _nframes = 0;
-        if (_nframes < 5 || (_nframes % 60) == 0)
-            fprintf(stderr, "[diag] frame_done #%lu\n", _nframes);
-        _nframes++;
-    }
+/*
+ * Root cause of the AMD64/Mesa (radeonsi, Intel iGPU) animation stall,
+ * measured 2026-09-22 via WAYLAND_DEBUG=1 on MEDUSA: the old code here
+ * called wl_surface_frame() itself AND used eglSwapBuffers() through
+ * Mesa's EGL-Wayland platform, which ALSO issues its own internal
+ * wl_surface.frame request as part of normal buffer presentation. Two
+ * frame-callback requests landed on the same surface a few microseconds
+ * apart (mesa egl surface queue's vs this file's own Default Queue one);
+ * a surface only gets ONE frame callback fulfilled per commit, so this
+ * file's own explicit callback never received its .done event and the
+ * loop below never woke up again after the first frame. Panthor/Mesa on
+ * O6N happened not to hit this (different winsys timing), which is why
+ * it worked there and nowhere else.
+ *
+ * Fix: don't manage a manual Wayland frame callback on an EGL-owned
+ * window surface at all. EGL's own Wayland winsys already paces
+ * presentation inside eglSwapBuffers; drive the loop by dispatching
+ * pending Wayland events (non-blocking) and drawing+swapping every
+ * iteration, the same shape as any other GL-on-EGL app.
+ */
+static void draw_and_swap(struct app *a) {
     hack->draw_cb(&a->mi);
-
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",
                 (unsigned int)eglGetError());
         a->running = 0;
-        return;
     }
-    request_frame(a);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -652,23 +645,22 @@ shell_ready:
                 (unsigned int)eglGetError());
         return 1;
     }
-    request_frame(&app);
-    while (app.running) {
-        while (wl_display_prepare_read(app.display) != 0) {
+    {
+        static unsigned long _nframes = 0;
+        while (app.running) {
             if (wl_display_dispatch_pending(app.display) < 0) {
-                app.running = 0; break;
+                app.running = 0;
+                break;
             }
+            if (wl_display_flush(app.display) < 0 && errno != EAGAIN) {
+                app.running = 0;
+                break;
+            }
+            if (_nframes < 5 || (_nframes % 60) == 0)
+                fprintf(stderr, "[diag] frame #%lu\n", _nframes);
+            _nframes++;
+            draw_and_swap(&app);
         }
-        if (!app.running) break;
-        struct pollfd pfd = { .fd = wl_display_get_fd(app.display),
-                              .events = POLLIN };
-        int n = poll(&pfd, 1, -1);
-        if (n < 0) {
-            if (errno == EINTR) { wl_display_cancel_read(app.display); continue; }
-            app.running = 0; break;
-        }
-        wl_display_read_events(app.display);
-        wl_display_dispatch_pending(app.display);
     }
     if (app.display) wl_display_roundtrip(app.display);
     return 0;
