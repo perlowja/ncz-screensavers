@@ -1,10 +1,60 @@
-# ncz-screensavers — native Wayland-neutral EGL/GLES2 screensaver framework
+# ncz-screensavers
 
-Goal: a native Wayland (wlr-layer-shell) + EGL (GLES2/3) host that renders
-xscreensaver-style GL screensavers WITHOUT X11/Xwayland. Reuses the GL rendering
-algorithms from xscreensaver's hacks; replaces the X11/GLX windowing with a
-Wayland/EGL layer-shell shell. Idle via ext-idle-notify-v1, lock coordination via
-ext-session-lock-v1.
+A native Wayland/EGL/GLES3 screensaver engine, distro-independent, no X11
+or Xwayland anywhere in the stack.
+
+## What problem this solves
+
+xscreensaver — the dominant free-software screensaver framework since 1992,
+built by Jamie Zawinski ("jwz") — never gained Wayland support, and jwz has
+stated publicly he does not intend to add it; xscreensaver's hacks are
+written against Xlib/GLX and assume an X11 windowing model throughout.
+Meanwhile most Linux distributions have moved, or are moving, to Wayland
+compositors with no Xwayland dependency at all. That leaves decades of
+real, well-loved visual-effect code with no home on a Wayland-only desktop.
+
+This project's answer: keep the actual rendering ALGORITHMS — the GL
+drawing code inside each hack — and rebuild everything AROUND them
+natively for Wayland. No Xlib, no GLX, no Xwayland. A small compatibility
+layer (`src/xscreensaver_compat.h`/`.c`, `src/gles3_compat.h`/`.c`)
+translates xscreensaver's legacy fixed-function OpenGL 1.x calls onto
+GLES3's programmable pipeline, and a real Wayland/EGL harness
+(`src/gles3_harness.c`) owns the window/surface/frame-loop side. The result
+is 90 of the original hacks running as real, GPU-accelerated, standalone
+Wayland clients, usable by any compositor (see *Status* below).
+
+## What this is descended from — full credit
+
+- **[xscreensaver](https://www.jwz.org/xscreensaver/)**, by **Jamie
+  Zawinski**, since 1992 — the original source of every ported visual
+  effect in `src/`. This project owes its entire content to his and
+  decades of contributors' work; see the Attribution section below for
+  the exact terms under which that code is used here, and per-file
+  provenance in `PORTING.md`.
+- **[hyprsaver](https://github.com/)** (vendored at `vendor/hyprsaver/`),
+  by **Mara Vexa**, MIT licensed — a modern Wayland-native (Hyprland)
+  shader-based screensaver project. Its 33 GLSL fragment shaders are being
+  ported into this engine as native GLES3 hacks alongside the xscreensaver
+  set; see `vendor/hyprsaver/LICENSE` and `vendor/hyprsaver/README.md` for
+  its own attribution and terms.
+
+This project itself is an independent, unofficial reimplementation of the
+*windowing and dispatch layer* these hacks run under. It does not use,
+wrap, or depend on xscreensaver, Xlib, Xwayland, or hyprsaver's own Rust
+binary — only their real, credited visual-effect source.
+
+
+## Screenshots
+
+Real captures from the 2026-09-22 cross-platform validation run (Sky1/Mali
+Panthor), not renders or mockups:
+
+| | |
+|---|---|
+| ![noof](docs/screenshots/noof.png) `noof` | ![raverhoop](docs/screenshots/raverhoop.png) `raverhoop` |
+| ![etruscanvenus](docs/screenshots/etruscanvenus.png) `etruscanvenus` | ![hypnowheel](docs/screenshots/hypnowheel.png) `hypnowheel` |
+| ![geodesicgears](docs/screenshots/geodesicgears.png) `geodesicgears` | |
+
 
 ## Status (2026-09-22) — what's real today vs. planned
 
