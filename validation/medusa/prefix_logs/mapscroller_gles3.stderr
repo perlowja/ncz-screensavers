@@ -1,0 +1,11 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.6-2-t2-trixie)
+VENDOR=AMD
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1536x960 configured=1
+ncz-screensavers-glmatrix: 15:45:15: 99927: running mapscroller.pl: No such file or directory
+[diag] initial draw_cb returned; swapping

@@ -575,21 +575,76 @@ first draw:
   VAO state to match the format being set up, so format changes
   don't leave partial state from a previous client-pointer bind.
 
-Re-verification on **O6N (Mali-G720-Immortalis)** and **MEDUSA
-(AMD64/AMD Radeon RX 5500M via RADV)** with a fresh `meson setup build
--Dgl4es=disabled -Dxscreensaver-shim=disabled && ninja -C build`
-followed by `timeout 15 ./build/<hack>_gles3` against the live labwc
-session: all 4 hacks reach frame #840+ (~15 seconds of continuous
-rendering at the harness's ~60 fps), exit cleanly via SIGTERM
-(`EXIT=124`, no `134`/`137`/`139`). No regressions: the other 86
-hacks still build clean and the gates 1–7 rollup regression test
-still re-derives the §3 table from `validation/{o6n,medusa,pegasus}/
-raw/results.csv` (these artifacts predate the fix and describe the
-*before* state — the post-fix re-run is captured in
-`validation/o6n/raw/logs/{jigsaw,hexstrut,highvoltage,mapscroller}_gles3.{exit,stderr}`
-which now read `[diag] frame #840` instead of `free(): invalid
-pointer` / `Segmentation fault` / `timeout: the monitored command
-dumped core`).
+**Re-verification evidence (MEDUSA, in this session).** Pre-fix
+reproduction and post-fix re-verification were both run on **MEDUSA
+(AMD64/RADV)** in this session, since the O6N host was unreachable
+from this build host at the time of the re-run (SSH banner returned
+"Not allowed at this time"). O6N hardware-level re-verification is
+still pending until the SSH path reopens, but the fixes are
+minimally-scoped at the hack level (no GL-shim, kernel-level, or
+ABI changes; nothing cross-platform-dependent) and the same 4
+hacks pass identically on MEDUSA's RADV, which exercises a
+different driver and a different x86-64 ABI than the Mali/Panthor
+stack the bugs were originally reported on.
+
+**Pre-fix reproduction on MEDUSA**, building from `e42e462` (the
+last commit before any of the 4 fixes) and running each binary
+under labwc for 8–11 seconds with a SIGTERM/SIGKILL grace tail:
+
+| Binary | RC   | Last stderr line                       |
+|--------|------|----------------------------------------|
+| jigsaw_gles3        | 134 | `free(): invalid pointer`        |
+| hexstrut_gles3      | 139 | `[diag] initial draw: 1536x960 configured=1` (SIGSEGV during init/reshape) |
+| highvoltage_gles3   | 139 | `[diag] gles3_harness: calling init...` (SIGSEGV during init/reshape) |
+| mapscroller_gles3   | 137 | `[diag] initial draw_cb returned; swapping` (process hung after init; SIGKILL after SIGTERM+3s grace) |
+
+Captured to `validation/medusa/prefix_logs/{jigsaw,hexstrut,highvoltage,mapscroller}_gles3.{exit,stderr}`.
+
+**Post-fix re-verification on MEDUSA**, building from `ac189b4` (the
+4-fix tip) and running each binary under labwc for 12 seconds with a
+plain SIGTERM:
+
+| Binary | RC   | Last `[diag] frame` line | Last stderr line                                       |
+|--------|------|--------------------------|--------------------------------------------------------|
+| jigsaw_gles3        | 0 | `#240`        | `[diag] frame #240`                          |
+| hexstrut_gles3      | 0 | `#660`        | `[diag] frame #660`                          |
+| highvoltage_gles3   | 0 | `#660`        | `[diag] frame #660`                          |
+| mapscroller_gles3   | 0 | `#660`        | `[diag] frame #660` (early `running mapscroller.pl: No such file or directory` is the tolerated, expected perl-loader-missing line — it does not affect rendering) |
+
+Captured to `validation/medusa/postfix_logs/{jigsaw,hexstrut,highvoltage,mapscroller}_gles3.{exit,stderr}`.
+
+MEDUSA's frame counter advances more slowly than O6N's Mali because
+RADV runs the harness's draw loop at a lower throughput than Panthor;
+both reach well past the "post-5-frame crash window" that originally
+caught the jigsaw heap-corruption, and all 4 exit cleanly via
+SIGTERM (`RC=0`). The MEDUSA frame numbers and the O6N frame
+numbers should not be compared directly — different GPUs, different
+frame budgets at the 12-second mark.
+
+**No regressions on MEDUSA.** Spot-checked other hacks that use
+the same `gltrackball_init`/`gltrackball_free` pool (boing,
+companion, antinspect, antspotlight, gears, molecule, skytentacles,
+spheremonics, lament) under the same harness for 6–8 s each — all
+exited cleanly via SIGTERM, no `free()` complaints, no SIGSEGV, no
+HANG. None of the 4 fixes touches `src/gles3_compat.c`,
+`src/xscreensaver_compat.c`, or any other shared shim; the
+post-`e42e462` shim changes from that commit were already exercised
+by the cross-platform validation pass and remained stable here.
+
+**Gates 1–7 still pass.** `bash validation/validate.sh --reviewer-summary`
+on the build host (without `WAIVE_RUNTIME`, but on a host with no
+live Wayland session) passes all 7 of the gates this section
+references, plus gate 8a (Round-13 follow-up structural check). The
+subsequent Round-13 follow-up commit (`ae0a76d`) added gate 8b
+(Round-13 runtime check) which is independent of the 4-fix scope;
+its waiver path (`WAIVE_RUNTIME=1`) is documented in
+`docs/REVIEWER-VERIFICATION.md` and is appropriate when the build
+host has no live Wayland session, as is the case here.
+
+The committed `validation/<plat>/raw/` artifacts predate the fixes and
+remain the canonical record of the *before* state; the §3 table they
+back is unchanged. The `validation/medusa/{prefix,postfix}_logs/`
+directories captured in this session are the *after* evidence.
 
 ---
 
