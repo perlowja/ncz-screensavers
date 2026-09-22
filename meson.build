@@ -722,6 +722,16 @@ legacy_gles3_hacks = [
     {'name': 'splitflap',      'src': 'src/splitflap.c',      'extras': ['src/gllist.c', 'src/rotator.c', 'src/splitflap_obj.c', 'src/yarandom.c']},
     {'name': 'starwars',       'src': 'src/starwars.c',       'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/yarandom.c']},
     {'name': 'winduprobot',    'src': 'src/winduprobot.c',    'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/involute.c', 'src/normals.c', 'src/robot.c', 'src/robot-wireframe.c', 'src/sphere.c', 'src/yarandom.c']},
+
+    # Round 13 — STEP4-EXPANSION-BRIEF Task 1a ports (native GLES3 path).
+    # atlantis: 3D swimming sea-creatures demo by Mark Kilgard /
+    #           E. Lassauge. sea-texture is a 128x128 grayscale PNG
+    #           embedded via tools/png_to_h.py as
+    #           src/images/gen/sea-texture_png.h.
+    {'name': 'atlantis',       'src': 'src/atlantis.c',       'extras': ['src/dolphin.c', 'src/image_data_to_ximage.c', 'src/shark.c', 'src/swim.c', 'src/whale.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+    # flurry: pyrotechnic firework + smoke + spark + star + texture
+    #         effects. Five files share state via flurry.h.
+    {'name': 'flurry',         'src': 'src/flurry.c',         'extras': ['src/flurry-smoke.c', 'src/flurry-spark.c', 'src/flurry-star.c', 'src/flurry-texture.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
 ]
 
 foreach h : legacy_gles3_hacks
@@ -745,6 +755,43 @@ foreach h : legacy_gles3_hacks
             # polyhedra-gl_xscreensaver_function_table). The 'table'
             # dict key overrides the default when they differ.
             '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
+# Round 13 — Phase 3 — hyprsaver shader port (vendor/hyprsaver/, MIT, Mara Vexa).
+# 35 GLSL fragment shaders (all #version 320 es, GLES 3.2-native).
+# One .c file (src/gles3_hyprsaver.c) is reused for all 35 targets —
+# the foreach picks which .frag to compile and which symbol stem to
+# use. License preserved at vendor/hyprsaver/LICENSE; attribution
+# in PORTED.md.
+# -----------------------------------------------------------------------
+
+hyprsaver_shaders = [
+    'attitude', 'aurora', 'bezier', 'blob', 'caustics', 'circuit',
+    'clouds', 'donut', 'fireflies', 'flames', 'fractaltrap', 'geometry',
+    'gridwave', 'hypercube', 'julia', 'kaleidoscope', 'lissajous',
+    'marble', 'matrix', 'mobius', 'oscilloscope', 'planet', 'plasma',
+    'shipburn', 'snowfall', 'sonar', 'starfield', 'stonks', 'temple',
+    'terminal', 'tesla', 'tunnel', 'voronoi', 'waterfall', 'wormhole',
+]
+
+foreach s : hyprsaver_shaders
+    executable(
+        'hyprsaver_' + s + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_hyprsaver.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            # Quoted because meson/gcc splits 'tunnel.frag' on the dot.
+            '-DSHADER_FILE="@0@.frag"'.format(s),
+            '-DHACK_PREFIX=hyprsaver_@0@'.format(s),
+            '-DHACK_TABLE=hyprsaver_@0@_xscreensaver_function_table'.format(s),
         ],
         install: false,
     )
@@ -955,6 +1002,27 @@ foreach alias_name : [
     'swirlring_gles3', 'tangram_gles3', 'timetunnel_gles3',
     'topblock_gles3', 'tronbit_gles3', 'unicrud_gles3',
     'unknownpleasures_gles3', 'voronoi_gles3', 'winduprobot_gles3',
+    # Round 13 — hyprsaver shader ports (35).
+    'hyprsaver_attitude_gles3', 'hyprsaver_aurora_gles3',
+    'hyprsaver_bezier_gles3', 'hyprsaver_blob_gles3',
+    'hyprsaver_caustics_gles3', 'hyprsaver_circuit_gles3',
+    'hyprsaver_clouds_gles3', 'hyprsaver_donut_gles3',
+    'hyprsaver_fireflies_gles3', 'hyprsaver_flames_gles3',
+    'hyprsaver_fractaltrap_gles3', 'hyprsaver_geometry_gles3',
+    'hyprsaver_gridwave_gles3', 'hyprsaver_hypercube_gles3',
+    'hyprsaver_julia_gles3', 'hyprsaver_kaleidoscope_gles3',
+    'hyprsaver_lissajous_gles3', 'hyprsaver_marble_gles3',
+    'hyprsaver_matrix_gles3', 'hyprsaver_mobius_gles3',
+    'hyprsaver_oscilloscope_gles3', 'hyprsaver_planet_gles3',
+    'hyprsaver_plasma_gles3', 'hyprsaver_shipburn_gles3',
+    'hyprsaver_snowfall_gles3', 'hyprsaver_sonar_gles3',
+    'hyprsaver_starfield_gles3', 'hyprsaver_stonks_gles3',
+    'hyprsaver_temple_gles3', 'hyprsaver_terminal_gles3',
+    'hyprsaver_tesla_gles3', 'hyprsaver_tunnel_gles3',
+    'hyprsaver_voronoi_gles3', 'hyprsaver_waterfall_gles3',
+    'hyprsaver_wormhole_gles3',
+    # Round 13 — Task 1a ports (atlantis + flurry).
+    'atlantis_gles3', 'flurry_gles3',
 ]
     run_target(
         alias_name + '_alias',

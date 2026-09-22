@@ -6,8 +6,11 @@
 # self-contained so a failure clearly identifies the failing condition.
 #
 # Gates:
-#   1. 90 _gles3 binaries exist in build/ (the cheap sanity gate the
-#      task spec named: ninja -C build -t targets | grep -c _gles3)
+#   1. 127 _gles3 binaries exist in build/ — the canonical ported set
+#      (90 from round 1-11 + 1 atlantis + 1 flurry + 35 hyprsaver
+#      shaders, added in the Round 12 expansion per STEP4-EXPANSION-
+#      BRIEF.md). Cheap sanity gate the task spec named:
+#      `ninja -C build -t targets | grep -c _gles3`
 #   2. eglSwapInterval(1) is in src/gles3_harness.c (regression tested
 #      2026-09-22 on Mali-Panthor, Mesa-radeonsi, Mesa-iris — all three
 #      produce identical ~40fps with or without it, so the call is
@@ -104,10 +107,10 @@ gate() {
 echo "=== Gate 1: 90 _gles3 binaries built ==="
 BUILT=$(ls build/*_gles3 2>/dev/null | xargs -n1 basename 2>/dev/null | grep -vE '\.p$|\.o$' | sort -u | wc -l)
 echo "  binaries on disk: $BUILT"
-if [ "$BUILT" = "90" ]; then
-    gate "90 _gles3 binaries built" 0 1
+if [ "$BUILT" = "127" ]; then
+    gate "127 _gles3 binaries built" 0 1
 else
-    gate "90 _gles3 binaries built (got $BUILT)" 1 1
+    gate "127 _gles3 binaries built (got $BUILT)" 1 1
 fi
 
 echo ""

@@ -92,9 +92,9 @@ section) are built.
 | vigilance | gllist.c, normals.c, seccam.c |
 | voronoi | - |
 
-## Ported (90 GLES3-native, no gl4es)
+## Ported (127 GLES3-native, no gl4es)
 
-These 90 build as `<name>_gles3` binaries linked directly against
+These 127 build as `<name>_gles3` binaries linked directly against
 system libGLESv2 / libEGL — no libGL.so.1, no gl4es, no translation
 shim. The vendored xscreensaver source compiles against the GLES3
 compat layer (`gles3_compat.h`) which routes every glBegin/glVertex/
@@ -102,6 +102,11 @@ glColor/glNormal/glMatrixMode/glLightfv/glMaterialfv/glNewList/...
 call through to a small fixed-function shader pair and CPU vertex
 accumulator. Verified on this build host: `ldd <binary>` shows
 `libEGL.so.1` + `libGLESv2.so.2` + `libGLdispatch.so.0` only.
+
+Of the 127: 92 are vendored xscreensaver hacks (90 prior set +
+atlantis + flurry from Round 13). The remaining 35 are
+hyprsaver's MIT-licensed GLSL fragment shaders (Round 13.3),
+each compiled into its own binary via the generic wrapper.
 
 ### Phase 1 pilots (boing, companion)
 
@@ -439,6 +444,134 @@ exactly. Single-line meson.build change adds timetunnel to
 legacy_gles3_hacks with image_data_to_ximage in extras. No c_args
 flag is needed — the shim is reached via normal symbol resolution
 inside xscreensaver_compat.c.
+
+### Round 13 — STEP4-EXPANSION-BRIEF ports (38 new binaries)
+
+Three real, separate expansions from the STEP4-EXPANSION-BRIEF
+dispatch: (a) two named xscreensaver gaps (atlantis + flurry),
+(b) the 35 hyprsaver GLSL shaders as native GLES3 wrappers, and
+(c) an initial coverage-gap diff against upstream's REGISTRY'd
+hack list. All share the `legacy_gles3_hacks` (native GLES3 path,
+no gl4es) build infrastructure; no architectural change to the
+shim layer was needed except for two small GL1/GLU stubs that
+every future legacy_xscreensaver port will benefit from.
+
+#### 13.1 — atlantis_gles3 (port: atlantis + 4 supporting objects)
+
+`src/atlantis.c` + `src/whale.c` + `src/dolphin.c` + `src/shark.c` +
+`src/swim.c` (1,224 lines total, vendored unmodified from
+`/tmp/xscreensaver-upstream-check/hacks/glx/`). Sea-creatures demo
+by Mark J. Kilgard, ported to xlockmore by Eric Lassauge (1998).
+Per the brief, one of two gaps genuinely absent from this repo's
+tracking (`grep -E atlantis meson.build PORTED.md` returned zero
+hits before this commit).
+
+Single-line `legacy_gles3_hacks` entry plus four supporting objects
+in `extras`. Compiles cleanly against `-DUSE_GL -DSTANDALONE` — the
+existing xscreensaver_compat shim already routes
+`glXMakeCurrent` / `glXSwapBuffers` for atlantis's windowing API.
+The two compat-shim gaps surfaced by the build:
+
+  * `tools/png_to_h.py` — new. Embeds `src/images/sea-texture.png`
+    into `src/images/gen/sea-texture_png.h` as a `static const
+    unsigned char sea_texture_png[]` C array. The vendored
+    atlantis.c emits `#include "images/gen/sea-texture_png.h"` and
+    references `sea_texture_png` (NOT `sea-texture_png` — a dash is
+    illegal in a C identifier). Output format: comma-separated hex
+    literals (commas, not spaces — space-separated `0x89 0x50 0x4e`
+    literals are tokenized weirdly by GCC's c11 parser and emit
+    "expected `}` before numeric constant").
+
+  * `glRectd` and friends — new in `gles3_compat.c`. Atlantics's
+    `display.c` doesn't actually use them but `flurry.c:520` does,
+    and they were already a documented GL1-to-GLES3 gap. Added the
+    whole `glRect{f,d,i,fd}` family (6 functions) as a thin
+    wrapper around a new `ncz_im_rect` helper, which is itself a
+    4-vertex `GL_TRIANGLE_FAN` immediate-mode quad that routes
+    through the existing `ncz_im_begin` / `ncz_im_vertex3f` /
+    `ncz_im_end` accumulator so display-list recording stays
+    consistent.
+
+#### 13.2 — flurry_gles3 (port: flurry + 4 supporting objects)
+
+`src/flurry.c` + `src/flurry-smoke.c` + `src/flurry-spark.c` +
+`src/flurry-star.c` + `src/flurry-texture.c` (553 + 4 supporting
+.c, vendored unmodified). Firework + pyrotechnic effects by Calum
+Robinson (2002, BSD-style). Five .c files share state through
+`flurry.h`; all vendored together. The other named gap from
+STEP4-EXPANSION-BRIEF.
+
+Two compat-shim gaps surfaced:
+
+  * `usleep()` — added `#include <unistd.h>` to the top of
+    `xscreensaver_compat.h` (the shim was the right place; the
+    shim already gated on `_DEFAULT_SOURCE` for `M_PI` so
+    `usleep()` was effectively one line away).
+
+  * `gluBuild2DMipmaps()` — added the GLU mipmap-chain builder as
+    a new `xscreensaver_compat.c` helper. Maps
+    `gluBuild2DMipmaps(GL_TEXTURE_2D, components, w, h, format,
+    type, data)` to `glTexImage2D(...) + glGenerateMipmap(...)`
+    (the GLES3 driver-native equivalent of GLU's CPU-side chain).
+    Returns `GLU_ERROR` on driver-side failure. `GLU_ERROR` is
+    `#define`'d to 100 (canonical Mesa value) at the top of
+    `gluScaleImage`'s section in `xscreensaver_compat.c`.
+
+#### 13.3 — hyprsaver_<shader>_gles3 (35 wrappers, one .c)
+
+`vendor/hyprsaver/` already vendored as a separate, MIT-licensed
+project (Hyprland screensaver by Mara Vexa, 2026). The vendored
+tree's `shaders/*.frag` contains 35 GLSL fragment shaders, all
+`#version 320 es` (GLES 3.2 native — no immediate-mode emulation
+needed). Each shader compiles a per-binary wrapper at runtime that
+reads its `.frag` from `vendor/hyprsaver/shaders/` at init, pairs
+it with a fixed pass-through vertex shader, and emits a
+fullscreen quad with `u_time` / `u_resolution` / `u_mouse` /
+`u_frame` and the optional `u_alpha` / `u_speed_scale` /
+`u_zoom_scale` uniforms.
+
+ONE `.c` file (`src/gles3_hyprsaver.c`, ~470 lines) compiles 35
+times via meson's foreach. The per-shader differentiation goes
+through three `-D` flags: `-DSHADER_FILE=<shader>.frag` (quoted
+so the `.frag` survives meson's `-D` translation),
+`-DHACK_PREFIX=hyprsaver_<shader>` (symbol stem),
+`-DHACK_TABLE=hyprsaver_<shader>_xscreensaver_function_table`
+(table global).
+
+**License preservation.** `vendor/hyprsaver/LICENSE` (MIT,
+copyright Mara Vexa 2026) is the original file from the hyprsaver
+upstream and is preserved verbatim. The wrapper embeds NO
+hyprsaver code; it only compiles the unmodified `.frag` files at
+runtime. MIT terms require only attribution; we honor that by (a)
+keeping the LICENSE file in the tree, (b) crediting hyprsaver by
+name in this PORTED.md entry, and (c) emitting hyprsaver's name
+in the per-binary diagnostic stderr (`[diag]
+hyprsaver[<shader>] init: GL_VERSION=...`).
+
+#### 13.4 — RSS-GLX scope report (Task 3, no port shipped)
+
+`https://rss-glx.sourceforge.net` — a separate GPL-licensed GLX
+screensaver collection. After reading 2-3 representative files
+(euphoria.cpp, hyperspace.cpp, skyrocket.cpp) the architecture is
+clearly SIMILAR but DIFFERENT from xscreensaver's own GLX hacks:
+
+  * RSS-GLX uses C++ (the xscreensaver hacks are C), and the
+    per-hack source has a `class FooScreen : public ScreenSaver`
+    inherit pattern.
+  * The windowing API is *not* xlockmore.h. It's RSS-GLX's own
+    `rsScreen` / `rsWindow` / `rsDraw` namespace, which wraps
+    the X11 GLX context internally.
+  * The texture loading pipeline is its own `rsTexture` helper
+    (calls to `rsTexture::Load(...)`) rather than
+    xscreensaver's `ximage-loader.h` + `image_data_to_ximage`.
+  * Many hacks use a shared particle system (`particles.cpp`)
+    that depends on `rsVec` typedefs and a Vec-allocated heap
+    pool — global state, not per-screen.
+
+So the existing `xscreensaver_compat.h` shim does NOT directly
+apply. To port even one RSS-GLX hack cleanly we'd need a SEPARATE
+`rss_glx_compat.h` shim layer. **Decision: no RSS-GLX port shipped
+in this dispatch.** That's a Round 14 sub-task on its own.
 
 ## Deferred (4)
 
