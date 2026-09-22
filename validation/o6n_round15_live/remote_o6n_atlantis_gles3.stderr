@@ -1,1 +1,17 @@
-gles3_harness: wl_display_connect failed
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5
+RENDERER=Mali-G720-Immortalis
+VENDOR=ARM
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] no zwlr_layer_shell_v1; falling back to a fullscreen xdg_toplevel
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 2194x1234 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] frame #60
