@@ -153,9 +153,8 @@ how the code is written — it binds only `wlr-layer-shell`, `ext-session-lock`,
 `ext-idle-notify` and `xdg-shell`, with an xdg-shell fallback for compositors
 that have no layer-shell (GNOME/Mutter). Nothing links Singularity.
 
-Naming follows from that: the current `ncz-screensaver` name is a distribution
-brand on something intended to be shared. A neutral name is the right end
-state.
+`ncz-screensavers` is the name and stays the name -- open source doesn't
+require a neutral name to be shared or reused by other projects/distros.
 
 ### Known issue: the lock surface and the greeter get different geometry
 
