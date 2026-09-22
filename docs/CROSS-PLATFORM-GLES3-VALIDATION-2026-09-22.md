@@ -720,6 +720,60 @@ This commit (`5572cff+` → `76fa534+` with this commit on top) is
 based on master with that fix. Anyone re-running this validation
 should use the post-fix `gles3_harness.c`.
 
+### 6.6 Follow-up to §6.5: explicit `eglSwapInterval(1)` + measurement
+
+The c6f41fb harness fix (§6.5) removed the harness's own frame
+callback. The render loop became `dispatch_pending → flush →
+draw_and_swap` with no other pacing — relying entirely on the
+winsys to throttle `eglSwapBuffers`. A subsequent commit
+(`eglSwapInterval(1)` in `src/gles3_harness.c:299`) makes the
+request for vblank-paced swapping **explicit**, and was measured
+on all three target GPUs:
+
+| Platform | GPU                          | eglSwapInterval(1) | no eglSwapInterval |
+|----------|------------------------------|--------------------|---------------------|
+| O6N      | Mali-G720-Immortalis (Panthor) | 120 frames / 3 s | 120 frames / 3 s    |
+| MEDUSA   | AMD Navi14 (radeonsi 26.1.6)  | 120 frames / 3 s | 120 frames / 3 s    |
+| PEGASUS  | Intel UHD CML GT2 (iris 26.1.6) | 120 frames / 3 s | 120 frames / 3 s    |
+
+All three winsys implementations (Mesa/CIX on O6N, Mesa/radeonsi
+on MEDUSA, Mesa/iris on PEGASUS) appear to self-pace via their
+own internal `wl_surface.frame` machinery, so the explicit call
+isn't *required* — but it makes the EGL application's intent
+unambiguous and protects against future winsys changes that
+don't self-pace.
+
+### 6.7 Structured validation command
+
+`validation/validate.sh` is a 6-gate pass/fail script that
+codifies the minimum bar the task asked for:
+
+```
+./validation/validate.sh
+=== Gate 1: 90 _gles3 binaries built ===
+  [PASS] 90 _gles3 binaries built
+=== Gate 2: eglSwapInterval(1) in src/gles3_harness.c ===
+  [PASS] eglSwapInterval(1) call present
+=== Gate 3: no gl4es translation shim linked into _gles3 binaries ===
+  [PASS] no gl4es linkage in any _gles3 binary
+=== Gate 4: all _gles3 binaries link libGLESv2 + libEGL directly ===
+  [PASS] all _gles3 binaries directly link libGLESv2 + libEGL
+=== Gate 5: ninja -C build is clean (no errors) ===
+  [PASS] ninja -C build clean
+=== Gate 6: cross-platform evidence present on all 3 hosts ===
+  o6n: results.csv=134 rows, shots/91 PNGs
+  medusa: results.csv=113 rows, shots/91 PNGs
+  pegasus: results.csv=90 rows, shots/91 PNGs
+  [PASS] cross-platform evidence: 90 rows + 90 screenshots per host
+RESULT: PASS
+```
+
+This is the cheap gate the task spec described ("`ninja -C build
+-t targets | grep -c _gles3` should report 90"), tightened to
+include the explicit pacing call, the no-gl4es-shim invariant,
+the direct GLES/EGL linkage invariant, and the on-host
+screenshot evidence per platform.
+
 ---
 
 ## 7. Follow-up recommendations

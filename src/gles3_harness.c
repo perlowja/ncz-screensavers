@@ -288,6 +288,16 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         DIE(eglMakeCurrent(a->egl_display, a->egl_surface, a->egl_surface,
                            a->egl_context), EGL_TRUE, "eglMakeCurrent failed");
 
+        /* Explicitly request vblank-paced eglSwapBuffers. Measured
+         * 2026-09-22 on all three platforms (O6N/Mali, MEDUSA/radeonsi,
+         * PEGASUS/iris): with or without this call, boing_gles3 produced
+         * exactly 120 frames in 3 seconds (~40 fps), so the Mesa/CIX
+         * Wayland winsys appears to already pace via its own internal
+         * wl_surface.frame. But making the request explicit is the
+         * correct shape for an EGL application and protects against
+         * future winsys changes or vendors that don't self-pace. */
+        eglSwapInterval(a->egl_display, 1);
+
         /* Set up the opaque region: a transparent surface blends
          * against the desktop, which is invisible. */
         struct wl_region *opaque = wl_compositor_create_region(a->compositor);
