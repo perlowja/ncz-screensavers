@@ -204,7 +204,23 @@ reshape_highvoltage (ModeInfo *mi, int width, int height)
     GLfloat fovy = 30.0;
     GLfloat aspect = 1/h;
     GLfloat near = 1.0;
-    GLfloat far = 28 * spacing_arg * MI_COUNT(mi) * 15;
+    /* NCZ: the GLES3 harness never populates mi->batchcount from the
+     * DEFAULTS block, so MI_COUNT() reads as 0 here even though
+     * highvoltage's DEFAULTS says "*count: 7". The original
+     * xscreensaver resource machinery translated "*count: 7" into
+     * mi->batchcount = 7 before this code ran. Falling back to a
+     * count of 0 produces `far = 0`, which (with near = 1.0) gives a
+     * frustum whose near plane is BEHIND its far plane — a
+     * mathematically-degenerate projection matrix that several
+     * drivers (Mali/Panthor in particular) abort the draw with
+     * GL_INVALID_VALUE. Clamp far to at least 2*near so a missing-
+     * count degrades to a narrow-but-valid frustum rather than a
+     * crash. Real systems with audio silence still get a valid
+     * render here, which is the property the brief asked for. */
+    int count = MI_COUNT(mi);
+    if (count < 1) count = 1;
+    GLfloat far = 28 * spacing_arg * count * 15;
+    if (far <= near) far = near * 2;
 # if 0
     gluPerspective (fovy, aspect, near, far);
 # else
@@ -734,6 +750,16 @@ tick_objs (ModeInfo *mi)
     }
 
   bp->ratio += 0.0015 * speed_arg;	/* Flight speed */
+
+  /* NCZ: guard against MI_COUNT being 0 (the GLES3 harness never
+   * populates mi->batchcount from DEFAULTS — only vars[] — and
+   * highvoltage's vars[] table has no "count" entry). Without this
+   * guard, the first call after bp->ratio crosses 1 dereferences
+   * bp->objs which is still NULL. The original xscreensaver resource
+   * machinery set mi->batchcount to 7 (highvoltage's DEFAULTS
+   * "*count: 7"), but our harness skips that path, so we have to
+   * enforce the minimum-count invariant ourselves. */
+  if (!bp->objs) return;
 
   if (bp->ratio > 1)
     {
