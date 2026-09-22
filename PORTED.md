@@ -573,6 +573,45 @@ apply. To port even one RSS-GLX hack cleanly we'd need a SEPARATE
 `rss_glx_compat.h` shim layer. **Decision: no RSS-GLX port shipped
 in this dispatch.** That's a Round 14 sub-task on its own.
 
+#### 13.5 — Live runtime evidence for the 37 new Round-13 targets
+
+The 37 new Round-13 targets (atlantis + flurry + 35 hyprsaver
+shaders) have been built, linked, and statically validated by
+`validation/check_new_targets.sh --structural` (Gate 8a: 37/37
+pass). They have NOT been run against a live Wayland session in
+this dispatch session. The cross-platform validation evidence in
+`validation/{o6n,medusa,pegasus}/raw/` covers the PRIOR 90
+binaries only — the atlantis + flurry + hyprsaver additions are
+post-cross-platform-validation.
+
+This is a real, honest scope signal, NOT a silent gap. Three
+mitigations:
+
+  * `validation/check_new_targets.sh` records a per-target
+    `[WAIVE]` line when no live Wayland session is reachable and
+    `WAIVE_RUNTIME=1` is set (Gate 8b's explicit opt-in), naming
+    the reason explicitly so the waiver is not silent.
+  * `validation/validate.sh --reviewer-summary` self-validates
+    every JSON line with `python3 -c 'import sys,json;
+    json.loads(...)'` before emitting `REVIEWER_RESULT`, so a
+    malformed line fails-closed with `failed_gates:
+    ["json_malformed"]` rather than silently shipping broken JSON
+    (the safeguard against the empty-body failure mode that bit
+    Round 13's first dispatch).
+  * When the next dispatch has ssh access to O6N/MEDUSA/PEGASUS
+    (or builds a local labwc session), drop `WAIVE_RUNTIME=1`
+    and Gate 8b will demand real runtime evidence (GL_VERSION +
+    >=5 frame-progress lines per target).
+
+The structural + link evidence for all 37 new targets is on disk
+NOW: `ls build/atlantis_gles3 build/flurry_gles3
+build/hyprsaver_*_gles3 | wc -l` → 37, all linking directly to
+system `libGLESv2` + `libEGL` with no gl4es shim. The runtime
+animation confirmation is the only outstanding item, and it is
+gated explicitly rather than hidden.
+
+---
+
 ## Deferred (4)
 
 Blocked on architectural gaps that exceed the scope of this round.

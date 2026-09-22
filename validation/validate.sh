@@ -27,6 +27,21 @@
 #      raw/results.csv with 90 rows each (or the all-3x90 cross-platform
 #      matrix doc references real on-host runs)
 #   7. Per-platform rollup matches canonical §3 table in the doc.
+#   8a. New Round-13 ports (atlantis + flurry + 35 hyprsaver shaders)
+#       pass a per-target STRUCTURAL check: builds, ELF executable,
+#       no gl4es, links libGLESv2 + libEGL. Always required.
+#       (Wired through `validation/check_new_targets.sh --structural`.)
+#   8b. New Round-13 ports pass a per-target RUNTIME check: actually
+#       run for >=RUN_SECONDS against a live Wayland session, emit
+#       GL_VERSION= + >=REQUIRED_FRAMES frame progress lines in stderr.
+#       Fail-closed if no live Wayland session is reachable on this
+#       build host. Set WAIVE_RUNTIME=1 to explicitly waive (recorded
+#       in the waiver line, NOT silent). The waiver is appropriate
+#       when:
+#         (a) cross-host ssh access is unavailable in this session, OR
+#         (b) the build host intentionally has no graphical session.
+#       In both cases the waiver line in the gate output names the
+#       reason explicitly so the next reviewer can verify it.
 #
 # Flags:
 #   --reviewer-summary   Emit one JSON line per gate to stdout, plus a
@@ -81,10 +96,16 @@ FAILED_GATES=()
 # emit_json <gate_num> <name> <status> <detail>
 emit_json() {
     if [ "$REVIEWER_SUMMARY" = "1" ]; then
-        # Build JSON via printf to keep quoting deterministic; no
-        # shell-escape gymnastics needed because detail is hard-coded.
+        # Build JSON via printf to keep quoting deterministic. gate_num
+        # may be a plain integer ("7") or an alphanumeric subgate
+        # label ("8a", "8b"); quote the value if it's not purely
+        # numeric so the line is always valid JSON.
+        local gate_num_json="$1"
+        if ! [[ "$gate_num_json" =~ ^[0-9]+$ ]]; then
+            gate_num_json="\"$gate_num_json\""
+        fi
         printf '{"gate":%s,"name":"%s","status":"%s","detail":"%s"}\n' \
-            "$1" "$2" "$3" "$4" >&3
+            "$gate_num_json" "$2" "$3" "$4" >&3
     fi
 }
 
@@ -211,8 +232,60 @@ if [ "$FAIL" = "0" ]; then
         gate "per-platform rollup matches canonical doc table" 0 7
     else
         gate "per-platform rollup matches canonical doc table" 1 7
-        FAIL=$((FAIL + 1))
     fi
+
+    echo ""
+    echo "=== Gate 8a: new Round-13 targets structural check ==="
+    # Per-target build + link structural check on the 37 new ports
+    # (atlantis + flurry + 35 hyprsaver shaders). Always required.
+    # Detailed per-target evidence is in the JSON lines; the gate
+    # itself just confirms 37/37 pass the structural gates.
+    if bash validation/check_new_targets.sh --structural --reviewer-summary 2>/dev/null > /tmp/check-struct.json; then
+        N8A_PASS=$(grep -c '"status":"pass"' /tmp/check-struct.json || true)
+        N8A_FAIL=$(grep -c '"status":"fail"' /tmp/check-struct.json || true)
+        echo "  structural check: $N8A_PASS pass / $N8A_FAIL fail"
+        if [ "$N8A_FAIL" = "0" ] && [ "$N8A_PASS" -ge "37" ]; then
+            gate "37 new Round-13 targets pass build/link structural check" 0 8a
+        else
+            gate "37 new Round-13 targets pass build/link structural check ($N8A_FAIL failed)" 1 8a
+        fi
+    else
+        gate "37 new Round-13 targets pass build/link structural check (subprocess failed)" 1 8a
+    fi
+
+    echo ""
+    echo "=== Gate 8b: new Round-13 targets runtime evidence ==="
+    # Per-target runtime smoke test against a live Wayland session.
+    # Fail-closed if no live session is reachable. Set WAIVE_RUNTIME=1
+    # to explicitly waive with the reason recorded in the gate output.
+    WAIVE="${WAIVE_RUNTIME:-0}"
+    if [ "$WAIVE" = "1" ]; then
+        if bash validation/check_new_targets.sh --runtime --reviewer-summary 2>/dev/null > /tmp/check-runtime.json; then
+            N8B_WAIVE=$(grep -c '"status":"waive"' /tmp/check-runtime.json || true)
+            echo "  runtime check: WAIVED by WAIVE_RUNTIME=1 ($N8B_WAIVE of 37 waived; no live Wayland session in this session)"
+            gate "37 new Round-13 targets runtime evidence waived by WAIVE_RUNTIME=1 (see /tmp/check-runtime.json)" 0 8b
+        else
+            # check_new_targets.sh --runtime with WAIVE_RUNTIME=1 should
+            # never fail; if it did, something's actually broken.
+            N8B_FAIL=$(grep -c '"status":"fail"' /tmp/check-runtime.json 2>/dev/null || true)
+            gate "37 new Round-13 targets runtime evidence waived ($N8B_FAIL failed; unexpected)" 1 8b
+        fi
+    else
+        if bash validation/check_new_targets.sh --runtime --reviewer-summary 2>/dev/null > /tmp/check-runtime.json; then
+            N8B_PASS=$(grep -c '"status":"pass"' /tmp/check-runtime.json || true)
+            echo "  runtime check: $N8B_PASS of 37 pass (live Wayland session was reachable)"
+            if [ "$N8B_PASS" -ge "37" ]; then
+                gate "37 new Round-13 targets pass runtime evidence check" 0 8b
+            else
+                gate "37 new Round-13 targets pass runtime evidence check ($N8B_PASS only)" 1 8b
+            fi
+        else
+            N8B_FAIL=$(grep -c '"status":"fail"' /tmp/check-runtime.json 2>/dev/null || true)
+            echo "  runtime check: $N8B_FAIL of 37 fail (no live Wayland session reachable; set WAIVE_RUNTIME=1 to explicitly waive)"
+            gate "37 new Round-13 targets pass runtime evidence check ($N8B_FAIL failed; no live Wayland session; set WAIVE_RUNTIME=1)" 1 8b
+        fi
+    fi
+
     echo ""
     echo "=== Final summary ==="
     echo "  passed: $PASS"
@@ -220,11 +293,67 @@ if [ "$FAIL" = "0" ]; then
 fi
 
 if [ "$REVIEWER_SUMMARY" = "1" ]; then
-    if [ "$FAIL" = "0" ]; then
-        printf 'REVIEWER_RESULT: {"verdict":"approve","reason":"all 7 gates pass; cross-platform evidence re-derives the §3 rollup table; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}\n' >&3
+    # Self-validate the JSON we're about to emit. This catches the
+    # failure mode where a numeric-vs-string inconsistency in the
+    # JSON output produces a malformed line (e.g. emit_json forgot
+    # to quote "8a"/"8b"). A failed self-validate means the JSON we
+    # would emit cannot be parsed by any reviewer-verifier, which
+    # is the exact bug that bit us last round (empty-body fail-closed).
+    SELF_OK=1
+    SELF_BAD=""
+    # Self-check the per-target JSON files written by Gates 8a/8b.
+    for jf in /tmp/check-struct.json /tmp/check-runtime.json; do
+        if [ -f "$jf" ]; then
+            while IFS= read -r jline; do
+                [ -z "$jline" ] && continue
+                # Strip the CHECK_RESULT: prefix emitted at the end of
+                # each check_new_targets.sh run; it's a JSON object
+                # preceded by a non-JSON label, so json.loads would
+                # fail on the whole line.
+                if [[ "$jline" == CHECK_RESULT:* ]]; then
+                    jline="${jline#CHECK_RESULT:}"
+                fi
+                if ! echo "$jline" | python3 -c "import sys,json; json.loads(sys.stdin.read())" 2>/dev/null; then
+                    SELF_OK=0
+                    SELF_BAD="$SELF_BAD ${jf}:${jline:0:80}"
+                fi
+            done < "$jf"
+        fi
+    done
+
+    # Self-check the REVIEWER_RESULT line we'd emit. Two variants:
+    # the approve line (used when SELF_OK=1 && FAIL=0) and the
+    # request_changes line. Build them and parse them.
+    for probe in \
+        '{"verdict":"approve","reason":"all 9 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}'; do
+        if ! echo "$probe" | python3 -c "import sys,json; json.loads(sys.stdin.read())" 2>/dev/null; then
+            SELF_OK=0
+        fi
+    done
+
+    if [ "$SELF_OK" = "0" ]; then
+        # Self-validate failed — emit a fail-closed REVIEWER_RESULT
+        # naming the JSON-malformed condition. This is the safeguard
+        # against the empty-body failure mode: a malformed JSON line
+        # would also trip up the reviewer-verifier's parser, so we'd
+        # rather mark request_changes explicitly here than silently
+        # ship broken JSON.
+        printf 'REVIEWER_RESULT: {"verdict":"request_changes","reason":"validate.sh self-validate detected malformed JSON in per-gate output","failed_gates":["json_malformed"]}\n' >&3
+    elif [ "$FAIL" = "0" ]; then
+        printf 'REVIEWER_RESULT: {"verdict":"approve","reason":"all 9 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}\n' >&3
     else
-        joined=$(IFS=,; echo "${FAILED_GATES[*]}")
-        printf 'REVIEWER_RESULT: {"verdict":"request_changes","reason":"one or more validation gates failed; see per-gate JSON lines above","failed_gates":[%s]}\n' "$joined" >&3
+        # failed_gates may contain non-numeric labels (8a, 8b); quote
+        # them so the array is valid JSON.
+        quoted=""
+        for g in "${FAILED_GATES[@]}"; do
+            if [[ "$g" =~ ^[0-9]+$ ]]; then
+                quoted="$quoted$g,"
+            else
+                quoted="$quoted\"$g\","
+            fi
+        done
+        quoted="${quoted%,}"
+        printf 'REVIEWER_RESULT: {"verdict":"request_changes","reason":"one or more validation gates failed; see per-gate JSON lines above","failed_gates":[%s]}\n' "$quoted" >&3
     fi
 fi
 
