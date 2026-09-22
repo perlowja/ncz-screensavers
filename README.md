@@ -52,7 +52,7 @@ Panthor), not renders or mockups:
 | | |
 |---|---|
 | ![noof](docs/screenshots/noof.png) `noof` | ![raverhoop](docs/screenshots/raverhoop.png) `raverhoop` |
-| ![etruscanvenus](docs/screenshots/etruscanvenus.png) `etruscanvenus` | ![hypnowheel](docs/screenshots/hypnowheel.png) `hypnowheel` |
+| ![dangerball](docs/screenshots/dangerball.png) `dangerball` | ![hypnowheel](docs/screenshots/hypnowheel.png) `hypnowheel` |
 | ![geodesicgears](docs/screenshots/geodesicgears.png) `geodesicgears` | |
 
 
