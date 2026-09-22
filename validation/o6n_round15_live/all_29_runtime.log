@@ -1,0 +1,35 @@
+hyprsaver_attitude_gles3 [SKIP, spot-test already]
+hyprsaver_aurora_gles3 [SKIP, spot-test already]
+hyprsaver_bezier_gles3 [SKIP, spot-test already]
+hyprsaver_blob_gles3 [SKIP, spot-test already]
+hyprsaver_caustics_gles3 [SKIP, spot-test already]
+hyprsaver_circuit_gles3 [SKIP, spot-test already]
+hyprsaver_clouds_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_donut_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_fireflies_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_flames_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_fractaltrap_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_geometry_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_gridwave_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_hypercube_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_julia_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_kaleidoscope_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_lissajous_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_marble_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_matrix_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_mobius_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_oscilloscope_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_planet_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_plasma_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_shipburn_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_snowfall_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_sonar_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_starfield_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_stonks_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_temple_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_terminal_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_tesla_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_tunnel_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_voronoi_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_waterfall_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis
+hyprsaver_wormhole_gles3 PASS ec=0 | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis

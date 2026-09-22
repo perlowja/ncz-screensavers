@@ -1,0 +1,6 @@
+hyprsaver_aurora_gles3 ec=0 shot=1220927B | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis | err=none
+hyprsaver_blob_gles3 ec=0 shot=1220927B | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis | err=none
+hyprsaver_attitude_gles3 ec=0 shot=1220927B | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis | err=none
+hyprsaver_bezier_gles3 ec=0 shot=1220927B | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis | err=none
+hyprsaver_caustics_gles3 ec=0 shot=1220927B | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis | err=none
+hyprsaver_circuit_gles3 ec=0 shot=1220927B | [diag] gles3_compat: shader program 3 compiled | RENDERER=Mali-G720-Immortalis | err=none

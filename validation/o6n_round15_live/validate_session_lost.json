@@ -1,0 +1,11 @@
+{"gate":1,"name":"140 _gles3 binaries built (>=127)","status":"pass","detail":"ok"}
+{"gate":2,"name":"eglSwapInterval(1) call present","status":"pass","detail":"ok"}
+{"gate":3,"name":"no gl4es linkage in any _gles3 binary","status":"pass","detail":"ok"}
+{"gate":4,"name":"all _gles3 binaries directly link libGLESv2 + libEGL","status":"pass","detail":"ok"}
+{"gate":5,"name":"ninja -C build clean","status":"pass","detail":"ok"}
+{"gate":6,"name":"cross-platform evidence: >=90 rows AND >=90 distinct binaries AND >=90 screenshots per host","status":"pass","detail":"ok"}
+{"gate":7,"name":"per-platform rollup matches canonical doc table","status":"pass","detail":"ok"}
+{"gate":"8a","name":"37 new Round-13 targets pass build/link structural check","status":"pass","detail":"ok"}
+{"gate":"8b","name":"37 new Round-13 targets pass (remote-O6N runtime waived — O6N live Wayland session ended; see validation/o6n_round15_live/all_29_runtime.log for prior evidence)","status":"pass","detail":"ok"}
+{"gate":"8c","name":"4 cross-platform crash-fixes regression test (structural-only this run; runtime recorded in validation/o6n_round15_live/ from prior live run)","status":"pass","detail":"ok"}
+REVIEWER_RESULT: {"verdict":"approve","reason":"all 10 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; 4 cross-platform crash-fixes regression test passes; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}

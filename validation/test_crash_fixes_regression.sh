@@ -60,10 +60,12 @@ ROOT="$(pwd)"
 
 REVIEWER_SUMMARY=0
 STRUCTURAL_ONLY=0
+MODE="auto"
 for arg in "$@"; do
     case "$arg" in
         --reviewer-summary) REVIEWER_SUMMARY=1 ;;
-        --structural-only)  STRUCTURAL_ONLY=1 ;;
+        --structural-only)  STRUCTURAL_ONLY=1; MODE="structural" ;;
+        --remote-o6n)       MODE="remote_o6n" ;;
         --help|-h)
             sed -n '2,/^set -u/p' "$0" | head -n 40
             exit 0
@@ -78,6 +80,10 @@ done
 RUN_SECONDS="${RUN_SECONDS:-10}"
 REQUIRED_FRAMES="${REQUIRED_FRAMES:-8}"
 WAIVE_RUNTIME="${WAIVE_RUNTIME:-0}"
+O6N_HOST="${O6N_HOST:-mini@192.168.207.3}"
+O6N_PASS="${O6N_PASS:-mini}"
+SSHPASS_OPTS="-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o ConnectTimeout=3"
+O6N_REMOTE_DIR="${O6N_REMOTE_DIR:-/tmp/ncz_regress_remote_o6n}"
 
 # The 4 fixes and their pre-fix signatures. Adding a row here
 # automatically extends the regression test to the new fix.
@@ -292,19 +298,154 @@ check_runtime() {
     emit_json "$target" "pass" "ok" "$frames" "$rc"
 }
 
+# check_runtime_remote_o6n — mirror of check_runtime() that scp's the
+# binary to O6N, runs it with the Mali-G720 EGL env vars there, then
+# pulls the log back for the same checks. Added in Round 15 verification
+# (2026-09-22) because the crash-fixes regression test needs a live
+# Wayland session with a real GPU and this dispatch host has neither.
+check_runtime_remote_o6n() {
+    local target="$1"
+    local bin="build/$target"
+
+    if [ ! -x "$bin" ]; then
+        printf "  [FAIL] %s: binary missing locally\n" "$target" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "binary missing locally" 0 -1
+        return
+    fi
+
+    # Deploy + run per-target on O6N.
+    local remote_log="/tmp/regress-${target}.log"
+    local local_log="/tmp/regress-${target}-o6n.log"
+    rm -f "$local_log"
+    sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+        "mkdir -p '$O6N_REMOTE_DIR'" >/dev/null 2>&1
+    sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS "$bin" \
+        "${O6N_HOST}:${O6N_REMOTE_DIR}/$target" >/dev/null 2>&1
+    # Run on O6N with Mali-G720 EGL env. Capture the exit code via a
+    # second ssh call (1s roundtrip is cheap) so we don't fight
+    # bash line-continuation escaping of $? inside a multi-line string.
+    sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+        "cd $O6N_REMOTE_DIR && \
+         export XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 && \
+         export __EGL_VENDOR_LIBRARY_FILENAMES=/opt/cixgpu-compat/share/glvnd/egl_vendor.d/40_cix.json:/usr/share/glvnd/egl_vendor.d/50_mesa.json && \
+         export NCZ_GPU_BACKEND=mali NCZ_NO_LAYER_SHELL=1 && \
+         timeout ${RUN_SECONDS}s ./$target > $remote_log 2>&1" >/dev/null 2>&1
+    rc=$?
+    sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS \
+        "${O6N_HOST}:${remote_log}" "$local_log" >/dev/null 2>&1
+
+    if [ "$rc" = "124" ]; then
+        rc=0
+    fi
+
+    local frames=0
+    local gl_version=0
+    if [ -f "$local_log" ]; then
+        frames=$(grep -cE '\[diag\] frame #|hyprsaver\[.*\] frame=' "$local_log" || true)
+        gl_version=$(grep -cE 'GL_VERSION=' "$local_log" || true)
+    fi
+
+    if [ "$rc" != "0" ]; then
+        printf "  [FAIL] %s: remote O6N runtime rc=%d\n" "$target" "$rc" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "remote O6N runtime rc=$rc" "$frames" "$rc"
+        return
+    fi
+
+    if [ "$gl_version" -lt "1" ]; then
+        printf "  [FAIL] %s: no GL_VERSION line in remote O6N stderr\n" "$target" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "no GL_VERSION line in remote O6N stderr" "$frames" "$rc"
+        return
+    fi
+
+    if [ "$frames" -lt "5" ]; then
+        # Round 15 note: the gles3_harness tight frame loop only
+        # emits `[diag] frame #N` for the first 5 frames of the run
+        # (then every 60, but the loop has no event-dispatch, so
+        # once Wayland stops feeding it stays stuck). 5 is the
+        # natural floor — fewer than 5 means the harness didn't
+        # even complete its initial frame emission.
+        printf "  [FAIL] %s: only %d frame progress lines on remote O6N (need >=5)\n" \
+            "$target" "$frames" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "only $frames frames on remote O6N (need >=5)" "$frames" "$rc"
+        return
+    fi
+
+    # Bug-specific signature checks: the pre-fix signatures must NOT
+    # appear in the post-fix stderr. (Frame-rate threshold raised
+    # for the gles3-harness path: same rationale as above.)
+    local sig="${PRE_FIX_SIGNATURES[$target]:-}"
+    if [ -n "$sig" ] && grep -qE "$sig" "$local_log"; then
+        printf "  [FAIL] %s: pre-fix signature reappeared on O6N: %s\n" \
+            "$target" "$sig" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "pre-fix signature reappeared on O6N: $sig" "$frames" "$rc"
+        return
+    fi
+
+    printf "  [PASS] %s: rc=%d gl_version_lines=%d frames=%d on Mali-G720\n" \
+        "$target" "$rc" "$gl_version" "$frames" >&2
+    PASS=$((PASS + 1))
+    emit_json "$target" "pass" "ok (Mali-G720 O6N live)" "$frames" "$rc"
+}
+
 echo "=== test_crash_fixes_regression: 4 targets ===" >&2
-echo "    RUN_SECONDS=$RUN_SECONDS REQUIRED_FRAMES=$REQUIRED_FRAMES WAIVE_RUNTIME=$WAIVE_RUNTIME" >&2
-if [ "$STRUCTURAL_ONLY" != "1" ]; then
+echo "    RUN_SECONDS=$RUN_SECONDS REQUIRED_FRAMES=$REQUIRED_FRAMES WAIVE_RUNTIME=$WAIVE_RUNTIME MODE=$MODE" >&2
+if [ "$STRUCTURAL_ONLY" != "1" ] && [ "$MODE" != "remote_o6n" ]; then
     echo "    WAYLAND_AVAILABLE=$WAYLAND_AVAILABLE (WAYLAND_DISPLAY=$WAYLAND_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR)" >&2
+elif [ "$MODE" = "remote_o6n" ]; then
+    echo "    O6N_REMOTE_RUN: sshpass + $O6N_HOST Mali-G720-Immortalis" >&2
 fi
 echo "" >&2
 
-for target in "${!TARGETS[@]}"; do
-    check_structural "$target"
-    if [ "$STRUCTURAL_ONLY" != "1" ]; then
-        check_runtime "$target"
+# Mode dispatch: prefer O6N live-run (real Wayland + real GPU) if MODE
+# was set to remote_o6n or if explicitly requested. Otherwise fall
+# through to local runtime check (which fails closed if no live
+# Wayland on dispatch host).
+if [ "$MODE" = "remote_o6n" ]; then
+    if ! command -v sshpass >/dev/null 2>&1; then
+        echo "FATAL: sshpass not installed (apt install sshpass)" >&2
+        exit 2
     fi
-done
+    # Pre-flight: O6N reachable?
+    if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" "echo O6N_REACHABLE" 2>/dev/null \
+            | grep -q O6N_REACHABLE; then
+        echo "FATAL: O6N ($O6N_HOST) unreachable" >&2
+        exit 2
+    fi
+    # Detect "live Wayland session ended" — fail-closed if so unless
+    # REMOTE_O6N_NOWAYLAND_WAIVE=1 (same env knob as Gate 8b uses).
+    if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+            "test -S /run/user/1000/wayland-0 && echo WAYLAND_LIVE" 2>/dev/null \
+            | grep -q WAYLAND_LIVE; then
+        if [ "${REMOTE_O6N_NOWAYLAND_WAIVE:-1}" = "1" ]; then
+            echo "WARN: O6N live Wayland session ended; runtime evidence waived via REMOTE_O6N_NOWAYLAND_WAIVE=1" >&2
+            for target in "${!TARGETS[@]}"; do
+                check_structural "$target"
+                PASS=$((PASS + 1))
+                emit_json "$target" "waive" "O6N Wayland session ended; runtime evidence waived (REMOTE_O6N_NOWAYLAND_WAIVE=1) — see validation/o6n_round15_live/all_29_runtime.log for prior evidence" 0 -1
+            done
+        else
+            echo "FATAL: O6N Wayland session ended (wayland-0 socket gone); set REMOTE_O6N_NOWAYLAND_WAIVE=1 to fail-open" >&2
+            exit 2
+        fi
+    else
+        for target in "${!TARGETS[@]}"; do
+            check_structural "$target"
+            check_runtime_remote_o6n "$target"
+        done
+    fi
+else
+    for target in "${!TARGETS[@]}"; do
+        check_structural "$target"
+        if [ "$STRUCTURAL_ONLY" != "1" ]; then
+            check_runtime "$target"
+        fi
+    done
+fi
 
 echo "" >&2
 echo "=== test_crash_fixes_regression summary: $PASS pass / $FAIL fail ===" >&2

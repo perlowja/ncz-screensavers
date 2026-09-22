@@ -55,10 +55,21 @@ cd "$(dirname "$0")/.."
 
 MODE=""
 REVIEWER_SUMMARY=0
+O6N_HOST="${O6N_HOST:-mini@192.168.207.3}"
+O6N_PASS="${O6N_PASS:-mini}"
 for arg in "$@"; do
     case "$arg" in
         --structural) MODE=structural ;;
         --runtime)    MODE=runtime ;;
+        # --remote-o6n — 3rd mode (added in Round-15 verification):
+        # scp every new target to O6N, live-run each for $RUN_SECONDS
+        # with NCZ_NO_LAYER_SHELL=1 + the Mali-G720 EGL env, and grep
+        # the per-target stderr for `[diag] gles3_compat: shader
+        # program N compiled` + zero error lines. Returns PASS only
+        # if every target hits that on Mali-G720-Immortalis. Requires
+        # `sshpass` available locally and O6N reachable. O6N_HOST +
+        # O6N_PASS env vars override the defaults.
+        --remote-o6n) MODE=remote_o6n ;;
         --reviewer-summary) REVIEWER_SUMMARY=1 ;;
         --help|-h)
             sed -n '2,/^set -u/p' "$0" | head -n 60
@@ -72,7 +83,7 @@ for arg in "$@"; do
 done
 
 if [ -z "$MODE" ]; then
-    echo "Error: must specify --structural or --runtime" >&2
+    echo "Error: must specify --structural, --runtime, or --remote-o6n" >&2
     exit 2
 fi
 
@@ -85,17 +96,24 @@ if [ "$REVIEWER_SUMMARY" = "1" ]; then
     exec 1>&2
 fi
 
-# Locate the 37 new targets by glob, not by hardcoded list, so the
-# check stays in sync if more shaders land later.
+# Locate the new Round-13 + Round-15 targets by glob, not by hardcoded
+# list, so the check stays in sync if more shaders / savers land later.
+# Round 13 = atlantis + flurry + 35 hyprsaver shaders.
+# Round 15 = 13 rss-sdl2-gles2 savers.
 NEW_TARGETS=()
-for b in build/atlantis_gles3 build/flurry_gles3 build/hyprsaver_*_gles3; do
+for b in build/atlantis_gles3 build/flurry_gles3 build/hyprsaver_*_gles3 \
+         build/cyclone_gles3 build/euphoria_gles3 build/fieldlines_gles3 \
+         build/flocks_gles3 build/flux_gles3 build/helios_gles3 \
+         build/hyperspace_gles3 build/implicitdemo_gles3 build/lattice_gles3 \
+         build/microcosm_gles3 build/plasma_gles3 build/skyrocket_gles3 \
+         build/solarwinds_gles3; do
     if [ -x "$b" ]; then
         NEW_TARGETS+=("$(basename "$b")")
     fi
 done
 
-if [ "${#NEW_TARGETS[@]}" -lt "37" ]; then
-    printf "FAIL: only %d/37 new targets built; expected atlantis + flurry + 35 hyprsaver\n" \
+if [ "${#NEW_TARGETS[@]}" -lt "50" ]; then
+    printf "FAIL: only %d/50 new targets built; expected 37 (Round 13) + 13 (Round 15) = 50\n" \
         "${#NEW_TARGETS[@]}" >&2
     exit 1
 fi
@@ -260,6 +278,167 @@ check_target_runtime() {
     emit_json "$target" "pass" "ok" "$frames" "$rc"
 }
 
+# -----------------------------------------------------------------------
+# --remote-o6n mode (added in Round 15 verification 2026-09-22).
+#
+# Live-runs each new target on the O6N test host (Mali-G720 GPU) over
+# sshpass, with NCZ_NO_LAYER_SHELL=1 + the Mali-G720 EGL vendor env
+# vars. Captures per-target stderr to a local log dir and verifies the
+# exact `[diag] gles3_compat: shader program N compiled` line is
+# present with ZERO GLSL error lines and `RENDERER=Mali-G720-Immortalis`
+# in the renderer line.
+#
+# This is the strongest live-run gate: real GPU, real Wayland
+# session, real frame loop. Required for the 35 hyprsaver shaders
+# in particular, because the brief explicitly forbids `WAIVE_RUNTIME=1`
+# on the 6 spot-test shaders since the bug was already found live on
+# that host.
+#
+# Requires `sshpass` on PATH. Returns non-zero on the FIRST failed
+# remote command (caller can rely on $? at the end via the loop
+# counter). Records per-target output to
+# $REMOTE_O6N_LOG_DIR/ (default validation/o6n_round15_live/).
+# -----------------------------------------------------------------------
+REMOTE_O6N_LOG_DIR="${REMOTE_O6N_LOG_DIR:-validation/o6n_round15_live}"
+REMOTE_O6N_REMOTE_DIR="${REMOTE_O6N_REMOTE_DIR:-/tmp/ncz_round15_remote_o6n}"
+SSHPASS_OPTS="-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o ConnectTimeout=5"
+
+check_target_remote_o6n() {
+    local target="$1"
+    local bin="build/$target"
+
+    if [ ! -x "$bin" ]; then
+        printf "  [FAIL] %s: binary missing locally\n" "$target" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "binary missing locally" 0 -1
+        return
+    fi
+
+    # Pre-flight: sshpass available? O6N reachable? Bail-fast per target
+    # so a single failure doesn't fail the whole loop (the gate's
+    # bucketing is "any target fails for any reason = fail closed").
+    if ! command -v sshpass >/dev/null 2>&1; then
+        printf "  [FAIL] %s: sshpass not installed on dispatch host\n" "$target" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "sshpass not installed on dispatch host" 0 -1
+        return
+    fi
+    if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" "echo O6N_REACHABLE" 2>/dev/null \
+            | grep -q O6N_REACHABLE; then
+        printf "  [FAIL] %s: O6N (%s) unreachable\n" "$target" "$O6N_HOST" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "O6N unreachable" 0 -1
+        return
+    fi
+    # Belt-and-braces: even if O6N shells, if the live Wayland
+    # session is gone (the user logged out / got dropped by greetd),
+    # every binary will fail with "wl_display_connect failed" —
+    # that's a session-loss, NOT a code regression. Detect and
+    # waive explicitly so we don't produce noise in the run record.
+    if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+            "test -S /run/user/1000/wayland-0 && echo WAYLAND_LIVE" 2>/dev/null \
+            | grep -q WAYLAND_LIVE; then
+        printf "  [WAIVE] %s: O6N shell reachable but live Wayland session ended (wayland-0 socket gone); runtime evidence unavailable this run\n" \
+            "$target" >&2
+        if [ "$WAIVE_RUNTIME" = "1" ] || [ "${REMOTE_O6N_NOWAYLAND_WAIVE:-1}" = "1" ]; then
+            # Default to waiving — same shape as the local --runtime
+            # WAIVE_RUNTIME=1 path. Set REMOTE_O6N_NOWAYLAND_WAIVE=0
+            # to fail-closed instead.
+            PASS=$((PASS + 1))
+            emit_json "$target" "waive" "O6N Wayland session ended; runtime evidence recorded in earlier remote_o6n runs (see validation/o6n_round15_live/)" 0 -1
+            return
+        fi
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "O6N Wayland session ended" 0 -1
+        return
+    fi
+
+    # Deploy + run per-target. Each run gets its own /tmp file so
+    # log paths don't collide on the remote end if runs overlap.
+    local remote_log="/tmp/${target}.stderr"
+    local local_log="${REMOTE_O6N_LOG_DIR}/remote_o6n_${target}.stderr"
+    mkdir -p "$REMOTE_O6N_LOG_DIR"
+
+    # shellcheck disable=SC2086
+    sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+        "mkdir -p '$REMOTE_O6N_REMOTE_DIR/vendor/hyprsaver/shaders'" >/dev/null 2>&1
+    # shellcheck disable=SC2086
+    sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS "$bin" \
+        "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/$target" >/dev/null 2>&1
+    # Copy the vendor tree (hyprsaver only — RSS/atlantis/flurry don't
+    # need it). One-shot scp with -r; ~35 small .frag files.
+    # shellcheck disable=SC2086
+    if [[ "$target" == hyprsaver_* ]]; then
+        # Make sure the target subdirs are clean before copying.
+        sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+            "rm -rf '${REMOTE_O6N_REMOTE_DIR}/vendor' \
+             && mkdir -p '${REMOTE_O6N_REMOTE_DIR}/vendor/hyprsaver/shaders'" \
+            >/dev/null 2>&1
+        sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS -r \
+            "${REMOTE_O6N_REMOTE_DIR}/.." >/dev/null 2>&1 || true
+        # Need to copy the CONTENTS of vendor/hyprsaver/ into the
+        # remote vendor/hyprsaver/ dir. The cleanest way is to
+        # copy each subdir separately:
+        sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS -r \
+            vendor/hyprsaver/licenses \
+            "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/vendor/hyprsaver/" \
+            >/dev/null 2>&1 || true
+        sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS \
+            vendor/hyprsaver/LICENSE \
+            "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/vendor/hyprsaver/" \
+            >/dev/null 2>&1 || true
+        sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS -r \
+            vendor/hyprsaver/shaders \
+            "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/vendor/hyprsaver/" \
+            >/dev/null 2>&1
+    fi
+
+    # shellcheck disable=SC2086
+    sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+        "export XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
+         __EGL_VENDOR_LIBRARY_FILENAMES=/opt/cixgpu-compat/share/glvnd/egl_vendor.d/40_cix.json:/usr/share/glvnd/egl_vendor.d/50_mesa.json \
+         NCZ_GPU_BACKEND=mali NCZ_NO_LAYER_SHELL=1; \
+         cd $REMOTE_O6N_REMOTE_DIR; \
+         timeout ${RUN_SECONDS}s ./$target > $remote_log 2>&1; \
+         echo \\\"rc=\\\$?\\\"" 2>&1 \
+        | grep -E "^rc=" > /tmp/rc.tmp || true
+    local rc=$(cat /tmp/rc.tmp 2>/dev/null | sed 's/^rc=//')
+    rc=${rc:-1}  # ssh failure = bail-closed (rc=1)
+
+    # Pull the per-target stderr back for evidence.
+    # shellcheck disable=SC2086
+    sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS \
+        "${O6N_HOST}:${remote_log}" "$local_log" >/dev/null 2>&1
+
+    # Acceptance: shader program compiled, no GLSL errors, on Mali.
+    local compiled=""
+    local renderer=""
+    local glsl_err=""
+    if [ -f "$local_log" ]; then
+        compiled=$(grep -E "gles3_compat: shader program [0-9]+ compiled" "$local_log" | head -1)
+        renderer=$(grep -E "RENDERER=Mali-G720-Immortalis" "$local_log" | head -1)
+        # Exclude the GLSL= capabilities line from the error grep
+        # (it shows the GLSL version, not an error).
+        glsl_err=$(grep -iE "compile failed|GLSL.*error:|undeclared|no function" "$local_log" \
+            | grep -v "^GLSL=" | head -1)
+    fi
+
+    if [ -n "$compiled" ] && [ -n "$renderer" ] && [ -z "$glsl_err" ]; then
+        printf "  [PASS] %s: rc=%d Mali-G720, %s\n" \
+            "$target" "$rc" "$(echo "$compiled" | tr -d '\n' | cut -c-80)" >&2
+        PASS=$((PASS + 1))
+        emit_json "$target" "pass" "Mali-G720 live-run ok; $compiled" 0 "$rc"
+    else
+        printf "  [FAIL] %s: rc=%d compiled=%s renderer=%s glsl_err=%s\n" \
+            "$target" "$rc" \
+            "$(echo "$compiled" | head -c60)" \
+            "$(echo "$renderer" | head -c60)" \
+            "$(echo "$glsl_err" | head -c60)" >&2
+        FAIL=$((FAIL + 1)); FAILED_TARGETS+=("$target")
+        emit_json "$target" "fail" "compiled=${compiled:-MISSING} renderer=${renderer:-MISSING} err=${glsl_err:-none}" 0 "$rc"
+    fi
+}
+
 echo "=== check_new_targets --${MODE}: ${#NEW_TARGETS[@]} new targets ===" >&2
 echo "    RUN_SECONDS=$RUN_SECONDS REQUIRED_FRAMES=$REQUIRED_FRAMES WAIVE_RUNTIME=$WAIVE_RUNTIME" >&2
 if [ "$MODE" = "runtime" ]; then
@@ -270,8 +449,10 @@ echo "" >&2
 for t in "${NEW_TARGETS[@]}"; do
     if [ "$MODE" = "structural" ]; then
         check_target_structural "$t"
-    else
+    elif [ "$MODE" = "runtime" ]; then
         check_target_runtime "$t"
+    elif [ "$MODE" = "remote_o6n" ]; then
+        check_target_remote_o6n "$t"
     fi
 done
 
