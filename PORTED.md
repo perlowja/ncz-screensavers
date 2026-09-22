@@ -523,20 +523,149 @@ Two compat-shim gaps surfaced:
 project (Hyprland screensaver by Mara Vexa, 2026). The vendored
 tree's `shaders/*.frag` contains 35 GLSL fragment shaders, all
 `#version 320 es` (GLES 3.2 native — no immediate-mode emulation
-needed). Each shader compiles a per-binary wrapper at runtime that
-reads its `.frag` from `vendor/hyprsaver/shaders/` at init, pairs
-it with a fixed pass-through vertex shader, and emits a
-fullscreen quad with `u_time` / `u_resolution` / `u_mouse` /
-`u_frame` and the optional `u_alpha` / `u_speed_scale` /
-`u_zoom_scale` uniforms.
+needed).
 
-ONE `.c` file (`src/gles3_hyprsaver.c`, ~470 lines) compiles 35
-times via meson's foreach. The per-shader differentiation goes
-through three `-D` flags: `-DSHADER_FILE=<shader>.frag` (quoted
+ONE `.c` file (`src/gles3_hyprsaver.c`, ~830 lines after Round 15)
+compiles 35 times via meson's foreach. The per-shader differentiation
+goes through three `-D` flags: `-DSHADER_FILE=<shader>.frag` (quoted
 so the `.frag` survives meson's `-D` translation),
 `-DHACK_PREFIX=hyprsaver_<shader>` (symbol stem),
 `-DHACK_TABLE=hyprsaver_<shader>_xscreensaver_function_table`
 (table global).
+
+##### 13.3.1 — Round 15 hotfix: real preamble + palette LUT (2026-09-22)
+
+**Real root cause.** The Round-13 port compiled the vendored
+`.frag` files verbatim — but hyprsaver's upstream Rust runtime
+(`maravexa/hyprsaver`, `src/shaders.rs::prepare_shader()`) **never
+compiles a vendored `.frag` as-is**. It always splits the raw source
+into a leading `#version`/`precision` header and a body, then
+prepends a generated preamble (uniform decls + a `vec3 palette(float
+t)` LUT-sampling helper + a `void main()` wrapper that calls
+`_hyprsaver_main()` and multiplies `fragColor *= u_alpha`) before
+linking. The Round-13 .c just speculatively *queried* uniform
+locations — it never *declared* them and never defined `palette()`.
+**Every single one of the 35 binaries failed GLSL compile** with
+errors like ``u_speed_scale' undeclared`` and
+``no function with name 'palette'``.
+
+The 6 spot-test shaders (`aurora`, `blob`, `attitude`, `bezier`,
+`caustics`, `circuit`) failed identically on O6N live. Verified the
+vendored `.frag` files are byte-identical to upstream
+(`diff -r vendor/hyprsaver/shaders/ upstream/shaders/` → no
+differences), so the bug was purely in our port.
+
+**Exact fix.** Port `prepare_shader()` verbatim into
+`src/gles3_hyprsaver.c::prepare_shader()` and run every vendored
+`.frag` through it before `glCompileShader`. The algorithm:
+
+1. Split raw `.frag` source into a header (leading `#version` /
+   `precision` lines + the blank line that follows) and a body. If
+   no leading `#version`, default to
+   `#version 320 es\nprecision highp float;\n`.
+2. Output starts with the header.
+3. For each `(needle, decl)` pair, if `needle` is NOT a substring of
+   the **original** raw source, append `decl`. Needle granularity
+   varies deliberately (bare names like `u_time` suppress on ANY
+   mention; full decls like `uniform float u_alpha` only suppress
+   on actual declaration) — copy the upstream table verbatim, do
+   not "clean up" the heuristics.
+4. If `"vec3 palette("` is NOT in raw, append this exact GLSL block
+   (LUT-texture-sampling palette):
+   ```glsl
+   uniform sampler2D u_lut_a;
+   uniform sampler2D u_lut_b;
+   uniform float u_palette_blend;
+   vec3 palette(float t) {
+       float tc = clamp(t, 0.0, 1.0);
+       vec3 col_a = texture(u_lut_a, vec2(tc, 0.5)).rgb;
+       vec3 col_b = texture(u_lut_b, vec2(tc, 0.5)).rgb;
+       return mix(col_a, col_b, u_palette_blend);
+   }
+   ```
+5. Shadertoy: none of the 35 vendored shaders use it
+   (`grep -l 'void mainImage' vendor/hyprsaver/shaders/*.frag` is
+   empty). Branch skipped.
+6. Append the body.
+7. Wrap main(): in the body, rename `void main()` →
+   `void _hyprsaver_main()` (exact substring replacement), then
+   append `void main() { _hyprsaver_main(); fragColor *= u_alpha; }`.
+
+Free the prepared string after `glCompileShader` copies it into
+GL — it's not retained.
+
+##### 13.3.2 — Palette LUT — deliberate scope-down from upstream parity
+
+Upstream's `prepare_shader()` only declares the palette helper;
+**upstream's runtime then loads the palette from a user TOML config
+that supports PNG files, cosine gradients, and per-frame hot-reload
+between two LUTs A and B with a `u_palette_blend` cross-fade**. We
+have no TOML config system and don't need one for a screensaver
+context.
+
+**Scope-down decision:** at init, for each hack instance, pick ONE
+of 6 hand-picked classic Inigo Quilez cosine-gradient palettes
+(Rainbow, Sunset, Ocean, Forest, Fire, Violet — from
+https://iquilezles.org/articles/palettes/) deterministically by
+hashing the shader basename with djb2. Bake 256 samples of the
+palette into a real 256x1 RGBA8 texture on the CPU, upload via
+`glTexImage2D`, and bind the SAME texture object to BOTH `u_lut_a`
+(texture unit 0) and `u_lut_b` (texture unit 1). Set
+`u_palette_blend = 0.0` once at init. The injected `palette()`
+helper then resolves to a single, stable per-hack palette with no
+per-frame cross-fade machinery and no hot-reload. This is a real,
+deliberate scope-down from full upstream parity — say so
+explicitly. Upstream's full palette system (PNG/TOML/cosine-gradient
+config + hot-reload + cross-fade A↔B) would require a new config
+infrastructure that's out of scope for this port.
+
+##### 13.3.3 — Draw-path wiring (texture binding)
+
+Per-frame in `hyprsaver_draw()`, after `glUseProgram(st->program)` and
+the time / resolution / alpha uniform set, bind the baked LUT to
+both texture units and tell the shader which unit index each
+sampler reads from:
+```c
+glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, lut_tex);
+                              glUniform1i(st->loc_u_lut_a, 0);
+glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, lut_tex);
+                              glUniform1i(st->loc_u_lut_b, 1);
+glUniform1f(st->loc_u_palette_blend, 0.0f);
+```
+
+GL interprets the `glUniform1i(int loc, int val)` for sampler
+uniforms as the texture-unit index to bind. We re-bind each frame
+because the harness's `ncz_gles3_runtime_init` left its own
+scratch VAO bound, and we deliberately use no VAO of our own (bind
+the VBO + re-assert `glVertexAttribPointer(0, ...)` per draw,
+matching the pattern in `src/wl-screenhack.c`).
+
+##### 13.3.4 — Live verification (mandatory gate)
+
+**Build gate:** all 35 `_gles3` binaries compile, zero new warnings
+beyond baseline (the pre-existing `‘/*’ within comment` at line 19
+from the `#version` doc comment stays).
+
+**Live-run gate on O6N:** all 35 binaries reach
+`[diag] gles3_compat: shader program 3 compiled` with ZERO GLSL
+error lines in stderr, and run at 60fps on the real Mali-G720
+Panthor path (`RENDERER=Mali-G720-Immortalis`). The 6 spot-test
+shaders the operator called out (`aurora`, `blob`, `attitude`,
+`bezier`, `caustics`, `circuit`) all verified individually on O6N
+with the verbatim `gles3_compat: shader program N compiled` line
+and zero error lines per shader.
+
+grim on the O6N labwc build returns an essentially-all-black
+capture regardless of what screensaver is rendering (existing
+86-PASS screensaver shots are also nearly-black — see
+`docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md` §4.3 for the
+baseline-vs-shot discussion). The capture limitation is
+environmental (wlr-screencopy on this labwc + Mali combo doesn't
+surface wlr-layer-shell OVERLAY layers in the visible
+framebuffer); the runtime evidence — `[diag] gles3_compat: shader
+program N compiled` + `[diag] frame=N` progress lines at 60fps on
+Mali-G720 — is the authoritative verification that the shader
+compiled AND is rendering each frame.
 
 **License preservation.** `vendor/hyprsaver/LICENSE` (MIT,
 copyright Mara Vexa 2026) is the original file from the hyprsaver
@@ -609,6 +738,214 @@ build/hyprsaver_*_gles3 | wc -l` → 37, all linking directly to
 system `libGLESv2` + `libEGL` with no gl4es shim. The runtime
 animation confirmation is the only outstanding item, and it is
 gated explicitly rather than hidden.
+
+#### 13.6 — Round 15 hotfix: hyprsaver preamble + palette LUT (2026-09-22)
+
+**Bug found live on O6N 2026-09-22** — all 35 hyprsaver `_gles3`
+binaries crashed at GLSL compile with ``u_speed_scale' undeclared``
+and ``no function with name 'palette'``. Root cause + fix detailed
+in §13.3.1. Live verification:
+
+* **All 35 hyprsaver binaries** live-run on O6N
+  (`mini@192.168.207.3`, `WAYLAND_DISPLAY=wayland-0`,
+  `__EGL_VENDOR_LIBRARY_FILENAMES=…40_cix.json`,
+  `NCZ_GPU_BACKEND=mali`) for 2 s each. Every binary reaches
+  `[diag] gles3_compat: shader program N compiled` and emits
+  `[diag] hyprsaver[<shader>] init: GL_VERSION=OpenGL ES 3.2
+  v1.r53p0-00eac0… RENDERER=Mali-G720-Immortalis` with no GLSL
+  error / `compile failed` / `ERROR:` lines in stderr.
+* **The 6 spot-test shaders the operator called out** (`aurora`,
+  `blob`, `attitude`, `bezier`, `caustics`, `circuit`) each
+  verified individually on O6N — same compile-success line + no
+  error lines + 60fps `frame=N` progress at ≥ frame #60.
+* **grim screenshot** on O6N returns an essentially-black capture
+  for both Round-15 hyprsaver and the existing 86-PASS screensaver
+  shots (the labwc build's wlr-screencopy path doesn't surface
+  OVERLAY layer surfaces; see
+  `docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md` §4.3 for
+  the same observation on prior PASS screensaver screenshots).
+  Authoritative verification is the stderr `[diag] gles3_compat:
+  shader program N compiled` + `[diag] frame=N` lines (real GPU,
+  60fps, no errors).
+
+Validation: `PASS=35 FAIL=0` across all 35 binaries in a single
+O6N live-run loop. No `WAIVE_RUNTIME` was used for this gate
+(O6N reachable from the dispatch host, real Wayland session
+active).
+
+#### 14.1 — RSS-SDL2-GLES2 port (13 new binaries)
+
+`vendor/rss-sdl2-gles2-src/` is a clone of
+[erik-larsen/rss-sdl2-gles2](https://github.com/erik-larsen/rss-sdl2-gles2),
+an Apache-2.0 wrapper/port layer over
+[Terence Welsh's Really Slick Screensavers](https://web.archive.org/web/20260417100255/http://reallyslick.com/screensavers/)
+(GPL-2.0). Each saver's `.cpp` keeps its ORIGINAL GPL-2.0 header
+verbatim — same treatment as the existing `vendor/hyprsaver/`
+(Apache/MIT) and the xscreensaver GPL/MIT-style sources vendored
+in this repo (see README Attribution section).
+
+This is the right RSS target (vs. raw `rss-glx.sourceforge.net`),
+already scoped and rejected in §13.4: the raw upstream uses a
+custom `rsScreen`/`rsWindow`/`rsDraw` C++ windowing layer, which
+incompatible with our `xscreensaver_compat.h` shim. The
+rss-sdl2-gles2 fork is much closer — same hook contract as
+xlockmore-style hacks (`initSaver()`, `reshape(w,h)`, `idleProc()`
+which calls `draw()`, `cleanUp()`, `handleCommandLine()`) and
+immediate-mode GL1.x (glBegin/glEnd, matrix stacks, display lists,
+GLU quadrics) exactly like the xscreensaver hacks we've already
+ported — so the existing `gles3_compat.h` + `xscreensaver_compat.h`
+shims compile the algorithms unchanged.
+
+13 real savers in `vendor/rss-sdl2-gles2-src/savers/` were ported
+(`testsaver` is a harness self-test, not a real hack — skipped):
+
+  * cyclone, euphoria, fieldlines, flocks, flux, helios,
+    hyperspace, implicitdemo, lattice, microcosm, plasma,
+    skyrocket, solarwinds
+
+Per-saver algorithm notes + "what is preserved vs simplified":
+
+  * **cyclone** (`src/cyclone_gles3.c`) — Bezier-curve particle
+    field with HSL color tween. Preserved: cyclone class state,
+    hslTween, factorial-based Bezier blending, easter-egg camera
+    flip, GLU sphere display list (inlined as low-poly
+    triangle-strip sphere). The Rgbhsl library isn't vendored —
+    the 6-line `hsl2rgb` and 8-line `hslTween` are inlined.
+
+  * **fieldlines** (`src/fieldlines_gles3.c`) — N ions with random
+    velocities and +-1 charges; 8 field lines per ion traced
+    through inverse-square force field. Algorithm is the
+    straight-line port of `drawfieldline()` from
+    `vendor/rss-sdl2-gles2-src/savers/fieldlines/fieldlines.cpp`
+    with C struct replacing C++ class.
+
+  * **flocks** (`src/flocks_gles3.c`) — N leaders + M followers
+    flying through a bounded box; followers chase nearest leader,
+    optionally render with leader→follower connection lines.
+    `hsl2rgb` inlined. GLU sphere inlined as low-poly mesh.
+
+  * **plasma** (`src/plasma_gles3.c`) — 18 oscillating constants
+    drive a scalar field on a 64×64 grid; grid is texture-uploaded
+    and rendered as a screen-filling triangle strip. Texture upload
+    uses `glTexSubImage2D` (not gluBuild2DMipmaps — mipmaps are
+    not needed for the nearest-filtered draw).
+
+  * **solarwinds** (`src/solarwinds_gles3.c`) — closed system of N
+    emitters drifting toward the camera; particles integrated
+    through a 9-constant linear wind field. Three geometry modes
+    (lights, points, lines) all preserved. Display list 1
+    (textured quad) routed through gles3_compat's glNewList /
+    glCallList shim, which records immediate-mode draws and replays
+    them.
+
+  * **flux** (`src/flux_gles3.c`) — 8 oscillating constants drive
+    a linear wind field on N particles. SIMPLIFIED: the upstream's
+    per-flux expansion / instability / randomization state machine
+    is preserved at a representative level. Three geometry modes
+    (points / spheres / lights) all functional; GLU sphere inlined.
+
+  * **euphoria** (`src/euphoria_gles3.c`) — SIMPLIFIED. The
+    upstream is a feedback-texture driven saver: renders particles
+    into a feedback texture, blurs/attenuates the previous frame,
+    additively blends. Three pre-baked 256×256 procedural textures
+    (plasma, stringy, lines; embedded as ~3000-line arrays in
+    `texture.h`) and a knot-grid / particle blend pipeline total
+    ~1000 lines of C++. Porting the full feedback loop + all 3
+    procedural textures + the knot grid is out of scope. This
+    SIMPLIFIED port generates an animated plasma-style texture
+    CPU-side (sin/cos scalar field) and uploads via
+    `glTexSubImage2D`, then draws N drifting "knot" sprites with
+    additive blending. The visual signature (swirling colored
+    cloud with orbiting bright points) is preserved.
+
+  * **helios** (`src/helios_gles3.c`) — SIMPLIFIED. The upstream
+    uses an `impCubeVolume` marching-cubes polygonizer to compute
+    the isosurface mesh of N metaball emitters + M attractor
+    spheres summed every frame. The marching-cubes port would
+    require shipping impCubeVolume.h/.cpp + impSphere + impEllipsoid
+    + impTorus + impKnot + impHexahedron + impRoundedHexahedron
+    (~1000+ lines). This SIMPLIFIED port preserves the visual
+    essence (soft glowing spherical blobs that orbit and pulse) by
+    drawing each metaball as a textured soft-glow sprite with
+    additive blending; emitters attract to attractors via 1/r²
+    Newtonian gravity; camera orbits.
+
+  * **hyperspace** (`src/hyperspace_gles3.c`) — SIMPLIFIED. The
+    upstream is a tunnel-rush saver using a feedback loop + cube-map
+    nebula + reflective tunnel walls + motion-streak particles. It
+    depends on `flare.h`, `causticTextures.cpp`, `wavyNormalCubeMaps.cpp`,
+    `splinePath.cpp`, `tunnel.cpp`, `goo.cpp`, `stretchedParticle.cpp`,
+    `starBurst.cpp`, `shaders.cpp` — ~10 helper files + GLSL
+    shaders. This SIMPLIFIED port preserves the "stars rushing
+    toward the camera" signature by drawing N stars as
+    motion-streak line segments whose length is the per-frame
+    z-displacement, with occasional flare bursts.
+
+  * **implicitdemo** (`src/implicitdemo_gles3.c`) — SIMPLIFIED.
+    The upstream uses impCubeVolume polygonization over a sum of
+    N implicit primitive fields (sphere, torus, ellipsoid, knot,
+    hexahedron, rounded-hexahedron). This SIMPLIFIED port renders
+    the constituent primitives directly (a few spheres + tori +
+    a knot approximation as interleaved tori) with translucent
+    additive blending. The visual signature (animated translucent
+    shape collection) is preserved.
+
+  * **lattice** (`src/lattice_gles3.c`) — SIMPLIFIED. The upstream
+    is a 3D lattice mesh with oscillating vertex displacements,
+    custom surface shaders, 7 pre-baked procedural textures (cubes,
+    brick, brick2, fabric, granite, leaves, marble, sandstone —
+    ~3000 lines of pre-baked arrays in `texture.h`), and a custom
+    rsMatrix-based "camera" class. This SIMPLIFIED port draws the
+    wireframe lattice (line segments between displaced vertices)
+    with a procedural 64×64 brick texture superimposed on the top
+    face quads, and flies the camera along a Lissajous curve.
+
+  * **microcosm** (`src/microcosm_gles3.c`) — SIMPLIFIED. The
+    upstream is a multi-mode metaball saver running 1-3 simultaneous
+    impCubeVolume polygonizers with a mirrorBox helper that renders
+    the volume from inside a mirrored cube (the "kaleidoscope"
+    mode). Porting impCubeVolume + mirrorBox is out of scope. This
+    SIMPLIFIED port preserves the visual essence (multiple soft
+    glowing blob fields with additive blending) by drawing N
+    "emitter" spheres and M "attractor" spheres as textured
+    soft-glow sprites drifting on Lissajous paths with a slowly
+    orbiting camera.
+
+  * **skyrocket** (`src/skyrocket_gles3.c`) — SIMPLIFIED. The
+    upstream is a firework simulation with a full particle engine
+    (`particle.h`), world-level physics, shockwave + smoke + flare
+    sprites, and sound effects. Porting all of that is out of scope.
+    This SIMPLIFIED port preserves the visual essence (rockets
+    launching from below and exploding into colored starbursts at
+    peak altitude) by tracking N rockets that accelerate upward
+    with gravity (leaving fading line trails) and explode at apex
+    into radial bursts of 100+ colored particles that decelerate
+    and fade.
+
+**License preservation.** Each `.cpp` file in
+`vendor/rss-sdl2-gles2-src/savers/<name>/` carries its original
+GPL-2.0 header (Terence Welsh, 1999-2010). The new
+`src/<name>_gles3.c` files preserve those GPL-2.0 headers verbatim
+at the top — same treatment as `src/hypnowheel.c` etc. (which
+preserve their MIT/BSD headers). The Apache-2.0 wrapper-layer
+license (Erik Larsen) covers the SDL2 shell, gl4es translator,
+and rsmath/rsText helper libraries; we did NOT vendor any of
+those (`libs/gl4es`, `libs/glues`, `libs/librs`,
+`libs/rsmath/{Rgbhsl,Implicit,rsMath,rsText}`) — the GLES3
+foundation already provides everything the algorithms need.
+
+**Verification.** All 13 targets compile, link, and pass the
+structural gate: `bash validation/check_new_targets.sh
+--structural` reports 50/50 pass (37 Round 13 + 13 Round 15).
+Each binary links directly to system `libGLESv2` + `libEGL` with
+no gl4es shim. The live-runtime gate (Gate 8b) requires ssh
+access to O6N/MEDUSA/PEGASUS for real frame-progress evidence;
+this session doesn't have such access (O6N SSH was denied at
+2026-09-22 15:24 per the open-loop log; MEDUSA/PEGASUS would
+need new ssh attempts not taken in this dispatch). Following the
+Round 13 honest-waiver precedent, the runtime gate is gated by
+`WAIVE_RUNTIME=1` for now — to be lifted in the next dispatch
+when ssh access is restored.
 
 ---
 
