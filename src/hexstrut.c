@@ -110,7 +110,16 @@ static void
 make_plane (ModeInfo *mi)
 {
   hexstrut_configuration *bp = &bps[MI_SCREEN(mi)];
-  int n = MI_COUNT(mi) * 2;
+  /* NCZ: the GLES3 harness never populates mi->batchcount from the
+   * DEFAULTS block, so MI_COUNT() reads as 0 here. The original
+   * xscreensaver resource machinery set it from hexstrut's
+   * "*count: 8" DEFAULTS entry. Without it, n=0 → outer loops
+   * skipped → bp->triangles stays NULL → draw_triangles() crashes
+   * on the first vertex load. Fall back to a sane count so the hack
+   * renders the plane it was meant to render. */
+  int count = MI_COUNT(mi);
+  if (count < 1) count = 8;
+  int n = count * 2;
   GLfloat size = 2.0 / n;
   int x, y;
   GLfloat w = size;
@@ -234,6 +243,14 @@ draw_triangles (ModeInfo *mi)
   GLfloat length = sqrt(3) / 3;
   GLfloat t2 = length * thickness / 2;
   GLfloat scale;
+
+  /* NCZ: defensive. make_plane() is called once at init and guarantees
+   * bp->triangles is non-NULL unless MI_COUNT was 0 AND make_plane was
+   * never reached; the count-zero fallback in make_plane sets up a
+   * default grid, but if init_highvoltage returns early the list may
+   * still be empty. The original code dereferenced the head pointer
+   * unconditionally and crashed on the first draw. */
+  if (!bp->triangles) return;
 
   {
     triangle *t = bp->triangles;
