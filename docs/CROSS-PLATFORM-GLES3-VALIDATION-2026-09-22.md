@@ -30,15 +30,17 @@ real, live NCZ-OS Wayland installations:
 | `meson setup build && ninja -C build` (link)    | 997/997 ✓ | 997/997 ✓ | 997/997 ✓ |
 | 90 `_gles3` binaries produced                   | 90 ✓     | 90 ✓     | 90 ✓     |
 | Wayland + grim render run (3.0–3.5 s/binary)    | 90/90 ✓  | 90/90 ✓  | 90/90 ✓  |
-| Per-platform PASS (process ran, GLES live, screen ≠ baseline) | 86 | 86 | 86 |
-| Per-platform CRASH (exit < 0 / 134 / 139 / stderr abort) | 3 | 3 | 3 |
-| Per-platform HANG (SIGKILL'd after grace)      | 1        | 1        | 1        |
-| **CRASH+HANG set, identical across platforms**  | **{jigsaw, hexstrut, highvoltage} crash, {mapscroller} hang** | *same* | *same* |
-| Visual-output differences between platforms    | **None on the failure set.** All vendor-divergent visuals are within the PASS band. See §4. | | |
+| Per-platform PASS (process ran, GLES live, screen ≠ baseline)         | 86   | 86   | 85   |
+| Per-platform BLACK (process ran, GLES live, but shot ≈ per-platform baseline; see §4.3 for the molecule_gles3 edge case) | 0 | 0 | 1 |
+| Per-platform CRASH (exit < 0 / 134 / 139 / stderr abort)             | 3    | 3    | 3    |
+| Per-platform HANG (SIGKILL'd after grace)                            | 1    | 1    | 1    |
+| **CRASH+HANG set, identical across platforms**                       | **{jigsaw, hexstrut, highvoltage} crash, {mapscroller} hang** | *same* | *same* |
+| Visual-output differences between platforms                          | **None on the failure set.** All vendor-divergent visuals are within the PASS band. See §4. | | |
 
 The headline finding: **the 4 problematic hacks are the same on every
-platform, with the same exit codes.** The 86 that pass, all pass on
-all three. The cross-platform variance that exists is in the *visual
+platform, with the same exit codes.** The 86 that pass on O6N/MEDUSA
+(85 on PEGASUS; see §4.3 for the one borderline case) all pass on all
+three. The cross-platform variance that exists is in the *visual
 quality* of the rendered output (brightness, color density, ant
 density, scene complexity at the screenshot moment) — not in
 correctness.
@@ -307,19 +309,33 @@ the per-platform baseline).
 
 **Per-platform rollup** (exact, from `validation/<plat>/results.csv`):
 
-| Host     | PASS | CRASH | HANG | Total |
-|----------|------|-------|------|-------|
-| O6N      | 86   | 3     | 1    | 90    |
-| MEDUSA   | 86   | 3     | 1    | 90    |
-| PEGASUS  | 86   | 3     | 1    | 90    |
+| Host     | PASS | BLACK | CRASH | HANG | Total |
+|----------|------|-------|-------|------|-------|
+| O6N      | 86   | 0     | 3     | 1    | 90    |
+| MEDUSA   | 86   | 0     | 3     | 1    | 90    |
+| PEGASUS  | 85   | 1     | 3     | 1    | 90    |
 
 > **Note** — these counts come from the per-binary classifier
 > (PIL-based, exit-code + stderr pattern + screenshot-vs-baseline).
 > The classifier's `PASS` is a coarse "rendered something different
 > from the desktop background"; finer-grained visual divergence
 > (color-count gaps, brightness gaps, vendor-dependent BLACK) is
-> discussed in §4. The interesting per-binary detail is in the
-> per-platform `results.csv` and per-binary stderr at
+> discussed in §4. The PEGASUS 1 BLACK is `molecule_gles3`, which the
+> classifier correctly flags as `shot == baseline` because the hack
+> draws on an already-dark desktop and the screenshot happens to be
+> indistinguishable from the per-platform baseline PNG. The stderr
+> confirms GLES context live and frames rendered — the hack is
+> working, it just looks like the desktop. See §4.3 for the full
+> explanation.
+> 
+> Cross-checked by re-running `validation/classify_results.py` against
+> the committed `validation/<plat>/raw/` artifacts (commit `d5f226d`)
+> on 2026-09-22: PASS/CRASH/HANG counts match the table above;
+> PEGASUS classifies `molecule_gles3` as BLACK with
+> `shot brightness=3.5 vs base=3.5 (diff=0.0)`.
+> 
+> The interesting per-binary detail is in the per-platform
+> `results.csv` and per-binary stderr at
 > `validation/<plat>/raw/logs/<bin>.stderr`.
 
 ---
@@ -327,7 +343,9 @@ the per-platform baseline).
 ## 4. Visual differences across platforms
 
 `compare_results.py` aggregates per-platform brightness, distinct color
-buckets, and non-dark pixel ratio. Of the 86 PASSes per platform:
+buckets, and non-dark pixel ratio. Of the ~85–86 PASS+BLACK pairs per
+platform (85 on PEGASUS, 86 on O6N/MEDUSA; the difference is the
+`molecule_gles3` borderline case in §4.3):
 
 | Aggregate verdict (across all 3)                                          | Count |
 |---------------------------------------------------------------------------|-------|
@@ -412,10 +430,12 @@ black:
 On PEGASUS, the screenshot is byte-identical to the baseline in file
 size (the `_gles3.png` has the same bytes as `_baseline.png` — both
 286783 bytes, which is why `compare_results.py` flags it as
-`vendor-dependent BLACK`). But the stderr confirms GLES3.2 context
-live, frames rendered, exit 0. The hack is working — it just looks
-like the desktop because it draws the same few colored dots on top
-of a dark background, and PEGASUS's desktop is already very dark.
+`vendor-dependent BLACK`, and which is why the per-platform rollup
+in §3 has PEGASUS at `85 PASS + 1 BLACK` rather than `86 PASS + 0
+BLACK`). But the stderr confirms GLES3.2 context live, frames
+rendered, exit 0. The hack is working — it just looks like the
+desktop because it draws the same few colored dots on top of a dark
+background, and PEGASUS's desktop is already very dark.
 
 This is **not a vendor bug** — it's an artifact of the heuristic
 comparison against an already-dark desktop baseline.
