@@ -1520,7 +1520,7 @@ free_jigsaw (ModeInfo *mi)
   if (!jc->glx_context) return;
   glXMakeCurrent(MI_DISPLAY(mi), MI_WINDOW(mi), *jc->glx_context);
 
-  if (jc->trackball) free (jc->trackball);
+  if (jc->trackball) gltrackball_free (jc->trackball);
   if (jc->rot) free_rotator (jc->rot);
   if (jc->texfont) free_texture_font (jc->texfont);
   free_puzzle_grid (jc);
