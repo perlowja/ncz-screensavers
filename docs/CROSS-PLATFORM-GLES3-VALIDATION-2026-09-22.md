@@ -869,8 +869,10 @@ don't self-pace.
 
 ### 6.7 Structured validation command
 
-`validation/validate.sh` is a 7-gate pass/fail script that
-codifies the minimum bar the task asked for:
+`validation/validate.sh` is a 10-gate pass/fail script that
+codifies the minimum bar the task asked for, plus the regression
+test for the 4 cross-platform crash fixes and the Round-13
+expansion:
 
 ```
 ./validation/validate.sh
@@ -912,6 +914,20 @@ classifier actually produces when the harness is rerun. Now any
 drift fails the gate immediately, before a human has to reconcile
 the two by hand. The script is `validation/test_rollup_regression.py`
 and is invoked by `validate.sh` after gates 1–6 pass.
+
+Gates 8a/8b (Round-13 expansion: atlantis + flurry + 35 hyprsaver
+shaders) and Gate 8c (the 4 cross-platform crash-fixes regression
+test, added in `88a7633`) are described in detail in
+[`docs/REVIEWER-VERIFICATION.md`](REVIEWER-VERIFICATION.md). Gates
+8b and 8c require a live Wayland session; on a build host without
+one, set `WAIVE_RUNTIME=1` to record the waiver explicitly (NOT
+silent). A wrapper at `validation/validate-summary.sh` auto-detects
+the right invocation and captures the run record to
+`validation/runs/<UTC>_reviewer_summary.json`:
+
+```sh
+bash validation/validate-summary.sh   # auto-detect, captures run record
+```
 
 ---
 

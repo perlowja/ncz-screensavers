@@ -99,6 +99,56 @@ standard `wlr-layer-shell` overlay surface, not lock-protected). Lock
 integration is the wlscreensaver.h work described above, still in progress.
 
 
+## Validation
+
+The cross-platform validation evidence (90 distinct `_gles3` binaries
+across O6N/Panthor, MEDUSA/AMD64, PEGASUS/Intel-iGPU) lives under
+`validation/{o6n,medusa,pegasus}/raw/` and is verified by a single
+command:
+
+```sh
+bash validation/validate.sh --reviewer-summary
+```
+
+10 gates are checked end-to-end:
+
+- **1–5:** structural gates (build state, link shape, no gl4es shim,
+  ninja clean).
+- **6–7:** honest evidence gates — `results.csv` ≥90 distinct binaries
+  per host, and `classify_results.py` re-derived rollup matches the
+  canonical §3 table in
+  [`docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md`](docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md).
+- **8a/8b:** per-target structural + runtime check on the 37 new
+  Round-13 ports (atlantis + flurry + 35 hyprsaver shaders).
+- **8c:** per-target regression check on the 4 cross-platform crash
+  fixes (`jigsaw`, `highvoltage`, `hexstrut`, `mapscroller`) — see
+  `validation/test_crash_fixes_regression.sh`.
+
+`validate.sh` self-validates every JSON line it emits (with
+`python3 -c 'import sys,json; json.loads(...)'`) before declaring
+success, so any malformed line fails-closed with
+`failed_gates: ["json_malformed"]`. Captured run records live in
+`validation/runs/<UTC>_reviewer_summary.json` (11 lines, ~1.1 KB).
+
+### Build hosts without a live Wayland session
+
+Gates 8b and 8c require a live Wayland compositor to run the
+`_gles3` binaries against. On a build host without one, set
+`WAIVE_RUNTIME=1`:
+
+```sh
+WAIVE_RUNTIME=1 bash validation/validate.sh --reviewer-summary
+```
+
+The waiver is recorded in the gate 8b/8c JSON lines as a `waive`
+status (NOT silent) and in the human-readable output as
+`runtime check: WAIVED by WAIVE_RUNTIME=1`. Without the waiver, gates
+8b/8c fail-closed with a clear actionable message naming
+`WAIVE_RUNTIME=1` as the explicit opt-in. See
+[`docs/REVIEWER-VERIFICATION.md`](docs/REVIEWER-VERIFICATION.md) for
+the reviewer-verifier handoff shape and the rationale.
+
+
 ## Attribution
 
 The visual-effect algorithms this project ports (e.g. `src/glmatrix.c`) are

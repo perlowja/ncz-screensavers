@@ -26,6 +26,21 @@ broken JSON that the reviewer pipeline can't parse. This is the
 safeguard against the empty-body / unparseable-output failure mode
 that bit us on 2026-09-22 Round 13.
 
+### Auto-detecting the right invocation
+
+A wrapper at `validation/validate-summary.sh` picks the right
+invocation for the current environment automatically — it probes for
+a live Wayland session with a one-second `jigsaw_gles3` run and
+applies `WAIVE_RUNTIME=1` only when the probe fails (stale socket,
+no compositor). The wrapper captures the result to
+`validation/runs/<UTC>_reviewer_summary.json` for the audit trail:
+
+```sh
+bash validation/validate-summary.sh    # auto-detect, captures run record
+bash validation/validate-summary.sh --waive    # force waive
+bash validation/validate-summary.sh --no-waive # require live Wayland
+```
+
 ### WAIVE_RUNTIME for build hosts without a live Wayland session
 
 Cross-host ssh access to O6N/MEDUSA/PEGASUS from this build host is
