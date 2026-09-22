@@ -506,360 +506,387 @@ if opt_xscreensaver
 
     # -----------------------------------------------------------------------
     # Phase 1 GLES3-native pilots: boing (immediate-mode + matrix stack)
-    # and companion (gllist VBO conversion + display-list recorder).
-    #
-    # These compile against system libGLESv2 / libEGL directly — NO
-    # gl4es. They live alongside the legacy gl4es-routed ports above and
-    # do NOT replace them. The legacy gl4es path stays active until
-    # every hack has been ported (per the operator's full-migration
-    # directive). See GLES3-MIGRATION-PHASE1.md for the rollout plan.
-    # -----------------------------------------------------------------------
 
-    common_gles3_sources = [
-        'src/xscreensaver_compat.c',
-        'src/gles3_compat.c',
-    ]
-    # GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
-    # helpers in xscreensaver_compat.c compile to empty stubs (they
-    # rely on glMultMatrixf/glTranslated which don't exist in GLES3).
-    common_gles3_c_args = vendored_c_args + ['-DNCZ_GLES3_BUILD=1']
-
-    # Shared GLES3-native dependency list: Wayland + EGL + GLESv2 + libpng
-    # (for image_data_to_ximage on hacks that need texture decoding)
-    # + libm (vendored xscreensaver code and gles3_compat.c use
-    # cosf/sinf/sqrtf etc — neither libGLESv2 nor libwayland-client
-    # drags libm in transitively on Debian aarch64).
-    common_gles3_deps = [
-        dep_wayland_client,
-        dep_wayland_egl,
-        dep_egl,
-        dep_glesv2,
-        dep_png,
-        dep_m,
-    ]
-
-    # Boing — simplest GL1 pilot. Uses immediate-mode helpers + matrix
-    # stack + lighting + ortho projection. Zero model dependencies.
-    executable(
-        'boing_gles3',
-        files(common_gles3_sources + [
-            'src/gles3_harness.c',
-            'src/gles3_boing.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: common_gles3_c_args + [
-            # gles3_boing emits `gles3boing_xscreensaver_function_table`
-            # via XSCREENSAVER_MODULE_2.
-            '-DHACK_TABLE=gles3boing_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # Companion — gllist VBO conversion pilot. Loads 3 pre-baked
-    # `struct gllist` chains (companion_quad, companion_disc,
-    # companion_heart) into VBOs at init, plays them every frame. Also
-    # exercises the display-list recorder path (the cube is built as a
-    # sequence of inline quads + chain draws, not via a recorded
-    # display list, but the recorder API is in place for hacks that
-    # actually use glNewList/glEndList).
-    executable(
-        'companion_gles3',
-        files(common_gles3_sources + [
-            'src/gles3_harness.c',
-            'src/gles3_companion.c',
-            # Companion's 3 pre-baked object data files (these are the
-            # `struct gllist` chains in C, not model files).
-            'src/companion_quad.c',
-            'src/companion_disc.c',
-            'src/companion_heart.c',
-            # The physics / random helpers that companion needs.
-            'src/rotator.c',
-            'src/yarandom.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: common_gles3_c_args + [
-            '-DHACK_TABLE=gles3companioncube_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # -----------------------------------------------------------------------
-    # Phase 2 — legacy 88-hack migration to native GLES3. With the
-    # GLES3 foundation now providing active stubs for the GL1 fixed-
-    # function API (glBegin/glVertex/glColor/glNormal/glTexCoord →
-    # ncz_im_*; glMatrixMode/glPushMatrix/glRotatef/glMultMatrixf →
-    # ncz_mat_stack_*; glLightfv/glMaterialfv → ncz_im_light_*/material),
-    # the vendored xscreensaver sources for these hacks compile and
-    # link directly against the GLES3 harness with no source edits —
-    # the "mechanical Phase 4+ porting pipeline" flagged as a future
-    # optimization in GLES3-MIGRATION-PHASE1.md, brought forward here
-    # because the surface gap (immediate-mode accumulator + matrix
-    # stack) was already bridged by the boing/companion pilots.
-    #
-    # The gl4es-routed `_demo` binary for each of these hacks is kept
-    # alive in the build (it depends on opt_gl4es which is off by
-    # default on build hosts without gl4es installed) so the dual-path
-    # is preserved while the native path is being verified. Once a
-    # full-88 visual verification passes, the gl4es-routed path is
-    # retired per the operator's directive.
-    # -----------------------------------------------------------------------
-
-    # Generic config: most legacy hacks just need the harness + the
-    # vendored source + the optional model / utility companions.
-    # 'c_args_extra' are -DSTANDALONE / -DHAVE_JWXYZ / etc. — the
-    # include-vs-xlockmore.h choice the vendored sources gate on.
-    legacy_gles3_hacks = [
-        {'name': 'rubikblocks',   'src': 'src/rubikblocks.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'topblock',      'src': 'src/topblock.c',      'extras': ['src/sphere.c', 'src/tube.c']},
-        {'name': 'tangram',       'src': 'src/tangram.c',       'extras': ['src/tangram_shapes.c']},
-        {'name': 'glschool',      'src': 'src/glschool.c',      'extras': ['src/glschool_alg.c', 'src/glschool_gl.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'fliptext',       'src': 'src/fliptext.c',       'extras': []},
-        {'name': 'antinspect',    'src': 'src/antinspect.c',     'extras': ['src/sphere.c'],                                 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'antspotlight',  'src': 'src/antspotlight.c',   'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'beats',         'src': 'src/beats.c',          'extras': ['src/sphere.c']},
-        {'name': 'blinkbox',      'src': 'src/blinkbox.c',       'extras': ['src/sphere.c']},
-        {'name': 'blocktube',     'src': 'src/blocktube.c',      'extras': []},
-        {'name': 'bouncingcow',   'src': 'src/bouncingcow.c',    'extras': ['src/cow_face.c', 'src/cow_hide.c', 'src/cow_hoofs.c', 'src/cow_horns.c', 'src/cow_tail.c', 'src/cow_udder.c', 'src/gllist.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'chompytower',   'src': 'src/chompytower.c',    'extras': ['src/doubletime.c', 'src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/spline.c', 'src/teeth_model.c', 'src/yarandom.c']},
-        {'name': 'crumbler',      'src': 'src/crumbler.c',       'extras': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'cube21',        'src': 'src/cube21.c',         'extras': []},
-        {'name': 'cubestack',     'src': 'src/cubestack.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'cityflow',      'src': 'src/cityflow.c',       'extras': []},
-        {'name': 'covid19',       'src': 'src/covid19.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'crackberg',     'src': 'src/crackberg.c',      'extras': []},
-        {'name': 'cubenetic',     'src': 'src/cubenetic.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'cubestorm',     'src': 'src/cubestorm.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'cubetwist',     'src': 'src/cubetwist.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'cubicgrid',     'src': 'src/cubicgrid.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'dangerball',    'src': 'src/dangerball.c',     'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'discoball',     'src': 'src/discoball.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'energystream',  'src': 'src/energystream.c',   'extras': ['src/rotator.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'gears',         'src': 'src/gears.c',          'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'geodesic',      'src': 'src/geodesic.c',       'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'glblur',        'src': 'src/glblur.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'glcells',       'src': 'src/glcells.c',        'extras': []},
-        {'name': 'glknots',       'src': 'src/glknots.c',        'extras': ['src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'glsnake',       'src': 'src/glsnake.c',        'extras': []},
-        {'name': 'gravitywell',   'src': 'src/gravitywell.c',    'extras': []},
-        {'name': 'hexstrut',      'src': 'src/hexstrut.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'hextrail',      'src': 'src/hextrail.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'highvoltage',   'src': 'src/highvoltage.c',    'extras': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
-        {'name': 'hilbert',       'src': 'src/hilbert.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'hydrostat',     'src': 'src/hydrostat.c',      'extras': ['src/sphere.c']},
-        {'name': 'hypnowheel',    'src': 'src/hypnowheel.c',     'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'jigsaw',        'src': 'src/jigsaw.c',         'extras': ['src/normals.c', 'src/rotator.c', 'src/spline.c', 'src/yarandom.c'], 'c_args_extra': ['-DHAVE_JWZGLES']},
-        {'name': 'juggler3d',     'src': 'src/juggler3d.c',      'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'kaleidocycle',  'src': 'src/kaleidocycle.c',   'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'lament',        'src': 'src/lament.c',         'extras': ['src/gllist.c', 'src/lament_model.c', 'src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'lockward',      'src': 'src/lockward.c',       'extras': []},
-        {'name': 'mapscroller',   'src': 'src/mapscroller.c',    'extras': ['src/easing.c', 'src/image_data_to_ximage.c']},
-        {'name': 'menger',        'src': 'src/menger.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'moebiusgears',  'src': 'src/moebiusgears.c',   'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'molecule',      'src': 'src/molecule.c',       'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'noof',          'src': 'src/noof.c',           'extras': ['src/pow2.c']},
-        {'name': 'papercube',     'src': 'src/papercube.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'peepers',       'src': 'src/peepers.c',        'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'polyhedra-gl',  'src': 'src/polyhedra-gl.c',   'extras': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'c_args_extra': ['-DHAVE_JWZGLES'], 'table': 'polyhedra'},
-        {'name': 'quasicrystal',  'src': 'src/quasicrystal.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'spheremonics',  'src': 'src/spheremonics.c',   'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'splodesic',     'src': 'src/splodesic.c',      'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'squirtorus',    'src': 'src/squirtorus.c',     'extras': ['src/easing.c', 'src/normals.c', 'src/spline.c', 'src/yarandom.c']},
-        {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'timetunnel',    'src': 'src/timetunnel.c',     'extras': ['src/image_data_to_ximage.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'tronbit',       'src': 'src/tronbit.c',        'extras': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
-        {'name': 'voronoi',       'src': 'src/voronoi.c',        'extras': []},
-        # Round 11 batch — alphabetical-by-name, 12 new native GLES3 ports
-        {'name': 'flyingtoasters', 'src': 'src/flyingtoasters.c', 'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/toast.c', 'src/toast2.c', 'src/toaster.c', 'src/toaster_base.c', 'src/toaster_handle.c', 'src/toaster_handle2.c', 'src/toaster_jet.c', 'src/toaster_knob.c', 'src/toaster_slots.c', 'src/toaster_wing.c', 'src/yarandom.c']},
-        {'name': 'geodesicgears',  'src': 'src/geodesicgears.c',  'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'gibson',         'src': 'src/gibson.c',         'extras': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'glforestfire',   'src': 'src/glforestfire.c',   'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'glhanoi',        'src': 'src/glhanoi.c',        'extras': ['src/doubletime.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'gltext',         'src': 'src/gltext.c',         'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'handsy',         'src': 'src/handsy.c',         'extras': ['src/doubletime.c', 'src/gllist.c', 'src/handsy_model.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-        {'name': 'kallisti',       'src': 'src/kallisti.c',       'extras': ['src/gllist.c', 'src/kallisti_model.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'photopile',      'src': 'src/photopile.c',      'extras': ['src/dropshadow.c', 'src/xftwrap.c', 'src/yarandom.c']},
-        {'name': 'providence',     'src': 'src/providence.c',     'extras': [], 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'unicrud',        'src': 'src/unicrud.c',        'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'unknownpleasures','src': 'src/unknownpleasures.c','extras': ['src/doubletime.c', 'src/easing.c']},
-        # Round 11 batch 2 — alphabetical-by-name, 11 more native GLES3 ports
-        {'name': 'headroom',       'src': 'src/headroom.c',       'extras': ['src/gllist.c', 'src/headroom_model.c', 'src/rotator.c', 'src/skull_model.c', 'src/yarandom.c']},
-        {'name': 'lavalite',       'src': 'src/lavalite.c',       'extras': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'nakagin',        'src': 'src/nakagin.c',        'extras': ['src/doubletime.c', 'src/easing.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'raverhoop',      'src': 'src/raverhoop.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-        {'name': 'razzledazzle',   'src': 'src/razzledazzle.c',   'extras': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
-        {'name': 'sballs',         'src': 'src/sballs.c',         'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
-        {'name': 'skulloop',       'src': 'src/skulloop.c',       'extras': ['src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/skull_model.c', 'src/yarandom.c']},
-        {'name': 'skytentacles',   'src': 'src/skytentacles.c',   'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
-        {'name': 'splitflap',      'src': 'src/splitflap.c',      'extras': ['src/gllist.c', 'src/rotator.c', 'src/splitflap_obj.c', 'src/yarandom.c']},
-        {'name': 'starwars',       'src': 'src/starwars.c',       'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/yarandom.c']},
-        {'name': 'winduprobot',    'src': 'src/winduprobot.c',    'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/involute.c', 'src/normals.c', 'src/robot.c', 'src/robot-wireframe.c', 'src/sphere.c', 'src/yarandom.c']},
-    ]
-
-    foreach h : legacy_gles3_hacks
-        executable(
-            h['name'] + '_gles3',
-            files(common_gles3_sources + [
-                'src/gles3_harness.c',
-                h['src'],
-            ] + h.get('extras', [])) + gen_sources,
-            include_directories: inc,
-            dependencies: common_gles3_deps,
-            c_args: common_gles3_c_args + h.get('c_args_extra', []) + [
-                # The hack's <table>_xscreensaver_function_table symbol is
-                # emitted by XSCREENSAVER_MODULE(<class>, <prefix>) at the
-                # bottom of the vendored .c. Most hacks use the bare
-                # <name> as the table identifier (so
-                # <name>_xscreensaver_function_table); a few use a
-                # different stem (polyhedra-gl's vendored file uses
-                # XSCREENSAVER_MODULE("Polyhedra", polyhedra) → the table
-                # is named polyhedra_xscreensaver_function_table, not
-                # polyhedra-gl_xscreensaver_function_table). The 'table'
-                # dict key overrides the default when they differ.
-                '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
-            ],
-            install: false,
-        )
-    endforeach
-
-    # -----------------------------------------------------------------------
-    # Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
-    # Klein-bottle-cluster hacks + sphereeversion). These already use real
-     # GLSL/GLES3 shaders upstream — they call glCreateShader /
-     # glCompileShader / glLinkProgram directly via the shared
-     # hacks/glx/glsl-utils.{c,h} utility. Vendor the hack source + the
-     # shared utility + any per-hack model data, and build against system
-     # libGLESv2 / libEGL with -DHAVE_GLSL so the GLSL path compiles in.
-     #
-     # See UPSTREAM-GLES3-HACKS-2026-08-20.md for the per-hack verification
-     # and which hacks needed foundation extensions.
-     # -----------------------------------------------------------------------
-
-    # Shared utility: glsl-utils.{c,h} + the GLSL helper functions used by
-    # every upstream GLES3 hack (glsl_CompileAndLinkShaders,
-    # glsl_Perspective, glsl_LookAt, glsl_GetGLSLVersionString, ...).
-    upstream_gles3_common_sources = [
-        'src/glsl-utils.c',
-    ]
-
-    # Helper macro: every upstream GLES3 hack needs -DHAVE_GLSL (so the
-    # shader paths compile) plus -DSTANDALONE (so #include "xlockmore.h"
-    # fires inside the file's #ifdef STANDALONE block). The HACK_TABLE
-    # override routes gles3_harness.c at the right
-    # xscreensaver_function_table symbol.
-    upstream_gles3_c_args = common_gles3_c_args + [
-        '-DHAVE_GLSL',
-        '-DSTANDALONE',
-    ]
-
-    # The 6 per-hack executable() targets are added individually by the
-    # per-hack commits that vendor each hack's source. See
-    # UPSTREAM-GLES3-HACKS-2026-08-20.md.
-
-    # Etruscanvenus — Klein bottle deforming between Venus / Roman / Boy / Ida
-    executable(
-        'etruscanvenus_gles3',
-        files(common_gles3_sources + upstream_gles3_common_sources + [
-            'src/gles3_harness.c',
-            'src/etruscanvenus.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: upstream_gles3_c_args + [
-            '-DHACK_TABLE=etruscanvenus_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # Hypertorus — thickened torus surface with Phong shading
-    executable(
-        'hypertorus_gles3',
-        files(common_gles3_sources + upstream_gles3_common_sources + [
-            'src/gles3_harness.c',
-            'src/hypertorus.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: upstream_gles3_c_args + [
-            '-DHACK_TABLE=hypertorus_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # Klein — Klein bottle immersion
-    executable(
-        'klein_gles3',
-        files(common_gles3_sources + upstream_gles3_common_sources + [
-            'src/gles3_harness.c',
-            'src/klein.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: upstream_gles3_c_args + [
-            '-DHACK_TABLE=klein_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # Projectiveplane — real projective plane immersion
-    executable(
-        'projectiveplane_gles3',
-        files(common_gles3_sources + upstream_gles3_common_sources + [
-            'src/gles3_harness.c',
-            'src/projectiveplane.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: upstream_gles3_c_args + [
-            '-DHACK_TABLE=projectiveplane_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # Romanboy — Roman and Boy surfaces (doubly-covered projective plane)
-    executable(
-        'romanboy_gles3',
-        files(common_gles3_sources + upstream_gles3_common_sources + [
-            'src/gles3_harness.c',
-            'src/romanboy.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: upstream_gles3_c_args + [
-            '-DHACK_TABLE=romanboy_xscreensaver_function_table',
-        ],
-        install: false,
-    )
-
-    # Sphereeversion — sphere turned inside out via homotopy. The single
-    # sphereeversion.c file drives two different eversion algorithms
-    # (analytic and corrugations) via a runtime-selected helper object.
-    # earth.{h,c} provides the earth-texture data (1x1 valid-PNG stubs,
-    # see earth.c). image_data_to_ximage.c provides the libpng-backed
-    # decoder sphereeversion calls from setup_xpm_texture() (the
-    # runtime call is in the texture-init path which executes once
-    # per launch to populate GL textures for the optional '-colors
-    # earth' mode — that mode is never randomly selected by default,
-    # but the call always runs to keep texture IDs consistent).
-    executable(
-        'sphereeversion_gles3',
-        files(common_gles3_sources + upstream_gles3_common_sources + [
-            'src/gles3_harness.c',
-            'src/sphereeversion.c',
-            'src/sphereeversion-analytic.c',
-            'src/sphereeversion-corrugations.c',
-            'src/earth.c',
-            'src/image_data_to_ximage.c',
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: upstream_gles3_c_args + [
-            '-DHACK_TABLE=sphereeversion_xscreensaver_function_table',
-        ],
-        install: false,
-    )
 endif
+
+# -------------------------------------------------------------------
+# Phase 1+ GLES3-native builds — always-on. Do NOT require opt_gl4es or
+# opt_xscreensaver; these targets link against system libGLESv2 / libEGL
+# with no GL4ES translation shim. See GLES3-MIGRATION-PHASE1.md.
+# -------------------------------------------------------------------
+
+# Phase 1 GLES3-native pilots: boing (immediate-mode + matrix stack)
+# and companion (gllist VBO conversion + display-list recorder).
+#
+# These compile against system libGLESv2 / libEGL directly — NO
+# gl4es. They live alongside the legacy gl4es-routed ports above and
+# do NOT replace them. The legacy gl4es path stays active until
+# every hack has been ported (per the operator's full-migration
+# directive). See GLES3-MIGRATION-PHASE1.md for the rollout plan.
+# -----------------------------------------------------------------------
+
+common_gles3_sources = [
+    'src/xscreensaver_compat.c',
+    'src/gles3_compat.c',
+]
+# GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
+# helpers in xscreensaver_compat.c compile to empty stubs (they
+# rely on glMultMatrixf/glTranslated which don't exist in GLES3).
+# -DUSE_GL is required by the vendored xscreensaver hack sources — most
+# of them are wrapped in '#ifdef USE_GL /* whole file */' (see tangram.c,
+# glcells.c, etc.). Without it the file compiles to an empty translation
+# unit (no errors, no symbols), which surfaces as an "undefined reference
+# to <hack>_xscreensaver_function_table" link failure — and crucially
+# there are no prior compiler complaints to point at it.
+gles3_native_c_args = common_c_args + [
+        '-DUSE_GL',
+        '-D_GNU_SOURCE',
+        '-DGETTIMEOFDAY_TWO_ARGS=1',
+        '-DHAVE_UNISTD_H=1',
+        '-Wno-unused-parameter',
+        '-Wno-unused-but-set-variable',
+        '-Wno-unused-variable',
+        '-Wno-sign-compare',
+        '-Wno-missing-field-initializers',
+        '-DNCZ_GLES3_BUILD=1',
+    ]
+
+# Shared GLES3-native dependency list: Wayland + EGL + GLESv2 + libpng
+# (for image_data_to_ximage on hacks that need texture decoding)
+# + libm (vendored xscreensaver code and gles3_compat.c use
+# cosf/sinf/sqrtf etc — neither libGLESv2 nor libwayland-client
+# drags libm in transitively on Debian aarch64).
+common_gles3_deps = [
+    dep_wayland_client,
+    dep_wayland_egl,
+    dep_egl,
+    dep_glesv2,
+    dep_png,
+    dep_m,
+]
+
+# Boing — simplest GL1 pilot. Uses immediate-mode helpers + matrix
+# stack + lighting + ortho projection. Zero model dependencies.
+executable(
+    'boing_gles3',
+    files(common_gles3_sources + [
+        'src/gles3_harness.c',
+        'src/gles3_boing.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        # gles3_boing emits `gles3boing_xscreensaver_function_table`
+        # via XSCREENSAVER_MODULE_2.
+        '-DHACK_TABLE=gles3boing_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Companion — gllist VBO conversion pilot. Loads 3 pre-baked
+# `struct gllist` chains (companion_quad, companion_disc,
+# companion_heart) into VBOs at init, plays them every frame. Also
+# exercises the display-list recorder path (the cube is built as a
+# sequence of inline quads + chain draws, not via a recorded
+# display list, but the recorder API is in place for hacks that
+# actually use glNewList/glEndList).
+executable(
+    'companion_gles3',
+    files(common_gles3_sources + [
+        'src/gles3_harness.c',
+        'src/gles3_companion.c',
+        # Companion's 3 pre-baked object data files (these are the
+        # `struct gllist` chains in C, not model files).
+        'src/companion_quad.c',
+        'src/companion_disc.c',
+        'src/companion_heart.c',
+        # The physics / random helpers that companion needs.
+        'src/rotator.c',
+        'src/yarandom.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        '-DHACK_TABLE=gles3companioncube_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# -----------------------------------------------------------------------
+# Phase 2 — legacy 88-hack migration to native GLES3. With the
+# GLES3 foundation now providing active stubs for the GL1 fixed-
+# function API (glBegin/glVertex/glColor/glNormal/glTexCoord →
+# ncz_im_*; glMatrixMode/glPushMatrix/glRotatef/glMultMatrixf →
+# ncz_mat_stack_*; glLightfv/glMaterialfv → ncz_im_light_*/material),
+# the vendored xscreensaver sources for these hacks compile and
+# link directly against the GLES3 harness with no source edits —
+# the "mechanical Phase 4+ porting pipeline" flagged as a future
+# optimization in GLES3-MIGRATION-PHASE1.md, brought forward here
+# because the surface gap (immediate-mode accumulator + matrix
+# stack) was already bridged by the boing/companion pilots.
+#
+# The gl4es-routed `_demo` binary for each of these hacks is kept
+# alive in the build (it depends on opt_gl4es which is off by
+# default on build hosts without gl4es installed) so the dual-path
+# is preserved while the native path is being verified. Once a
+# full-88 visual verification passes, the gl4es-routed path is
+# retired per the operator's directive.
+# -----------------------------------------------------------------------
+
+# Generic config: most legacy hacks just need the harness + the
+# vendored source + the optional model / utility companions.
+# 'c_args_extra' are -DSTANDALONE / -DHAVE_JWXYZ / etc. — the
+# include-vs-xlockmore.h choice the vendored sources gate on.
+legacy_gles3_hacks = [
+    {'name': 'rubikblocks',   'src': 'src/rubikblocks.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'topblock',      'src': 'src/topblock.c',      'extras': ['src/sphere.c', 'src/tube.c']},
+    {'name': 'tangram',       'src': 'src/tangram.c',       'extras': ['src/tangram_shapes.c']},
+    {'name': 'glschool',      'src': 'src/glschool.c',      'extras': ['src/glschool_alg.c', 'src/glschool_gl.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'fliptext',       'src': 'src/fliptext.c',       'extras': []},
+    {'name': 'antinspect',    'src': 'src/antinspect.c',     'extras': ['src/sphere.c'],                                 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'antspotlight',  'src': 'src/antspotlight.c',   'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'beats',         'src': 'src/beats.c',          'extras': ['src/sphere.c']},
+    {'name': 'blinkbox',      'src': 'src/blinkbox.c',       'extras': ['src/sphere.c']},
+    {'name': 'blocktube',     'src': 'src/blocktube.c',      'extras': []},
+    {'name': 'bouncingcow',   'src': 'src/bouncingcow.c',    'extras': ['src/cow_face.c', 'src/cow_hide.c', 'src/cow_hoofs.c', 'src/cow_horns.c', 'src/cow_tail.c', 'src/cow_udder.c', 'src/gllist.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'chompytower',   'src': 'src/chompytower.c',    'extras': ['src/doubletime.c', 'src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/rotator.c', 'src/sphere.c', 'src/spline.c', 'src/teeth_model.c', 'src/yarandom.c']},
+    {'name': 'crumbler',      'src': 'src/crumbler.c',       'extras': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'cube21',        'src': 'src/cube21.c',         'extras': []},
+    {'name': 'cubestack',     'src': 'src/cubestack.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'cityflow',      'src': 'src/cityflow.c',       'extras': []},
+    {'name': 'covid19',       'src': 'src/covid19.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'crackberg',     'src': 'src/crackberg.c',      'extras': []},
+    {'name': 'cubenetic',     'src': 'src/cubenetic.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'cubestorm',     'src': 'src/cubestorm.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'cubetwist',     'src': 'src/cubetwist.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'cubicgrid',     'src': 'src/cubicgrid.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'dangerball',    'src': 'src/dangerball.c',     'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'discoball',     'src': 'src/discoball.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'energystream',  'src': 'src/energystream.c',   'extras': ['src/rotator.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'gears',         'src': 'src/gears.c',          'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'geodesic',      'src': 'src/geodesic.c',       'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'glblur',        'src': 'src/glblur.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'glcells',       'src': 'src/glcells.c',        'extras': []},
+    {'name': 'glknots',       'src': 'src/glknots.c',        'extras': ['src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'glsnake',       'src': 'src/glsnake.c',        'extras': []},
+    {'name': 'gravitywell',   'src': 'src/gravitywell.c',    'extras': []},
+    {'name': 'hexstrut',      'src': 'src/hexstrut.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'hextrail',      'src': 'src/hextrail.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'highvoltage',   'src': 'src/highvoltage.c',    'extras': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
+    {'name': 'hilbert',       'src': 'src/hilbert.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'hydrostat',     'src': 'src/hydrostat.c',      'extras': ['src/sphere.c']},
+    {'name': 'hypnowheel',    'src': 'src/hypnowheel.c',     'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'jigsaw',        'src': 'src/jigsaw.c',         'extras': ['src/normals.c', 'src/rotator.c', 'src/spline.c', 'src/yarandom.c'], 'c_args_extra': ['-DHAVE_JWZGLES']},
+    {'name': 'juggler3d',     'src': 'src/juggler3d.c',      'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'kaleidocycle',  'src': 'src/kaleidocycle.c',   'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'lament',        'src': 'src/lament.c',         'extras': ['src/gllist.c', 'src/lament_model.c', 'src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'lockward',      'src': 'src/lockward.c',       'extras': []},
+    {'name': 'mapscroller',   'src': 'src/mapscroller.c',    'extras': ['src/easing.c', 'src/image_data_to_ximage.c']},
+    {'name': 'menger',        'src': 'src/menger.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'moebiusgears',  'src': 'src/moebiusgears.c',   'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'molecule',      'src': 'src/molecule.c',       'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'noof',          'src': 'src/noof.c',           'extras': ['src/pow2.c']},
+    {'name': 'papercube',     'src': 'src/papercube.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'peepers',       'src': 'src/peepers.c',        'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'polyhedra-gl',  'src': 'src/polyhedra-gl.c',   'extras': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'c_args_extra': ['-DHAVE_JWZGLES'], 'table': 'polyhedra'},
+    {'name': 'quasicrystal',  'src': 'src/quasicrystal.c',   'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'spheremonics',  'src': 'src/spheremonics.c',   'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'splodesic',     'src': 'src/splodesic.c',      'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'squirtorus',    'src': 'src/squirtorus.c',     'extras': ['src/easing.c', 'src/normals.c', 'src/spline.c', 'src/yarandom.c']},
+    {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'timetunnel',    'src': 'src/timetunnel.c',     'extras': ['src/image_data_to_ximage.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'tronbit',       'src': 'src/tronbit.c',        'extras': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
+    {'name': 'voronoi',       'src': 'src/voronoi.c',        'extras': []},
+    # Round 11 batch — alphabetical-by-name, 12 new native GLES3 ports
+    {'name': 'flyingtoasters', 'src': 'src/flyingtoasters.c', 'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/toast.c', 'src/toast2.c', 'src/toaster.c', 'src/toaster_base.c', 'src/toaster_handle.c', 'src/toaster_handle2.c', 'src/toaster_jet.c', 'src/toaster_knob.c', 'src/toaster_slots.c', 'src/toaster_wing.c', 'src/yarandom.c']},
+    {'name': 'geodesicgears',  'src': 'src/geodesicgears.c',  'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'gibson',         'src': 'src/gibson.c',         'extras': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'glforestfire',   'src': 'src/glforestfire.c',   'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'glhanoi',        'src': 'src/glhanoi.c',        'extras': ['src/doubletime.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'gltext',         'src': 'src/gltext.c',         'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'handsy',         'src': 'src/handsy.c',         'extras': ['src/doubletime.c', 'src/gllist.c', 'src/handsy_model.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
+    {'name': 'kallisti',       'src': 'src/kallisti.c',       'extras': ['src/gllist.c', 'src/kallisti_model.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'photopile',      'src': 'src/photopile.c',      'extras': ['src/dropshadow.c', 'src/xftwrap.c', 'src/yarandom.c']},
+    {'name': 'providence',     'src': 'src/providence.c',     'extras': [], 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'unicrud',        'src': 'src/unicrud.c',        'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'unknownpleasures','src': 'src/unknownpleasures.c','extras': ['src/doubletime.c', 'src/easing.c']},
+    # Round 11 batch 2 — alphabetical-by-name, 11 more native GLES3 ports
+    {'name': 'headroom',       'src': 'src/headroom.c',       'extras': ['src/gllist.c', 'src/headroom_model.c', 'src/rotator.c', 'src/skull_model.c', 'src/yarandom.c']},
+    {'name': 'lavalite',       'src': 'src/lavalite.c',       'extras': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'nakagin',        'src': 'src/nakagin.c',        'extras': ['src/doubletime.c', 'src/easing.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'raverhoop',      'src': 'src/raverhoop.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
+    {'name': 'razzledazzle',   'src': 'src/razzledazzle.c',   'extras': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
+    {'name': 'sballs',         'src': 'src/sballs.c',         'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
+    {'name': 'skulloop',       'src': 'src/skulloop.c',       'extras': ['src/easing.c', 'src/gllist.c', 'src/normals.c', 'src/skull_model.c', 'src/yarandom.c']},
+    {'name': 'skytentacles',   'src': 'src/skytentacles.c',   'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    {'name': 'splitflap',      'src': 'src/splitflap.c',      'extras': ['src/gllist.c', 'src/rotator.c', 'src/splitflap_obj.c', 'src/yarandom.c']},
+    {'name': 'starwars',       'src': 'src/starwars.c',       'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/yarandom.c']},
+    {'name': 'winduprobot',    'src': 'src/winduprobot.c',    'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/involute.c', 'src/normals.c', 'src/robot.c', 'src/robot-wireframe.c', 'src/sphere.c', 'src/yarandom.c']},
+]
+
+foreach h : legacy_gles3_hacks
+    executable(
+        h['name'] + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            h['src'],
+        ] + h.get('extras', [])) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + h.get('c_args_extra', []) + [
+            # The hack's <table>_xscreensaver_function_table symbol is
+            # emitted by XSCREENSAVER_MODULE(<class>, <prefix>) at the
+            # bottom of the vendored .c. Most hacks use the bare
+            # <name> as the table identifier (so
+            # <name>_xscreensaver_function_table); a few use a
+            # different stem (polyhedra-gl's vendored file uses
+            # XSCREENSAVER_MODULE("Polyhedra", polyhedra) → the table
+            # is named polyhedra_xscreensaver_function_table, not
+            # polyhedra-gl_xscreensaver_function_table). The 'table'
+            # dict key overrides the default when they differ.
+            '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
+# Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
+# Klein-bottle-cluster hacks + sphereeversion). These already use real
+ # GLSL/GLES3 shaders upstream — they call glCreateShader /
+ # glCompileShader / glLinkProgram directly via the shared
+ # hacks/glx/glsl-utils.{c,h} utility. Vendor the hack source + the
+ # shared utility + any per-hack model data, and build against system
+ # libGLESv2 / libEGL with -DHAVE_GLSL so the GLSL path compiles in.
+ #
+ # See UPSTREAM-GLES3-HACKS-2026-08-20.md for the per-hack verification
+ # and which hacks needed foundation extensions.
+ # -----------------------------------------------------------------------
+
+# Shared utility: glsl-utils.{c,h} + the GLSL helper functions used by
+# every upstream GLES3 hack (glsl_CompileAndLinkShaders,
+# glsl_Perspective, glsl_LookAt, glsl_GetGLSLVersionString, ...).
+upstream_gles3_common_sources = [
+    'src/glsl-utils.c',
+]
+
+# Helper macro: every upstream GLES3 hack needs -DHAVE_GLSL (so the
+# shader paths compile) plus -DSTANDALONE (so #include "xlockmore.h"
+# fires inside the file's #ifdef STANDALONE block). The HACK_TABLE
+# override routes gles3_harness.c at the right
+# xscreensaver_function_table symbol.
+upstream_gles3_c_args = gles3_native_c_args + [
+    '-DHAVE_GLSL',
+    '-DSTANDALONE',
+]
+
+# The 6 per-hack executable() targets are added individually by the
+# per-hack commits that vendor each hack's source. See
+# UPSTREAM-GLES3-HACKS-2026-08-20.md.
+
+# Etruscanvenus — Klein bottle deforming between Venus / Roman / Boy / Ida
+executable(
+    'etruscanvenus_gles3',
+    files(common_gles3_sources + upstream_gles3_common_sources + [
+        'src/gles3_harness.c',
+        'src/etruscanvenus.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: upstream_gles3_c_args + [
+        '-DHACK_TABLE=etruscanvenus_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Hypertorus — thickened torus surface with Phong shading
+executable(
+    'hypertorus_gles3',
+    files(common_gles3_sources + upstream_gles3_common_sources + [
+        'src/gles3_harness.c',
+        'src/hypertorus.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: upstream_gles3_c_args + [
+        '-DHACK_TABLE=hypertorus_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Klein — Klein bottle immersion
+executable(
+    'klein_gles3',
+    files(common_gles3_sources + upstream_gles3_common_sources + [
+        'src/gles3_harness.c',
+        'src/klein.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: upstream_gles3_c_args + [
+        '-DHACK_TABLE=klein_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Projectiveplane — real projective plane immersion
+executable(
+    'projectiveplane_gles3',
+    files(common_gles3_sources + upstream_gles3_common_sources + [
+        'src/gles3_harness.c',
+        'src/projectiveplane.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: upstream_gles3_c_args + [
+        '-DHACK_TABLE=projectiveplane_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Romanboy — Roman and Boy surfaces (doubly-covered projective plane)
+executable(
+    'romanboy_gles3',
+    files(common_gles3_sources + upstream_gles3_common_sources + [
+        'src/gles3_harness.c',
+        'src/romanboy.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: upstream_gles3_c_args + [
+        '-DHACK_TABLE=romanboy_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Sphereeversion — sphere turned inside out via homotopy. The single
+# sphereeversion.c file drives two different eversion algorithms
+# (analytic and corrugations) via a runtime-selected helper object.
+# earth.{h,c} provides the earth-texture data (1x1 valid-PNG stubs,
+# see earth.c). image_data_to_ximage.c provides the libpng-backed
+# decoder sphereeversion calls from setup_xpm_texture() (the
+# runtime call is in the texture-init path which executes once
+# per launch to populate GL textures for the optional '-colors
+# earth' mode — that mode is never randomly selected by default,
+# but the call always runs to keep texture IDs consistent).
+executable(
+    'sphereeversion_gles3',
+    files(common_gles3_sources + upstream_gles3_common_sources + [
+        'src/gles3_harness.c',
+        'src/sphereeversion.c',
+        'src/sphereeversion-analytic.c',
+        'src/sphereeversion-corrugations.c',
+        'src/earth.c',
+        'src/image_data_to_ximage.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: upstream_gles3_c_args + [
+        '-DHACK_TABLE=sphereeversion_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
 
 # ---------------------------------------------------------------------------
 # Summary
