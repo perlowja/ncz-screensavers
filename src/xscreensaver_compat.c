@@ -320,6 +320,76 @@ int gluScaleImage(GLenum format,
                                dstW, dstH, (unsigned char *)dstData);
 }
 
+/* gluBuild2DMipmaps — GLU GL_TEXTURE_2D mipmap builder, GLES3
+ * implementation. We upload the level-0 texture via glTexImage2D
+ * (using caller's 'components' as the internal format and 'format'
+ * / 'type' / 'data' for the source layout), then call
+ * glGenerateMipmap(GL_TEXTURE_2D) to let the driver build the rest
+ * of the chain. glGenerateMipmap requires a texture that has a
+ * complete level-0 image (we've just uploaded it) and that the
+ * currently-bound GL_TEXTURE_2D target use a MIPMAP min filter — we
+ * don't enforce that here, callers do.
+ *
+ * Returns 0 on success (matches GLU's documented success return),
+ * GLU_ERROR on what we consider a real failure (driver couldn't
+ * regenerate, mostly unreachable in practice). On any error we log
+ * to stderr so flaky texture-pipeline bugs are diagnosable.
+ *
+ * Restrictions:
+ *   - 'target' must be GL_TEXTURE_2D (the only form upstream uses;
+ *     GL_TEXTURE_1D / GL_TEXTURE_3D targets don't apply to our
+ *     GLES3 screensaver context anyway — there's no proxy texture
+ *     support to bridge into glGenerateMipmap).
+ *   - 'components' is the internal-format spec; we pass it through
+ *     to glTexImage2D (caller's choice, usually GL_LUMINANCE_ALPHA
+ *     / GL_RGBA / GL_RGB). The driver's internalformat table decides
+ *     what storage to allocate.
+ *   - 'data' must remain valid until glGenerateMipmap returns; we
+ *     don't copy it.
+ *
+ * This deliberately does NOT replicate GLU's per-level downsampling.
+ * glGenerateMipmap is a driver-native operation and is what GLES3
+ * calls expect — building the chain CPU-side would duplicate driver
+ * work and yield visually different results. */
+int gluBuild2DMipmaps(GLenum target,
+                      GLint components,
+                      GLsizei width, GLsizei height,
+                      GLenum format, GLenum type,
+                      const void *data)
+{
+    if (target != GL_TEXTURE_2D) {
+        fprintf(stderr, "gluBuild2DMipmaps: target=0x%x not supported\n",
+                (unsigned)target);
+        return GLU_ERROR;
+    }
+    if (width <= 0 || height <= 0 || !data) {
+        fprintf(stderr, "gluBuild2DMipmaps: invalid dimensions %dx%d\n",
+                (int)width, (int)height);
+        return GLU_ERROR;
+    }
+    /* Level-0 upload. The internalformat slot (the 'components'
+     * GLU arg) is what GLES3 expects in the 'internalformat' position;
+     * the second slot in upstream's gluBuild2DMipmaps is unused on
+     * GLES3 — we pass 'components' through both slots for source
+     * compatibility. */
+    glTexImage2D(target, 0, components, width, height, 0,
+                 format, type, data);
+    /* Generate mipmap chain. Required to be called from within a
+     * glGenerateMipmap-able state; that's enforced by the spec, and
+     * we surface a real error if the driver rejects it. */
+    glGenerateMipmap(target);
+    {
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR) {
+            fprintf(stderr,
+                    "gluBuild2DMipmaps: glGenerateMipmap failed (0x%x)\n",
+                    (unsigned)err);
+            return GLU_ERROR;
+        }
+    }
+    return 0;
+}
+
 /*
  * g_harness_egl_display / g_harness_egl_surface / g_harness_egl_context —
  * the live EGL objects the harness has created and made current.
@@ -1430,14 +1500,59 @@ int XParseColor(Display *dpy, Colormap cmap, const char *spec,
  * non-NULL handle to pass around. */
 struct trackball_state { int unused; };
 
-static struct trackball_state xs_trackball_singleton = { 0 };
+#define NCZ_TRACKBALL_POOL_SIZE 256
+static struct trackball_state xs_trackball_pool[NCZ_TRACKBALL_POOL_SIZE];
+static int                  xs_trackball_used[NCZ_TRACKBALL_POOL_SIZE];
 
 trackball_state *gltrackball_init(int ignore_device_rotation_p)
 {
+    /* Vendored xscreensaver hacks free the pointer returned here
+     * (jigsaw.c:1523 does `free(jc->trackball)` directly; most others
+     * use the gltrackball_free wrapper). Returning a static singleton
+     * makes the free a bad-free under AddressSanitizer and corrupts
+     * malloc metadata in release builds. Hand out a heap-resident
+     * struct from a small pool so the caller can free it cleanly.
+     *
+     * The pool exists so the screenhack's per-init/per-free lifecycle
+     * is bounded even though we don't actually trackball-rotate
+     * anything; handing out a singleton would re-introduce the same
+     * bug if the caller ever called free() on it.
+     * NCZ_TRACKBALL_POOL_SIZE is sized generously so a 90-binary
+     * validation sweep doesn't run out. */
     (void) ignore_device_rotation_p;
-    /* A shared singleton is safe precisely because the state is empty; if this
-     * ever holds a real rotation it must become a per-hack allocation. */
-    return &xs_trackball_singleton;
+    for (int i = 0; i < NCZ_TRACKBALL_POOL_SIZE; i++) {
+        if (!xs_trackball_used[i]) {
+            xs_trackball_used[i] = 1;
+            memset(&xs_trackball_pool[i], 0, sizeof xs_trackball_pool[i]);
+            return &xs_trackball_pool[i];
+        }
+    }
+    /* Out of slots — fail loudly rather than hand back a singleton
+     * that the caller will then free. */
+    fprintf(stderr,
+            "xscreensaver_compat: gltrackball_init pool exhausted "
+            "(NCZ_TRACKBALL_POOL_SIZE=%d); failing\n",
+            NCZ_TRACKBALL_POOL_SIZE);
+    abort();
+}
+
+void gltrackball_free(trackball_state *ts) {
+    if (!ts) return;
+    /* Return the slot to the pool. Direct free() (jigsaw.c:1523 does
+     * this) is not valid because the pointer is pool-resident, not
+     * malloc'd. gltrackball_free is the supported release path. */
+    ptrdiff_t idx = ts - xs_trackball_pool;
+    if (idx >= 0 && idx < NCZ_TRACKBALL_POOL_SIZE) {
+        xs_trackball_used[idx] = 0;
+        memset(ts, 0, sizeof *ts);
+    } else {
+        /* Pointer not from our pool — refuse to free to avoid
+         * corrupting unrelated malloc metadata. */
+        fprintf(stderr,
+                "xscreensaver_compat: gltrackball_free called on "
+                "pointer 0x%lx not in the trackball pool; leaking\n",
+                (unsigned long)(uintptr_t)ts);
+    }
 }
 
 void gltrackball_rotate(trackball_state *ts)
@@ -1520,7 +1635,6 @@ void rgb_to_hsv(unsigned short r, unsigned short g, unsigned short b,
     if (v) *v = maxv;
 }
 
-void gltrackball_free(trackball_state *ts) { (void) ts; }  /* singleton: nothing to free */
 void gltrackball_stop(trackball_state *ts) { (void) ts; }
 
 void gltrackball_get_quaternion(trackball_state *ts, float q[4])

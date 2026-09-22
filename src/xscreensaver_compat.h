@@ -70,6 +70,7 @@
 #include <stdlib.h>      /* calloc/free/malloc used by shim + hack calls */
 #include <time.h>        /* time/localtime/strftime (dead-code-gated but linked) */
 #include <math.h>        /* sin/cos/sqrt used by gluPerspective/gluLookAt shims */
+#include <unistd.h>      /* usleep (flurry) */
 
 /*
  * Vendored GL 1.x header from gl4es master. See src/gl4es_include/GL/gl.h
@@ -403,6 +404,12 @@ struct ModeInfo {
     void               *eraser;
     Bool                needs_clear;
     void               *fpst;
+    /* Per-hack private state slot. Vendored hacks that need to
+     * store arbitrary per-screen state (e.g. hyprsaver's GL
+     * program/VBO cache) set this in their init callback and
+     * free it in their free callback. NULL is the initial
+     * value; the harness never touches it. */
+    void               *data;
 };
 typedef struct ModeInfo ModeInfo;
 
@@ -790,6 +797,23 @@ extern int  gluScaleImage(GLenum format,
                           const void *srcData,
                           GLint dstW, GLint dstH, GLenum dstType,
                           void *dstData);
+
+/* gluBuild2DMipmaps — GLU mipmap builder. In real GLU this generates
+ * the full mipmap chain by repeated downsampling and uploads each
+ * level. In GLES3 we only need mipmap levels >= GL_TEXTURE_BASE_LEVEL
+ * with the same pixel format/layout, and `glGenerateMipmap(GL_TEXTURE_2D)`
+ * does the chain build automatically. The caller is expected to have
+ * already bound a texture and configured GL_TEXTURE_MIN_FILTER to one
+ * of the MIPMAP variants — otherwise the level-0 upload with our no-op
+ * mipmap builder would yield a degenerate texture. Implementation in
+ * xscreensaver_compat.c. The 'components' / 'width' / 'height' /
+ * 'format' / 'type' / 'data' arguments are passed straight to
+ * glTexImage2D for the level-0 upload. */
+extern int  gluBuild2DMipmaps(GLenum target,
+                              GLint components,
+                              GLsizei width, GLsizei height,
+                              GLenum format, GLenum type,
+                              const void *data);
 
 /* ----------------------------------------------------------------------- */
 /* Section 8 — GLX passthroughs (these are the key bridge to EGL)          */

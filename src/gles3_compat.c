@@ -1168,6 +1168,23 @@ void ncz_im_tex_coord2f(float u, float v) {
     g_im.cur_uv[1] = v;
 }
 
+/* ncz_im_rect — GL1 glRect-family analog. Renders an axis-aligned 2D
+ * rectangle at z=0 in the current model-view matrix. Equivalent to a
+ * GL_TRIANGLE_FAN immediate-mode quad with the current color/normal.
+ * We route through the same accumulator so display-list recording
+ * works uniformly. Most xscreensaver hacks use glRect{f,d} once per
+ * frame as a full-screen-clear/blit helper — this is the focused
+ * single-call form rather than forcing them through the verbose
+ * ncz_im_begin / color / vertex / end dance. */
+void ncz_im_rect(double x1, double y1, double x2, double y2) {
+    ncz_im_begin(GL_TRIANGLE_FAN);
+    ncz_im_vertex3f((float)x1, (float)y1, 0.0f);
+    ncz_im_vertex3f((float)x2, (float)y1, 0.0f);
+    ncz_im_vertex3f((float)x2, (float)y2, 0.0f);
+    ncz_im_vertex3f((float)x1, (float)y2, 0.0f);
+    ncz_im_end();
+}
+
 /* Convert the accumulated vertices into draw calls for the current
  * primitive. GL_QUADS becomes 6 indices per quad; GL_TRIANGLES is
  * passed through; GL_LINES is passed through; everything else aborts
@@ -2129,6 +2146,40 @@ void glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     GLfloat c[4] = { r, g, b, a };
     glColor4fv(c);
 }
+
+/* GL1 glRect-family aliases. In real OpenGL 1.x,
+ *
+ *     void glRectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2);
+ *     void glRectf(GLfloat  x1, GLfloat  y1, ...);
+ *     void glRecti(GLint    x1, GLint    y1, ...);
+ *     void glRectdv(const GLdouble *v1, const GLdouble *v2);
+ *     void glRectfv(const GLfloat  *v1, const GLfloat  *v2);
+ *     void glRectiv(const GLint    *v1, const GLint    *v2);
+ *
+ * draw an axis-aligned 2D rectangle at z=0 with the current color.
+ * None of these exist in GLES3. We route all six through ncz_im_rect
+ * which already handles the current-color/normal/uv slots.
+ *
+ * Used by: flurry (flurry.c:520 calls glRectd to fade-buffer swap).
+ */
+void glRectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2) {
+    ncz_im_rect((double)x1, (double)y1, (double)x2, (double)y2);
+}
+void glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
+    ncz_im_rect((double)x1, (double)y1, (double)x2, (double)y2);
+}
+void glRecti(GLint x1, GLint y1, GLint x2, GLint y2) {
+    ncz_im_rect((double)x1, (double)y1, (double)x2, (double)y2);
+}
+void glRectdv(const GLdouble *v1, const GLdouble *v2) {
+    ncz_im_rect(v1[0], v1[1], v2[0], v2[1]);
+}
+void glRectfv(const GLfloat *v1, const GLfloat *v2) {
+    ncz_im_rect((double)v1[0], (double)v1[1], (double)v2[0], (double)v2[1]);
+}
+void glRectiv(const GLint *v1, const GLint *v2) {
+    ncz_im_rect((double)v1[0], (double)v1[1], (double)v2[0], (double)v2[1]);
+}
 void glColor3fv(const GLfloat *c) {
     GLfloat cc[4] = { c[0], c[1], c[2], 1.0f };
     glColor4fv(cc);
@@ -2305,15 +2356,33 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     int tstep = g_client_vao.texcoord_stride / sizeof(GLfloat);
     int cstep = g_client_vao.color_stride / sizeof(GLfloat);
     bool saved_has_material = g_im.has_material;
+    /* Snapshot the enabled-array flags BEFORE we walk the client
+     * pointers. g_client_vao.texcoord_ptr can legitimately be non-NULL
+     * because a previous glInterleavedArrays / glTexCoordPointer pair
+     * set it — but if the caller then called glInterleavedArrays with
+     * a format that doesn't carry texcoords (e.g. GL_C3F_V3F /
+     * GL_N3F_V3F, the only two formats our wrapper actually handles),
+     * the texcoord pointer is stale and points into memory that the
+     * caller has since free()d (tube.c is the canonical case: it
+     * calloc's a struct array, binds client pointers into it, calls
+     * glDrawArrays, then free()s the array). Reading through that
+     * stale pointer under AddressSanitizer is a heap-use-after-free.
+     * Skip texcoord emission unless the texcoord client array is
+     * actually enabled for the current draw. */
+    const bool normal_on   = g_client_vao.enabled[1];
+    const bool texcoord_on = g_client_vao.enabled[2];
+    const bool color_on    = g_client_vao.enabled[3];
 
     if (cp)
         g_im.has_material = false;
 
     for (int i = 0; i < count; i++) {
-        if (np) ncz_im_normal3f(np[0], np[1], np[2]);
-        if (tp) ncz_im_tex_coord2f(tp[0], (ts >= 2) ? tp[1] : 0.0f);
-        if (cp) ncz_im_color4f(cp[0], cp[1], cp[2],
-                               (g_client_vao.color_size >= 4) ? cp[3] : 1.0f);
+        if (np && normal_on) ncz_im_normal3f(np[0], np[1], np[2]);
+        if (tp && texcoord_on)
+            ncz_im_tex_coord2f(tp[0], (ts >= 2) ? tp[1] : 0.0f);
+        if (cp && color_on)
+            ncz_im_color4f(cp[0], cp[1], cp[2],
+                           (g_client_vao.color_size >= 4) ? cp[3] : 1.0f);
         ncz_im_vertex3f(vp[0], (vs >= 2) ? vp[1] : 0.0f, (vs >= 3) ? vp[2] : 0.0f);
         vp += vstep;
         if (np) np += nstep;
@@ -2332,18 +2401,39 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer) {
     (void)stride;  /* stride==0 means "tightly packed" — our stride
                     *   calc already handles that */
+    /* Reset the client-VAO state to match the format being set up.
+     * Without this, a subsequent glDrawArrays would walk stale
+     * pointers that a previous glTexCoordPointer / glNormalPointer /
+     * glColorPointer established into heap memory that the caller may
+     * have free()d since (the canonical case is tube.c: it calloc's
+     * a struct array, binds vertex/normal/texcoord pointers into it,
+     * calls glDrawArrays, then free()s the array). The next
+     * glInterleavedArrays call with a different format would then
+     * only re-set some of the pointers, leaving the rest stale —
+     * and glDrawArrays would dereference freed memory. The
+     * `enabled[]` flags are reset to match the format too so
+     * glDrawArrays's `tp && texcoord_on` guard in the per-vertex
+     * loop is correct. */
+    memset(&g_client_vao, 0, sizeof g_client_vao);
     if (format == GL_C3F_V3F) {
         const GLfloat *p = (const GLfloat *)pointer;
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_COLOR_ARRAY);
-        glVertexPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p + 3);
-        glColorPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p);
+        g_client_vao.enabled[0] = true;
+        g_client_vao.enabled[3] = true;
+        g_client_vao.vertex_ptr = p + 3;
+        g_client_vao.vertex_size = 3;
+        g_client_vao.vertex_stride = 6 * sizeof(GLfloat);
+        g_client_vao.color_ptr = p;
+        g_client_vao.color_size = 3;
+        g_client_vao.color_stride = 6 * sizeof(GLfloat);
     } else if (format == GL_N3F_V3F) {
         const GLfloat *p = (const GLfloat *)pointer;
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(3, GL_FLOAT, 6 * sizeof(GLfloat), p + 3);
-        glNormalPointer(GL_FLOAT, 6 * sizeof(GLfloat), p);
+        g_client_vao.enabled[0] = true;
+        g_client_vao.enabled[1] = true;
+        g_client_vao.vertex_ptr = p + 3;
+        g_client_vao.vertex_size = 3;
+        g_client_vao.vertex_stride = 6 * sizeof(GLfloat);
+        g_client_vao.normal_ptr = p;
+        g_client_vao.normal_stride = 6 * sizeof(GLfloat);
     }
     /* Other formats (GL_T2F_V3F, GL_T2F_C3F_V3F, etc.) are not used
      * by the legacy hacks we are porting here. */

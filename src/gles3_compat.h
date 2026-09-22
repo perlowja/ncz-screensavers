@@ -244,6 +244,9 @@ void ncz_im_color3fv(const float *rgb);
 void ncz_im_color4f(float r, float g, float b, float a);
 void ncz_im_color4fv(const float *rgba);
 void ncz_im_tex_coord2f(float u, float v);
+/* ncz_im_rect — GL1 glRect-family analog (axis-aligned 2D rectangle
+ * at z=0 in current color/normal). See gles3_compat.c. */
+void ncz_im_rect(double x1, double y1, double x2, double y2);
 void ncz_im_end(void);
 
 /* Stack-managed state setters. The "current" color/normal/uv/etc.
