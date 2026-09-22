@@ -617,7 +617,9 @@ int main(void) {
         xdg_toplevel_set_app_id(app.xdg_toplevel, "org.nclawzero.screensaver");
         xdg_toplevel_set_fullscreen(app.xdg_toplevel, app.output);
         wl_surface_commit(app.surface);
-        if (wl_display_roundtrip(app.display) < 0) exit(1);
+        for (int i = 0; i < 50 && !app.configured; i++) {
+            if (wl_display_roundtrip(app.display) < 0) exit(1);
+        }
         goto shell_ready;
     }
 
@@ -636,7 +638,13 @@ int main(void) {
         app.layer_surface, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
     zwlr_layer_surface_v1_add_listener(app.layer_surface, &ls_listener, &app);
     wl_surface_commit(app.surface);
-    if (wl_display_roundtrip(app.display) < 0) exit(1);
+    /* A single roundtrip is not always enough: some compositor/renderer
+     * combinations (observed on nvidia's proprietary EGL path) take more
+     * than one dispatch cycle to emit zwlr_layer_surface_v1.configure.
+     * Keep round-tripping, bounded, rather than assuming one is enough. */
+    for (int i = 0; i < 50 && !app.configured; i++) {
+        if (wl_display_roundtrip(app.display) < 0) exit(1);
+    }
 
 shell_ready:
     if (!app.configured) {
