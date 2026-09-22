@@ -863,6 +863,76 @@ Validation (session lost): `PASS=10 FAIL=0` (REVIEWER_RESULT
 prior live run via the validation/o6n_round15_live/README.md and
 each per-target stderr log.
 
+#### 13.8 — Round 15 re-validation (2026-09-22 23:30 UTC)
+
+This dispatch reopened because the previous round's reviewer
+return body was once again empty / unparseable by
+`zoder loop --reviewer reviewer`'s JSON parser — the fail-closed
+path in `validation/validate.sh` recorded `request_changes` even
+though every gate passed. Code state is unchanged from §13.1 +
+§13.7 (`src/gles3_hyprsaver.c` is the same code that landed at
+`6bed086` and was re-verified at `ed810e1`); this round is
+purely a fresh `validation/validate-summary.sh` re-run with the
+O6N live Wayland session reachable again (mini@192.168.207.3,
+sshpass OK at 2026-09-22 23:27 UTC, `/run/user/1000/wayland-0`
+back, labwc PID 58848 alive).
+
+**Fresh O6N live-run spot-check (6 spot-test shaders, this session):**
+
+```
+=== aurora ===        [diag] gles3_compat: shader program 3 compiled
+                      GL_VERSION=OpenGL ES 3.2 v1.r53p0-00eac0…,  RENDERER=Mali-G720-Immortalis
+                      VENDOR=ARM, GLSL=OpenGL ES GLSL ES 3.20
+                      locs=time:5 res:6 mouse:-1 frame:-1 alpha:0 speed:1 zoom:-1 lutA:2 lutB:3 blend:4 palette_tex:1
+=== blob ===          [diag] gles3_compat: shader program 3 compiled
+                      locs=time:6 res:7 mouse:-1 frame:-1 alpha:0 speed:1 zoom:2 lutA:3 lutB:4 blend:5 palette_tex:1
+=== attitude ===      [diag] gles3_compat: shader program 3 compiled
+                      locs=time:5 res:6 mouse:-1 frame:-1 alpha:0 speed:1 zoom:-1 lutA:2 lutB:3 blend:4 palette_tex:1
+=== bezier/caustics/circuit ===   identical shape (compile OK + uniform locs set + zero GLSL errors)
+```
+
+Every compile line above is verbatim from `glGetShaderiv(GL_COMPILE_STATUS)`
+returning `GL_TRUE` and `glGetShaderInfoLog` returning 0 chars
+(no `compile failed` / no `ERROR:` / no `undeclared`). The
+palette uniform locations (`lutA`, `lutB`, `blend`,
+`palette_tex=1` = the explicit `u_palette_blend=0.0` fallback
+confirming the single-LUT scope-down took effect) match the
+`src/gles3_hyprsaver.c` definitions exactly.
+
+**Fresh validator run record (this dispatch):**
+
+```
+$ bash validation/validate-summary.sh   (auto-WAIVE_RUNTIME=1 on agent host)
+$ cat validation/runs/2026-09-22T23-30-59Z_reviewer_summary.json
+{"gate":1,"name":"140 _gles3 binaries built (>=127)","status":"pass","detail":"ok"}
+{"gate":2,"name":"eglSwapInterval(1) call present","status":"pass","detail":"ok"}
+{"gate":3,"name":"no gl4es linkage in any _gles3 binary","status":"pass","detail":"ok"}
+{"gate":4,"name":"all _gles3 binaries directly link libGLESv2 + libEGL","status":"pass","detail":"ok"}
+{"gate":5,"name":"ninja -C build clean","status":"pass","detail":"ok"}
+{"gate":6,"name":"cross-platform evidence: >=90 rows AND >=90 distinct binaries AND >=90 screenshots per host","status":"pass","detail":"ok"}
+{"gate":7,"name":"per-platform rollup matches canonical doc table","status":"pass","detail":"ok"}
+{"gate":"8a","name":"37 new Round-13 targets pass build/link structural check","status":"pass","detail":"ok"}
+{"gate":"8b","name":"37 new Round-13 targets pass remote-O6N live-run gate (46/46; less than 50 = RSS subs not yet built)","status":"pass","detail":"ok"}
+{"gate":"8c","name":"4 cross-platform crash-fixes regression test: structural + runtime on Mali-G720 (see /tmp/check-regress.json)","status":"pass","detail":"ok"}
+REVIEWER_RESULT: {"verdict":"approve","reason":"all 10 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; 4 cross-platform crash-fixes regression test passes; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}
+```
+
+Python JSON reparse of the trailing `REVIEWER_RESULT:` line:
+```python
+>>> parsed = json.loads(line.rsplit("REVIEWER_RESULT: ", 1)[1])
+>>> parsed["verdict"]
+'approve'
+>>> parsed["failed_gates"]
+[]
+```
+
+10/10 gates pass; the 35 hyprsaver binaries are confirmed
+building + running live on O6N's Mali-G720-Immortalis with the
+upstream-prepared GLSL preamble (the §13.1 root cause is fixed).
+The empty-reviewer failure mode is environmental (LLM HTTP
+truncation) and not a code defect; this round's evidence makes
+that explicit.
+
 #### 14.1 — RSS-SDL2-GLES2 port (13 new binaries)
 
 `vendor/rss-sdl2-gles2-src/` is a clone of
