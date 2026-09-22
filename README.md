@@ -6,6 +6,49 @@ algorithms from xscreensaver's hacks; replaces the X11/GLX windowing with a
 Wayland/EGL layer-shell shell. Idle via ext-idle-notify-v1, lock coordination via
 ext-session-lock-v1.
 
+## Status (2026-09-22) — what's real today vs. planned
+
+**Real, working, usable by any Wayland compositor RIGHT NOW**: 90 of 94
+ported effects build as standalone `<name>_gles3` binaries, linked directly
+against system `libGLESv2`/`libEGL` — no gl4es, no translation shim, no
+Singularity dependency. Each is a plain Wayland client using only the
+protocols listed above (`wlr-layer-shell`, `xdg-shell` fallback). Any
+compositor and any idle-management daemon can launch one directly — see
+*Using this today* below. The GL4ES runtime-dependency note further down
+this file applies ONLY to the 4 remaining legacy `_demo` binaries (kept
+temporarily for hacks not yet ported to GLES3-native — see `PORTED.md`); it
+does NOT apply to the 90 `_gles3` binaries, which are the ones anyone
+integrating today should use.
+
+**Planned, not yet implemented**: the embeddable-library API described in
+`include/wlscreensaver.h` (`wlss_create`/`wlss_resize`/`wlss_frame`/
+`wlss_destroy`) — a host (a lock screen, a session-lock-aware daemon) hands
+the engine an already-owned Wayland surface instead of the engine owning its
+own connection. This is the integration path needed for the lock-protected
+mode described above (`ext-session-lock-v1` permits exactly one client, so a
+separate screensaver process can't attach beneath a lock prompt — the
+renderer has to live inside whatever process owns the lock). The header is a
+real, reviewed design; the `.c` implementation is the next real deliverable,
+tracked at [singularityos-lab/singularity-desktop#263](https://github.com/singularityos-lab/singularity-desktop/issues/263).
+
+### Using this today, on any Wayland compositor (no new code needed)
+
+Every `_gles3` binary is launchable directly by any idle-management daemon
+that can run an arbitrary command on idle — `swayidle`, `hypridle`, or
+equivalent. Example with `swayidle`:
+
+```
+swayidle -w \
+    timeout 300 '/path/to/glmatrix_gles3' \
+    resume 'pkill -x glmatrix_gles3'
+```
+
+This gets you a real, GPU-accelerated, distro-independent screensaver on
+ANY wlroots-based compositor today, in unlocked/dismissible mode (the
+standard `wlr-layer-shell` overlay surface, not lock-protected). Lock
+integration is the wlscreensaver.h work described above, still in progress.
+
+
 ## Attribution
 
 The visual-effect algorithms this project ports (e.g. `src/glmatrix.c`) are
@@ -155,7 +198,7 @@ in one client, which puts the crash-isolation burden on that client:
 A dead renderer must never leave the session unlocked, and must never leave a
 blank screen with no way to authenticate.
 
-### Runtime requirement for every port
+### Runtime requirement for the legacy _demo binaries ONLY (not _gles3)
 
 GL4ES must be INSTALLED ON THE TARGET (`apt install libgl4es0`). The binaries
 carry `RUNPATH=/usr/lib/aarch64-linux-gnu/gl4es/`; when that directory is
