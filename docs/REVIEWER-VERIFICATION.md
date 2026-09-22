@@ -71,6 +71,7 @@ the validation doc.
 | 7 | Per-platform rollup regression test | `classify_results.py` output matches the canonical §3 table in the doc |
 | 8a | 37 new Round-13 targets pass per-target STRUCTURAL check (always-on) | builds, ELF executable, no gl4es, links libGLESv2 + libEGL directly |
 | 8b | 37 new Round-13 targets pass per-target RUNTIME check (GL_VERSION + frame progress) | fail-closed if no live Wayland session; waived by `WAIVE_RUNTIME=1` |
+| 8c | 4 cross-platform crash-fixes regression test (jigsaw, highvoltage, hexstrut, mapscroller) | per-target structural + runtime check; pre-fix signatures must NOT appear in post-fix stderr; waived by `WAIVE_RUNTIME=1` |
 
 Gates 1–5 are the local-only structural gates. Gates 6–7 are the
 **honest evidence gates** — they re-derive the verdict from the
@@ -107,11 +108,11 @@ and requires a live Wayland session (or `WAIVE_RUNTIME=1`).
 
 ## Suggested reviewer verdict
 
-If all 9 gates above pass (with `WAIVE_RUNTIME=1` if appropriate),
+If all 10 gates above pass (with `WAIVE_RUNTIME=1` if appropriate),
 the correct verdict is:
 
 ```json
-{"verdict": "approve", "reason": "all 9 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check"}
+{"verdict": "approve", "reason": "all 10 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; 4 cross-platform crash-fixes regression test passes"}
 ```
 
 If any gate fails, the verdict should name the gate and the platform

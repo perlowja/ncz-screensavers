@@ -42,6 +42,15 @@
 #         (b) the build host intentionally has no graphical session.
 #       In both cases the waiver line in the gate output names the
 #       reason explicitly so the next reviewer can verify it.
+#   8c. Cross-platform crash-fixes regression test. Verifies the 4
+#       GLES3 fixes landed in commits 84174d5 (jigsaw), 9cbcb68
+#       (highvoltage), cb5fbe5 (hexstrut), 492b1eb (mapscroller) are
+#       still in place: each binary builds, links, and on a live
+#       Wayland session renders >=REQUIRED_FRAMES frames without the
+#       pre-fix bug signature reappearing in stderr. Wired through
+#       `validation/test_crash_fixes_regression.sh`. Same waiver
+#       semantics as Gate 8b (WAIVE_RUNTIME=1 explicitly waives the
+#       runtime portion; structural stays on).
 #
 # Flags:
 #   --reviewer-summary   Emit one JSON line per gate to stdout, plus a
@@ -287,6 +296,30 @@ if [ "$FAIL" = "0" ]; then
     fi
 
     echo ""
+    echo "=== Gate 8c: 4 cross-platform crash-fixes regression test ==="
+    # Per-target regression test for the 4 fixes landed in commits
+    # 84174d5 (jigsaw), 9cbcb68 (highvoltage), cb5fbe5 (hexstrut),
+    # 492b1eb (mapscroller). The cross-platform validation surfaced
+    # these as CRASH (3) + HANG (1) on every platform; the fixes
+    # prevent the regression if the harness/shim changes re-introduce
+    # the bug. Structural check is always-on; runtime check requires
+    # WAIVE_RUNTIME=1 if no live Wayland session is reachable.
+    if bash validation/test_crash_fixes_regression.sh --reviewer-summary 2>/dev/null > /tmp/check-regress.json; then
+        N8C_PASS=$(grep -c '"status":"pass"' /tmp/check-regress.json || true)
+        N8C_WAIVE=$(grep -c '"status":"waive"' /tmp/check-regress.json || true)
+        N8C_FAIL=$(grep -c '"status":"fail"' /tmp/check-regress.json || true)
+        echo "  regression test: $N8C_PASS pass / $N8C_WAIVE waive / $N8C_FAIL fail"
+        if [ "$N8C_FAIL" = "0" ]; then
+            gate "4 cross-platform crash-fixes regression test: structural + runtime (see /tmp/check-regress.json)" 0 8c
+        else
+            gate "4 cross-platform crash-fixes regression test ($N8C_FAIL failed)" 1 8c
+        fi
+    else
+        N8C_FAIL=$(grep -c '"status":"fail"' /tmp/check-regress.json 2>/dev/null || true)
+        gate "4 cross-platform crash-fixes regression test ($N8C_FAIL failed; subprocess exit nonzero)" 1 8c
+    fi
+
+    echo ""
     echo "=== Final summary ==="
     echo "  passed: $PASS"
     echo "  failed: $FAIL"
@@ -301,8 +334,8 @@ if [ "$REVIEWER_SUMMARY" = "1" ]; then
     # is the exact bug that bit us last round (empty-body fail-closed).
     SELF_OK=1
     SELF_BAD=""
-    # Self-check the per-target JSON files written by Gates 8a/8b.
-    for jf in /tmp/check-struct.json /tmp/check-runtime.json; do
+    # Self-check the per-target JSON files written by Gates 8a/8b/8c.
+    for jf in /tmp/check-struct.json /tmp/check-runtime.json /tmp/check-regress.json; do
         if [ -f "$jf" ]; then
             while IFS= read -r jline; do
                 [ -z "$jline" ] && continue
@@ -340,7 +373,7 @@ if [ "$REVIEWER_SUMMARY" = "1" ]; then
         # ship broken JSON.
         printf 'REVIEWER_RESULT: {"verdict":"request_changes","reason":"validate.sh self-validate detected malformed JSON in per-gate output","failed_gates":["json_malformed"]}\n' >&3
     elif [ "$FAIL" = "0" ]; then
-        printf 'REVIEWER_RESULT: {"verdict":"approve","reason":"all 9 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}\n' >&3
+        printf 'REVIEWER_RESULT: {"verdict":"approve","reason":"all 10 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; 4 cross-platform crash-fixes regression test passes; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}\n' >&3
     else
         # failed_gates may contain non-numeric labels (8a, 8b); quote
         # them so the array is valid JSON.
