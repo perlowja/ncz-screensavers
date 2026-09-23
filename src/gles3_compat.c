@@ -222,6 +222,7 @@ typedef struct {
     bool    has_texture;
     GLuint  bound_tex;
     bool    use_flat;
+    float   point_size;
 } ncz_im_state;
 
 static ncz_im_state g_im = { 0 };
@@ -239,6 +240,7 @@ typedef struct {
     GLint   u_has_texture;
     GLint   u_tex;
     GLint   u_use_flat;
+    GLint   u_point_size;
     GLint   a_pos;
     GLint   a_normal;
     GLint   a_color;
@@ -305,12 +307,18 @@ static const char *VERT_SHADER =
     "uniform bool u_has_texture;\n"
     "uniform bool u_use_flat;\n"
     "uniform sampler2D u_tex;\n"
+    "uniform float u_point_size;\n"
     "flat out vec3 v_flat_normal;\n"
     "out vec3 v_normal;\n"
     "out vec4 v_color;\n"
     "out vec2 v_uv;\n"
     "void main() {\n"
     "  gl_Position = u_mvp * vec4(a_pos, 1.0);\n"
+    "  /* GL_POINTS support: gl_PointSize defaults to 1.0 in GLES3;\n"
+    "   * set it from u_point_size when the uniform is bound (>0.0)\n"
+    "   * so the flux saver's \"lights\" geometry mode renders visible\n"
+    "   * particles instead of single-pixel dots. */\n"
+    "  gl_PointSize = u_point_size > 0.0 ? u_point_size : 1.0;\n"
     "  vec3 N = mat3(u_modelview) * a_normal;\n"
     "  v_normal = N;\n"
     "  v_flat_normal = N;\n"
@@ -415,6 +423,7 @@ static int compile_program(void) {
     U(has_texture);
     U(tex);
     U(use_flat);
+    U(point_size);
 #undef U
 #define A(x) g_rt.a_##x = glGetAttribLocation(p, "a_" #x)
     A(pos);
@@ -1275,7 +1284,14 @@ static void im_flush_as_draw(void) {
                g_im.primitive == GL_LINE_LOOP ||
                g_im.primitive == GL_LINE_STRIP ||
                g_im.primitive == GL_TRIANGLE_FAN ||
-               g_im.primitive == GL_TRIANGLE_STRIP) {
+               g_im.primitive == GL_TRIANGLE_STRIP ||
+               g_im.primitive == GL_POINTS) {
+        /* GL_POINTS is value 0x0000 in GLES3 — handled here in the
+         * same pass-through branch as the others (each vertex becomes
+         * one point, drawn with gl_PointSize controlled by the
+         * g_im.point_size uniform on the shader). Flux and any other
+         * saver that uses immediate-mode GL_POINTS (e.g. flux's
+         * "lights" geometry mode) routes through here. */
         prim = g_im.primitive;
     } else if (g_im.primitive == GL_POLYGON) {
         /* GL_POLYGON fills a single convex polygon fanned from the
@@ -1308,6 +1324,16 @@ static void im_flush_as_draw(void) {
         if (g_rt.u_tex >= 0) glUniform1i(g_rt.u_tex, 0);
     }
     if (g_rt.u_use_flat >= 0) glUniform1i(g_rt.u_use_flat, g_im.use_flat ? 1 : 0);
+    if (g_rt.u_point_size >= 0) glUniform1f(g_rt.u_point_size, g_im.point_size);
+
+    /* Drain post-draw errors and convert them to stderr lines (so
+     * they're visible without changing the harness's exit semantics). */
+    {
+        GLenum e;
+        while ((e = glGetError()) != GL_NO_ERROR) {
+            fprintf(stderr, "gles3_compat: glError 0x%x after draw\n", (unsigned)e);
+        }
+    }
 
     /* THE DRAW CALL — must be issued while the program is bound and the
      * VAO + IBO (if any) are bound. We call libGLESv2's real
@@ -1557,6 +1583,7 @@ void nczGLList_draw(const nczGLListChain *chain) {
         glUniform1i(g_rt.u_tex, 0);
     }
     glUniform1i(g_rt.u_use_flat, g_im.use_flat ? 1 : 0);
+    if (g_rt.u_point_size >= 0) glUniform1f(g_rt.u_point_size, g_im.point_size);
 
     for (int i = 0; i < chain->count; i++) {
         nczGLListNode *n = &chain->nodes[i];
@@ -1597,6 +1624,7 @@ void nczGLList_draw_wire(const nczGLListChain *chain) {
         glUniform1i(g_rt.u_tex, 0);
     }
     glUniform1i(g_rt.u_use_flat, g_im.use_flat ? 1 : 0);
+    if (g_rt.u_point_size >= 0) glUniform1f(g_rt.u_point_size, g_im.point_size);
     glLineWidth(g_im.line_width > 0 ? g_im.line_width : 1.0f);
 
     for (int i = 0; i < chain->count; i++) {
@@ -2447,7 +2475,7 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer) {
  * vendored gl.h prototype that IS visible at the call site, so the
  * prototypes are not the problem — the implementations are. Provide
  * them as no-ops / passthroughs. */
-void glPointSize(GLfloat size)   { (void)size; /* future: uniform */ }
+void glPointSize(GLfloat size)   { g_im.point_size = size; /* uploaded as u_point_size in vertex shader */ }
 void glDrawBuffer(GLenum buf)    { (void)buf;  /* single-buffer: front==back */ }
 
 void glGetFloatv(GLenum p, GLfloat *v) {
