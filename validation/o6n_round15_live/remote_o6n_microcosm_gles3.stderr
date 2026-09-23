@@ -7,10 +7,9 @@ GLSL=OpenGL ES GLSL ES 3.20
 [diag] no zwlr_layer_shell_v1; falling back to a fullscreen xdg_toplevel
 [diag] gles3_harness: calling init...
 [diag] gles3_harness: init returned
-[diag] initial draw: 2194x1234 configured=1
+[diag] initial draw: 1920x1080 configured=1
 [diag] initial draw_cb returned; swapping
 [diag] frame #0
 [diag] frame #1
 [diag] frame #2
 [diag] frame #3
-[diag] frame #4
