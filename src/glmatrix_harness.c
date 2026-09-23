@@ -665,14 +665,21 @@ int main(void) {
         xdg_toplevel_add_listener(app.xdg_toplevel, &xdg_top_listener, &app);
         xdg_toplevel_set_title(app.xdg_toplevel, "GLMatrix");
         xdg_toplevel_set_app_id(app.xdg_toplevel, "org.nclawzero.screensaver");
-        xdg_toplevel_set_fullscreen(app.xdg_toplevel, app.output);
+        /* NULL, not app.output -- see gles3_harness.c's identical fix
+         * (2026-09-22): reg_global binds whichever wl_output the registry
+         * advertises first, not necessarily the one actually connected to a
+         * monitor on a multi-connector board. NULL lets the compositor
+         * pick a real output itself. */
+        xdg_toplevel_set_fullscreen(app.xdg_toplevel, NULL);
         wl_surface_commit(app.surface);
         if (wl_display_roundtrip(app.display) < 0) exit(1);
         goto shell_ready;
     }
 
+    /* NULL output -- see the comment on the xdg_toplevel_set_fullscreen
+     * fallback path above; same reasoning applies to the layer-shell path. */
     app.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        app.layer_shell, app.surface, app.output,
+        app.layer_shell, app.surface, NULL,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "glmatrix");
     if (!app.layer_surface) {
         fprintf(stderr, "glmatrix_harness: get_layer_surface failed\n");

@@ -615,7 +615,16 @@ int main(void) {
         xdg_toplevel_add_listener(app.xdg_toplevel, &xdg_top_listener, &app);
         xdg_toplevel_set_title(app.xdg_toplevel, "ncz-gles3");
         xdg_toplevel_set_app_id(app.xdg_toplevel, "org.nclawzero.screensaver");
-        xdg_toplevel_set_fullscreen(app.xdg_toplevel, app.output);
+        /* NULL, not app.output: reg_global binds whichever wl_output the
+         * registry happens to advertise first, which on a multi-connector
+         * board (O6N: DP-1/DP-2/DP-3 + 6 writeback pseudo-outputs) is not
+         * necessarily the one actually connected to a monitor. Passing NULL
+         * tells the compositor to pick a real output itself, per the
+         * xdg_toplevel.set_fullscreen protocol spec. Fixed 2026-09-22 after
+         * a live O6N test rendered 4500+ correct frames with zero errors
+         * while showing nothing on the actual (DP-2) display -- it was
+         * fullscreening onto a disconnected output the whole time. */
+        xdg_toplevel_set_fullscreen(app.xdg_toplevel, NULL);
         wl_surface_commit(app.surface);
         for (int i = 0; i < 50 && !app.configured; i++) {
             if (wl_display_roundtrip(app.display) < 0) exit(1);
@@ -623,8 +632,10 @@ int main(void) {
         goto shell_ready;
     }
 
+    /* NULL output -- see the comment on the xdg_toplevel_set_fullscreen
+     * fallback path above; same reasoning applies to the layer-shell path. */
     app.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        app.layer_shell, app.surface, app.output,
+        app.layer_shell, app.surface, NULL,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "gles3-hack");
     if (!app.layer_surface) {
         fprintf(stderr, "gles3_harness: get_layer_surface failed\n");
