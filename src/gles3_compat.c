@@ -273,6 +273,11 @@ static ncz_runtime g_rt = { 0 };
  * the per-frame cost is one indirect call. */
 static void (*real_glDrawArrays)(GLenum mode, GLint first, GLsizei count) = NULL;
 
+void ncz_gles3_draw_arrays(GLenum mode, GLint first, GLsizei count) {
+    /* runtime_init resolves this before any hack's init/draw callbacks. */
+    real_glDrawArrays(mode, first, count);
+}
+
 /* Same issue, same fix: gllist draw (gllist_draw_with_prim below) can call
  * glDrawArrays when client arrays are still bound from earlier immediate-mode
  * work, and our local wrapper would recurse through ncz_im_end. */

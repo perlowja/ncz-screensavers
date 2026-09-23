@@ -509,4 +509,8 @@ GLuint ncz_shader_program(void);    /* lazy-compiled singleton */
 int  ncz_gles3_runtime_init(void);
 void ncz_gles3_runtime_fini(void);
 
+/* Issue a native GLES draw for callers with VBO/VAO state. The legacy
+ * glDrawArrays shim in gles3_compat.c only handles GL1 client arrays. */
+void ncz_gles3_draw_arrays(GLenum mode, GLint first, GLsizei count);
+
 #endif /* NCZ_GLES3_COMPAT_H */

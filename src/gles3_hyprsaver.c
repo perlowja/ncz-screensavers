@@ -712,15 +712,9 @@ hyprsaver_init(ModeInfo *mi) {
          1.f,  1.f,
     };
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
-    /* Note: deliberately NOT using a VAO here. The harness's gles3_compat
-     * layer (gles3_compat.c) sets up its own scratch_vao with its own
-     * attribute layout for the ncz_im_* immediate-mode helpers — using
-     * a second VAO and binding it from our draw path confuses the
-     * Mali-G720 EGL winsys on O6N (verified empirically: glReadPixels
-     * returns zeros even with a forced-red wrapper main). Binding the
-     * VBO + re-asserting the attribute pointer per draw matches the
-     * pattern in src/wl-screenhack.c (also GLES3-native, no VAO) and
-     * works correctly here. */
+    /* This quad uses the default VAO and reasserts its VBO attribute
+     * pointer per draw. The compat runtime's scratch VAO belongs to its
+     * immediate-mode helpers and has a different attribute layout. */
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     /* Cache uniform locations — a shader that doesn't declare a given
@@ -845,15 +839,14 @@ hyprsaver_draw(ModeInfo *mi) {
         glActiveTexture(GL_TEXTURE0);
     }
 
-    /* Bind VBO + re-assert attribute pointer per draw (NO VAO). See
-     * init() for the rationale (Mali-G720 EGL winsys on O6N treats
-     * VAO bindings from a separate program differently from VBO-only
-     * binding + per-frame attribute pointer re-assertion, and the
-     * latter produces the expected draw output). */
+    /* Bind the VBO and reassert the quad's attribute pointer each draw. */
     glBindBuffer(GL_ARRAY_BUFFER, st->vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    /* The compat layer's glDrawArrays shim handles GL1 client arrays and
+     * silently ignores VBO draws. Use its native GLES entry point here. */
+    glDisable(GL_DEPTH_TEST);
+    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -973,4 +966,3 @@ struct xscreensaver_function_table HACK_TABLE = {
     .opts        = &HACK_PREFIX_opts,
     .defaults_str = DEFAULTS,
 };
-
