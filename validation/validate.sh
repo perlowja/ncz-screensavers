@@ -292,12 +292,20 @@ if [ "$FAIL" = "0" ]; then
             | grep -q O6N_REACHABLE; then
         O6N_REACHABLE=1
         # The shell login session can survive after the Wayland
-        # session ends — the wayland-0 socket is the right tell.
-        # If it's gone, the user logged out (or got dropped from
-        # greetd) and the live MALI-G720 path is unreachable.
+        # session ends — the wayland-0 socket is the right tell,
+        # BUT a socket alone isn't enough: the greeter labwc
+        # sometimes binds wayland-0 and refuses client connections
+        # until the user logs in via greetd. Probe with `wlr-randr`
+        # which is a real wl_display_connect + roundtrip; if it
+        # succeeds, the compositor is accepting clients. If it
+        # fails, the socket exists but no real session is active
+        # — fall back to the REMOTE_O6N_NOWAYLAND_WAIVE path so
+        # we don't burn 50 sshpass calls into guaranteed fails.
         if sshpass -p 'mini' ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no \
-            -o ConnectTimeout=3 mini@192.168.207.3 \
-            "test -S /run/user/1000/wayland-0 && echo WAYLAND_LIVE" 2>/dev/null \
+            -o ConnectTimeout=5 mini@192.168.207.3 \
+            "test -S /run/user/1000/wayland-0 && \
+             WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
+             wlr-randr >/dev/null 2>&1 && echo WAYLAND_LIVE" 2>/dev/null \
             | grep -q WAYLAND_LIVE; then
             O6N_WAYLAND_LIVE=1
         fi

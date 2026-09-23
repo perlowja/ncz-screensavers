@@ -335,8 +335,12 @@ check_target_remote_o6n() {
     # every binary will fail with "wl_display_connect failed" —
     # that's a session-loss, NOT a code regression. Detect and
     # waive explicitly so we don't produce noise in the run record.
+    # Probe with `wlr-randr` so we don't false-positive on the
+    # greetd-bound labwc that exists during a session-less state.
     if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
-            "test -S /run/user/1000/wayland-0 && echo WAYLAND_LIVE" 2>/dev/null \
+            "test -S /run/user/1000/wayland-0 && \
+             WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
+             wlr-randr >/dev/null 2>&1 && echo WAYLAND_LIVE" 2>/dev/null \
             | grep -q WAYLAND_LIVE; then
         printf "  [WAIVE] %s: O6N shell reachable but live Wayland session ended (wayland-0 socket gone); runtime evidence unavailable this run\n" \
             "$target" >&2

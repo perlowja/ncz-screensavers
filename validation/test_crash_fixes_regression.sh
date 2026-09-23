@@ -418,8 +418,12 @@ if [ "$MODE" = "remote_o6n" ]; then
     fi
     # Detect "live Wayland session ended" — fail-closed if so unless
     # REMOTE_O6N_NOWAYLAND_WAIVE=1 (same env knob as Gate 8b uses).
+    # Probe with `wlr-randr` so we don't false-positive on the
+    # greetd-bound labwc that exists during a session-less state.
     if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
-            "test -S /run/user/1000/wayland-0 && echo WAYLAND_LIVE" 2>/dev/null \
+            "test -S /run/user/1000/wayland-0 && \
+             WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
+             wlr-randr >/dev/null 2>&1 && echo WAYLAND_LIVE" 2>/dev/null \
             | grep -q WAYLAND_LIVE; then
         if [ "${REMOTE_O6N_NOWAYLAND_WAIVE:-1}" = "1" ]; then
             echo "WARN: O6N live Wayland session ended; runtime evidence waived via REMOTE_O6N_NOWAYLAND_WAIVE=1" >&2
