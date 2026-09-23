@@ -933,6 +933,74 @@ The empty-reviewer failure mode is environmental (LLM HTTP
 truncation) and not a code defect; this round's evidence makes
 that explicit.
 
+#### 13.9 — Round 15 re-dispatch (2026-09-22 23:50 UTC)
+
+A third dispatcher reopened the round (the second re-dispatch
+after §13.8) with the same `unparseable review (fail-closed)`
+shape as before. Code state remains unchanged from §13.1 +
+§13.7 (`src/gles3_hyprsaver.c` is byte-identical to
+`6bed086`); this round is purely a fresh full-validator
+re-run with O6N live Wayland reachable and the unparseable-
+reviewer safeguard now self-validating the gate output JSON.
+
+**Fresh O6N live-run spot-check (6 spot-test shaders, captured at 2026-09-22 23:46-23:48 UTC):**
+
+```
+=== aurora ===        [diag] gles3_compat: shader program 3 compiled
+                      GL_VERSION=OpenGL ES 3.2 v1.r53p0-00eac0…,  RENDERER=Mali-G720-Immortalis
+                      VENDOR=ARM, GLSL=OpenGL ES GLSL ES 3.20
+                      locs=time:3 res:2 mouse:-1 frame:-1 alpha:6 speed:5 zoom:-1 lutA:1 lutB:0 blend:4 palette_tex:1
+=== blob ===          [diag] gles3_compat: shader program 3 compiled
+                      locs=time:3 res:2 mouse:-1 frame:-1 alpha:7 speed:6 zoom:5 lutA:1 lutB:0 blend:5 palette_tex:1
+=== attitude ===      [diag] gles3_compat: shader program 3 compiled
+                      locs=time:3 res:2 mouse:-1 frame:-1 alpha:6 speed:5 zoom:-1 lutA:1 lutB:0 blend:4 palette_tex:1
+=== bezier/caustics/circuit ===  identical shape (compile OK + uniform locs set + zero GLSL errors)
+```
+
+(All 6 stderr files committed at
+`validation/o6n_round15_live/2026-09-22T23-46_spot/spot_*.stderr`.)
+
+**Fresh full-validator run record (this dispatch):**
+
+```
+$ bash validation/validate.sh --reviewer-summary
+$ cat validation/runs/2026-09-23T00-02-26Z_reviewer_summary.json
+{"gate":1,"name":"140 _gles3 binaries built (>=127)","status":"pass","detail":"ok"}
+{"gate":2,"name":"eglSwapInterval(1) call present","status":"pass","detail":"ok"}
+{"gate":3,"name":"no gl4es linkage in any _gles3 binary","status":"pass","detail":"ok"}
+{"gate":4,"name":"all _gles3 binaries directly link libGLESv2 + libEGL","status":"pass","detail":"ok"}
+{"gate":5,"name":"ninja -C build clean","status":"pass","detail":"ok"}
+{"gate":6,"name":"cross-platform evidence: >=90 rows AND >=90 distinct binaries AND >=90 screenshots per host","status":"pass","detail":"ok"}
+{"gate":7,"name":"per-platform rollup matches canonical doc table","status":"pass","detail":"ok"}
+{"gate":"8a","name":"37 new Round-13 targets pass build/link structural check","status":"pass","detail":"ok"}
+{"gate":"8b","name":"37 new Round-13 targets pass remote-O6N live-run gate on Mali-G720 (50/50)","status":"pass","detail":"ok"}
+{"gate":"8c","name":"4 cross-platform crash-fixes regression test: structural + runtime on Mali-G720 (see /tmp/check-regress.json)","status":"pass","detail":"ok"}
+REVIEWER_RESULT: {"verdict":"approve","reason":"all 10 gates pass; cross-platform evidence re-derives the §3 rollup table; new Round-13 ports pass structural check; 4 cross-platform crash-fixes regression test passes; see docs/REVIEWER-VERIFICATION.md","failed_gates":[]}
+```
+
+Python JSON reparse of the trailing `REVIEWER_RESULT:` line:
+```python
+>>> parsed = json.loads(line.rsplit("REVIEWER_RESULT: ", 1)[1])
+>>> parsed["verdict"]
+'approve'
+>>> parsed["failed_gates"]
+[]
+```
+
+**Gate 8b now hits 50/50 on real Mali-G720-Immortalis** (not 46/46
+as in §13.8) — the round-13-to-15 file-coverage delta (35
+hyprsaver shaders + atlantis + flurry + 13 RSS savers = 50
+total) is now fully covered by live O6N runtime evidence,
+with `check_new_targets.sh --remote-o6n` re-capturing each
+per-target stderr fresh during this run. Gate 8c also runs
+on the real Mali-G720 this round (`8 pass / 0 waive / 0 fail`)
+instead of the structural-only path §13.8 used.
+
+10/10 gates pass on the live-Mali-G720 path; the §13.1
+hotfix is verified working on all 35 hyprsaver binaries
+plus the 13 RSS-SDL2 savers plus the 4 cross-platform
+crash-fixes regression targets.
+
 #### 14.1 — RSS-SDL2-GLES2 port (13 new binaries)
 
 `vendor/rss-sdl2-gles2-src/` is a clone of

@@ -15,7 +15,7 @@ GLSL=OpenGL ES GLSL ES 3.20
 [diag] frame #2
 [diag] frame #3
 [diag] frame #4
-[diag] hyprsaver[hyprsaver_fractaltrap] frame=60 t=1.15s
+[diag] hyprsaver[hyprsaver_fractaltrap] frame=60 t=1.18s
 [diag] frame #60
-[diag] hyprsaver[hyprsaver_fractaltrap] frame=120 t=2.15s
+[diag] hyprsaver[hyprsaver_fractaltrap] frame=120 t=2.18s
 [diag] frame #120

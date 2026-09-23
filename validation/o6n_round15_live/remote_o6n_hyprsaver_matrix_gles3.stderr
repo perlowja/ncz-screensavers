@@ -15,7 +15,7 @@ GLSL=OpenGL ES GLSL ES 3.20
 [diag] frame #2
 [diag] frame #3
 [diag] frame #4
-[diag] hyprsaver[hyprsaver_matrix] frame=60 t=1.20s
+[diag] hyprsaver[hyprsaver_matrix] frame=60 t=1.19s
 [diag] frame #60
-[diag] hyprsaver[hyprsaver_matrix] frame=120 t=2.20s
+[diag] hyprsaver[hyprsaver_matrix] frame=120 t=2.19s
 [diag] frame #120
