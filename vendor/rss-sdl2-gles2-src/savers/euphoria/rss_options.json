@@ -1,0 +1,91 @@
+{
+ "saver": "euphoria",
+ "options": [
+  {
+   "opt": "default",
+   "kind": "preset",
+   "min": 1,
+   "max": 9,
+   "default": 1,
+   "names": {
+    "1": "Regular",
+    "2": "Grid",
+    "3": "Cubism",
+    "4": "Bad math",
+    "5": "Jack",
+    "6": "Overdose",
+    "7": "Nowhere",
+    "8": "Echo",
+    "9": "Kaleidoscope"
+   }
+  },
+  {
+   "opt": "wisps",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 5
+  },
+  {
+   "opt": "background",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "density",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 35
+  },
+  {
+   "opt": "visibility",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 35
+  },
+  {
+   "opt": "speed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 15
+  },
+  {
+   "opt": "feedback",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "feedbackspeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 1
+  },
+  {
+   "opt": "feedbacksize",
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "wireframe",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 0
+  },
+  {
+   "opt": "texture",
+   "min": 0,
+   "max": 4,
+   "kind": "int",
+   "default": 4
+  }
+ ]
+}

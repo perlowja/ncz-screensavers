@@ -1,0 +1,61 @@
+{
+ "saver": "helios",
+ "options": [
+  {
+   "opt": "ions",
+   "min": 1,
+   "max": 30000,
+   "kind": "int",
+   "default": 1500
+  },
+  {
+   "opt": "size",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "emitters",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 3
+  },
+  {
+   "opt": "attracters",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 3
+  },
+  {
+   "opt": "speed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "cameraspeed",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "surface",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "blur",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  }
+ ]
+}

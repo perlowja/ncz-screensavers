@@ -1,4 +1,3 @@
-
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -200,31 +199,3 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-
-
------------------------------------------------------------------------
-ATTRIBUTION (informational — does NOT alter the Apache-2.0 grant above)
------------------------------------------------------------------------
-
-This project includes, references, or is derived from work originally
-distributed under a variety of licenses. The Apache-2.0 grant above applies
-to OUR original work; each upstream component retains its own license:
-
- 1. xscreensaver hacks (src/*.c, ~90 files):
-    Copyright (c) 1988-2024 Jamie Zawinski <jwz@jwz.org> and contributors.
-    MIT-style X Consortium license — see per-file headers.
-
- 2. vendor/hyprsaver/ (35 GLSL fragment shaders, src/gles3_hyprsaver.c):
-    Copyright (c) 2026 Mara Vexa.
-    MIT license — see vendor/hyprsaver/LICENSE.
-
- 3. vendor/rss-sdl2-gles2-src/savers/<name>/<name>.cpp
-    (13 savers: cyclone, euphoria, fieldlines, flocks, flux, helios,
-    hyperspace, implicitdemo, lattice, microcosm, plasma, skyrocket,
-    solarwinds):
-    Copyright (C) 1999-2010 Terence M. Welsh.
-    GPL-2.0 — original "Really Slick Screensavers" series. Headers are
-    preserved verbatim at the top of the corresponding
-    src/<name>_gles3.c files.
-    Intermediate port: erik-larsen/rss-sdl2-gles2 (Apache-2.0) —
-    vendor/rss-sdl2-gles2-src/LICENSE.

@@ -1,0 +1,75 @@
+{
+ "saver": "microcosm",
+ "options": [
+  {
+   "opt": "stime",
+   "min": 0,
+   "max": 300,
+   "kind": "int",
+   "default": 60
+  },
+  {
+   "opt": "ktime",
+   "min": 0,
+   "max": 300,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "background",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "resolution",
+   "min": 20,
+   "max": 100,
+   "kind": "int",
+   "default": 50
+  },
+  {
+   "opt": "depth",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 4
+  },
+  {
+   "opt": "gizmospeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "colorspeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "cameraspeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "shaders",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "fog",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  }
+ ]
+}

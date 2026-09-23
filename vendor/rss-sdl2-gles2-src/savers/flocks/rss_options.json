@@ -1,0 +1,75 @@
+{
+ "saver": "flocks",
+ "options": [
+  {
+   "opt": "leaders",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 4
+  },
+  {
+   "opt": "followers",
+   "min": 0,
+   "max": 10000,
+   "kind": "int",
+   "default": 1000
+  },
+  {
+   "opt": "geometry",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "size",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 5
+  },
+  {
+   "opt": "complexity",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 1
+  },
+  {
+   "opt": "speed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 15
+  },
+  {
+   "opt": "stretch",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "colorfadespeed",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 15
+  },
+  {
+   "opt": "chromatek",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 0
+  },
+  {
+   "opt": "connections",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 0
+  }
+ ]
+}

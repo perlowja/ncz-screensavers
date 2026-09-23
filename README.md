@@ -58,7 +58,7 @@ Panthor), not renders or mockups:
 
 ## Status (2026-09-22) — what's real today vs. planned
 
-**Real, working, usable by any Wayland compositor RIGHT NOW**: 90 of 94
+**Real, working, usable by any Wayland compositor RIGHT NOW**: 103 of 107
 ported effects build as standalone `<name>_gles3` binaries, linked directly
 against system `libGLESv2`/`libEGL` — no gl4es, no translation shim, no
 Singularity dependency. Each is a plain Wayland client using only the
@@ -67,7 +67,7 @@ compositor and any idle-management daemon can launch one directly — see
 *Using this today* below. The GL4ES runtime-dependency note further down
 this file applies ONLY to the 4 remaining legacy `_demo` binaries (kept
 temporarily for hacks not yet ported to GLES3-native — see `PORTED.md`); it
-does NOT apply to the 90 `_gles3` binaries, which are the ones anyone
+does NOT apply to the 103 `_gles3` binaries, which are the ones anyone
 integrating today should use.
 
 **Planned, not yet implemented**: the embeddable-library API described in
@@ -168,6 +168,23 @@ affiliated with or endorsed by jwz. jwz has publicly and consistently stated
 he will not support Wayland in xscreensaver itself; that position is his to
 hold, and is unrelated to the credit owed him for the hacks' original
 authorship, which this project maintains in full.
+
+The Round 15 batch (cyclone, euphoria, fieldlines, flocks, flux, helios,
+hyperspace, implicitdemo, lattice, microcosm, plasma, skyrocket, solarwinds)
+originates from
+[erik-larsen/rss-sdl2-gles2](https://github.com/erik-larsen/rss-sdl2-gles2)'s
+SDL2 / OpenGL ES2 wrapper (Apache-2.0) around the original "Really Slick
+Screensavers" by **Terence Welsh** (GPL-2.0, 1999-2010). The per-saver
+algorithm copyrights are preserved verbatim at the top of each
+`src/<name>_gles3.c` file; the rss-sdl2-gles2 Apache-2.0 wrapper license is
+preserved at `vendor/rss-sdl2-gles2-src/LICENSE`. The `libs/gl4es` and
+`libs/glues` packages from rss-sdl2-gles2 were NOT vendored — the existing
+`src/gles3_compat.{h,c}` foundation already provides everything the
+algorithms need.
+
+The Round 13 hyprsaver shader pack (35 GLSL fragment shaders) is from
+[Mara Vexa / hyprsaver](https://github.com/mara-vexa/hyprsaver) (MIT 2026);
+preserved at `vendor/hyprsaver/LICENSE`.
 
 DESKTOP-ENVIRONMENT NEUTRAL BY DESIGN: depends only on standard wlroots
 protocols (wlr-layer-shell-unstable-v1, ext-session-lock-v1, ext-idle-notify-v1,

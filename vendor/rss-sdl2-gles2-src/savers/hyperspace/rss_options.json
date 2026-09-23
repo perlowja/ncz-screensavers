@@ -1,0 +1,68 @@
+{
+ "saver": "hyperspace",
+ "options": [
+  {
+   "opt": "speed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "stars",
+   "min": 0,
+   "max": 10000,
+   "kind": "int",
+   "default": 2000
+  },
+  {
+   "opt": "starsize",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "resolution",
+   "min": 4,
+   "max": 20,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "depth",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 5
+  },
+  {
+   "opt": "fov",
+   "min": 10,
+   "max": 150,
+   "kind": "int",
+   "default": 50
+  },
+  {
+   "opt": "usetunnels",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "usegoo",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "shaders",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  }
+ ]
+}

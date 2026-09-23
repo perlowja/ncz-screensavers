@@ -1,0 +1,68 @@
+{
+ "saver": "solarwinds",
+ "options": [
+  {
+   "opt": "winds",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 1
+  },
+  {
+   "opt": "emitters",
+   "min": 1,
+   "max": 1000,
+   "kind": "int",
+   "default": 30
+  },
+  {
+   "opt": "particles",
+   "min": 1,
+   "max": 10000,
+   "kind": "int",
+   "default": 2000
+  },
+  {
+   "opt": "geometry",
+   "min": 0,
+   "max": 2,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "size",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 50
+  },
+  {
+   "opt": "windspeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "emitterspeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 15
+  },
+  {
+   "opt": "particlespeed",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "blur",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 40
+  }
+ ]
+}

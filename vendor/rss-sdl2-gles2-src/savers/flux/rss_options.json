@@ -1,0 +1,104 @@
+{
+ "saver": "flux",
+ "options": [
+  {
+   "opt": "default",
+   "kind": "preset",
+   "min": 1,
+   "max": 6,
+   "default": 1,
+   "names": {
+    "1": "Regular",
+    "2": "Hypnotic",
+    "3": "Insane",
+    "4": "Sparklers",
+    "5": "Paradigm",
+    "6": "Galactic"
+   }
+  },
+  {
+   "opt": "fluxes",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 1
+  },
+  {
+   "opt": "particles",
+   "min": 1,
+   "max": 1000,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "trail",
+   "min": 3,
+   "max": 10000,
+   "kind": "int",
+   "default": 40
+  },
+  {
+   "opt": "geometry",
+   "min": 0,
+   "max": 2,
+   "kind": "int",
+   "default": 2
+  },
+  {
+   "opt": "size",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 15
+  },
+  {
+   "opt": "complexity",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 3
+  },
+  {
+   "opt": "randomize",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "expansion",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 40
+  },
+  {
+   "opt": "rotation",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 30
+  },
+  {
+   "opt": "wind",
+   "min": 1,
+   "max": 10,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "instability",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "blur",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 0
+  }
+ ]
+}

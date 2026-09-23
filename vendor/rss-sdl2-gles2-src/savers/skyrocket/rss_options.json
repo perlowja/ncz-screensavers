@@ -1,0 +1,96 @@
+{
+ "saver": "skyrocket",
+ "options": [
+  {
+   "opt": "maxrockets",
+   "min": 1,
+   "max": 100,
+   "kind": "int",
+   "default": 8
+  },
+  {
+   "opt": "smoke",
+   "min": 0,
+   "max": 40,
+   "kind": "int",
+   "default": 10
+  },
+  {
+   "opt": "explosionsmoke",
+   "min": 0,
+   "max": 5,
+   "kind": "int",
+   "default": 0
+  },
+  {
+   "opt": "wind",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "ambient",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 5
+  },
+  {
+   "opt": "stardensity",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "flare",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 20
+  },
+  {
+   "opt": "moonglow",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 15
+  },
+  {
+   "opt": "sound",
+   "min": 0,
+   "max": 100,
+   "kind": "int",
+   "default": 100
+  },
+  {
+   "opt": "moon",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "clouds",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "earth",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  },
+  {
+   "opt": "illumination",
+   "min": 0,
+   "max": 1,
+   "kind": "bool",
+   "default": 1
+  }
+ ]
+}

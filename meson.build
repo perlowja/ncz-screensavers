@@ -798,6 +798,60 @@ foreach s : hyprsaver_shaders
 endforeach
 
 # -----------------------------------------------------------------------
+# Round 15 — RSS-SDL2-GLES2 port (vendor/rss-sdl2-gles2-src/, Apache-2.0
+# wrapper/port layer; per-saver .cpp files keep their original GPL-2.0
+# Terence Welsh "Really Slick" headers — see PORTED.md §14).
+#
+# 13 savers ported as new native-GLES3 _gles3.c files (cyclone, euphoria,
+# fieldlines, flocks, flux, helios, hyperspace, implicitdemo, lattice,
+# microcosm, plasma, skyrocket, solarwinds). Each .c file:
+#   - preserves the GPL-2.0 header verbatim from the original .cpp
+#   - compiles against xscreensaver_compat.h (which provides glBegin /
+#     glVertex / glColor / glPushMatrix / glRotatef / glLightfv / glu*
+#     as thin shims into the gles3_compat GLES3-native matrix stack +
+#     immediate-mode accumulator + shader)
+#   - uses XSCREENSAVER_MODULE_2(name, table, prefix) to emit the
+#     xscreensaver_function_table that gles3_harness.c drives
+# See PORTED.md §14 for the per-saver "what's preserved vs simplified"
+# call-out (helios, hyperspace, implicitdemo, lattice, microcosm,
+# skyrocket are simplified reps because their full algorithms depend
+# on helper libraries not vendored — marching cubes, custom shaders,
+# cube-map pipelines, etc.).
+# -----------------------------------------------------------------------
+
+rss_sdl2_gles2_hacks = [
+    {'name': 'cyclone',       'src': 'src/cyclone_gles3.c'},
+    {'name': 'euphoria',      'src': 'src/euphoria_gles3.c'},
+    {'name': 'fieldlines',    'src': 'src/fieldlines_gles3.c'},
+    {'name': 'flocks',        'src': 'src/flocks_gles3.c'},
+    {'name': 'flux',          'src': 'src/flux_gles3.c'},
+    {'name': 'helios',        'src': 'src/helios_gles3.c'},
+    {'name': 'hyperspace',    'src': 'src/hyperspace_gles3.c'},
+    {'name': 'implicitdemo',  'src': 'src/implicitdemo_gles3.c'},
+    {'name': 'lattice',       'src': 'src/lattice_gles3.c'},
+    {'name': 'microcosm',     'src': 'src/microcosm_gles3.c'},
+    {'name': 'plasma',        'src': 'src/plasma_gles3.c'},
+    {'name': 'skyrocket',     'src': 'src/skyrocket_gles3.c'},
+    {'name': 'solarwinds',    'src': 'src/solarwinds_gles3.c'},
+]
+
+foreach h : rss_sdl2_gles2_hacks
+    executable(
+        h['name'] + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            h['src'],
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
 # Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
 # Klein-bottle-cluster hacks + sphereeversion). These already use real
  # GLSL/GLES3 shaders upstream — they call glCreateShader /
@@ -1023,6 +1077,11 @@ foreach alias_name : [
     'hyprsaver_wormhole_gles3',
     # Round 13 — Task 1a ports (atlantis + flurry).
     'atlantis_gles3', 'flurry_gles3',
+    # Round 15 — RSS-SDL2-GLES2 port (13 savers).
+    'cyclone_gles3', 'euphoria_gles3', 'fieldlines_gles3',
+    'flocks_gles3', 'flux_gles3', 'helios_gles3', 'hyperspace_gles3',
+    'implicitdemo_gles3', 'lattice_gles3', 'microcosm_gles3',
+    'plasma_gles3', 'skyrocket_gles3', 'solarwinds_gles3',
 ]
     run_target(
         alias_name + '_alias',
