@@ -3,6 +3,23 @@ build/
 __pycache__/
 *.pyc
 
+# Vendored rss-sdl2-gles2 subtree at vendor/rss-sdl2-gles2-src. We
+# vendored only LICENSE/README.md/Makefile/savers/<name>/{*.cpp,
+# *.h, Makefile, rss_help.cpp, rss_options.json} — the rest is
+# upstream infrastructure (GitHub workflows, CI scripts, gl4es
+# translator source, libs/glues, libs/librs, rsmath, embedded
+# web demos, marketing screenshots) that we don't use. Keeping
+# them ignored prevents accidental commits and keeps the diff
+# focused on the parts we actually built against.
+vendor/rss-sdl2-gles2-src/.github/
+vendor/rss-sdl2-gles2-src/.gitignore
+vendor/rss-sdl2-gles2-src/docs/
+vendor/rss-sdl2-gles2-src/include/
+vendor/rss-sdl2-gles2-src/libs/
+vendor/rss-sdl2-gles2-src/makefiles/
+vendor/rss-sdl2-gles2-src/media/
+vendor/rss-sdl2-gles2-src/scripts/
+
 # Vendored hyprsaver source tree at vendor/hyprsaver. Upstream includes
 # `/target/` (cargo build outputs — irrelevant since we build with our own
 # `tools/build-hyprsaver.sh`), `examples/palettes/` (auto-generated at
