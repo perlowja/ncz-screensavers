@@ -805,6 +805,60 @@ foreach s : hyprsaver_shaders
 endforeach
 
 # -----------------------------------------------------------------------
+# Round 16 — xshadertoy shader port (vendor/xshadertoy/glsl/, MIT /
+# CC0 / CC BY 3.0 / public domain; per-shader headers preserved; see
+# vendor/xshadertoy/PORTED.md).
+#
+# 38 single-pass Shadertoy-API GLSL fragment shaders vendored from
+# upstream xscreensaver 6.16 (commit b99f621, 2026-09-03). One
+# generic driver (`src/gles3_xshadertoy.c`) is reused for all 38 via
+# -D flags, matching the upstream pattern (one ~20-line bash
+# wrapper per shader) and the pattern of this repo's hyprsaver
+# shaders (PORTED.md §13.3).
+# -----------------------------------------------------------------------
+
+xshadertoy_shaders = [
+    'alienbeacon', 'amigajuggler', 'batteredplanet',
+    'bestill0-0', 'bestill1-0', 'bestill2-0', 'bestill3-0',
+    'bestill4-0', 'bestill5-0',
+    'bubblecolors', 'darktransit', 'downfall', 'driftclouds',
+    'elementalring', 'fluxcore', 'gimbalharmonics', 'goldenapollian',
+    'hexplasma', 'logarithmiccircles',
+    'neongravity-0', 'neongravity-1', 'neontriangulator',
+    'noxfire', 'polarnight', 'prococean', 'protophore',
+    'rigrekt', 'selfreflect', 'skyline', 'stardome', 'starnest',
+    'stripeytorus', 'synthwavecity', 'topologica', 'trainmandala',
+    'trizm', 'truchetzoom', 'universeball',
+]
+
+foreach s : xshadertoy_shaders
+    install_data('vendor/xshadertoy/glsl/' + s + '.glsl',
+                 install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+    # Hyphen-to-underscore substitution for the C identifier stem.
+    # The shader basenames `bestill0-0`..`bestill5-0`, `neongravity-0`
+    # and `neongravity-1` carry hyphens which are illegal in C
+    # identifiers; the driver .c has separate HACK_PREFIX (display)
+    # and HACK_PREFIX_ID (C-symbol stem) macros for that reason.
+    s_id = s.replace('-', '_')
+    executable(
+        'xshadertoy_' + s + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_xshadertoy.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DSHADER_FILE="@0@.glsl"'.format(s),
+            '-DHACK_PREFIX=xshadertoy_@0@'.format(s),
+            '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
+            '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
 # Round 15 — RSS-SDL2-GLES2 port (vendor/rss-sdl2-gles2-src/, Apache-2.0
 # wrapper/port layer; per-saver .cpp files keep their original GPL-2.0
 # Terence Welsh "Really Slick" headers — see PORTED.md §14).
@@ -1106,6 +1160,27 @@ foreach alias_name : [
     'flocks_gles3', 'flux_gles3', 'helios_gles3', 'hyperspace_gles3',
     'implicitdemo_gles3', 'lattice_gles3', 'microcosm_gles3',
     'plasma_gles3', 'skyrocket_gles3', 'solarwinds_gles3',
+    # Round 16 — xshadertoy shader ports (38).
+    'xshadertoy_alienbeacon_gles3', 'xshadertoy_amigajuggler_gles3',
+    'xshadertoy_batteredplanet_gles3',
+    'xshadertoy_bestill0-0_gles3', 'xshadertoy_bestill1-0_gles3',
+    'xshadertoy_bestill2-0_gles3', 'xshadertoy_bestill3-0_gles3',
+    'xshadertoy_bestill4-0_gles3', 'xshadertoy_bestill5-0_gles3',
+    'xshadertoy_bubblecolors_gles3', 'xshadertoy_darktransit_gles3',
+    'xshadertoy_downfall_gles3', 'xshadertoy_driftclouds_gles3',
+    'xshadertoy_elementalring_gles3', 'xshadertoy_fluxcore_gles3',
+    'xshadertoy_gimbalharmonics_gles3', 'xshadertoy_goldenapollian_gles3',
+    'xshadertoy_hexplasma_gles3', 'xshadertoy_logarithmiccircles_gles3',
+    'xshadertoy_neongravity-0_gles3', 'xshadertoy_neongravity-1_gles3',
+    'xshadertoy_neontriangulator_gles3', 'xshadertoy_noxfire_gles3',
+    'xshadertoy_polarnight_gles3', 'xshadertoy_prococean_gles3',
+    'xshadertoy_protophore_gles3', 'xshadertoy_rigrekt_gles3',
+    'xshadertoy_selfreflect_gles3', 'xshadertoy_skyline_gles3',
+    'xshadertoy_stardome_gles3', 'xshadertoy_starnest_gles3',
+    'xshadertoy_stripeytorus_gles3', 'xshadertoy_synthwavecity_gles3',
+    'xshadertoy_topologica_gles3', 'xshadertoy_trainmandala_gles3',
+    'xshadertoy_trizm_gles3', 'xshadertoy_truchetzoom_gles3',
+    'xshadertoy_universeball_gles3',
 ]
     run_target(
         alias_name + '_alias',
