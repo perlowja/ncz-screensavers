@@ -1177,6 +1177,22 @@ when ssh access is restored.
 
 ---
 
+## Full real-hardware validation status (2026-09-25)
+
+The current 140-target build set has now been run in full on both real O6N
+arm64/Mali-G720 hardware and real PEGASUS amd64/Intel UHD hardware. Every run
+has two timed `grim` captures plus an actual pixel-change test; an exit code or
+frame counter alone is not considered a pass.
+
+The authoritative per-target ledger and evidence index is
+[`docs/FULL-MATRIX-2026-09-25.md`](docs/FULL-MATRIX-2026-09-25.md). Results are
+99 PASS / 41 FAIL on O6N and 104 PASS / 36 FAIL on PEGASUS. The failures are
+set aside there by observed technical mode (black frame, static frame, content
+initialization error, or SIGABRT) for focused follow-up. No target was omitted
+or marked N/A.
+
+---
+
 ## Deferred (4)
 
 Blocked on architectural gaps that exceed the scope of this round.

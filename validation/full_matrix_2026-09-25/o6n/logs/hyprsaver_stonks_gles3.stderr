@@ -1,0 +1,25 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5
+RENDERER=Mali-G720-Immortalis
+VENDOR=ARM
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] no zwlr_layer_shell_v1; falling back to a fullscreen xdg_toplevel
+[diag] gles3_harness: calling init...
+[diag] hyprsaver[hyprsaver_stonks] init: GL_VERSION=OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5, frag=stonks.frag, locs=time:3 res:2 mouse:-1 frame:-1 alpha:6 speed:5 zoom:-1 lutA:1 lutB:0 blend:4 palette_tex:1
+[diag] gles3_harness: init returned
+[diag] initial draw: 2194x1234 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] hyprsaver[hyprsaver_stonks] frame=60 t=1.19s
+[diag] frame #60
+[diag] hyprsaver[hyprsaver_stonks] frame=120 t=2.20s
+[diag] frame #120
+[diag] hyprsaver[hyprsaver_stonks] frame=180 t=3.20s
+[diag] frame #180
+[diag] hyprsaver[hyprsaver_stonks] frame=240 t=4.20s
+[diag] frame #240
