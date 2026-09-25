@@ -54,6 +54,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <signal.h>
 #include <time.h>
@@ -413,8 +414,38 @@ static const struct xdg_toplevel_listener xdg_top_listener = {
  * pending Wayland events (non-blocking) and drawing+swapping every
  * iteration, the same shape as any other GL-on-EGL app.
  */
-static void draw_and_swap(struct app *a) {
+static void report_framebuffer(struct app *a, unsigned long frame) {
+    size_t npixels = (size_t)a->width * (size_t)a->height;
+    unsigned char *pixels = malloc(npixels * 4);
+    if (!pixels) {
+        fprintf(stderr, "gles3_harness: framebuffer sample allocation failed\n");
+        a->running = 0;
+        return;
+    }
+
+    glReadPixels(0, 0, a->width, a->height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    GLenum error = glGetError();
+    size_t nonblack = 0;
+    uint64_t hash = UINT64_C(1469598103934665603);
+    for (size_t i = 0; i < npixels; i++) {
+        const unsigned char *p = pixels + i * 4;
+        if (p[0] || p[1] || p[2]) nonblack++;
+        for (int c = 0; c < 3; c++) {
+            hash ^= p[c];
+            hash *= UINT64_C(1099511628211);
+        }
+    }
+    free(pixels);
+    fprintf(stderr,
+            "[diag] framebuffer frame=%lu pixels=%zu nonblack=%zu "
+            "hash=%016" PRIx64 " gl_error=0x%x\n",
+            frame, npixels, nonblack, hash, (unsigned int)error);
+}
+
+static void draw_and_swap(struct app *a, unsigned long frame) {
     hack->draw_cb(&a->mi);
+    if (frame == 4 || (frame >= 60 && (frame % 60) == 0))
+        report_framebuffer(a, frame);
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",
                 (unsigned int)eglGetError());
@@ -700,7 +731,7 @@ shell_ready:
             if (_nframes < 5 || (_nframes % 60) == 0)
                 fprintf(stderr, "[diag] frame #%lu\n", _nframes);
             _nframes++;
-            draw_and_swap(&app);
+            draw_and_swap(&app, _nframes);
         }
     }
     if (app.display) wl_display_roundtrip(app.display);
