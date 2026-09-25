@@ -482,6 +482,11 @@ int  ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
 /* Replay: walks ops and emits the GLES3 draws. */
 void ncz_dl_call(const nczDL *dl);
 
+/* Replay geometry using the material currently set by the caller instead of
+ * the incidental material active when the list was compiled.  This matches
+ * legacy display-list use for dynamically colored geometry. */
+void ncz_gl_call_list_with_current_material(GLuint list);
+
 /* Free the recorded ops (the gllist chains are owned by the caller). */
 void ncz_dl_free(nczDL *dl);
 

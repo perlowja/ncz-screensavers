@@ -12,7 +12,7 @@
 
 #define DEFAULTS	"*delay:	30000  \n" \
 			"*count:        16      \n" \
-			"*groundColor:  #E85D75\n" \
+			"*groundColor:  #FFBE86\n" \
 			"*holeColor:    #541388\n" \
 			"*starColor:    #FFD166\n" \
 			"*showFPS:      False  \n" \
@@ -39,6 +39,10 @@
 #include "easing.h"
 
 #include <ctype.h>
+
+#ifdef NCZ_GLES3_BUILD
+extern void ncz_gl_call_list_with_current_material (GLuint);
+#endif
 
 #ifdef USE_GL /* whole file */
 
@@ -284,7 +288,11 @@ draw_ejecta (ModeInfo *mi, ejecta *e)
 
   glColor4fv (e->color);
   glMaterialfv (GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, e->color);
+#ifdef NCZ_GLES3_BUILD
+  ncz_gl_call_list_with_current_material (bp->ejecta_dlist0 + frame);
+#else
   glCallList (bp->ejecta_dlist0 + frame);
+#endif
   mi->polygon_count += bp->ejecta_npolys;
 
   glPopMatrix();
@@ -731,6 +739,11 @@ init_sq (ModeInfo *mi)
   free_spline (sp);
 
   bp->ground_dlist = glGenLists (1);
+  /* The GLES3 display-list recorder snapshots material at compilation.  Set
+     the intended terrain material before recording the plane; the explicit
+     black material below remains local to the mountain silhouette. */
+  glColor4fv (bp->ground_color);
+  glMaterialfv (GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, bp->ground_color);
   glNewList (bp->ground_dlist, GL_COMPILE);
   {
     GLfloat step = 0.01;

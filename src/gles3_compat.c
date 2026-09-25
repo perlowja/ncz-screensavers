@@ -1085,6 +1085,15 @@ void glCallList(GLuint list) {
     ncz_dl_call(dl);
 }
 
+static bool g_dl_use_current_material;
+
+void ncz_gl_call_list_with_current_material(GLuint list) {
+    bool old = g_dl_use_current_material;
+    g_dl_use_current_material = true;
+    glCallList(list);
+    g_dl_use_current_material = old;
+}
+
 GLboolean glIsList(GLuint list) {
     return dl_lookup((int)list) ? GL_TRUE : GL_FALSE;
 }
@@ -1780,8 +1789,10 @@ void ncz_dl_call(const nczDL *dl) {
                 bool old_lit = g_im.lit;
                 bool old_has_texture = g_im.has_texture;
                 GLuint old_bound_tex = g_im.bound_tex;
-                memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
-                g_im.has_material = r->has_material;
+                if (!g_dl_use_current_material) {
+                    memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
+                    g_im.has_material = r->has_material;
+                }
                 g_im.lit = r->lit;
                 g_im.has_texture = r->has_texture;
                 g_im.bound_tex = r->bound_tex;
@@ -1798,8 +1809,10 @@ void ncz_dl_call(const nczDL *dl) {
                 bool old_lit = g_im.lit;
                 bool old_has_texture = g_im.has_texture;
                 GLuint old_bound_tex = g_im.bound_tex;
-                memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
-                g_im.has_material = r->has_material;
+                if (!g_dl_use_current_material) {
+                    memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
+                    g_im.has_material = r->has_material;
+                }
                 g_im.lit = r->lit;
                 g_im.has_texture = r->has_texture;
                 g_im.bound_tex = r->bound_tex;
