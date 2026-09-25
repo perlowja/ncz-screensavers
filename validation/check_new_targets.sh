@@ -123,14 +123,10 @@ fi
 # We just check whether the harness can connect, by trying a tiny
 # invocation with the standard env defaults.
 WAYLAND_AVAILABLE=0
-if [ -z "${WAYLAND_DISPLAY:-}" ]; then
-    export WAYLAND_DISPLAY=wayland-0
-fi
-if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
-    export XDG_RUNTIME_DIR=/run/user/$(id -u)
-fi
-
 if [ "$MODE" = "runtime" ]; then
+    if WAYLAND_ENV=$(validation/find-wayland.sh); then
+        eval "$WAYLAND_ENV"
+    fi
     PROBE_OUT=$(timeout 1 build/hyprsaver_aurora_gles3 </dev/null 2>&1 || true)
     if echo "$PROBE_OUT" | grep -q 'wl_display_connect failed'; then
         WAYLAND_AVAILABLE=0
@@ -229,7 +225,9 @@ check_target_runtime() {
         return
     fi
 
-    local log="/tmp/check-${target}.log"
+    local scratch_root="${HOME}/build-tmp/ncz-screensavers/check-new-targets"
+    mkdir -p "$scratch_root"
+    local log="$scratch_root/check-${target}.log"
     timeout "$RUN_SECONDS" "$bin" </dev/null >"$log" 2>&1
     local rc=$?
     # timeout returns 124 on grace-SIGTERM after the wallclock; that's
@@ -300,7 +298,8 @@ check_target_runtime() {
 # $REMOTE_O6N_LOG_DIR/ (default validation/o6n_round15_live/).
 # -----------------------------------------------------------------------
 REMOTE_O6N_LOG_DIR="${REMOTE_O6N_LOG_DIR:-validation/o6n_round15_live}"
-REMOTE_O6N_REMOTE_DIR="${REMOTE_O6N_REMOTE_DIR:-/tmp/ncz_round15_remote_o6n}"
+REMOTE_O6N_USER="${O6N_HOST%@*}"
+REMOTE_O6N_REMOTE_DIR="${REMOTE_O6N_REMOTE_DIR:-/home/${REMOTE_O6N_USER}/build-tmp/ncz_round15_remote_o6n}"
 SSHPASS_OPTS="-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o ConnectTimeout=5"
 
 check_target_remote_o6n() {
@@ -330,6 +329,10 @@ check_target_remote_o6n() {
         emit_json "$target" "fail" "O6N unreachable" 0 -1
         return
     fi
+    sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
+        "mkdir -p '$REMOTE_O6N_REMOTE_DIR'" >/dev/null 2>&1
+    sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS validation/find-wayland.sh \
+        "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/find-wayland.sh" >/dev/null 2>&1
     # Belt-and-braces: even if O6N shells, if the live Wayland
     # session is gone (the user logged out / got dropped by greetd),
     # every binary will fail with "wl_display_connect failed" —
@@ -338,9 +341,7 @@ check_target_remote_o6n() {
     # Probe with `wlr-randr` so we don't false-positive on the
     # greetd-bound labwc that exists during a session-less state.
     if ! sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
-            "test -S /run/user/1000/wayland-0 && \
-             WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
-             wlr-randr >/dev/null 2>&1 && echo WAYLAND_LIVE" 2>/dev/null \
+            "bash '${REMOTE_O6N_REMOTE_DIR}/find-wayland.sh' >/dev/null && echo WAYLAND_LIVE" 2>/dev/null \
             | grep -q WAYLAND_LIVE; then
         printf "  [WAIVE] %s: O6N shell reachable but live Wayland session ended (wayland-0 socket gone); runtime evidence unavailable this run\n" \
             "$target" >&2
@@ -359,13 +360,15 @@ check_target_remote_o6n() {
 
     # Deploy + run per-target. Each run gets its own /tmp file so
     # log paths don't collide on the remote end if runs overlap.
-    local remote_log="/tmp/${target}.stderr"
+    local remote_log="${REMOTE_O6N_REMOTE_DIR}/${target}.stderr"
     local local_log="${REMOTE_O6N_LOG_DIR}/remote_o6n_${target}.stderr"
     mkdir -p "$REMOTE_O6N_LOG_DIR"
 
     # shellcheck disable=SC2086
     sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
         "mkdir -p '$REMOTE_O6N_REMOTE_DIR/vendor/hyprsaver/shaders'" >/dev/null 2>&1
+    sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS validation/find-wayland.sh \
+        "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/find-wayland.sh" >/dev/null 2>&1
     # shellcheck disable=SC2086
     sshpass -p "$O6N_PASS" scp $SSHPASS_OPTS "$bin" \
         "${O6N_HOST}:${REMOTE_O6N_REMOTE_DIR}/$target" >/dev/null 2>&1
@@ -399,14 +402,15 @@ check_target_remote_o6n() {
 
     # shellcheck disable=SC2086
     sshpass -p "$O6N_PASS" ssh $SSHPASS_OPTS "$O6N_HOST" \
-        "export XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
+        "eval \"\$(bash '${REMOTE_O6N_REMOTE_DIR}/find-wayland.sh')\" || exit 125; \
+         export \
          __EGL_VENDOR_LIBRARY_FILENAMES=/opt/cixgpu-compat/share/glvnd/egl_vendor.d/40_cix.json:/usr/share/glvnd/egl_vendor.d/50_mesa.json \
          NCZ_GPU_BACKEND=mali NCZ_NO_LAYER_SHELL=1; \
          cd $REMOTE_O6N_REMOTE_DIR; \
          timeout ${RUN_SECONDS}s ./$target > $remote_log 2>&1; \
          echo \\\"rc=\\\$?\\\"" 2>&1 \
-        | grep -E "^rc=" > /tmp/rc.tmp || true
-    local rc=$(cat /tmp/rc.tmp 2>/dev/null | sed 's/^rc=//')
+        | grep -E "^rc=" > "${HOME}/build-tmp/ncz-screensavers-remote-rc.tmp" || true
+    local rc=$(cat "${HOME}/build-tmp/ncz-screensavers-remote-rc.tmp" 2>/dev/null | sed 's/^rc=//')
     rc=${rc:-1}  # ssh failure = bail-closed (rc=1)
 
     # Pull the per-target stderr back for evidence.

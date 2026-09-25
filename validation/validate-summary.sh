@@ -53,12 +53,13 @@ done
 # cleanly with "[diag] GL_VERSION=" against a live session, or
 # "wl_display_connect failed" against a stale/missing one).
 if [ "$WAIVE" = "0" ]; then
-    if [ -z "${WAYLAND_DISPLAY:-}" ]; then
-        export WAYLAND_DISPLAY=wayland-0
+    if WAYLAND_ENV=$(validation/find-wayland.sh); then
+        eval "$WAYLAND_ENV"
+    else
+        WAIVE=1
     fi
-    if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
-        export XDG_RUNTIME_DIR=/run/user/$(id -u)
-    fi
+fi
+if [ "$WAIVE" = "0" ]; then
     PROBE_OUT=$(timeout 1 build/jigsaw_gles3 </dev/null 2>&1 || true)
     if echo "$PROBE_OUT" | grep -q '\[diag\] GL_VERSION='; then
         echo "live Wayland session detected at ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}; running real runtime gates" >&2
@@ -71,16 +72,18 @@ fi
 RUN_TS="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 RUN_RECORD="validation/runs/${RUN_TS}_reviewer_summary.json"
 mkdir -p "$(dirname "$RUN_RECORD")"
+SCRATCH_ROOT="${HOME}/build-tmp/ncz-screensavers"
+mkdir -p "$SCRATCH_ROOT"
 
 if [ "$WAIVE" = "1" ]; then
     echo "running: WAIVE_RUNTIME=1 bash validation/validate.sh --reviewer-summary" >&2
     WAIVE_RUNTIME=1 bash validation/validate.sh --reviewer-summary \
-        > "$RUN_RECORD" 2>/tmp/validate-summary.stderr
+        > "$RUN_RECORD" 2>"$SCRATCH_ROOT/validate-summary.stderr"
     rc=$?
 else
     echo "running: bash validation/validate.sh --reviewer-summary" >&2
     bash validation/validate.sh --reviewer-summary \
-        > "$RUN_RECORD" 2>/tmp/validate-summary.stderr
+        > "$RUN_RECORD" 2>"$SCRATCH_ROOT/validate-summary.stderr"
     rc=$?
 fi
 

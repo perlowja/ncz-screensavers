@@ -69,14 +69,14 @@ if ! command -v grim >/dev/null 2>&1; then
     exit 2
 fi
 
-# Check WAYLAND_DISPLAY
-if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${XDG_RUNTIME_DIR:-}" ]; then
-    # Default Wayland socket
-    if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wayland-0" ]; then
-        export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-        echo "Inferred XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR from wayland-0 socket"
-    fi
+# Select a socket by completing a real Wayland roundtrip.  This also finds a
+# greeter compositor owned by a non-login UID and non-default wayland-N names.
+FIND_WAYLAND="$(cd "$(dirname "$0")" && pwd)/find-wayland.sh"
+if ! WAYLAND_ENV=$("$FIND_WAYLAND"); then
+    echo "FATAL: no live Wayland compositor found" >&2
+    exit 2
 fi
+eval "$WAYLAND_ENV"
 
 echo "WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-<unset>}"
 echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-<unset>}"

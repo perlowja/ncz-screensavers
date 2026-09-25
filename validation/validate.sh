@@ -291,6 +291,11 @@ if [ "$FAIL" = "0" ]; then
             -o ConnectTimeout=3 mini@192.168.207.3 "echo O6N_REACHABLE" 2>/dev/null \
             | grep -q O6N_REACHABLE; then
         O6N_REACHABLE=1
+        sshpass -p 'mini' ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no \
+            mini@192.168.207.3 'mkdir -p ~/build-tmp/ncz-screensavers' >/dev/null 2>&1
+        sshpass -p 'mini' scp -o StrictHostKeyChecking=no -o PubkeyAuthentication=no \
+            validation/find-wayland.sh \
+            mini@192.168.207.3:build-tmp/ncz-screensavers/find-wayland.sh >/dev/null 2>&1
         # The shell login session can survive after the Wayland
         # session ends — the wayland-0 socket is the right tell,
         # BUT a socket alone isn't enough: the greeter labwc
@@ -303,9 +308,7 @@ if [ "$FAIL" = "0" ]; then
         # we don't burn 50 sshpass calls into guaranteed fails.
         if sshpass -p 'mini' ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no \
             -o ConnectTimeout=5 mini@192.168.207.3 \
-            "test -S /run/user/1000/wayland-0 && \
-             WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
-             wlr-randr >/dev/null 2>&1 && echo WAYLAND_LIVE" 2>/dev/null \
+            "bash ~/build-tmp/ncz-screensavers/find-wayland.sh >/dev/null && echo WAYLAND_LIVE" 2>/dev/null \
             | grep -q WAYLAND_LIVE; then
             O6N_WAYLAND_LIVE=1
         fi

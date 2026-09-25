@@ -1,0 +1,55 @@
+=== check_new_targets --remote_o6n: 50 new targets ===
+    RUN_SECONDS=3 REQUIRED_FRAMES=5 WAIVE_RUNTIME=0
+
+  [PASS] atlantis_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] flurry_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_attitude_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_aurora_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_bezier_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_blob_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_caustics_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_circuit_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_clouds_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_donut_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_fireflies_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_flames_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_fractaltrap_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_geometry_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_gridwave_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_hypercube_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_julia_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_kaleidoscope_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_lissajous_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_marble_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_matrix_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_mobius_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_oscilloscope_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_planet_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_plasma_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_shipburn_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_snowfall_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_sonar_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_starfield_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_stonks_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_temple_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_terminal_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_tesla_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_tunnel_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_voronoi_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_waterfall_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyprsaver_wormhole_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] cyclone_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] euphoria_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] fieldlines_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] flocks_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] flux_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] helios_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] hyperspace_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] implicitdemo_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] lattice_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] microcosm_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] plasma_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] skyrocket_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+  [PASS] solarwinds_gles3: rc=1 Mali-G720, [diag] gles3_compat: shader program 3 compiled
+
+=== check_new_targets --remote_o6n summary: 50 pass / 0 fail ===

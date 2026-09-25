@@ -17,8 +17,11 @@ RAW_DIR="${RESULTS_ROOT}/${platform}_raw"
 
 mkdir -p "${RAW_DIR}/shots" "${RAW_DIR}/logs"
 
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+if ! WAYLAND_ENV=$("${SRC_DIR}/validation/find-wayland.sh"); then
+    echo "FATAL: no live Wayland compositor found" >&2
+    exit 2
+fi
+eval "$WAYLAND_ENV"
 # Pin GLES3 path (not strictly needed on amd64 — glvnd picks up the
 # active vendor ICD automatically — but keeps the diagnostic line in
 # stderr consistent across platforms for diff'ing).
