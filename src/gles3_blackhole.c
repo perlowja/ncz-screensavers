@@ -10,6 +10,12 @@
 #include <GLES3/gl32.h>
 #include "gles3_compat.h"
 #include "xscreensaver_compat.h"
+/* gcc 14+ makes implicit declarations an error under -std=c11 even though
+ * both headers above declare this; explicit forward decl avoids the
+ * regression if the header order ever changes. */
+#ifdef NCZ_GLES3_BUILD
+extern void ncz_harness_die(int code);
+#endif
 typedef struct {
  GLuint program,vbo;
  GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis;
@@ -133,6 +139,25 @@ static void draw_blackhole(ModeInfo*m){
  glDisableVertexAttribArray(0);
  glBindBuffer(GL_ARRAY_BUFFER,0);
  glUseProgram(0);
+ // Per-vendor frame-time measurement. Logged to stderr at every 30th frame
+ // only when NCZ_BLACKHOLE_PERF_LOG is set in the environment (so a real
+ // run never pays the fprintf/fflush cost on Intel). Tag the line with
+ // [frame_t] for downstream parsing.
+ static unsigned long _ft_counter;
+ static double _ft_prev;
+ static int _ft_enabled;
+ if(!_ft_enabled)_ft_enabled=(getenv("NCZ_BLACKHOLE_PERF_LOG")!=NULL);
+ if(_ft_enabled){
+  double _t_now=now();
+  if((++_ft_counter%30)==0){
+   if(_ft_prev>0.){
+    double _dt=(_t_now-_ft_prev)/30.;
+    fprintf(stderr,"[diag] blackhole frame_t frame=%lu dt_ms=%.3f\n",_ft_counter,_dt*1000.);
+    fflush(stderr);
+   }
+   _ft_prev=now();
+  }
+ }
  static int once;
  if(!once++){
   unsigned char px[16]={0};
