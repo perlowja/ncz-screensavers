@@ -6,6 +6,9 @@ uniform float u_time, u_seed, u_radius, u_temperature, u_density, u_rotation;
 uniform float u_inclination, u_orbit_rate, u_jet, u_star_density;
 uniform float u_camera_mode, u_palette, u_approach, u_periapsis;
 uniform vec2 u_resolution;
+// hue, spatial scale, cloud coverage, yaw; tilt and bounded noise offset.
+uniform vec4 u_nebula;
+uniform vec2 u_nebula_axis;
 #define PI 3.14159265358979323846
 float hash21(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345+u_seed*.00001);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+1.),f.x),f.y);}
@@ -18,7 +21,40 @@ vec3 palette(float t){
  if(u_palette<3.5)return mix(vec3(.12,.008,.38),vec3(1.,.35,.92),pow(t,.8)); // ultraviolet
  return mix(vec3(.005,.18,.11),vec3(.45,1.,.78),pow(t,.65));              // exotic mint
 }
-vec3 stars(vec3 d){vec2 uv=vec2(atan(d.z,d.x)/6.2831853+.5,asin(clamp(d.y,-1.,1.))/PI+.5),cell=floor(uv*vec2(720,360));float n=hash21(cell),s=smoothstep(1.-.0022*u_star_density,1.,n);vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(cell+7.));float band=pow(max(0.,1.-abs(d.y+.15*sin(atan(d.z,d.x)*2.))/.18),3.);return c*s*s*(.65+.35*sin(u_seed+n*40.))*1.8+vec3(.025,.032,.055)*band*(.3+fbm(uv*18.));}
+// Direction-space noise has no longitude seam or pole singularity.
+float skyHash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+float skyNoise(vec3 p){
+ vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+ return mix(mix(mix(skyHash(i),skyHash(i+vec3(1,0,0)),f.x),
+                mix(skyHash(i+vec3(0,1,0)),skyHash(i+vec3(1,1,0)),f.x),f.y),
+            mix(mix(skyHash(i+vec3(0,0,1)),skyHash(i+vec3(1,0,1)),f.x),
+                mix(skyHash(i+vec3(0,1,1)),skyHash(i+vec3(1,1,1)),f.x),f.y),f.z);
+}
+vec3 nebula(vec3 d){
+ float cy=cos(u_nebula.w),sy=sin(u_nebula.w);
+ float ct=cos(u_nebula_axis.x),st=sin(u_nebula_axis.x);
+ vec3 q=vec3(cy*d.x-sy*d.z,d.y,sy*d.x+cy*d.z);
+ q=vec3(q.x,ct*q.y-st*q.z,st*q.y+ct*q.z);
+ vec3 v=q*u_nebula.y+u_nebula_axis.y;
+ // One coarse domain warp and three fixed octaves, only on background rays.
+ float warp=skyNoise(v*.65+vec3(7,19,3));
+ v+=1.8*vec3(warp,-warp,.5*warp);
+ float n=.57*skyNoise(v)+.28*skyNoise(v*2.03+17.1)+.15*skyNoise(v*4.11-9.2);
+ float band=exp(-pow((q.y+.24*(warp-.5))/.36,2.));
+ float cloud=smoothstep(.30,.78,n+u_nebula.z)*(.20+.80*band);
+ float filaments=smoothstep(.42,.72,n)*cloud;
+ vec3 cool=.5+.5*cos(2.*PI*(u_nebula.x+vec3(0,.33,.67)));
+ vec3 warm=.5+.5*cos(2.*PI*(u_nebula.x+.16+vec3(0,.33,.67)));
+ // Bounded radiance: retain the disk as the brightest, highest-contrast subject.
+ return .13*cloud*mix(cool,warm,warp)+.055*filaments*vec3(.65,.75,1.);
+}
+vec3 stars(vec3 d){
+ vec2 uv=vec2(atan(d.z,d.x)/(2.*PI)+.5,asin(clamp(d.y,-1.,1.))/PI+.5);
+ vec2 cell=floor(uv*vec2(720,360));
+ float n=hash21(cell),s=smoothstep(1.-.0022*u_star_density,1.,n);
+ vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(cell+7.));
+ return c*s*s*(.65+.35*sin(u_seed+n*40.))*1.8+nebula(d);
+}
 vec3 disk_color(vec3 p, float drama){float r=length(p.xy),a=atan(p.y,p.x),ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.),dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8),grav=sqrt(max(1.-1./max(r,1.001),.02));// A real disk-space hot sector also appears in the lensed disk images.
 float sector=max(cos(a-(.22*u_time+.00001*u_seed)),0.);sector*=sector;sector*=sector;
 float boost=1.+.65*drama*sector*(1.-smoothstep(4.,8.,r));
