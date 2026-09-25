@@ -763,6 +763,7 @@ extern char *get_string_resource(void *ctx, const char *res_name,
  * var pointer. MUST be called before the hack's init_cb: without it every
  * tunable sits at its BSS default and the hack silently misbehaves. */
 extern void  xs_compat_apply_var_defaults(ModeSpecOpt *o, const char *defaults_str);
+extern void  xs_compat_apply_mode_defaults(ModeInfo *mi);
 
 extern Bool  get_boolean_resource(void *ctx, const char *res_name,
                                   const char *res_class);

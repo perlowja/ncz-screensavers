@@ -329,6 +329,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
          * gl4es path's init_GL is a thin shim that just sets those
          * fields; we call it for the same effect. */
         xs_compat_apply_var_defaults(hack->opts, hack->defaults_str);
+        xs_compat_apply_mode_defaults(&a->mi);
         init_GL(&a->mi);
         hack->init_cb(&a->mi);
         fprintf(stderr, "[diag] gles3_harness: init returned\n");

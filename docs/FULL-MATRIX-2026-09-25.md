@@ -2,7 +2,7 @@
 
 This is the complete current build set: **140/140 targets on O6N arm64** and
 **140/140 targets on PEGASUS amd64**. After the focused fixes recorded below,
-the current totals are 100 PASS / 40 FAIL on O6N and 105 PASS / 35 FAIL on
+the current totals are 105 PASS / 35 FAIL on O6N and 110 PASS / 30 FAIL on
 PEGASUS. No target is marked N/A. PASS means two
 real `grim` captures taken two seconds apart were non-black and differed by
 more than 1,000 pixels while the process remained alive. Exit code alone is
@@ -12,8 +12,8 @@ not accepted. FAIL targets are set aside below with their observed mode.
 
 | Host | Architecture | Renderer | Build | Coverage | Result |
 |---|---|---|---|---:|---:|
-| O6N | arm64 | Mali-G720-Immortalis | native ULTRA arm64 at `251bf22` + focused fixes | 140/140 | 100 PASS / 40 FAIL |
-| PEGASUS | amd64 | Mesa Intel UHD Graphics CML GT2 (the active compositor GPU; not RTX 2060) | fresh native Meson/Ninja build + focused fixes | 140/140 | 105 PASS / 35 FAIL |
+| O6N | arm64 | Mali-G720-Immortalis | native ULTRA arm64 at `251bf22` + focused fixes | 140/140 | 105 PASS / 35 FAIL |
+| PEGASUS | amd64 | Mesa Intel UHD Graphics CML GT2 (the active compositor GPU; not RTX 2060) | fresh native Meson/Ninja build + focused fixes | 140/140 | 110 PASS / 30 FAIL |
 
 Each target has stderr, an exit-code file, two 480px evidence thumbnails,
 metrics, and SHA-256 hashes of the retained full-resolution captures under
@@ -38,7 +38,7 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 | `blinkbox_gles3` | PASS (animated; 162,286 px changed) | PASS (animated; 202,911 px changed) |
 | `blocktube_gles3` | PASS (animated; 2,294,142 px changed) | PASS (animated; 6,116,597 px changed) |
 | `boing_gles3` | PASS (animated; 2,442,054 px changed) | PASS (animated; 1,610,901 px changed) |
-| `bouncingcow_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
+| `bouncingcow_gles3` | PASS (animated after ModeInfo defaults fix; 52,546 px changed) | PASS (animated after ModeInfo defaults fix; 46,783 px changed) |
 | `chompytower_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
 | `cityflow_gles3` | PASS (animated; 4,233,938 px changed) | PASS (animated; 7,090,730 px changed) |
 | `companion_gles3` | PASS (animated; 182,617 px changed) | PASS (animated; 1,072,528 px changed) |
@@ -46,7 +46,7 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 | `crackberg_gles3` | PASS (animated; 3,680,577 px changed) | PASS (animated; 3,760,229 px changed) |
 | `crumbler_gles3` | PASS (animated; 2,125,098 px changed) | PASS (animated; 2,261,140 px changed) |
 | `cube21_gles3` | FAIL (black frames; render loop advanced) | PASS (animated; 80,988 px changed) |
-| `cubenetic_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
+| `cubenetic_gles3` | PASS (animated after ModeInfo defaults fix; 1,221,481 px changed) | PASS (animated after ModeInfo defaults fix; 1,035,024 px changed) |
 | `cubestack_gles3` | PASS (animated; 727,682 px changed) | PASS (animated; 638,523 px changed) |
 | `cubestorm_gles3` | PASS (animated; 876,685 px changed) | PASS (animated; 579,368 px changed) |
 | `cubetwist_gles3` | PASS (animated; 1,268,718 px changed) | PASS (animated; 1,588,731 px changed) |
@@ -80,7 +80,7 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 | `headroom_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
 | `helios_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
 | `hexstrut_gles3` | PASS (animated; 3,100,260 px changed) | PASS (animated; 3,358,067 px changed) |
-| `hextrail_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
+| `hextrail_gles3` | PASS (animated after ModeInfo defaults fix; 357,395 px changed) | PASS (animated after ModeInfo defaults fix; 394,858 px changed) |
 | `highvoltage_gles3` | FAIL (static; 0 px changed) | FAIL (static; 0 px changed) |
 | `hilbert_gles3` | PASS (animated; 1,511,274 px changed) | PASS (animated; 1,497,789 px changed) |
 | `hydrostat_gles3` | PASS (animated; 112,036 px changed) | PASS (animated; 115,464 px changed) |
@@ -154,7 +154,7 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 | `sballs_gles3` | FAIL (static; 0 px changed) | FAIL (static; 0 px changed) |
 | `skulloop_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
 | `skyrocket_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
-| `skytentacles_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
+| `skytentacles_gles3` | PASS (animated after ModeInfo defaults fix; 989,230 px changed) | PASS (animated after ModeInfo defaults fix; 1,027,493 px changed) |
 | `solarwinds_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
 | `sphereeversion_gles3` | PASS (animated; 1,242,425 px changed) | PASS (animated; 1,228,437 px changed) |
 | `spheremonics_gles3` | PASS (animated; 585,442 px changed) | PASS (animated; 637,898 px changed) |
@@ -170,19 +170,19 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 | `unicrud_gles3` | FAIL (exit 1: no characters found) | FAIL (exit 1: no characters found) |
 | `unknownpleasures_gles3` | PASS (animated after resource-default fix; 4,116 px changed) | PASS (animated after resource-default fix; 5,488 px changed) |
 | `voronoi_gles3` | PASS (animated; 2,632,337 px changed) | PASS (animated; 3,463,633 px changed) |
-| `winduprobot_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
+| `winduprobot_gles3` | PASS (animated after ModeInfo defaults fix; 665,655 px changed) | PASS (animated after ModeInfo defaults fix; 55,386 px changed) |
 
 ## Set aside for focused fixing
 
 ### O6N arm64
 
-- **black** — process and frame diagnostics continued, but both real captures were black: `bouncingcow`, `chompytower`, `cube21`, `cubenetic`, `cubicgrid`, `cyclone`, `euphoria`, `fieldlines`, `fliptext`, `flocks`, `flurry`, `flux`, `glblur`, `glcells`, `gltext`, `headroom`, `helios`, `hextrail`, `hyperspace`, `implicitdemo`, `jigsaw`, `lattice`, `menger`, `microcosm`, `photopile`, `plasma`, `providence`, `skulloop`, `skyrocket`, `skytentacles`, `solarwinds`, `splitflap`, `splodesic`, `timetunnel`, `winduprobot`.
+- **black** — process and frame diagnostics continued, but both real captures were black: `chompytower`, `cube21`, `cubicgrid`, `cyclone`, `euphoria`, `fieldlines`, `fliptext`, `flocks`, `flurry`, `flux`, `glblur`, `glcells`, `gltext`, `headroom`, `helios`, `hyperspace`, `implicitdemo`, `jigsaw`, `lattice`, `menger`, `microcosm`, `photopile`, `plasma`, `providence`, `skulloop`, `skyrocket`, `solarwinds`, `splitflap`, `splodesic`, `timetunnel`.
 - **exit_1** — initialization rejected required content/configuration; see per-target stderr: `unicrud`.
 - **static** — visible output was captured, but the two frames did not change materially: `atlantis`, `highvoltage`, `quasicrystal`, `sballs`.
 
 ### PEGASUS amd64
 
-- **black** — process and frame diagnostics continued, but both real captures were black: `bouncingcow`, `chompytower`, `cubenetic`, `cubicgrid`, `cyclone`, `euphoria`, `fliptext`, `flocks`, `flurry`, `flux`, `glblur`, `glcells`, `gltext`, `headroom`, `helios`, `hextrail`, `hyperspace`, `implicitdemo`, `menger`, `microcosm`, `photopile`, `plasma`, `providence`, `skulloop`, `skyrocket`, `skytentacles`, `solarwinds`, `timetunnel`, `winduprobot`.
+- **black** — process and frame diagnostics continued, but both real captures were black: `chompytower`, `cubicgrid`, `cyclone`, `euphoria`, `fliptext`, `flocks`, `flurry`, `flux`, `glblur`, `glcells`, `gltext`, `headroom`, `helios`, `hyperspace`, `implicitdemo`, `menger`, `microcosm`, `photopile`, `plasma`, `providence`, `skulloop`, `skyrocket`, `solarwinds`, `timetunnel`.
 - **exit_1** — initialization rejected required content/configuration; see per-target stderr: `unicrud`.
 - **exit_134** — process aborted after initial frames; see splitflap stderr: `splitflap`.
 - **static** — visible output was captured, but the two frames did not change materially: `atlantis`, `highvoltage`, `quasicrystal`, `sballs`.
@@ -205,3 +205,8 @@ was removed and the O6N matrix was restarted from target 1; only the clean
   `Foreground`/`Background` resource defaults in the standalone compatibility
   layer. Real 2s/4s `grim` captures prove animation on both O6N and PEGASUS;
   see `validation/full_matrix_fixes_2026-09-25/unknownpleasures/`.
+- `bouncingcow_gles3`, `cubenetic_gles3`, `hextrail_gles3`,
+  `skytentacles_gles3`, and `winduprobot_gles3`: populated standard xlockmore `ModeInfo` fields from
+  each hack's parsed defaults. All four now pass real 2s/4s animation checks
+  on both architectures; see
+  `validation/full_matrix_fixes_2026-09-25/mode-defaults/`.

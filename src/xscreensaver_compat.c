@@ -949,6 +949,26 @@ void xs_compat_apply_var_defaults(ModeSpecOpt *o, const char *defaults_str) {
     }
 }
 
+/* xlockmore keeps a second set of standard resources in ModeInfo rather than
+ * in each hack's vars[] table. Apply only values explicitly present in the
+ * active DEFAULTS block so absent resources retain the harness defaults. */
+void xs_compat_apply_mode_defaults(ModeInfo *mi) {
+    const char *v;
+    if (!mi) return;
+    v = xs_defaults_lookup("delay");
+    if (v) mi->pause = atol(v);
+    v = xs_defaults_lookup("count");
+    if (v) mi->batchcount = atol(v);
+    v = xs_defaults_lookup("cycles");
+    if (v) mi->cycles = atol(v);
+    v = xs_defaults_lookup("size");
+    if (v) mi->size = atol(v);
+    v = xs_defaults_lookup("wireframe");
+    if (v) mi->wireframe_p = xs_parse_bool(v);
+    v = xs_defaults_lookup("showFPS");
+    if (v) mi->fps_p = xs_parse_bool(v);
+}
+
 /*
  * Resource getters, backed by the hack's own var table.
  *
