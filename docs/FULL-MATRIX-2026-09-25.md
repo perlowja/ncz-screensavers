@@ -1,5 +1,10 @@
 # Full GLES3 hardware matrix — 2026-09-25
 
+> **Human-reviewed targeted follow-up:** See
+> [FINAL-TARGETED-FIX-2026-09-25.md](FINAL-TARGETED-FIX-2026-09-25.md). Its
+> manual findings supersede automated PASS classifications for those 13
+> targets.
+
 > **NVIDIA follow-up:** The complete 140-target CERBERUS / RTX 4500 Ada run is
 > documented in [NVIDIA-FULL-MATRIX-CERBERUS-2026-09-25.md](NVIDIA-FULL-MATRIX-CERBERUS-2026-09-25.md),
 > including real two-shot `grim` evidence and a universal NVIDIA-path cleanup
