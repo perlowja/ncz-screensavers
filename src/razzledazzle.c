@@ -12,7 +12,7 @@
 #define DEFAULTS	"*delay:	30000       \n" \
 			"*showFPS:      False       \n" \
 			"*wireframe:    False       \n" \
-			"*ncolors:      2           \n" \
+			"*ncolors:      64          \n" \
 			"*suppressRotationAnimation: True\n" \
 
 # define release_dazzle 0
@@ -291,7 +291,10 @@ move_grid (ModeInfo *mi)
           {
             int i = random() % bp->ncolors;
             int j = (i + bp->ncolors / 2) % bp->ncolors;
-            GLfloat cscale = 0.3;
+            /* Preserve disruptive dazzle contrast, but let the generated
+               hue ramp remain visible instead of collapsing into near-white
+               and near-black silhouettes. */
+            GLfloat cscale = 0.82;
 
             n->color1[0] = bp->colors[i].red   / 65536.0;
             n->color1[1] = bp->colors[i].green / 65536.0;
@@ -379,9 +382,12 @@ dazzle_randomize (ModeInfo *mi)
     make_random_colormap (0, 0, 0, bp->colors, &bp->ncolors,
                           True, False, 0, False);
   else
-    make_smooth_colormap (0, 0, 0,
-                          bp->colors, &bp->ncolors,
-                          False, False, False);
+    make_color_loop (0, 0, 0,
+                     185, 0.82, 1.00,
+                     275, 0.78, 0.92,
+                     330, 0.88, 1.00,
+                     bp->colors, &bp->ncolors,
+                     False, False);
   if (bp->ncolors < 1) abort();
 
   bp->dragging = 0;

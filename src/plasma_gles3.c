@@ -253,11 +253,35 @@ draw_plasma(ModeInfo *mi) {
             temp = bp->plasma[i][j][2] - rgb[2];
             if (temp >  maxdiff) bp->plasma[i][j][2] = rgb[2] + maxdiff;
             if (temp < -maxdiff) bp->plasma[i][j][2] = rgb[2] - maxdiff;
-            /* pack into the linear texture array */
-            index = (i * TEXSIZE + j) * 3;
-            bp->plasmamap[index + 0] = fabstrunc(bp->plasma[i][j][0]);
-            bp->plasmamap[index + 1] = fabstrunc(bp->plasma[i][j][1]);
-            bp->plasmamap[index + 2] = fabstrunc(bp->plasma[i][j][2]);
+            /* Map the evolving field through a classic demoscene palette.
+             * Keeping the three phase-shifted sine channels avoids the flat
+             * cyan/green cast produced by displaying the raw field values. */
+            {
+                float x = (float)i / (float)plasmasize * PIx2;
+                float y = (float)j / (float)grid_w * PIx2;
+                float dx = x - 3.14159265f + sinf(bp->ct[4]) * 0.8f;
+                float dy = y - 3.14159265f + cosf(bp->ct[5]) * 0.8f;
+                float wave = (sinf(x * 2.0f + bp->ct[0]) +
+                              sinf(y * 3.0f - bp->ct[1]) +
+                              sinf((x + y) * 1.7f + bp->ct[2]) +
+                              sinf(sqrtf(dx * dx + dy * dy) * 3.5f -
+                                   bp->ct[3]));
+                float phase = wave * 1.15f + bp->ct[6] * 0.45f;
+                float red   = 0.52f + 0.48f * sinf(phase);
+                float green = 0.42f + 0.40f * sinf(phase + 2.05f);
+                float blue  = 0.50f + 0.46f * sinf(phase + 4.20f);
+
+                /* Slightly deepen the troughs while preserving hot highlights. */
+                red   = red   * red   * 0.85f + red   * 0.15f;
+                green = green * green * 0.85f + green * 0.15f;
+                blue  = blue  * blue  * 0.85f + blue  * 0.15f;
+
+                /* pack into the linear texture array */
+                index = (i * TEXSIZE + j) * 3;
+                bp->plasmamap[index + 0] = fabstrunc(red);
+                bp->plasmamap[index + 1] = fabstrunc(green);
+                bp->plasmamap[index + 2] = fabstrunc(blue);
+            }
         }
     }
 

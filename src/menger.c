@@ -500,25 +500,12 @@ draw_sponge (ModeInfo *mi)
     glRotatef (z * 360, 0.0, 0.0, 1.0);
   }
 
-  color0[0] = sp->colors[sp->ccolor0].red   / 65536.0;
-  color0[1] = sp->colors[sp->ccolor0].green / 65536.0;
-  color0[2] = sp->colors[sp->ccolor0].blue  / 65536.0;
-
-  color1[0] = sp->colors[sp->ccolor1].red   / 65536.0;
-  color1[1] = sp->colors[sp->ccolor1].green / 65536.0;
-  color1[2] = sp->colors[sp->ccolor1].blue  / 65536.0;
-
-  color2[0] = sp->colors[sp->ccolor2].red   / 65536.0;
-  color2[1] = sp->colors[sp->ccolor2].green / 65536.0;
-  color2[2] = sp->colors[sp->ccolor2].blue  / 65536.0;
-
-
-  sp->ccolor0++;
-  sp->ccolor1++;
-  sp->ccolor2++;
-  if (sp->ccolor0 >= sp->ncolors) sp->ccolor0 = 0;
-  if (sp->ccolor1 >= sp->ncolors) sp->ccolor1 = 0;
-  if (sp->ccolor2 >= sp->ncolors) sp->ccolor2 = 0;
+  /* Treat the three axis-facing surface sets as one architectural material.
+     Cool slate values provide orientation and depth without the unrelated
+     green/purple/blue faces of three offset random palette positions. */
+  color0[0] = 0.72; color0[1] = 0.78; color0[2] = 0.86;
+  color1[0] = 0.46; color1[1] = 0.54; color1[2] = 0.66;
+  color2[0] = 0.27; color2[1] = 0.34; color2[2] = 0.46;
 
   if (sp->draw_tick++ >= speed)
     {
