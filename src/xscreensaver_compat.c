@@ -1957,7 +1957,7 @@ char *XChar2b_to_utf8(const XChar2b *str, int *length_ret)
  * require a non-NULL client, so provide a small deterministic fallback
  * stream when the external X11 helper is unavailable.
  */
-struct text_data { size_t offset; };
+struct text_data { int _placeholder; };
 
 text_data *textclient_open(Display *dpy)
 {
@@ -1981,12 +1981,8 @@ void textclient_reshape(text_data *td,
 
 int textclient_getc(text_data *td)
 {
-    static const char fallback[] = "NCZ SCREENSAVERS   ";
-    int c;
-    if (!td) return -1;
-    c = (unsigned char)fallback[td->offset++];
-    if (!fallback[td->offset]) td->offset = 0;
-    return c;
+    (void) td;
+    return -1;
 }
 
 Bool textclient_puts(text_data *td, const char *s)
