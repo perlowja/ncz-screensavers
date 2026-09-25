@@ -819,6 +819,22 @@ endforeach
 # cube-map pipelines, etc.).
 # -----------------------------------------------------------------------
 
+# MIT Schwarzschild raytracer port; see vendor/blackhole-PORTED.md.
+executable(
+    'blackhole_gles3',
+    files(common_gles3_sources + [
+        'src/gles3_harness.c',
+        'src/gles3_blackhole.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        '-DHACK_TABLE=blackhole_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+
 rss_sdl2_gles2_hacks = [
     {'name': 'cyclone',       'src': 'src/cyclone_gles3.c'},
     {'name': 'euphoria',      'src': 'src/euphoria_gles3.c'},
@@ -1026,6 +1042,7 @@ message('Run `meson compile -C build` to build.')
 # pipeline that uses this gate.
 # -----------------------------------------------------------------------
 foreach alias_name : [
+    'blackhole_gles3',
     'antinspect_gles3', 'antspotlight_gles3', 'beats_gles3',
     'blinkbox_gles3', 'blocktube_gles3', 'boing_gles3',
     'bouncingcow_gles3', 'chompytower_gles3', 'cityflow_gles3',

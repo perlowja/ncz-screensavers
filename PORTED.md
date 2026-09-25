@@ -1,5 +1,11 @@
 # Ported xscreensaver hacks
 
+## Black-hole GR raytracer
+
+`blackhole_gles3` ports Adriwin06/black-hole's MIT-licensed Schwarzschild
+Binet geodesic integration to a randomized, continuously animated GLES3
+screensaver. See `vendor/blackhole-PORTED.md` and its preserved license.
+
 A hack counts as ported only if `ninja -C build` LINKS its <name>_demo
 or <name>_gles3 target. Compiling is not enough: missing companion
 sources surface only at link time.
