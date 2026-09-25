@@ -778,7 +778,14 @@ hyprsaver_shaders = [
     'terminal', 'tesla', 'tunnel', 'voronoi', 'waterfall', 'wormhole',
 ]
 
+# Absolute runtime asset directory matches both loaders, including builds
+# configured with the default /usr/local prefix. DESTDIR staging still works.
+shader_install_dir = '/usr/share/ncz-screensavers/shaders'
+install_data('vendor/blackhole/blackhole.frag', install_dir: shader_install_dir,
+             install_tag: 'runtime-shaders')
 foreach s : hyprsaver_shaders
+    install_data('vendor/hyprsaver/shaders/' + s + '.frag',
+                 install_dir: shader_install_dir, install_tag: 'runtime-shaders')
     executable(
         'hyprsaver_' + s + '_gles3',
         files(common_gles3_sources + [

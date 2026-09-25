@@ -103,3 +103,31 @@ Intel, with `gl_error=0x0`. This catches NaNs/infinities that ordinary PNGs
 cannot reveal, for these fixed parameters. Application PNGs were captured
 at 1920x1080 on PEGASUS and 1536x960 on MEDUSA. Local and both remote
 blackhole targets compile successfully; `git diff --check` passes.
+
+## Installed shader regression
+
+Meson now installs blackhole.frag and the 35 hyprsaver shaders to the
+absolute `/usr/share/ncz-screensavers/shaders` directory that both loaders
+already use. This deliberately matches the existing runtime contract even
+with Meson's default `/usr/local` prefix. The `runtime-shaders` install tag
+permits asset-only installation without unrelated executables. Standard
+DESTDIR packaging works; both remote staged installs contain 36 shaders
+beneath `stage/usr/share/ncz-screensavers/shaders`.
+
+On both hosts, used `meson install -C build --no-rebuild --tags
+runtime-shaders`, then launched the full binary path after `cd /`.
+Every final blackhole capture above was made from that working directory.
+The actual runtime log on both vendors states:
+
+```
+[diag] blackhole shader=/usr/share/ncz-screensavers/shaders/blackhole.frag
+```
+
+Both vendors compile/link and draw successfully from `/`. A representative
+hyprsaver_aurora_gles3 also initializes and reaches frame 120 from `/` on
+both vendors after the install. The other 34 hyprsaver shaders were staged
+and installed, but not individually runtime-tested in this change.
+
+The fopen audit found these two runtime shader loaders. molecule.c reads
+optional user-supplied PDB files and quickhull.c writes output; neither is
+a missing packaged runtime asset. No unrelated asset changes were made.
