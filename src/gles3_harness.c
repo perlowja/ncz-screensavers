@@ -124,7 +124,7 @@ static struct xscreensaver_function_table *hack = &HACK_TABLE;
             fprintf(stderr,                                               \
                     "gles3_harness: %s failed at %s:%d: " fmt "\n",       \
                     #call, __FILE__, __LINE__, ##__VA_ARGS__);             \
-            exit(1);                                                       \
+            ncz_harness_die(1);                                                       \
         }                                                                  \
     } while (0)
 
@@ -275,7 +275,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         a->egl_window = wl_egl_window_create(a->surface, a->width, a->height);
         if (!a->egl_window) {
             fprintf(stderr, "gles3_harness: wl_egl_window_create failed\n");
-            exit(1);
+            ncz_harness_die(1);
         }
         a->egl_surface = eglCreateWindowSurface(a->egl_display, a->egl_config,
                                                 (EGLNativeWindowType)a->egl_window,
@@ -283,7 +283,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         if (a->egl_surface == EGL_NO_SURFACE) {
             fprintf(stderr, "gles3_harness: eglCreateWindowSurface failed (0x%x)\n",
                     (unsigned int)eglGetError());
-            exit(1);
+            ncz_harness_die(1);
         }
         DIE(eglMakeCurrent(a->egl_display, a->egl_surface, a->egl_surface,
                            a->egl_context), EGL_TRUE, "eglMakeCurrent failed");
@@ -430,24 +430,24 @@ static void init_egl(struct app *a) {
         a->egl_display = eglGetDisplay((EGLNativeDisplayType)a->display);
         if (a->egl_display == EGL_NO_DISPLAY) {
             fprintf(stderr, "gles3_harness: eglGetPlatformDisplay failed\n");
-            exit(1);
+            ncz_harness_die(1);
         }
     }
     EGLint maj = 0, minn = 0;
     if (!eglInitialize(a->egl_display, &maj, &minn)) {
         fprintf(stderr, "gles3_harness: eglInitialize failed (0x%x)\n",
                 (unsigned int)eglGetError());
-        exit(1);
+        ncz_harness_die(1);
     }
     if (!eglBindAPI(EGL_OPENGL_ES_API)) {
         fprintf(stderr, "gles3_harness: eglBindAPI failed (0x%x)\n",
                 (unsigned int)eglGetError());
-        exit(1);
+        ncz_harness_die(1);
     }
     a->egl_config = ncz_gles3_choose_config(a->egl_display);
     if (!a->egl_config) {
         fprintf(stderr, "gles3_harness: no GLES3 EGL configs\n");
-        exit(1);
+        ncz_harness_die(1);
     }
     /* GLES 3.2 context — same client version as the runtime requires. */
     EGLint ctx_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
@@ -456,7 +456,7 @@ static void init_egl(struct app *a) {
     if (a->egl_context == EGL_NO_CONTEXT) {
         fprintf(stderr, "gles3_harness: eglCreateContext failed (0x%x)\n",
                 (unsigned int)eglGetError());
-        exit(1);
+        ncz_harness_die(1);
     }
     /* Probe the GL strings once the context is live (needs MakeCurrent,
      * which we do later when the surface arrives). For now log the
@@ -514,6 +514,13 @@ static void atexit_app_fini(void) {
     if (g_app) { app_fini(g_app); g_app = NULL; }
 }
 
+/* See the doc comment in gles3_compat.h. Safe to call at any point,
+ * including before g_app is assigned (early setup failures). */
+void ncz_harness_die(int code) {
+    if (g_app) { app_fini(g_app); g_app = NULL; }
+    exit(code);
+}
+
 /* ----------------------------------------------------------------------- */
 /* main                                                                    */
 /* ----------------------------------------------------------------------- */
@@ -529,7 +536,7 @@ int main(void) {
     g_app = &app;
     if (atexit(atexit_app_fini) != 0) {
         fprintf(stderr, "gles3_harness: atexit failed\n");
-        exit(1);
+        ncz_harness_die(1);
     }
 
     /* Signal handlers. */
@@ -551,20 +558,20 @@ int main(void) {
     app.display = wl_display_connect(NULL);
     if (!app.display) {
         fprintf(stderr, "gles3_harness: wl_display_connect failed\n");
-        exit(1);
+        ncz_harness_die(1);
     }
     app.registry = wl_display_get_registry(app.display);
     wl_registry_add_listener(app.registry, &reg_listener, &app);
-    if (wl_display_roundtrip(app.display) < 0) exit(1);
+    if (wl_display_roundtrip(app.display) < 0) ncz_harness_die(1);
     if (!app.compositor || !app.seat || (!app.layer_shell && !app.wm_base)) {
         fprintf(stderr,
             "gles3_harness: missing Wayland globals "
             "(compositor=%d seat=%d layer_shell=%d xdg_wm_base=%d)\n",
             !!app.compositor, !!app.seat, !!app.layer_shell, !!app.wm_base);
-        exit(1);
+        ncz_harness_die(1);
     }
     wl_seat_add_listener(app.seat, &seat_listener, &app);
-    if (wl_display_roundtrip(app.display) < 0) exit(1);
+    if (wl_display_roundtrip(app.display) < 0) ncz_harness_die(1);
 
     /* EGL. */
     init_egl(&app);
@@ -580,7 +587,7 @@ int main(void) {
         "eglMakeCurrent (no surface) failed");
     if (ncz_gles3_runtime_init() < 0) {
         fprintf(stderr, "gles3_harness: GLES3 runtime init failed\n");
-        exit(1);
+        ncz_harness_die(1);
     }
     /* Log GL strings now. */
     fprintf(stderr, "[diag] GL_VERSION=%s\nRENDERER=%s\nVENDOR=%s\nGLSL=%s\n",
@@ -597,7 +604,7 @@ int main(void) {
     app.surface = wl_compositor_create_surface(app.compositor);
     if (!app.surface) {
         fprintf(stderr, "gles3_harness: create_surface failed\n");
-        exit(1);
+        ncz_harness_die(1);
     }
     if (!app.layer_shell) {
         fprintf(stderr, "[diag] no zwlr_layer_shell_v1; "
@@ -605,13 +612,13 @@ int main(void) {
         app.xdg_surface = xdg_wm_base_get_xdg_surface(app.wm_base, app.surface);
         if (!app.xdg_surface) {
             fprintf(stderr, "gles3_harness: get_xdg_surface failed\n");
-            exit(1);
+            ncz_harness_die(1);
         }
         xdg_surface_add_listener(app.xdg_surface, &xdg_surf_listener, &app);
         app.xdg_toplevel = xdg_surface_get_toplevel(app.xdg_surface);
         if (!app.xdg_toplevel) {
             fprintf(stderr, "gles3_harness: get_toplevel failed\n");
-            exit(1);
+            ncz_harness_die(1);
         }
         xdg_toplevel_add_listener(app.xdg_toplevel, &xdg_top_listener, &app);
         xdg_toplevel_set_title(app.xdg_toplevel, "ncz-gles3");
@@ -628,7 +635,7 @@ int main(void) {
         xdg_toplevel_set_fullscreen(app.xdg_toplevel, NULL);
         wl_surface_commit(app.surface);
         for (int i = 0; i < 50 && !app.configured; i++) {
-            if (wl_display_roundtrip(app.display) < 0) exit(1);
+            if (wl_display_roundtrip(app.display) < 0) ncz_harness_die(1);
         }
         goto shell_ready;
     }
@@ -640,7 +647,7 @@ int main(void) {
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "gles3-hack");
     if (!app.layer_surface) {
         fprintf(stderr, "gles3_harness: get_layer_surface failed\n");
-        exit(1);
+        ncz_harness_die(1);
     }
     zwlr_layer_surface_v1_set_anchor(app.layer_surface,
         ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
@@ -655,13 +662,13 @@ int main(void) {
      * than one dispatch cycle to emit zwlr_layer_surface_v1.configure.
      * Keep round-tripping, bounded, rather than assuming one is enough. */
     for (int i = 0; i < 50 && !app.configured; i++) {
-        if (wl_display_roundtrip(app.display) < 0) exit(1);
+        if (wl_display_roundtrip(app.display) < 0) ncz_harness_die(1);
     }
 
 shell_ready:
     if (!app.configured) {
         fprintf(stderr, "gles3_harness: never configured\n");
-        exit(1);
+        ncz_harness_die(1);
     }
 
     /* Draw + swap once BEFORE asking for a frame callback. See the
@@ -673,6 +680,7 @@ shell_ready:
     if (!eglSwapBuffers(app.egl_display, app.egl_surface)) {
         fprintf(stderr, "gles3_harness: initial eglSwapBuffers failed (0x%x)\n",
                 (unsigned int)eglGetError());
+        ncz_harness_die(1);
         return 1;
     }
     {

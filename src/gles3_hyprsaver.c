@@ -639,7 +639,7 @@ hyprsaver_init(ModeInfo *mi) {
     HyprsaverState *st = (HyprsaverState *)calloc(1, sizeof(*st));
     if (!st) {
         fprintf(stderr, "hyprsaver: OOM at init\n");
-        exit(1);
+        ncz_harness_die(1);
     }
     mi->data = st;
     st->start_time = now_seconds();
@@ -666,12 +666,12 @@ hyprsaver_init(ModeInfo *mi) {
         fprintf(stderr,
                 "hyprsaver[%s]: cannot locate vendor/hyprsaver/shaders/%s\n",
                 HACK_PREFIX_STR, SHADER_FILE);
-        exit(1);
+        ncz_harness_die(1);
     }
 
     size_t frag_len = 0;
     char *frag_src = read_entire_file(path, &frag_len);
-    if (!frag_src) exit(1);
+    if (!frag_src) ncz_harness_die(1);
 
     /* Round 15 — run the raw .frag through prepare_shader() to inject
      * the upstream preamble (uniform decls + palette() helper + main()
@@ -684,7 +684,7 @@ hyprsaver_init(ModeInfo *mi) {
                 "hyprsaver[%s]: prepare_shader() failed (OOM)\n",
                 HACK_PREFIX_STR);
         free(frag_src);
-        exit(1);
+        ncz_harness_die(1);
     }
 
     GLuint vs = compile_shader(GL_VERTEX_SHADER, vert_src, "vertex");
@@ -693,12 +693,12 @@ hyprsaver_init(ModeInfo *mi) {
      * free now. `frag_src` is the raw .frag as-read — also free. */
     free(frag_prepared);
     free(frag_src);
-    if (!vs || !fs) exit(1);
+    if (!vs || !fs) ncz_harness_die(1);
     st->program = link_program(vs, fs);
     /* Shaders can be deleted now; they're attached to the program. */
     glDeleteShader(vs);
     glDeleteShader(fs);
-    if (!st->program) exit(1);
+    if (!st->program) ncz_harness_die(1);
 
     glGenBuffers(1, &st->vbo);
     glBindBuffer(GL_ARRAY_BUFFER, st->vbo);
@@ -766,7 +766,7 @@ hyprsaver_init(ModeInfo *mi) {
             fprintf(stderr,
                     "hyprsaver[%s]: palette LUT bake/upload failed\n",
                     HACK_PREFIX_STR);
-            exit(1);
+            ncz_harness_die(1);
         }
     } else {
         st->palette_lut_tex = 0;

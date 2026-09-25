@@ -98,6 +98,23 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+/* Defined in gles3_harness.c. Every fatal-error exit path (the DIE()
+ * macro, explicit exit(1) calls in the harness, and per-hack init
+ * failures such as a shader compile error) must route through this
+ * instead of calling libc exit()/_exit() directly. Calling GL/EGL
+ * teardown (ncz_gles3_runtime_fini() -> glDelete*, then eglDestroy*)
+ * from inside an atexit handler crashes on NVIDIA: the vendor driver
+ * registers its own atexit/destructor during context creation, which
+ * lands AFTER ours and so runs BEFORE ours (atexit is LIFO), tearing
+ * down GL dispatch trampolines out from under our cleanup calls --
+ * confirmed via gdb (SIGSEGV, unmapped address, inside
+ * ncz_gles3_runtime_fini() reached through atexit_app_fini()).
+ * ncz_harness_die() runs that same cleanup synchronously, before
+ * exit() and its atexit chain begin, which is the only point at which
+ * it is safe on NVIDIA. It is a no-op safe to call before the app is
+ * even constructed (checks for a live instance internally). */
+void ncz_harness_die(int code);
+
 /* ----------------------------------------------------------------------- */
 /* Section 1 — EGL/GLES3 context setup (the GLES3 harness)                  */
 /* ----------------------------------------------------------------------- */
