@@ -2,25 +2,77 @@
 precision highp float;
 precision highp int;
 out vec4 fragColor;
+// Time-driven palette state: phase + rate are randomised per-launch.
 uniform float u_time, u_seed, u_radius, u_temperature, u_density, u_rotation;
 uniform float u_inclination, u_orbit_rate, u_jet, u_star_density;
 uniform float u_camera_mode, u_palette, u_approach, u_periapsis;
+uniform float u_palette_phase, u_palette_rate, u_palette_contrast;
 uniform vec2 u_resolution;
 // hue, spatial scale, cloud coverage, yaw; tilt and bounded noise offset.
 uniform vec4 u_nebula;
 uniform vec2 u_nebula_axis;
+// Which decorrelation scheme the nebula was given this run (0..2).
+uniform float u_nebula_scheme;
 #define PI 3.14159265358979323846
 float hash21(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345+u_seed*.00001);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+1.),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+vec2(17.13,-11.7);a*=.5;}return v;}
-vec3 blackbody(float t){vec3 c=vec3(1,.18,.025),w=vec3(1,.62,.16),h=vec3(.72,.86,1);return t<.55?mix(c,w,t/.55):mix(w,h,(t-.55)/.45);}
-vec3 palette(float t){
- if(u_palette<.5)return blackbody(t);                                      // solar gold
- if(u_palette<1.5)return mix(vec3(.025,.12,.8),vec3(.72,1.,1.),pow(t,.7)); // blue-hot
- if(u_palette<2.5)return mix(vec3(.32,.006,.002),vec3(1.,.56,.08),pow(t,1.25)); // ember
- if(u_palette<3.5)return mix(vec3(.12,.008,.38),vec3(1.,.35,.92),pow(t,.8)); // ultraviolet
- return mix(vec3(.005,.18,.11),vec3(.45,1.,.78),pow(t,.65));              // exotic mint
+
+// ---- HSL helpers (palette interpolation in hue-space avoids the grey
+//      midpoint that linear-RGB complement mixing passes through) ----
+vec3 hsl2rgb(vec3 c){vec3 rgb=clamp(abs(mod(c.x*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);return c.z+c.y*(rgb-.5)*(1.-abs(2.*c.z-1.));}
+// Each palette is a list of (hue_offset, sat, lum) stops. u_palette selects
+// the family; the active hue rotates with u_time via u_palette_phase + rate.
+struct Stop{float h,s,l;};
+// Hue interpolation along the SHORT arc so wrapping never produces a jump.
+float hueLerp(float a,float b,float k){float d=b-a;d-=floor(d+.5);return a+d*k;}
+Stop stopAHue(Stop a,Stop b,float k){return Stop(hueLerp(a.h,b.h,k),a.s+(b.s-a.s)*k,a.l+(b.l-a.l)*k);}
+
+// Five named palettes + a sixth "psychedelic" used when u_palette>=5.
+// Each is a 4-stop ramp. Stops chosen to span temperature hot->cool with
+// at least two clearly different hues so a single disk carries several
+// colours at once. Saturation is high but not maxed out so the disk does
+// not crush to neon; one named palette (3, ultraviolet) is intentionally
+// restrained for the "classical" look.
+void paletteStops(float idx,out Stop s0,out Stop s1,out Stop s2,out Stop s3){
+ if(idx<.5){                              // solar gold (warm, restrained)
+  s0=Stop(.085,.85,.10); s1=Stop(.085,.90,.42);
+  s2=Stop(.07,.95,.72);  s3=Stop(.04,.75,.98);
+ }else if(idx<1.5){                       // blue-hot
+  s0=Stop(.62,.80,.08);  s1=Stop(.55,.95,.34);
+  s2=Stop(.48,.85,.66);  s3=Stop(.52,.60,.98);
+ }else if(idx<2.5){                       // ember (deep red->orange->yellow)
+  s0=Stop(.97,.95,.06);  s1=Stop(.05,.98,.32);
+  s2=Stop(.10,.95,.62);  s3=Stop(.13,.80,.97);
+ }else if(idx<3.5){                       // ultraviolet (classical, restrained)
+  s0=Stop(.72,.90,.06);  s1=Stop(.78,.80,.30);
+  s2=Stop(.82,.70,.58);  s3=Stop(.86,.55,.96);
+ }else if(idx<4.5){                       // exotic mint -> magenta split
+  s0=Stop(.42,.65,.10);  s1=Stop(.50,.95,.36);
+  s2=Stop(.86,.85,.62);  s3=Stop(.92,.90,.96);
+ }else{                                   // psychedelic: 4 widely-separated hues
+  s0=Stop(.00,.90,.10);  s1=Stop(.18,.95,.40);
+  s2=Stop(.55,.95,.66);  s3=Stop(.82,.90,.98);
+ }
 }
+vec3 palette(float t){
+ // Active hue offset: drifts continuously over time, randomised per-launch.
+ float active_h=u_palette_phase+u_time*u_palette_rate;
+ Stop s0,s1,s2,s3;paletteStops(u_palette,s0,s1,s2,s3);
+ // Map the 4 stops into a hue-rotated frame so each stop's hue advances by
+ // active_h (mod 1). Keeps relative relationships, adds global drift.
+ s0.h=fract(s0.h+active_h); s1.h=fract(s1.h+active_h);
+ s2.h=fract(s2.h+active_h); s3.h=fract(s3.h+active_h);
+ // 4-stop ramp interpolated with hue-space lerp (no grey midpoint).
+ // Branches on t so each segment interpolates only between adjacent stops.
+ Stop r;
+ if(t<.33)r=stopAHue(s0,s1,t/.33);
+ else if(t<.66)r=stopAHue(s1,s2,(t-.33)/.33);
+ else if(t<.90)r=stopAHue(s2,s3,(t-.66)/.24);
+ else r=s3;
+ return hsl2rgb(vec3(r.h,r.s,r.l));
+}
+
 // Direction-space noise has no longitude seam or pole singularity.
 float skyHash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float skyNoise(vec3 p){
@@ -31,22 +83,31 @@ float skyNoise(vec3 p){
                 mix(skyHash(i+vec3(0,1,1)),skyHash(i+vec3(1,1,1)),f.x),f.y),f.z);
 }
 vec3 nebula(vec3 d){
+ // Decorrelate from the disk: nebula base hue is shifted by a scheme offset
+ // (complement 0.5, triad 0.33, split-complement 0.42 by default).
+ float scheme=u_nebula_scheme;
+ float offset=(scheme<.5)?.5:(scheme<1.5)?.33:.42;
+ float drift=u_palette_phase*0.5+u_time*u_palette_rate*0.35;
+ float baseH=fract(u_nebula.x+offset+drift);
  float cy=cos(u_nebula.w),sy=sin(u_nebula.w);
  float ct=cos(u_nebula_axis.x),st=sin(u_nebula_axis.x);
  vec3 q=vec3(cy*d.x-sy*d.z,d.y,sy*d.x+cy*d.z);
  q=vec3(q.x,ct*q.y-st*q.z,st*q.y+ct*q.z);
  vec3 v=q*u_nebula.y+u_nebula_axis.y;
- // One coarse domain warp and three fixed octaves, only on background rays.
  float warp=skyNoise(v*.65+vec3(7,19,3));
  v+=1.8*vec3(warp,-warp,.5*warp);
  float n=.57*skyNoise(v)+.28*skyNoise(v*2.03+17.1)+.15*skyNoise(v*4.11-9.2);
  float band=exp(-pow((q.y+.24*(warp-.5))/.36,2.));
  float cloud=smoothstep(.30,.78,n+u_nebula.z)*(.20+.80*band);
  float filaments=smoothstep(.42,.72,n)*cloud;
- vec3 cool=.5+.5*cos(2.*PI*(u_nebula.x+vec3(0,.33,.67)));
- vec3 warm=.5+.5*cos(2.*PI*(u_nebula.x+.16+vec3(0,.33,.67)));
- // Bounded radiance: retain the disk as the brightest, highest-contrast subject.
- return .13*cloud*mix(cool,warm,warp)+.055*filaments*vec3(.65,.75,1.);
+ // Nebula sampled in HSL with its own decorrelated hue; never falls into the
+ // disk palette's hue family because of the scheme offset.
+ vec3 cool=hsl2rgb(vec3(fract(baseH+.00),.65,.55));
+ vec3 warm=hsl2rgb(vec3(fract(baseH+.16),.70,.62));
+ // Bounded radiance: keep nebula strictly below disk luminance so the disk
+ // stays the subject. The 0.13 / 0.055 multipliers are the previous
+ // ceiling; we cut them by ~30% so the nebula reads as backdrop.
+ return .09*cloud*mix(cool,warm,warp)+.04*filaments*vec3(.65,.75,1.);
 }
 vec3 stars(vec3 d){
  vec2 uv=vec2(atan(d.z,d.x)/(2.*PI)+.5,asin(clamp(d.y,-1.,1.))/PI+.5);
@@ -55,10 +116,37 @@ vec3 stars(vec3 d){
  vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(cell+7.));
  return c*s*s*(.65+.35*sin(u_seed+n*40.))*1.8+nebula(d);
 }
-vec3 disk_color(vec3 p, float drama){float r=length(p.xy),a=atan(p.y,p.x),ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.),dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8),grav=sqrt(max(1.-1./max(r,1.001),.02));// A real disk-space hot sector also appears in the lensed disk images.
-float sector=max(cos(a-(.22*u_time+.00001*u_seed)),0.);sector*=sector;sector*=sector;
-float boost=1.+.65*drama*sector*(1.-smoothstep(4.,8.,r));
-return palette(clamp(heat*dop/grav,0.,1.))*edge*(.32+1.2*n)*u_density*dop*dop*boost;}
+vec3 disk_color(vec3 p,float drama){
+ float r=length(p.xy),a=atan(p.y,p.x);
+ float ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);
+ float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));
+ n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);
+ float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));
+ float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.);
+ float dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8);
+ float grav=sqrt(max(1.-1./max(r,1.001),.02));
+ // Oil-slick iridescence: hue shifts with orbital angle and Doppler term so
+ // a single frame carries several bands. Slow radius offset avoids the hue
+ // fighting the temperature ramp.
+ float bandHue=(a/(2.*PI))*.18+0.06*sin(ph*3.)+0.04*(dop-.35)/1.45;
+ float radiusHue=(r-3.)*.012;
+ float paletteT=clamp(heat*dop/grav,0.,1.)+bandHue+radiusHue;
+ // A real disk-space hot sector also appears in the lensed disk images.
+ float sector=max(cos(a-(.22*u_time+.00001*u_seed)),0.);
+ sector*=sector;sector*=sector;
+ float boost=1.+.65*drama*sector*(1.-smoothstep(4.,8.,r));
+ return palette(paletteT)*edge*(.32+1.2*n)*u_density*dop*dop*boost;
+}
+// Jet picks up the palette so it tracks the rest of the scene instead of a
+// fixed blue. Sampled at a hot temperature so it sits at the bright stop.
+vec3 jet_color(float axis){
+ Stop s0,s1,s2,s3;paletteStops(u_palette,s0,s1,s2,s3);
+ Stop hot=stopAHue(s2,s3,.85);
+ float active_h=u_palette_phase+u_time*u_palette_rate*1.5;
+ hot.h=fract(hot.h+active_h);
+ vec3 c=hsl2rgb(vec3(hot.h,hot.s,hot.l));
+ return c*smoothstep(.975,.997,axis);
+}
 // Zero velocity and acceleration at each envelope endpoint.
 float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
 void main(){
@@ -97,6 +185,15 @@ void main(){
  float u=1./length(cam),phi=0.;vec3 normal=normalize(cam),perp=cross(cross(normal,ray),normal);float plen=length(perp);vec3 tangent=plen>1e-6?perp/plen:right;float tang=dot(ray,tangent),du=abs(tang)>1e-6?-dot(ray,normal)/tang*u:200.*u;vec3 old=cam,pos=cam,color=vec3(0);float trans=1.;
  for(int i=0;i<260;i++){float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));du+=.5*(-u+1.5*u*u)*step;u+=du*step;du+=.5*(-u+1.5*u*u)*step;phi+=step;if(u>=1.||u<=.0005)break;old=pos;pos=(cos(phi)*normal+sin(phi)*tangent)/u;if(old.z*pos.z<0.){vec3 x=mix(old,pos,-old.z/(pos.z-old.z));float r=length(x.xy);if(r>2.8&&r<13.){color+=trans*disk_color(x,closeFX);trans*=.72;}}}
  if(!captured){vec3 d=length(pos-old)>1e-5?normalize(pos-old):ray;color+=trans*(stars(d)+vec3(.002,.003,.007));}
- if(u_jet>0.){float axis=abs(dot(ray,vec3(0,0,1)));color+=u_jet*smoothstep(.975,.997,axis)*vec3(.18,.42,1)*(.45+.55*noise(p*45.+u_time*.2));}
- color=color/(1.+color);fragColor=vec4(pow(max(color,0.),vec3(1./2.2)),1);
+ if(u_jet>0.){float axis=abs(dot(ray,vec3(0,0,1)));color+=u_jet*jet_color(axis)*(.45+.55*noise(p*45.+u_time*.2));}
+ // Reinhard tonemap -> 1/2.2 gamma -> contrast toe + black point.
+ // u_palette_contrast ~1.0 (gentle S-curve restoring Reinhard-flattened
+ // contrast). 0.95-1.25 randomised per-launch.
+ color=color/(1.+color);
+ color=pow(max(color,0.),vec3(1./2.2));
+ // Soft S-curve: (c-.5)*k+.5, then small black point + small white point lift.
+ float k=clamp(u_palette_contrast,.85,1.35);
+ color=(color-.5)*k+.5;
+ color=max(color-vec3(.018),vec3(0));
+ fragColor=vec4(clamp(color,0.,1.),1);
 }
