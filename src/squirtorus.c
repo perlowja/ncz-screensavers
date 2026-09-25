@@ -127,6 +127,10 @@ parse_color (ModeInfo *mi, char *key, GLfloat color[4])
   color[1] = xcolor.green / 65536.0;
   color[2] = xcolor.blue  / 65536.0;
   color[3] = 1;
+
+  if (!strcmp (key, "starColor"))
+    fprintf (stderr, "%s: resolved %s RGBA %.4f %.4f %.4f %.4f\n",
+             progname, key, color[0], color[1], color[2], color[3]);
 }
 
 
@@ -771,6 +775,11 @@ init_sq (ModeInfo *mi)
   glEndList ();
 
   bp->star_dlist = glGenLists (1);
+  /* The GLES3 display-list compatibility layer snapshots material state at
+     compile time.  The ground list leaves the mountain material black, so
+     make the star list capture the configured star color instead. */
+  glColor4fv (bp->star_color);
+  glMaterialfv (GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, bp->star_color);
   glNewList (bp->star_dlist, GL_COMPILE);
   {
     GLfloat th;
@@ -929,6 +938,16 @@ draw_sq (ModeInfo *mi)
 
   /* Stars */
   glDisable (GL_LIGHTING);
+  /* The GLES3 compatibility shader still applies its light uniforms when
+     fixed-function lighting is disabled.  Make this unlit overlay pass
+     through at full intensity instead of retaining the scene's zero
+     ambient term. */
+  {
+    const GLfloat full[4] = { 1, 1, 1, 1 };
+    const GLfloat none[4] = { 0, 0, 0, 1 };
+    glLightfv (GL_LIGHT0, GL_AMBIENT, full);
+    glLightfv (GL_LIGHT0, GL_DIFFUSE, none);
+  }
   glMatrixMode (GL_PROJECTION);
   glPushMatrix ();
   {
