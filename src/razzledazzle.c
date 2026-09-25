@@ -390,6 +390,18 @@ dazzle_randomize (ModeInfo *mi)
                      False, False);
   if (bp->ncolors < 1) abort();
 
+  fprintf (stderr,
+           "%s: generated palette RGB %.4f %.4f %.4f; %.4f %.4f %.4f; %.4f %.4f %.4f\n",
+           progname,
+           bp->colors[0].red / 65535.0, bp->colors[0].green / 65535.0,
+           bp->colors[0].blue / 65535.0,
+           bp->colors[bp->ncolors / 3].red / 65535.0,
+           bp->colors[bp->ncolors / 3].green / 65535.0,
+           bp->colors[bp->ncolors / 3].blue / 65535.0,
+           bp->colors[(bp->ncolors * 2) / 3].red / 65535.0,
+           bp->colors[(bp->ncolors * 2) / 3].green / 65535.0,
+           bp->colors[(bp->ncolors * 2) / 3].blue / 65535.0);
+
   bp->dragging = 0;
   if (bp->nodes) free (bp->nodes);
 
@@ -578,6 +590,18 @@ draw_dazzle (ModeInfo *mi)
   glXMakeCurrent(MI_DISPLAY(mi), MI_WINDOW(mi), *bp->glx_context);
 
   glShadeModel(GL_SMOOTH);
+  glDisable(GL_LIGHTING);
+  /* This is a flat, unlit color field.  The GLES3 compatibility shader
+     currently applies its light uniforms even when GL_LIGHTING is disabled,
+     and the ship display-list setup leaves an arbitrary mesh normal current.
+     Use full ambient pass-through so that normal cannot reduce the palette
+     to the shader's 20% ambient floor. */
+  {
+    const GLfloat full[4] = { 1, 1, 1, 1 };
+    const GLfloat none[4] = { 0, 0, 0, 1 };
+    glLightfv (GL_LIGHT0, GL_AMBIENT, full);
+    glLightfv (GL_LIGHT0, GL_DIFFUSE, none);
+  }
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_NORMALIZE);
   glDisable(GL_CULL_FACE);
@@ -700,6 +724,15 @@ draw_dazzle (ModeInfo *mi)
     }
 
   glPopMatrix ();
+
+  if (bp->frames == 0)
+    {
+      unsigned char px[4];
+      glReadPixels (MI_WIDTH(mi) / 2, MI_HEIGHT(mi) / 2, 1, 1,
+                    GL_RGBA, GL_UNSIGNED_BYTE, px);
+      fprintf (stderr, "%s: first-frame center RGB %u %u %u\n",
+               progname, px[0], px[1], px[2]);
+    }
 
   bp->frames++;
   glColor3f (1, 1, 1);
