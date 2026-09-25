@@ -215,3 +215,57 @@ was removed and the O6N matrix was restarted from target 1; only the clean
   each hack's parsed defaults. All four now pass real 2s/4s animation checks
   on both architectures; see
   `validation/full_matrix_fixes_2026-09-25/mode-defaults/`.
+
+## Real NVIDIA follow-up (RTX 2060, PRIME offload)
+
+This section supersedes the earlier PEGASUS note above. The run used NVIDIA
+615.71.09 through PRIME render offload and every target log reported
+`RENDERER=NVIDIA GeForce RTX 2060/PCIe/SSE2`. Classification came from two
+real `grim` captures and numpy pixel comparison, not process exit status.
+
+### Fixes and evidence
+
+- The GLES3 harness did not invoke the initial `reshape_cb`. Savers such as
+  `gears` hid this by reshaping from their own init callback, while every RSS
+  port relied on the harness lifecycle. Instrumentation showed submitted
+  vertices and valid colors but an identity MVP. Calling reshape immediately
+  after init fixes that lifecycle error.
+- The compatibility runtime enabled depth testing by default, contrary to the
+  OpenGL initial state. `flux` submitted projected, colored geometry without
+  GL errors, but never disabled depth testing or cleared the initial depth
+  buffer in its default mode. Restoring disabled depth testing fixed this
+  shared state assumption.
+- `glNewList(1, ...)` was silently ignored unless the name had first come from
+  `glGenLists`. OpenGL permits explicit positive list names. Accepting those
+  names restored the animated geometry in `flocks` and `solarwinds`.
+- Three RSS HSL helpers failed to write their blue output. The undefined color
+  channel was repaired in `hyperspace`, `microcosm`, and `skyrocket`.
+- Xlockmore normally supplies `ModeInfo.colors` and `ModeInfo.pixels`.
+  Allocating those framework arrays before saver init fixes the proven
+  `juggler3d` NULL dereference; its targeted real run is now PASS.
+- A real `splitflap` core showed SIGABRT in `read_unicode` because the Wayland
+  text-client stub returned NULL. It now receives a non-NULL EOF client and
+  exits cleanly, though its separate black-render failure remains.
+
+### Post-fix full matrix
+
+The complete 140-target run produced 119 PASS, 15 black, 4 static, one clean
+expected exit (`unicrud`), and one temporary `fliptext` exit-137 caused by an
+initial cycling fallback-text implementation. After changing that fallback to
+EOF semantics, a targeted real rerun made `fliptext` exit cleanly and classify
+black. The corrected final state is therefore:
+
+- **119 PASS**
+- **16 black:** `chompytower`, `cyclone`, `fieldlines`, `fliptext`, `flurry`,
+  `glblur`, `glcells`, `headroom`, `hexstrut`, `hyperspace`, `photopile`,
+  `providence`, `skulloop`, `splitflap`, `timetunnel`, `winduprobot`
+- **4 static:** `atlantis`, `cityflow`, `quasicrystal`, `sballs`
+- **0 crashes**
+- **1 clean exit:** `unicrud` (exit 1, font/glyph lookup failure)
+
+Artifacts are on PEGASUS under `~/build-tmp/ncz-full-final/`; the targeted
+correction is under `~/build-tmp/nczflip/`. Several formerly black targets now
+pass, including all of `bouncingcow`, `cube21`, `cubicgrid`, `euphoria`,
+`flocks`, `flux`, `gltext`, `helios`, `implicitdemo`, `lattice`, `menger`,
+`microcosm`, `plasma`, `skyrocket`, and `solarwinds`. The remaining failures
+above are deliberately not claimed fixed.
