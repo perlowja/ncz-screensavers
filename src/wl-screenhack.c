@@ -30,6 +30,7 @@
 #include <time.h>
 #include <errno.h>
 #include <poll.h>
+#include <dlfcn.h>            /* RTLD_NEXT + dlsym for the native glDrawArrays bypass */
 
 #include <wayland-client.h>
 #include <wayland-egl.h>
@@ -125,6 +126,34 @@ static const GLfloat k_triangle_verts[6] = {
     -0.6928f, -0.4f,
      0.6928f, -0.4f,
 };
+
+/* Native GLES glDrawArrays — resolved via dlsym(RTLD_NEXT) once at init
+ * time. gles3_compat's local glDrawArrays wrapper (when this binary is
+ * linked against gles3_compat, or when this binary's draw is run from
+ * inside a harness that has the wrapper installed) handles only the GL1
+ * client-array case and silently no-ops a VBO-bound draw because the
+ * scratch VAO has its own attribute layout. Calling the real libGLESv2
+ * symbol directly is the only way to actually drive the GPU. Same
+ * pattern as gles3_compat.c::ncz_gles3_runtime_init. */
+typedef void (*triangle_real_glDrawArrays_fn)(GLenum, GLint, GLsizei);
+static triangle_real_glDrawArrays_fn g_triangle_real_glDrawArrays = NULL;
+static void triangle_draw_call(GLenum mode, GLint first, GLsizei count) {
+    if (!g_triangle_real_glDrawArrays) {
+        /* One-shot dlsym — RTLD_NEXT walks past this binary's own symbol
+         * table to the next-loaded libGLESv2. If this binary isn't linked
+         * against gles3_compat at all, dlsym returns the system libGLESv2
+         * symbol directly. Either way the result is the real GPU entry. */
+        g_triangle_real_glDrawArrays = (triangle_real_glDrawArrays_fn)
+            dlsym(RTLD_NEXT, "glDrawArrays");
+        if (!g_triangle_real_glDrawArrays) {
+            fprintf(stderr,
+                    "wl-screenhack: dlsym(RTLD_NEXT, glDrawArrays) failed: %s\n",
+                    dlerror());
+            exit(1);
+        }
+    }
+    g_triangle_real_glDrawArrays(mode, first, count);
+}
 
 static const char *k_vertex_shader_src =
     "attribute vec2 a_pos;\n"
@@ -271,7 +300,14 @@ static void triangle_draw(struct effect *e, double now_seconds) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
                           (GLsizei)(2 * sizeof(GLfloat)), (void *)0);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    /* The compat layer's glDrawArrays shim (gles3_compat.c) handles only
+     * GL1 client-array draws — it silently no-ops VBO-bound draws because
+     * the immediate-mode scratch VAO is the only VAO whose attribute
+     * layout matches the shim's expectations. Resolve libGLESv2's real
+     * glDrawArrays via dlsym(RTLD_NEXT) so this VBO triangle actually
+     * reaches the GPU. Same pattern as gles3_compat.c::ncz_gles3_runtime_init
+     * (see commit 7b1cd0a which applied the matching fix to gles3_hyprsaver.c). */
+    triangle_draw_call(GL_TRIANGLES, 0, 3);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
