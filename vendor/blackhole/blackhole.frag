@@ -4,7 +4,7 @@ precision highp int;
 out vec4 fragColor;
 uniform float u_time, u_seed, u_radius, u_temperature, u_density, u_rotation;
 uniform float u_inclination, u_orbit_rate, u_jet, u_star_density;
-uniform float u_camera_mode, u_palette;
+uniform float u_camera_mode, u_palette, u_approach, u_periapsis;
 uniform vec2 u_resolution;
 #define PI 3.14159265358979323846
 float hash21(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345+u_seed*.00001);return fract(p.x*p.y);}
@@ -22,19 +22,28 @@ vec3 stars(vec3 d){vec2 uv=vec2(atan(d.z,d.x)/6.2831853+.5,asin(clamp(d.y,-1.,1.
 vec3 disk_color(vec3 p){float r=length(p.xy),a=atan(p.y,p.x),ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.),dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8),grav=sqrt(max(1.-1./max(r,1.001),.02));return palette(clamp(heat*dop/grav,0.,1.))*edge*(.32+1.2*n)*u_density*dop*dop;}
 void main(){
  vec2 p=(2.*gl_FragCoord.xy-u_resolution)/u_resolution.y/u_radius;
- float phase=u_time*u_orbit_rate+u_seed*.000001,orbit,elev,dist;
+ float phase=u_time*u_orbit_rate+u_seed*.000001,orbit,elev,dist,roll=0.;
  if(u_camera_mode<.5){
   // Diving arc: approach from above, skim the disk, then climb away.
-  dist=10.5+4.1*cos(phase);orbit=phase*1.18+.28*sin(phase*2.);elev=u_inclination+.58*sin(phase*.83);
+  dist=10.5+(3.7+.4*abs(u_approach))*cos(phase);orbit=u_approach*(phase*1.18+.28*sin(phase*2.));elev=u_inclination+.58*sin(phase*.83);
  }else if(u_camera_mode<1.5){
   // Banking slingshot: asymmetric radius and a faster sweep at periapsis.
-  dist=9.8+3.7*sin(phase)+1.15*sin(phase*2.);orbit=phase*1.35-.34*cos(phase);elev=u_inclination+.48*cos(phase*1.17);
- }else{
+  dist=9.8+(3.3+.4*abs(u_approach))*sin(phase)+1.15*sin(phase*2.);orbit=u_approach*(phase*1.35-.34*cos(phase));elev=u_inclination+.48*cos(phase*1.17);
+ }else if(u_camera_mode<2.5){
   // Polar pass: crosses from one face of the disk to the other.
-  dist=10.8+4.4*cos(phase*.91);orbit=phase+.55*sin(phase*.72);elev=u_inclination+.78*sin(phase*.69);
+  dist=10.8+(4.+.4*abs(u_approach))*cos(phase*.91);orbit=u_approach*(phase+.55*sin(phase*.72));elev=u_inclination+.78*sin(phase*.69);
+ }else{
+  // Disk plunge: launch wide, dive beneath the outer disk at periapsis,
+  // then climb back out.  Camera roll turns the lensed far side overhead.
+  float plunge=mod(u_time*u_orbit_rate,2.*PI);
+  float close=.5-.5*cos(plunge);
+  dist=mix(18.,u_periapsis,close);
+  elev=.635-.68*close;
+  orbit=u_seed*.000001+u_approach*(.42*plunge+.55*sin(plunge));
+  roll=2.49*sin(.5*plunge);
  }
  dist=max(dist,5.4);
- vec3 cam=dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),right=normalize(cross(forward,vec3(0,0,1))),up=cross(right,forward),ray=normalize(forward+p.x*right+p.y*up);
+ vec3 cam=dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),baseRight=normalize(cross(forward,vec3(0,0,1))),baseUp=cross(baseRight,forward),right=cos(roll)*baseRight+sin(roll)*baseUp,up=-sin(roll)*baseRight+cos(roll)*baseUp,ray=normalize(forward+p.x*right+p.y*up);
  float impact=length(cross(cam,ray));bool captured=impact<2.598076;
  float u=1./length(cam),phi=0.;vec3 normal=normalize(cam),perp=cross(cross(normal,ray),normal);float plen=length(perp);vec3 tangent=plen>1e-6?perp/plen:right;float tang=dot(ray,tangent),du=abs(tang)>1e-6?-dot(ray,normal)/tang*u:200.*u;vec3 old=cam,pos=cam,color=vec3(0);float trans=1.;
  for(int i=0;i<260;i++){float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));du+=.5*(-u+1.5*u*u)*step;u+=du*step;du+=.5*(-u+1.5*u*u)*step;phi+=step;if(u>=1.||u<=.0005)break;old=pos;pos=(cos(phi)*normal+sin(phi)*tangent)/u;if(old.z*pos.z<0.){vec3 x=mix(old,pos,-old.z/(pos.z-old.z));float r=length(x.xy);if(r>2.8&&r<13.){color+=trans*disk_color(x);trans*=.72;}}}
