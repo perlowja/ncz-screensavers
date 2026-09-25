@@ -1,5 +1,10 @@
 # Full GLES3 hardware matrix — 2026-09-25
 
+> **NVIDIA follow-up:** The complete 140-target CERBERUS / RTX 4500 Ada run is
+> documented in [NVIDIA-FULL-MATRIX-CERBERUS-2026-09-25.md](NVIDIA-FULL-MATRIX-CERBERUS-2026-09-25.md),
+> including real two-shot `grim` evidence and a universal NVIDIA-path cleanup
+> SIGSEGV that keeps the fail-closed result at 0 PASS / 140 FAIL.
+
 This is the complete current build set: **140/140 targets on O6N arm64** and
 **140/140 targets on PEGASUS amd64**. After the focused fixes recorded below,
 the current totals are 105 PASS / 35 FAIL on O6N and 110 PASS / 30 FAIL on

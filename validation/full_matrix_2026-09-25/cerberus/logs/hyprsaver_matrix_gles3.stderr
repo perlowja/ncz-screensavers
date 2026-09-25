@@ -1,0 +1,25 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 NVIDIA 595.58.03
+RENDERER=NVIDIA RTX 4500 Ada Generation/PCIe/SSE2
+VENDOR=NVIDIA Corporation
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] no zwlr_layer_shell_v1; falling back to a fullscreen xdg_toplevel
+[diag] gles3_harness: calling init...
+[diag] hyprsaver[hyprsaver_matrix] init: GL_VERSION=OpenGL ES 3.2 NVIDIA 595.58.03, frag=matrix.frag, locs=time:6 res:4 mouse:-1 frame:-1 alpha:0 speed:5 zoom:-1 lutA:1 lutB:2 blend:3 palette_tex:1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1280x720 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] hyprsaver[hyprsaver_matrix] frame=60 t=0.97s
+[diag] frame #60
+[diag] hyprsaver[hyprsaver_matrix] frame=120 t=1.94s
+[diag] frame #120
+[diag] hyprsaver[hyprsaver_matrix] frame=180 t=2.91s
+[diag] frame #180
+[diag] hyprsaver[hyprsaver_matrix] frame=240 t=3.88s
+[diag] frame #240

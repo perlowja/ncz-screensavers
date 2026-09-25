@@ -1,0 +1,45 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 NVIDIA 595.58.03
+RENDERER=NVIDIA RTX 4500 Ada Generation/PCIe/SSE2
+VENDOR=NVIDIA Corporation
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1280x720 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] frame #60
+[diag] frame #120
+[diag] frame #180
+[diag] frame #240
+[diag] frame #300
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ffff5cf8bc0 in ?? ()
+
+Thread 1 (Thread 0x7ffff7bbe280 (LWP 1907259) "antinspect_gles"):
+#0  0x00007ffff5cf8bc0 in ?? ()
+No symbol table info available.
+#1  0x0000555555560a50 in ncz_gles3_runtime_fini () at ../../Projects/ncz-screensavers/src/gles3_compat.c:545
+No locals.
+#2  0x0000555555567ca5 in app_fini (a=0x5555555db8a0 <app>) at ../../Projects/ncz-screensavers/src/gles3_harness.c:478
+No locals.
+#3  0x0000555555567f9b in atexit_app_fini () at ../../Projects/ncz-screensavers/src/gles3_harness.c:513
+No locals.
+#4  0x00007ffff7cc72b1 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+No symbol table info available.
+#5  0x00007ffff7cc737a in exit () from /lib/x86_64-linux-gnu/libc.so.6
+No symbol table info available.
+#6  0x00007ffff7caecaf in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+No symbol table info available.
+#7  0x00007ffff7caed65 in __libc_start_main () from /lib/x86_64-linux-gnu/libc.so.6
+No symbol table info available.
+#8  0x000055555555b7b1 in _start ()
+No symbol table info available.

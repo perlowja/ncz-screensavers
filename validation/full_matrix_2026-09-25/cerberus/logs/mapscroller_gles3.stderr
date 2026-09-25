@@ -1,0 +1,14 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 NVIDIA 595.58.03
+RENDERER=NVIDIA RTX 4500 Ada Generation/PCIe/SSE2
+VENDOR=NVIDIA Corporation
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] no zwlr_layer_shell_v1; falling back to a fullscreen xdg_toplevel
+[diag] gles3_harness: calling init...
+ncz-screensavers-glmatrix: 12:49:39: 1903615: running mapscroller.pl: No such file or directory
+[diag] gles3_harness: init returned
+[diag] initial draw: 1280x720 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+gles3_harness: eglSwapBuffers failed (0x3000)

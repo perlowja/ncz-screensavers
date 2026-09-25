@@ -1,0 +1,19 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 NVIDIA 595.58.03
+RENDERER=NVIDIA RTX 4500 Ada Generation/PCIe/SSE2
+VENDOR=NVIDIA Corporation
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] no zwlr_layer_shell_v1; falling back to a fullscreen xdg_toplevel
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1280x720 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] frame #60
+[diag] frame #120
+[diag] frame #180
