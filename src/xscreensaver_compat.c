@@ -1953,22 +1953,21 @@ char *XChar2b_to_utf8(const XChar2b *str, int *length_ret)
  * not running an X11 session, so no helper process is available.
  * Vendored hacks that include textclient.h (fliptext, splitflap) only
  * call textclient_getc to read text characters and textclient_puts /
- * textclient_putc_event to feed input back; they ALL guard the reads
- * with NULL checks on the text_data handle. Returning NULL / EOF / True
- * makes them behave like "no live text source" -- the screensaver runs,
- * it just doesn't show scroll-in text.
+ * textclient_putc_event to feed input back. Some callers (splitflap)
+ * require a non-NULL client, so provide a small deterministic fallback
+ * stream when the external X11 helper is unavailable.
  */
-struct text_data { int _placeholder; };
+struct text_data { size_t offset; };
 
 text_data *textclient_open(Display *dpy)
 {
     (void) dpy;
-    return NULL;
+    return (text_data *)calloc(1, sizeof(text_data));
 }
 
 void textclient_close(text_data *td)
 {
-    (void) td;
+    free(td);
 }
 
 void textclient_reshape(text_data *td,
@@ -1982,8 +1981,12 @@ void textclient_reshape(text_data *td,
 
 int textclient_getc(text_data *td)
 {
-    (void) td;
-    return -1;   /* EOF -- callers treat as "no more text" */
+    static const char fallback[] = "NCZ SCREENSAVERS   ";
+    int c;
+    if (!td) return -1;
+    c = (unsigned char)fallback[td->offset++];
+    if (!fallback[td->offset]) td->offset = 0;
+    return c;
 }
 
 Bool textclient_puts(text_data *td, const char *s)
