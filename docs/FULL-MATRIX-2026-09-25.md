@@ -1,7 +1,9 @@
 # Full GLES3 hardware matrix — 2026-09-25
 
 This is the complete current build set: **140/140 targets on O6N arm64** and
-**140/140 targets on PEGASUS amd64**. No target is marked N/A. PASS means two
+**140/140 targets on PEGASUS amd64**. After the focused fixes recorded below,
+the current totals are 100 PASS / 40 FAIL on O6N and 105 PASS / 35 FAIL on
+PEGASUS. No target is marked N/A. PASS means two
 real `grim` captures taken two seconds apart were non-black and differed by
 more than 1,000 pixels while the process remained alive. Exit code alone is
 not accepted. FAIL targets are set aside below with their observed mode.
@@ -10,8 +12,8 @@ not accepted. FAIL targets are set aside below with their observed mode.
 
 | Host | Architecture | Renderer | Build | Coverage | Result |
 |---|---|---|---|---:|---:|
-| O6N | arm64 | Mali-G720-Immortalis | native ULTRA arm64 at `251bf22` + uncommitted runner only | 140/140 | 99 PASS / 41 FAIL |
-| PEGASUS | amd64 | Mesa Intel UHD Graphics CML GT2 (the active compositor GPU; not RTX 2060) | fresh native Meson/Ninja build | 140/140 | 104 PASS / 36 FAIL |
+| O6N | arm64 | Mali-G720-Immortalis | native ULTRA arm64 at `251bf22` + focused fixes | 140/140 | 100 PASS / 40 FAIL |
+| PEGASUS | amd64 | Mesa Intel UHD Graphics CML GT2 (the active compositor GPU; not RTX 2060) | fresh native Meson/Ninja build + focused fixes | 140/140 | 105 PASS / 35 FAIL |
 
 Each target has stderr, an exit-code file, two 480px evidence thumbnails,
 metrics, and SHA-256 hashes of the retained full-resolution captures under
@@ -166,7 +168,7 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 | `topblock_gles3` | PASS (animated; 576,499 px changed) | PASS (animated; 699,276 px changed) |
 | `tronbit_gles3` | PASS (animated; 1,258,261 px changed) | PASS (animated; 983,346 px changed) |
 | `unicrud_gles3` | FAIL (exit 1: no characters found) | FAIL (exit 1: no characters found) |
-| `unknownpleasures_gles3` | FAIL (exit 1: cannot parse foreground color) | FAIL (exit 1: cannot parse foreground color) |
+| `unknownpleasures_gles3` | PASS (animated after resource-default fix; 4,116 px changed) | PASS (animated after resource-default fix; 5,488 px changed) |
 | `voronoi_gles3` | PASS (animated; 2,632,337 px changed) | PASS (animated; 3,463,633 px changed) |
 | `winduprobot_gles3` | FAIL (black frames; render loop advanced) | FAIL (black frames; render loop advanced) |
 
@@ -175,13 +177,13 @@ was removed and the O6N matrix was restarted from target 1; only the clean
 ### O6N arm64
 
 - **black** — process and frame diagnostics continued, but both real captures were black: `bouncingcow`, `chompytower`, `cube21`, `cubenetic`, `cubicgrid`, `cyclone`, `euphoria`, `fieldlines`, `fliptext`, `flocks`, `flurry`, `flux`, `glblur`, `glcells`, `gltext`, `headroom`, `helios`, `hextrail`, `hyperspace`, `implicitdemo`, `jigsaw`, `lattice`, `menger`, `microcosm`, `photopile`, `plasma`, `providence`, `skulloop`, `skyrocket`, `skytentacles`, `solarwinds`, `splitflap`, `splodesic`, `timetunnel`, `winduprobot`.
-- **exit_1** — initialization rejected required content/configuration; see per-target stderr: `unicrud`, `unknownpleasures`.
+- **exit_1** — initialization rejected required content/configuration; see per-target stderr: `unicrud`.
 - **static** — visible output was captured, but the two frames did not change materially: `atlantis`, `highvoltage`, `quasicrystal`, `sballs`.
 
 ### PEGASUS amd64
 
 - **black** — process and frame diagnostics continued, but both real captures were black: `bouncingcow`, `chompytower`, `cubenetic`, `cubicgrid`, `cyclone`, `euphoria`, `fliptext`, `flocks`, `flurry`, `flux`, `glblur`, `glcells`, `gltext`, `headroom`, `helios`, `hextrail`, `hyperspace`, `implicitdemo`, `menger`, `microcosm`, `photopile`, `plasma`, `providence`, `skulloop`, `skyrocket`, `skytentacles`, `solarwinds`, `timetunnel`, `winduprobot`.
-- **exit_1** — initialization rejected required content/configuration; see per-target stderr: `unicrud`, `unknownpleasures`.
+- **exit_1** — initialization rejected required content/configuration; see per-target stderr: `unicrud`.
 - **exit_134** — process aborted after initial frames; see splitflap stderr: `splitflap`.
 - **static** — visible output was captured, but the two frames did not change materially: `atlantis`, `highvoltage`, `quasicrystal`, `sballs`.
 
@@ -196,3 +198,10 @@ was removed and the O6N matrix was restarted from target 1; only the clean
   GPU, so this ledger does not claim NVIDIA coverage.
 - MEDUSA was attempted first but was unreachable (`No route to host`); PEGASUS
   supplied the complete amd64 matrix instead.
+
+## Focused fixes after the full run
+
+- `unknownpleasures_gles3`: restored the application-wide XScreenSaver
+  `Foreground`/`Background` resource defaults in the standalone compatibility
+  layer. Real 2s/4s `grim` captures prove animation on both O6N and PEGASUS;
+  see `validation/full_matrix_fixes_2026-09-25/unknownpleasures/`.

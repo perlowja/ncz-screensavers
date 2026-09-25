@@ -979,6 +979,17 @@ char *get_string_resource(void *ctx, const char *res_name,
      * "" and XParseColor errors out with "unparsable color in jawColor: ". */
     if (!val)
         val = xs_defaults_lookup(res_name);
+    /* XScreenSaver's resource database supplies these two application-wide
+     * defaults even when a hack's DEFAULTS block does not repeat them.
+     * Standalone screenhack-style modules such as unknownpleasures request
+     * them directly by class, so an empty string here makes XParseColor fail
+     * during init. */
+    if (!val && res_class) {
+        if (strcmp(res_class, "Foreground") == 0)
+            val = "white";
+        else if (strcmp(res_class, "Background") == 0)
+            val = "black";
+    }
     /* MUST be freeable: xscreensaver hacks routinely free() this result, so
      * handing back a string literal or a pointer into the var table would be a
      * free() of static storage. */
