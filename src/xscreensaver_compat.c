@@ -957,6 +957,7 @@ void xs_compat_apply_var_defaults(ModeSpecOpt *o, const char *defaults_str) {
  * active DEFAULTS block so absent resources retain the harness defaults. */
 void xs_compat_apply_mode_defaults(ModeInfo *mi) {
     const char *v;
+    int i;
     if (!mi) return;
     v = xs_defaults_lookup("delay");
     if (v) mi->pause = atol(v);
@@ -970,6 +971,17 @@ void xs_compat_apply_mode_defaults(ModeInfo *mi) {
     if (v) mi->wireframe_p = xs_parse_bool(v);
     v = xs_defaults_lookup("showFPS");
     if (v) mi->fps_p = xs_parse_bool(v);
+    v = xs_defaults_lookup("ncolors");
+    if (v) mi->npixels = atoi(v);
+    if (mi->npixels <= 0) mi->npixels = 256;
+    if (!mi->colors)
+        mi->colors = (XColor *)calloc((size_t)mi->npixels, sizeof(*mi->colors));
+    if (!mi->pixels)
+        mi->pixels = (unsigned long *)calloc((size_t)mi->npixels,
+                                             sizeof(*mi->pixels));
+    if (!mi->colors || !mi->pixels) ncz_harness_die(1);
+    for (i = 0; i < mi->npixels; i++)
+        mi->pixels[i] = (unsigned long)i;
 }
 
 /*
