@@ -542,9 +542,22 @@ int ncz_gles3_runtime_init(void) {
 
 void ncz_gles3_runtime_fini(void) {
     if (!g_rt.initialized) return;
-    if (g_rt.scratch_vbo) glDeleteBuffers(1, &g_rt.scratch_vbo);
-    if (g_rt.scratch_vao) glDeleteVertexArrays(1, &g_rt.scratch_vao);
-    if (g_rt.program)    glDeleteProgram(g_rt.program);
+    /* Only issue GL teardown calls if a context is genuinely current.
+     * At process-exit time (SIGTERM -> main loop exit -> atexit chain)
+     * the EGL context is still the one bound during the frame loop on
+     * Mesa, and Mesa tolerates a stale/absent context on glDelete*
+     * silently. NVIDIA GLES dispatch does not: with no current
+     * context the dispatch table is invalid and glDelete* jumps
+     * through a bad pointer -- segfault confirmed via gdb backtrace
+     * (ncz_gles3_runtime_fini -> glDeleteBuffers, NVIDIA 615.71.09,
+     * both RTX 2060 and RTX 4500 Ada). The process is exiting anyway;
+     * the GPU driver reclaims all resources on exit, so skipping the
+     * explicit deletes when there is no current context is safe. */
+    if (eglGetCurrentContext() != EGL_NO_CONTEXT) {
+        if (g_rt.scratch_vbo) glDeleteBuffers(1, &g_rt.scratch_vbo);
+        if (g_rt.scratch_vao) glDeleteVertexArrays(1, &g_rt.scratch_vao);
+        if (g_rt.program)    glDeleteProgram(g_rt.program);
+    }
     memset(&g_rt, 0, sizeof g_rt);
 }
 

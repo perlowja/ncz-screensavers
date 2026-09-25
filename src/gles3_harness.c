@@ -693,5 +693,22 @@ shell_ready:
         }
     }
     if (app.display) wl_display_roundtrip(app.display);
+
+    /* Run cleanup explicitly here, synchronously, before main() returns
+     * and exit() atexit chain runs. Previously this relied solely on
+     * atexit(atexit_app_fini) -- but atexit handlers run LIFO, and the
+     * NVIDIA GLES/EGL driver registers its own atexit/destructor
+     * teardown during context creation, which lands AFTER ours in
+     * registration order and therefore runs BEFORE ours at exit time.
+     * That tore down GL dispatch trampolines out from under our
+     * glDelete* calls -- confirmed via gdb: SIGSEGV jumping to an
+     * unmapped address (Cannot access memory) inside
+     * ncz_gles3_runtime_fini(), reproduced identically on NVIDIA RTX
+     * 2060 and RTX 4500 Ada, never on Mesa/Mali. Calling app_fini()
+     * here runs our GL teardown before any other library atexit
+     * chain begins; atexit_app_fini g_app-NULL guard makes the
+     * still-registered atexit call a safe no-op afterward. */
+    app_fini(&app);
+    g_app = NULL;
     return 0;
 }
