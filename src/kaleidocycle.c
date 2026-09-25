@@ -221,7 +221,7 @@ init_kaleidocycle (ModeInfo *mi)
             fprintf (stderr,
          "%s: spin must contain only the characters X, Y, or Z (not \"%s\")\n",
                      progname, do_spin);
-            exit (1);
+            ncz_harness_die(1);
           }
         s++;
       }

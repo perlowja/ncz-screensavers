@@ -431,7 +431,7 @@ static void
 dxf_end (void)
 {
   fprintf (stdout, "0\nENDSEC\n0\nEOF\n");
-  exit (0);
+  ncz_harness_die(0);
 }
 
 
@@ -1492,7 +1492,7 @@ tess_error_cb (GLenum errorCode)
 {
   fprintf (stderr, "%s: tesselation error: %s\n",
            progname, gluErrorString(errorCode));
-  exit (0);
+  ncz_harness_die(0);
 }
 
 static void
@@ -2820,7 +2820,7 @@ init_logo (ModeInfo *mi)
   if (!do_gasket && !do_helix)
     {
       fprintf (stderr, "%s: no helix or gasket?\n", progname);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   MI_INIT (mi, dcs);
@@ -2888,7 +2888,7 @@ init_logo (ModeInfo *mi)
         fprintf (stderr,
                "%s: mode must be helix, pizza or both, not \"%s\"\n", 
                  progname, s);
-        exit (1);
+        ncz_harness_die(1);
       }
     if (s) free (s);
 
@@ -2922,7 +2922,7 @@ init_logo (ModeInfo *mi)
     if (! XParseColor (MI_DISPLAY(mi), mi->xgwa.colormap, color_name, &xcolor))
       {
         fprintf (stderr, "%s: can't parse color %s\n", progname, color_name);
-        exit (1);
+        ncz_harness_die(1);
       }
 
     dc->color[0] = xcolor.red   / 65535.0;
@@ -2941,7 +2941,7 @@ init_logo (ModeInfo *mi)
     if (! XParseColor (MI_DISPLAY(mi), mi->xgwa.colormap, color_name, &xcolor))
       {
         fprintf (stderr, "%s: can't parse color %s\n", progname, color_name);
-        exit (1);
+        ncz_harness_die(1);
       }
     free (color_name);
 
@@ -2961,7 +2961,7 @@ init_logo (ModeInfo *mi)
     if (! XParseColor (MI_DISPLAY(mi), mi->xgwa.colormap, color_name, &xcolor))
       {
         fprintf (stderr, "%s: can't parse color %s\n", progname, color_name);
-        exit (1);
+        ncz_harness_die(1);
       }
     free (color_name);
 

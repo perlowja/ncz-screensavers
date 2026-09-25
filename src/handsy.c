@@ -398,7 +398,7 @@ parse_color (ModeInfo *mi, char *key, GLfloat color[4])
     {
       fprintf (stderr, "%s: unparsable color in %s: %s\n", progname,
                key, string);
-      exit (1);
+      ncz_harness_die(1);
     }
   free (string);
 
@@ -721,7 +721,7 @@ init_hands (ModeInfo *mi)
             fprintf (stderr,
          "%s: spin must contain only the characters X, Y, or Z (not \"%s\")\n",
                      progname, do_spin);
-            exit (1);
+            ncz_harness_die(1);
           }
         s++;
       }

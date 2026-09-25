@@ -198,7 +198,7 @@ static void hsl2rgb(float h, float s, float l, float *rOut, float *gOut, float *
 
 static cyclone *cyclone_new(int n_points) {
     cyclone *c = (cyclone *)calloc(1, sizeof(cyclone));
-    if (!c) exit(1);
+    if (!c) ncz_harness_die(1);
     c->n_points = n_points;
     c->targetxyz  = (float *)calloc((size_t)n_points * 3, sizeof(float));
     c->xyz        = (float *)calloc((size_t)n_points * 3, sizeof(float));
@@ -438,7 +438,7 @@ static void cyclone_update(cyclone *c, cyclone_configuration *bp) {
 
 static particle *particle_new(cyclone *cy) {
     particle *p = (particle *)calloc(1, sizeof(particle));
-    if (!p) exit(1);
+    if (!p) ncz_harness_die(1);
     p->cy = cy;
     p->width = frand(0.8f) + 0.2f;
     p->step = 0.0f;
@@ -563,7 +563,7 @@ init_cyclone(ModeInfo *mi) {
     if (!bps) {
         bps = (cyclone_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(cyclone_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 

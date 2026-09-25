@@ -235,7 +235,7 @@ ENTRYPOINT void init_blocktube (ModeInfo *mi)
     if (do_texture) {
       if (!LoadGLTextures(mi)) {
         fprintf(stderr, "%s: can't load textures!\n", progname);
-        exit(1);
+        ncz_harness_die(1);
       }
       glEnable(GL_TEXTURE_2D);
     }

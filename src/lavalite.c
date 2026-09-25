@@ -1262,7 +1262,7 @@ parse_color (ModeInfo *mi, const char *name, const char *s, GLfloat *a)
   if (! XParseColor (MI_DISPLAY(mi), MI_COLORMAP(mi), s, &c))
     {
       fprintf (stderr, "%s: can't parse %s color %s", progname, name, s);
-      exit (1);
+      ncz_harness_die(1);
     }
   a[0] = c.red   / 65536.0;
   a[1] = c.green / 65536.0;
@@ -1300,7 +1300,7 @@ init_lavalite (ModeInfo *mi)
         fprintf (stderr,
          "%s: style must be Classic, Giant, Cone, or Rocket (not \"%s\")\n",
                  progname, s);
-        exit (1);
+        ncz_harness_die(1);
       }
   }
 
@@ -1354,7 +1354,7 @@ init_lavalite (ModeInfo *mi)
             fprintf (stderr,
          "%s: spin must contain only the characters X, Y, or Z (not \"%s\")\n",
                      progname, do_spin);
-            exit (1);
+            ncz_harness_die(1);
           }
         s++;
       }

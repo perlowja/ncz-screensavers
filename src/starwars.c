@@ -840,7 +840,7 @@ init_sws (ModeInfo *mi)
       fprintf (stderr,
                "%s: alignment must be left, center, or right, not \"%s\"\n",
                progname, alignment_str);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   sc->tc = textclient_open (sc->dpy);

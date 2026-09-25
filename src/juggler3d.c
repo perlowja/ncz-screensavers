@@ -2693,7 +2693,7 @@ init_juggle (ModeInfo * mi)
                "Juggle: -only must be one of: balls, clubs, torches, knives,\n"
                "\t rings, or bballs (not \"%s\")\n", only);
 #ifdef STANDALONE /* xlock mustn't exit merely because of a bad argument */
-      exit (1);
+      ncz_harness_die(1);
 #endif
     }
   }

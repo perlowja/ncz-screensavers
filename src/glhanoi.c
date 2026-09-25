@@ -260,7 +260,7 @@ static void checkAllocAndExit(Bool item, char *descr) {
 	if (!item) {
 		fprintf(stderr, "%s: unable to allocate memory for %s\n",
 				progname, descr);
-		exit(EXIT_FAILURE);
+		ncz_harness_die(EXIT_FAILURE);
 	}
 }
 
@@ -425,7 +425,7 @@ static void pushMove(glhcfg *glhanoi, int n, int src, int dst, int avail) {
 	if (glhanoi->solveStackIdx > glhanoi->solveStackSize) {
 		fprintf(stderr, "solveStack overflow: pushed index %d: %d from %d to %d, using %d\n",
 		glhanoi->solveStackIdx, n, src, dst, avail);
-		exit(EXIT_FAILURE);
+		ncz_harness_die(EXIT_FAILURE);
 	}
 
 	sp->nDisks = n;

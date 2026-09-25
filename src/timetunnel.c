@@ -860,7 +860,7 @@ static void LoadTexture(ModeInfo * mi, const unsigned char *fn, unsigned long si
             fprintf(stderr, "%s: error reading the texture.\n", progname);
             glDeleteTextures(1, &texbind);
             do_texture = False;
-            exit(0);
+            ncz_harness_die(0);
         }
 
 	/* check if image is 2^kumquat, where kumquat is an integer between 1 and 10. Recale to

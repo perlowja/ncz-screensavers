@@ -37,6 +37,9 @@
 
 #define _DEFAULT_SOURCE
 #include "xscreensaver_compat.h"
+#ifdef NCZ_GLES3_BUILD
+# include "gles3_compat.h"
+#endif
 #include <EGL/egl.h>
 
 #include <stdlib.h>
@@ -520,7 +523,7 @@ void xlockmore_mi_init(ModeInfo *mi, size_t sz, void **parray) {
     char *arr = (char *)calloc(1, sz);
     if (!arr) {
         fprintf(stderr, "xscreensaver_compat: xlockmore_mi_init OOM (%zu bytes)\n", sz);
-        exit(1);
+        ncz_harness_die(1);
     }
     *parray = arr;
 }

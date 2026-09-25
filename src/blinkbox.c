@@ -375,7 +375,7 @@ init_ball (ModeInfo *mi)
 /*  bp->sp = malloc(sizeof(*bp->sp));
   if(bp->sp == NULL){
     fprintf(stderr,"Could not allocate memory\n");
-    exit(1);
+    ncz_harness_die(1);
   }*/
   if( (bp->bscale.wh < 1) ||
       (bp->bscale.wh > 8) ) {

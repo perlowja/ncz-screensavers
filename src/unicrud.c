@@ -649,7 +649,7 @@ pick_unichar (ModeInfo *mi)
       else
         fprintf (stderr, "%s: internal error: no characters found\n",
                  progname);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   /* bp->unichar = 0x1F4A9; */
@@ -663,7 +663,7 @@ pick_unichar (ModeInfo *mi)
         {
           fprintf (stderr, "%s: progname: internal error: misordered: 0x%lX\n",
                    progname, unicode_block_names[i].start);
-          exit (1);
+          ncz_harness_die(1);
         }
       last = unicode_block_names[i].start;
       if (bp->unichar >= unicode_block_names[i].start)
@@ -883,7 +883,7 @@ init_unicrud (ModeInfo *mi)
           fprintf (stderr, "\t%s\n", n);
         }
       fprintf (stderr, "\n");
-      exit (1);
+      ncz_harness_die(1);
     }
 
 
@@ -921,7 +921,7 @@ init_unicrud (ModeInfo *mi)
                          progname, name);
                 fprintf (stderr, "%s: use '--block help' for a list\n", 
                          progname);
-                exit (1);
+                ncz_harness_die(1);
               }
           }
       }

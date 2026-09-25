@@ -124,7 +124,7 @@ init_lattice(ModeInfo *mi) {
     if (!bps) {
         bps = (lattice_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(lattice_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 

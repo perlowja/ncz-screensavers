@@ -279,7 +279,7 @@ parse_color (ModeInfo *mi, char *key, GLfloat color[4])
     {
       fprintf (stderr, "%s: unparsable color in %s: %s\n", progname,
                key, string);
-      exit (1);
+      ncz_harness_die(1);
     }
   free (string);
 
@@ -328,7 +328,7 @@ init_splitflap (ModeInfo *mi)
       fprintf (stderr,
            "%s: `mode' must be text, clock12 or clock24: not `%s'\n",
                progname, mode_str);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   if (! bp->clock_p)
@@ -364,7 +364,7 @@ init_splitflap (ModeInfo *mi)
             fprintf (stderr,
          "%s: spin must contain only the characters X, Y, or Z (not \"%s\")\n",
                      progname, do_spin);
-            exit (1);
+            ncz_harness_die(1);
           }
         s++;
       }

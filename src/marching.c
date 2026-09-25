@@ -519,7 +519,7 @@ marching_cubes (int grid_size,     /* density of the mesh */
     {
       fprintf (stderr, "%s: out of memory for %dx%dx%d grid\n",
                progname, grid_size, grid_size, 2);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   if (init_fn)

@@ -172,7 +172,7 @@ init_hyperspace(ModeInfo *mi) {
     if (!bps) {
         bps = (hyperspace_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(hyperspace_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -217,7 +217,7 @@ init_hyperspace(ModeInfo *mi) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     bp->stars = (hyperspace_star *)calloc((size_t)bp->d_stars, sizeof(hyperspace_star));
-    if (!bp->stars) exit(1);
+    if (!bp->stars) ncz_harness_die(1);
     for (i = 0; i < bp->d_stars; i++) {
         bp->stars[i].x = frand(2.0f) - 1.0f;
         bp->stars[i].y = frand(2.0f) - 1.0f;

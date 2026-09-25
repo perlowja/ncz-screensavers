@@ -56,6 +56,12 @@
 
 #include "polyhedra.h"
 
+#ifdef NCZ_GLES3_BUILD
+void ncz_harness_die(int code);
+#else
+# define ncz_harness_die(code) exit(code)
+#endif
+
 extern const char *progname;
 
 #ifndef MAXLONG
@@ -74,7 +80,7 @@ extern const char *progname;
 
 #define Err(x) do {\
 	fprintf (stderr, "%s: %s\n", progname, (x)); \
-	exit (1); \
+	ncz_harness_die(1); \
     } while(0)
 
 #define Free(lvalue) do {\

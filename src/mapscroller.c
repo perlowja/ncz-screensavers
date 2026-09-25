@@ -483,7 +483,7 @@ reshape_tiles (ModeInfo *mi)
           {
             sprintf (buf, "%.100s: write", blurb(mi));
             perror (buf);
-            exit (1);
+            ncz_harness_die(1);
           }
         if (verbose_p > 1)
          fprintf (stderr, "%s: requesting tile %s", blurb(mi), buf);
@@ -751,14 +751,14 @@ fork_loader (ModeInfo *mi)
     {
       sprintf (buf, "%.100s: error creating pipe", blurb(mi));
       perror (buf);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   if (pipe (fd2))
     {
       sprintf (buf, "%.100s: error creating pipe", blurb(mi));
       perror (buf);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   forked = fork();
@@ -768,7 +768,7 @@ fork_loader (ModeInfo *mi)
       {
         sprintf (buf, "%.100s: couldn't fork", blurb(mi));
         perror (buf);
-        exit (1);
+        ncz_harness_die(1);
         break;
       }
     case 0:
@@ -796,7 +796,7 @@ fork_loader (ModeInfo *mi)
         execvp (av[0], av);			/* shouldn't return. */
         sprintf (buf, "%.100s: running %.100s", blurb(mi), av[0]);
         perror (buf);
-        exit (1);
+        ncz_harness_die(1);
         break;
       }
     default:
@@ -859,7 +859,7 @@ read_loader (ModeInfo *mi)
         {
           sprintf (buf, "%.100s: read", blurb(mi));
           perror (buf);
-          exit (1);
+          ncz_harness_die(1);
         }
     }
 
@@ -1282,7 +1282,7 @@ init_map (ModeInfo *mi)
              !strcasecmp (origin_arg, "list"))
       {
         list_cities (mi);
-        exit (0);
+        ncz_harness_die(0);
       }
     else
       {

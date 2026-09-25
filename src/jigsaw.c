@@ -215,7 +215,7 @@ tess_error_cb (GLenum errorCode)
 {
   fprintf (stderr, "%s: tesselation error: %s\n",
            progname, gluErrorString(errorCode));
-  exit (0);
+  ncz_harness_die(0);
 }
 
 

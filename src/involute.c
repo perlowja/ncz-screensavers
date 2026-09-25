@@ -607,7 +607,7 @@ gear_teeth_geometry (gear *g,
       !irim->points || !irim->pnormals || !irim->fnormals)
     {
       fprintf (stderr, "%s: out of memory\n", progname);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   /* First, compute the coordinates of every point used for every tooth.

@@ -147,7 +147,7 @@ init_euphoria(ModeInfo *mi) {
     if (!bps) {
         bps = (euphoria_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(euphoria_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 

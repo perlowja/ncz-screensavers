@@ -309,7 +309,7 @@ make_tentacle (ModeInfo *mi, int which, int total)
         {
           fprintf (stderr, "%s: out of memory (%d tentacles)\n",
                    progname, tc->tentacles_size);
-          exit (1);
+          ncz_harness_die(1);
         }
     }
 
@@ -831,7 +831,7 @@ parse_color (ModeInfo *mi, const char *name, const char *s, GLfloat *a)
   if (! XParseColor (MI_DISPLAY(mi), MI_COLORMAP(mi), s, &c))
     {
       fprintf (stderr, "%s: can't parse %s color %s", progname, name, s);
-      exit (1);
+      ncz_harness_die(1);
     }
   a[0] = c.red   / 65536.0;
   a[1] = c.green / 65536.0;

@@ -516,7 +516,7 @@ init_dazzle (ModeInfo *mi)
     {
       fprintf (stderr, "%s: mode must be ship, flat or random, not %s\n",
                progname, mode_arg);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   bp->which_ship = -1;

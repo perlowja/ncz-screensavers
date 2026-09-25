@@ -230,7 +230,7 @@ static void particle_update(particle *p, float *c, float expander,
 static void flux_init(flux *f, flux_configuration *bp) {
     int i;
     f->particles = (particle *)calloc((size_t)bp->d_particles, sizeof(particle));
-    if (!f->particles) exit(1);
+    if (!f->particles) ncz_harness_die(1);
     f->randomize = 1;
     for (i = 0; i < NUMCONSTS; i++) {
         f->c[i] = frand(2.0f) - 1.0f;
@@ -288,7 +288,7 @@ init_flux(ModeInfo *mi) {
     if (!bps) {
         bps = (flux_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(flux_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -376,7 +376,7 @@ init_flux(ModeInfo *mi) {
     }
 
     bp->fluxes = (flux *)calloc((size_t)bp->d_fluxes, sizeof(flux));
-    if (!bp->fluxes) exit(1);
+    if (!bp->fluxes) ncz_harness_die(1);
     for (i = 0; i < bp->d_fluxes; i++) flux_init(&bp->fluxes[i], bp);
 
     bp->frame_time = 0.016f;

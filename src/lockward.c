@@ -860,7 +860,7 @@ init_lockward (ModeInfo *mi)
 	ctx->blink.noise	= malloc (sizeof (uint32_t) * g_blades);
 	if (!ctx->blink.noise) {
 		fprintf (stderr, "Can't allocate noise array.\n");
-		exit (1);
+		ncz_harness_die(1);
 	}
 
 	gen_blade_arcs (ctx);
@@ -889,7 +889,7 @@ init_lockward (ModeInfo *mi)
 			fprintf (stderr,
 			         "Can't allocate XColors for spinner %d.\n",
 			         i);
-			exit (1);
+			ncz_harness_die(1);
 		}
 		make_smooth_colormap (0, 0, 0,
 				      ss->colors, &ss->ncolors,
@@ -903,7 +903,7 @@ init_lockward (ModeInfo *mi)
 		ss->bladeidx	= malloc (sizeof (bladestate) * g_blades);
 		if (!ss->bladeidx) {
 			fprintf (stderr, "Can't allocate blades.\n");
-			exit (1);
+			ncz_harness_die(1);
 		}
 		for (n = g_blades;  --n >= 0; ) {
 			/*

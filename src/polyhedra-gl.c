@@ -541,7 +541,7 @@ init_polyhedra (ModeInfo *mi)
           {
             fprintf (stderr, "%s: no such polyhedron: \"%s\"\n",
                      progname, do_which_str);
-            exit (1);
+            ncz_harness_die(1);
           }
       }
   }

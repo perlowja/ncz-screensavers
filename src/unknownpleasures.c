@@ -131,7 +131,7 @@ parse_color (ModeInfo *mi, char *res, char *class, GLfloat *a)
   if (! XParseColor (MI_DISPLAY(mi), MI_COLORMAP(mi), s, &c))
     {
       fprintf (stderr, "%s: can't parse %s color %s", progname, res, s);
-      exit (1);
+      ncz_harness_die(1);
     }
   if (s) free (s);
   a[0] = c.red   / 65536.0;

@@ -334,7 +334,7 @@ init_solarwinds(ModeInfo *mi) {
     if (!bps) {
         bps = (solarwinds_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(solarwinds_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -398,7 +398,7 @@ init_solarwinds(ModeInfo *mi) {
     }
 
     bp->winds = (wind *)calloc((size_t)bp->d_winds, sizeof(wind));
-    if (!bp->winds) exit(1);
+    if (!bp->winds) ncz_harness_die(1);
     for (i = 0; i < bp->d_winds; i++) wind_init(&bp->winds[i], bp);
 
     bp->frame_time = 0.016f;

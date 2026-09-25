@@ -213,7 +213,7 @@ init_helios(ModeInfo *mi) {
     if (!bps) {
         bps = (helios_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(helios_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -266,8 +266,8 @@ init_helios(ModeInfo *mi) {
 
     bp->emitters   = (blob *)calloc((size_t)bp->d_emitters,   sizeof(blob));
     bp->attracters = (blob *)calloc((size_t)bp->d_attracters, sizeof(blob));
-    if (bp->d_emitters > 0 && !bp->emitters) exit(1);
-    if (bp->d_attracters > 0 && !bp->attracters) exit(1);
+    if (bp->d_emitters > 0 && !bp->emitters) ncz_harness_die(1);
+    if (bp->d_attracters > 0 && !bp->attracters) ncz_harness_die(1);
     for (i = 0; i < bp->d_emitters; i++) blob_init(&bp->emitters[i], bp);
     for (i = 0; i < bp->d_attracters; i++) {
         blob_init(&bp->attracters[i], bp);

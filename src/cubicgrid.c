@@ -255,7 +255,7 @@ ENTRYPOINT void init_cubicgrid(ModeInfo *mi)
       symmetry_id = HACKS_GLX_CUBICGRID_SYMMETRY_CUBIC;
   else {
     fprintf(stderr, "%s: unknown symmetry: %s\n", progname, symmetry);
-    exit(1);
+    ncz_harness_die(1);
   }
 
   if ((cp->glx_context = init_GL(mi)) != NULL) {

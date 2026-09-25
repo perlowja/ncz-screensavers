@@ -115,7 +115,7 @@ static void crumbler_oom (void)
   jwxyz_abort ("%s: out of memory, try reducing 'density'", progname);
 # else
   fprintf (stderr, "%s: out of memory, try reducing 'density'\n", progname);
-  exit (1);
+  ncz_harness_die(1);
 # endif
 }
 

@@ -541,7 +541,7 @@ static Trile *trile_alloc(cberg_state *cberg)
         if (!(new = calloc(1, sizeof(Trile)))
          || !(new->l = (double *) calloc(sizeof(double), cberg->epoints * 3))) {
             perror(progname);
-            exit(1);
+            ncz_harness_die(1);
         }
         new->r = new->l + cberg->epoints;
         new->v = new->r + cberg->epoints;

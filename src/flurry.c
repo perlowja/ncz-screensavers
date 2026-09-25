@@ -372,7 +372,7 @@ init_flurry(ModeInfo * mi)
         preset_num = PRESET_INSANE;
     } else {
         fprintf(stderr, "%s: unknown preset %s\n", progname, preset_str);
-        exit(1);
+        ncz_harness_die(1);
     }
 
     switch (preset_num) {
@@ -449,7 +449,7 @@ init_flurry(ModeInfo * mi)
     }
     default: {
         fprintf(stderr, "%s: unknown preset %s\n", progname, preset_str);
-        exit(1);
+        ncz_harness_die(1);
     }
     } 
 

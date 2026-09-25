@@ -266,7 +266,7 @@ image_loaded_cb (const char *filename, XRectangle *geom,
     }
 
   if (image_width == 0 || image_height == 0)
-    exit (1);
+    ncz_harness_die(1);
 
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,

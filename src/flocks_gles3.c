@@ -369,7 +369,7 @@ init_flocks(ModeInfo *mi) {
     if (!bps) {
         bps = (flocks_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(flocks_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -444,8 +444,8 @@ init_flocks(ModeInfo *mi) {
 
     bp->lBugs = (bug *)calloc((size_t)bp->d_leaders, sizeof(bug));
     bp->fBugs = (bug *)calloc((size_t)bp->d_followers, sizeof(bug));
-    if (bp->d_leaders > 0 && !bp->lBugs) exit(1);
-    if (bp->d_followers > 0 && !bp->fBugs) exit(1);
+    if (bp->d_leaders > 0 && !bp->lBugs) ncz_harness_die(1);
+    if (bp->d_followers > 0 && !bp->fBugs) ncz_harness_die(1);
     for (i = 0; i < bp->d_leaders; i++) bug_initLeader(&bp->lBugs[i], bp);
     for (i = 0; i < bp->d_followers; i++) bug_initFollower(&bp->fBugs[i], bp);
 

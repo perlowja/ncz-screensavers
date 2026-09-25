@@ -62,6 +62,7 @@
 
 #include <sys/time.h>
 #include <stdint.h>
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -71,6 +72,15 @@
 #include <time.h>        /* time/localtime/strftime (dead-code-gated but linked) */
 #include <math.h>        /* sin/cos/sqrt used by gluPerspective/gluLookAt shims */
 #include <unistd.h>      /* usleep (flurry) */
+
+/* Fatal exits in GLES3-native hacks must tear down the live harness before
+ * libc begins running atexit handlers. Legacy harnesses retain their own
+ * direct-exit behavior and do not link gles3_harness.c. */
+#ifdef NCZ_GLES3_BUILD
+void ncz_harness_die(int code);
+#else
+# define ncz_harness_die(code) exit(code)
+#endif
 
 /*
  * Vendored GL 1.x header from gl4es master. See src/gl4es_include/GL/gl.h

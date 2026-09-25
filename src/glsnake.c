@@ -2437,7 +2437,7 @@ static void ui_keyboard(unsigned char c, int x__attribute__((__unused__)), int y
     switch (c) {
       case 27:  /* ESC */
       case 'q':
-	exit(0);
+	ncz_harness_die(0);
 	break;
       case 'e':
 	explode += DEF_EXPLODE;

@@ -99,7 +99,7 @@ init_implicitdemo(ModeInfo *mi) {
     if (!bps) {
         bps = (implicitdemo_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(implicitdemo_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 

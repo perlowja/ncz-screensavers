@@ -119,7 +119,7 @@ parse_color (ModeInfo *mi, char *key, GLfloat color[4])
     {
       fprintf (stderr, "%s: unparsable color in %s: %s\n", progname,
                key, string);
-      exit (1);
+      ncz_harness_die(1);
     }
   free (string);
 
@@ -319,7 +319,7 @@ make_sphincter_profile (int pixels)
     for (i = 0; i < s->n_points; i++)
       fprintf (stderr, "%s%d", (i == 0 ? "" : ","), s->points[i].y);
     fprintf (stderr, "'\n");
-    exit (1);
+    ncz_harness_die(1);
   }
 # endif
 

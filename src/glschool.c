@@ -158,7 +158,7 @@ init_glschool(ModeInfo *mi)
 							DistComp);
 	if (sc->school == (School *)0) {
 		fprintf(stderr, "couldn't initialize TheSchool, exiting\n");
-		exit(1);
+		ncz_harness_die(1);
 	}
 
 	reshape_glschool(mi, width, height);

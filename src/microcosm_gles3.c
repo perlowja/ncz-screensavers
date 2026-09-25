@@ -158,7 +158,7 @@ init_microcosm(ModeInfo *mi) {
     if (!bps) {
         bps = (microcosm_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(microcosm_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -197,8 +197,8 @@ init_microcosm(ModeInfo *mi) {
 
     bp->emitters   = (microcosm_blob *)calloc((size_t)bp->d_emitters,   sizeof(microcosm_blob));
     bp->attracters = (microcosm_blob *)calloc((size_t)bp->d_attracters, sizeof(microcosm_blob));
-    if (bp->d_emitters   > 0 && !bp->emitters)   exit(1);
-    if (bp->d_attracters > 0 && !bp->attracters) exit(1);
+    if (bp->d_emitters   > 0 && !bp->emitters)   ncz_harness_die(1);
+    if (bp->d_attracters > 0 && !bp->attracters) ncz_harness_die(1);
     for (i = 0; i < bp->d_emitters; i++) {
         bp->emitters[i].phase = frand(PIx2);
         bp->emitters[i].hue = frand(1.0f);

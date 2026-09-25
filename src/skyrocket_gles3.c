@@ -218,7 +218,7 @@ init_skyrocket(ModeInfo *mi) {
     if (!bps) {
         bps = (skyrocket_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(skyrocket_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 

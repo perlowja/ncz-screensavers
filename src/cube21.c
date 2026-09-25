@@ -750,7 +750,7 @@ static void init_gl(ModeInfo *mi)
   if (status) {
     const char *s = gluErrorString(status);
     fprintf (stderr, "%s: error mipmapping texture: %s\n", progname, (s?s:"(unknown)"));
-    exit (1);
+    ncz_harness_die(1);
   }
   check_gl_error("mipmapping");
 #else    

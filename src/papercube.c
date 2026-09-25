@@ -773,7 +773,7 @@ initialize_picture(struct picture *picture, Bool show_grid,
   if(!picture->data)
   {
     fprintf(stderr, "%s: out of memory", progname);
-    exit(1);
+    ncz_harness_die(1);
   }
 
   paint_picture(picture, show_grid, fg, bg);
@@ -1047,7 +1047,7 @@ init_cube (ModeInfo *mi)
             fprintf (stderr,
          "%s: spin must contain only the characters X, Y, or Z (not \"%s\")\n",
                      progname, do_spin);
-            exit (1);
+            ncz_harness_die(1);
           }
         s++;
       }

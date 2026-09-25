@@ -518,7 +518,7 @@ init_geodesic (ModeInfo *mi)
     MI_IS_WIREFRAME(mi) = wire = 1;
   } else {
     fprintf (stderr, "%s: unknown mode: %s\n", progname, mode_str);
-    exit (1);
+    ncz_harness_die(1);
   }
 
 

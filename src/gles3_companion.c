@@ -427,15 +427,15 @@ init_cube (ModeInfo *mi)
    * black" through gl4es. */
   if (nczGLList_upload(companion_quad, &bp->chain_quad) < 0) {
     fprintf(stderr, "companion: gllist upload quad failed\n");
-    exit(1);
+    ncz_harness_die(1);
   }
   if (nczGLList_upload(companion_disc, &bp->chain_disc) < 0) {
     fprintf(stderr, "companion: gllist upload disc failed\n");
-    exit(1);
+    ncz_harness_die(1);
   }
   if (nczGLList_upload(companion_heart, &bp->chain_heart) < 0) {
     fprintf(stderr, "companion: gllist upload heart failed\n");
-    exit(1);
+    ncz_harness_die(1);
   }
 
   bp->trackball = gltrackball_init(False);

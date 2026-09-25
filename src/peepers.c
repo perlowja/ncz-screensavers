@@ -1130,7 +1130,7 @@ init_peepers (ModeInfo *mi)
                "%s: mode must be bounce, scroll, random, xeyes or beholder,"
                " not \"%s\"\n", 
                progname, mode_opt);
-      exit (1);
+      ncz_harness_die(1);
     }
 
   bp->nfloaters = MI_COUNT (mi);

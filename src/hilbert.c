@@ -636,7 +636,7 @@ static void
 mem(void)
 {
   fprintf (stderr, "%s: out of memory\n", progname);
-  exit (1);
+  ncz_harness_die(1);
 }
 
 

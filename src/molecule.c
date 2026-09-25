@@ -328,7 +328,7 @@ set_atom_color (ModeInfo *mi, const molecule_atom *a,
         {
           fprintf (stderr, "%s: unparsable color in %s: %s\n", progname,
                    (a ? a->label : d->name), string);
-          exit (1);
+          ncz_harness_die(1);
         }
 
       gl_color[0] = xcolor.red   / 65536.0;
@@ -682,7 +682,7 @@ parse_error (const char *file, int lineno, const char *line)
 {
   fprintf (stderr, "%s: %s: parse error, line %d: %s\n",
            progname, file, lineno, line);
-  exit (1);
+  ncz_harness_die(1);
 }
 
 
@@ -1071,7 +1071,7 @@ load_molecules (ModeInfo *mi)
             {
               sprintf (buf, "%.100s: %.100s", progname, molecule_str);
               perror (buf);
-              exit (1);
+              ncz_harness_die(1);
             }
 
           if (verbose_p)
@@ -1097,7 +1097,7 @@ load_molecules (ModeInfo *mi)
                         OOM:
                           fprintf (stderr, "%s: out of memory (%d files)\n",
                                    progname, nfiles);
-                          exit (1);
+                          ncz_harness_die(1);
                         }
                     }
 
@@ -1328,7 +1328,7 @@ init_molecule (ModeInfo *mi)
             fprintf (stderr,
          "%s: spin must contain only the characters X, Y, or Z (not \"%s\")\n",
                      progname, do_spin);
-            exit (1);
+            ncz_harness_die(1);
           }
         s++;
       }

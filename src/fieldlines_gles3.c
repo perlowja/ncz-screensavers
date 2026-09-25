@@ -280,7 +280,7 @@ init_fieldlines(ModeInfo *mi) {
     if (!bps) {
         bps = (fieldlines_configuration *)
             calloc(MI_NUM_SCREENS(mi), sizeof(fieldlines_configuration));
-        if (!bps) exit(1);
+        if (!bps) ncz_harness_die(1);
     }
     bp = &bps[MI_SCREEN(mi)];
 
@@ -295,7 +295,7 @@ init_fieldlines(ModeInfo *mi) {
     bp->electric    = d_electric;
 
     bp->ions = (ion *)calloc((size_t)bp->n_ions, sizeof(ion));
-    if (!bp->ions) exit(1);
+    if (!bp->ions) ncz_harness_die(1);
     for (i = 0; i < bp->n_ions; i++) {
         if (frand(2.0f) > 1.0f) bp->ions[i].charge = -1.0f;
         else                    bp->ions[i].charge =  1.0f;
