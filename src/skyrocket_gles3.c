@@ -154,6 +154,10 @@ static void hsl2rgb(float h, float s, float l, float *rOut, float *gOut, float *
     else if (tempg < 0.5f)      *gOut = temp2;
     else if (tempg < 2.0f/3.0f) *gOut = temp1 + (temp2-temp1)*(2.0f/3.0f-tempg)*6.0f;
     else                        *gOut = temp1;
+    if (tempb < 1.0f/6.0f)      *bOut = temp1 + (temp2-temp1)*6.0f*tempb;
+    else if (tempb < 0.5f)      *bOut = temp2;
+    else if (tempb < 2.0f/3.0f) *bOut = temp1 + (temp2-temp1)*(2.0f/3.0f-tempb)*6.0f;
+    else                        *bOut = temp1;
 }
 
 static void launch_rocket(skyrocket_configuration *bp) {

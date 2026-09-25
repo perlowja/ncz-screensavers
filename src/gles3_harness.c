@@ -332,6 +332,9 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         xs_compat_apply_mode_defaults(&a->mi);
         init_GL(&a->mi);
         hack->init_cb(&a->mi);
+        if (hack->reshape_cb) {
+            hack->reshape_cb(&a->mi, a->width, a->height);
+        }
         fprintf(stderr, "[diag] gles3_harness: init returned\n");
         a->configured = true;
     } else if (w != (uint32_t)a->width || h != (uint32_t)a->height) {

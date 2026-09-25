@@ -515,7 +515,9 @@ int ncz_gles3_runtime_init(void) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     /* Sensible GLES3 defaults. */
-    glEnable(GL_DEPTH_TEST);
+    /* Match the OpenGL initial state. Hacks that need depth testing enable
+     * it explicitly and clear the depth buffer before drawing. */
+    glDisable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glDisable(GL_CULL_FACE);   /* xscreensaver hacks set this themselves */
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1053,6 +1055,13 @@ GLuint glGenLists(GLsizei range) {
 }
 
 void glNewList(GLuint list, GLenum mode) {
+    /* GL permits applications to choose a positive list name directly;
+     * glGenLists() is only a convenience allocator. Several RSS ports use
+     * the conventional fixed name 1 without calling glGenLists first. */
+    if (list > 0 && list < NCZ_DL_POOL_SIZE && !g_dl_pool_used[list]) {
+        g_dl_pool_used[list] = true;
+        memset(&g_dl_pool[list], 0, sizeof(g_dl_pool[list]));
+    }
     nczDL *dl = dl_lookup((int)list);
     if (!dl) return;
     (void)mode;  /* GL_COMPILE / GL_COMPILE_AND_EXECUTE — we always compile */
@@ -1365,6 +1374,7 @@ static void im_flush_as_draw(void) {
     } else {
         real_glDrawArrays(prim, 0, count);
     }
+
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

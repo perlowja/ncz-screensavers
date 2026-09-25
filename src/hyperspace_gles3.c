@@ -147,6 +147,10 @@ static void hsl2rgb(float h, float s, float l, float *rOut, float *gOut, float *
     else if (tempg < 0.5f)      *gOut = temp2;
     else if (tempg < 2.0f/3.0f) *gOut = temp1 + (temp2-temp1)*(2.0f/3.0f-tempg)*6.0f;
     else                        *gOut = temp1;
+    if (tempb < 1.0f/6.0f)      *bOut = temp1 + (temp2-temp1)*6.0f*tempb;
+    else if (tempb < 0.5f)      *bOut = temp2;
+    else if (tempb < 2.0f/3.0f) *bOut = temp1 + (temp2-temp1)*(2.0f/3.0f-tempb)*6.0f;
+    else                        *bOut = temp1;
 }
 
 ENTRYPOINT void
@@ -219,8 +223,8 @@ init_hyperspace(ModeInfo *mi) {
     bp->stars = (hyperspace_star *)calloc((size_t)bp->d_stars, sizeof(hyperspace_star));
     if (!bp->stars) ncz_harness_die(1);
     for (i = 0; i < bp->d_stars; i++) {
-        bp->stars[i].x = frand(2.0f) - 1.0f;
-        bp->stars[i].y = frand(2.0f) - 1.0f;
+        bp->stars[i].x = frand(2.0f * (float)bp->d_depth) - (float)bp->d_depth;
+        bp->stars[i].y = frand(2.0f * (float)bp->d_depth) - (float)bp->d_depth;
         bp->stars[i].z = -(float)bp->d_depth * frand(1.0f);
         bp->stars[i].prev_x = bp->stars[i].x;
         bp->stars[i].prev_y = bp->stars[i].y;
@@ -243,6 +247,7 @@ draw_hyperspace(ModeInfo *mi) {
     float r, g, b;
 
     glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_TEXTURE_2D);
 
     /* integrate camera forward */
     bp->camera_z += speed;
@@ -264,8 +269,8 @@ draw_hyperspace(ModeInfo *mi) {
         float z = s->z + bp->camera_z;
         /* recycle star when it gets close */
         if (z > 50.0f) {
-            s->x = frand(2.0f) - 1.0f;
-            s->y = frand(2.0f) - 1.0f;
+            s->x = frand(2.0f * (float)bp->d_depth) - (float)bp->d_depth;
+            s->y = frand(2.0f * (float)bp->d_depth) - (float)bp->d_depth;
             s->z -= (float)bp->d_depth;
             s->prev_x = s->x;
             s->prev_y = s->y;
@@ -298,6 +303,7 @@ draw_hyperspace(ModeInfo *mi) {
         float intensity = bp->flare_life / 1.5f;
         float size = 200.0f * (1.0f - intensity + 0.5f);
         glBindTexture(GL_TEXTURE_2D, bp->flare_tex);
+        glEnable(GL_TEXTURE_2D);
         glColor3f(intensity, intensity * 0.8f, intensity * 0.6f);
         glPushMatrix();
             glTranslatef(bp->flare_x * 800.0f, bp->flare_y * 800.0f, z);
