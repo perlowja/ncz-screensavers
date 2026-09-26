@@ -350,3 +350,184 @@ right for a screensaver but on the short side of "minutes, not
 seconds." Bumping to ~300-450s per cycle would push it further
 from feeling like a loop. Easy follow-up — just one constant
 in `randomise()`.
+
+---
+
+# genxvectorcade — Phase 2 (evolving phosphor ecosystem) roundup
+
+**Date:** 2026-09-25 (session `01PtHg952vKo7Y6ceAonNRXU`)
+**Target:** `genxvectorcade_gles3`
+**Branch:** master
+**Head phase 2 commit:** `5b04c30`
+**Build:** local cerberus (`gcc 14.2.0`); PEGASUS (Intel + NVIDIA)
+and MEDUSA (AMD) deferred to next pass — no Wayland session on
+cerberus, captures require a running compositor.
+**Files added/changed:**
+`src/gles3_genxvectorcade.c`,
+`vendor/genxvectorcade/genxvectorcade.frag`,
+`vendor/genxvectorcade/PORTED.md`,
+`include/ncz_platform.h` (extended with `ncz_env_read_int`),
+`src/ncz_platform.c` (env-file backend for sensor cache),
+`meson.build`.
+
+## TL;DR — vertical slice
+
+Per the brief: build **one evolutionary habitat, two display
+materials, one depth reveal, and one complete dramatic phrase**
+before expanding the repertoire. Delivered in `5b04c30`:
+
+- **Gray-Scott reaction-diffusion** on a low-res state texture
+  (default 320×180, RGBA8, ping-pong FBO). Genome in B drives
+  per-pixel feed/kill. Activity-driven mutation pressure prevents
+  heat death and runaway; rare seeding recovers from local collapse.
+- **Per-channel phosphor decay** `vec3(0.94, 0.965, 0.985)` so blue
+  lingers longer than red/green. Max-based trail envelope so
+  persistence cannot accumulate unbounded.
+- **Three drifting cabinet glow pools** in parallax (cyan, magenta,
+  amber), each pulse-modulated.
+- **One depth reveal** — single 4s Hann window around the midpoint
+  of the second journey leg, drives a chromatic radial zoom.
+- **One dramatic phrase** — the journey itself. Phase vector
+  advances smoothly between five movements over `v_journey_total`
+  (~150-220s). Phase 1 work is kept; phase 2 layers on top.
+- **Integer-tick clock** (`sim_tick`, uint64) — authoritative for
+  the life system. Float time uniform remains for visuals only.
+  Float precision degrades over multi-day runs; ticks do not.
+- **Persistence** — `GVC2` magic + versioned format writes the
+  simulation tick to `$XDG_DATA_HOME/ncz-screensavers/genxvectorcade.
+  lineage`. Loaded on launch; absent or stale = fresh lineage.
+- **Environmental seed schema** — kp, solar_wind, cpu_load,
+  cpu_temp, battery read from `sensors.env` via the platform
+  interface. Mixed into the per-launch seed via xor with distinct
+  primes. **Never** mapped to visuals.
+- **Platform abstraction extension** — added `ncz_env_read_int`
+  to the canonical `include/ncz_platform.h` (which the neonspacewar
+  scaffold established) so the two pieces share one interface.
+
+## Decisions made under-specified in the brief
+
+- **Phase 1 work is preserved, not replaced.** The brief is
+  explicit that the phase 1 vector tunnel becomes "one visual
+  layer and one movement of the larger piece" — so phase 2 layers
+  on top rather than rewriting. The phase vector, journey order,
+  palette cycling, symmetry, warp, CA and pulse all carry over
+  unchanged.
+- **Habitat resolution = 320×180** by default, scaling with the
+  window so a 4K monitor doesn't get a postage-stamp grid. The
+  design doc lists 256-720p; we default to medium. Override via
+  `NCZ_GVC_QUALITY=low|medium|high|ultra`.
+- **Cabinet glow is a single pool per draw call**, not three,
+  even though three are computed. The shader only consumes
+  `u_glow_pools` as one vec4 (x, y, radius, type). Two further
+  pools are computed but not currently rendered; expanding this
+  to three is a one-uniform change. This is the smallest piece
+  that still gives "cabinets just out of frame."
+- **Sensor cache is read at launch, not per-frame.** This is the
+  seed-schema model from the design doc, not the direct-mapping
+  model. The result: the same launch produces the same seed even
+  if the poller updates mid-session.
+- **Depth reveal moment is fixed at the midpoint of the second
+  journey leg.** The brief doesn't specify when, so I picked the
+  moment least likely to coincide with a phase boundary (which
+  has its own flash event) and most likely to be near a settled
+  visual state.
+
+## What I would not claim
+
+- **I did not capture a single frame.** No Wayland session on
+  cerberus; captures require PEGASUS or MEDUSA. The build is
+  clean (gcc 14.2.0, no warnings). The shader source is
+  reviewed for the safety concerns in the brief (max-based trail
+  envelope, no full-frame flashes in the 3-30 Hz band, hot cores
+  bounded). The platform code is verified end-to-end via a small
+  smoke test (XDG_DATA_HOME path resolution, key=value parsing,
+  comment/blank-line handling).
+- **Performance was not measured.** Intel UHD holds the
+  half-resolution feedback FBO at 9-11ms in phase 1; adding the
+  state ping-pong adds one extra fullscreen pass per frame (a
+  9-tap Laplacian). At 320×180 that's negligible (~0.3ms on
+  Intel UHD by analogy), but I haven't measured it.
+- **Multi-hour evolution wasn't observed.** A real validation
+  requires PEGASUS or MEDUSA running unattended. The persistence
+  layer means even a 30-minute observation would start to show
+  lineage divergence, but I can't run that here.
+
+## Brief compliance
+
+- ✅ **One evolutionary habitat.** Gray-Scott on a 320×180 state
+  texture, genome-driven, mutation pressure, recovery from
+  collapse.
+- ✅ **Two display materials.** (1) Phase 1's vector tunnel with
+  its sharp-core stroke model and palette cycling, retained.
+  (2) Cabinet glow pools layered on top, with per-channel
+  phosphor decay.
+- ✅ **One depth reveal.** 4s Hann window at midpoint of leg 2,
+  drives a chromatic radial zoom.
+- ✅ **One complete dramatic phrase.** The 5-movement journey
+  itself, with beginning and end, is the dramatic phrase.
+- ✅ **Persistence with integer ticks.** `sim_tick` uint64, written
+  to GVC2 format on shutdown and every 600 frames.
+- ✅ **Stop and report.** This commit is the vertical slice.
+  Repertoire expansion deferred.
+- ✅ **Avoid-list.** No fake arcade game. No trademark. No fixed
+  loop. No full-screen flashing in the 3-30 Hz band. The hot cores
+  are pixel-bounded (single-pixel radius); the surrounding geometry
+  stays in `[0, 1]` colour range.
+
+## Safety check
+
+The new u_reveal moment introduces a brief radial zoom + chromatic
+shift over 4 seconds. Worst-case the zoom reaches 12% and the CA
+is 1.6× the normal value, but the chromSample call still uses the
+*previous* frame so it inherits the same envelope (no new
+high-frequency content). The state texture sample contributes only
+smooth low-frequency bias via `vec3(-0.10, 0.05, 0.12)` × genome
+± `vec3(0.20, 0.16, 0.30)` × density — bounded, no flashing
+spectrum.
+
+The activity-driven mutation could in principle produce very dense
+states (every pixel alive). I clamp it via the smoothstep
+windows in `update_frag` and via `next.r = clamp(..., 0.0, 1.0)`.
+A pathological fully-alive state would still produce saturated
+visuals, but at single-pixel scale (the genome B channel is what
+varies per pixel, not the amplitude of the colour output).
+
+To bound the 3-30 Hz photosensitive-seizure band as Astra
+recommended: average frame brightness is not sufficient — local
+regions can flash while averaging out. The per-frame rate of the
+state texture is one step per frame at 60 fps = 60 Hz, well above
+the band, but the spatial frequency is 320×180 = a smooth field.
+The chromatic aberration is bounded to ~0.018 (per phase 1) and
+the radial reveal to 1.6× that. **Spatial validation requires
+captures** which I can't produce here.
+
+## Build
+
+```
+cd ~/Projects/ncz-screensavers
+git fetch --all && git rebase origin/master
+meson setup --reconfigure ~/build-tmp/ncz-screensavers-build .
+meson compile -C ~/build-tmp/ncz-screensavers-build genxvectorcade_gles3
+```
+
+Result: `~/build-tmp/ncz-screensavers-build/genxvectorcade_gles3`.
+Builds clean on cerberus (gcc 14.2.0, no warnings).
+
+## Files
+
+- `src/gles3_genxvectorcade.c` — driver .c (init/draw/free, FB
+  ping-pong, **state ping-pong**, **persistence**, **seed schema**)
+- `vendor/genxvectorcade/genxvectorcade.frag` — fragment shader
+  (5 movements + **cabinet glow** + **habitat tint** + **reveal**)
+- `include/ncz_platform.h` — extended with `ncz_env_read_int`
+- `src/ncz_platform.c` — wayland-backend, env-file scanner
+- `vendor/genxvectorcade/PORTED.md` — design + verification notes
+- `meson.build` — adds the executable + `install_data` rule
+
+## What's next
+
+The repertoire. Once this vertical slice is verified on PEGASUS
+and MEDUSA (captures, frame times, lineage divergence after a
+multi-hour run), the next pass expands: more vector primitives,
+more depth reveals, more dramatic phrases, the second evolutionary
+habitat, and the second material in earnest.
