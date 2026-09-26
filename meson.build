@@ -786,6 +786,18 @@ install_data('vendor/blackhole/blackhole.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
 install_data('vendor/magmasimplex/magmasimplex.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
+foreach ms_shader : [
+  'render', 'sim_zero', 'sim_advect_v', 'sim_advect_t', 'sim_advect_p',
+  'sim_advect_h', 'sim_buoyancy', 'sim_project', 'sim_heat',
+  'sim_phase', 'sim_init_seed',
+  'sim3d_advect_v', 'sim3d_advect_t', 'sim3d_advect_p', 'sim3d_advect_h',
+  'sim3d_buoyancy', 'sim3d_project', 'sim3d_heat', 'sim3d_phase',
+  'sim3d_init_seed',
+]
+    install_data('vendor/magmasimplex/' + ms_shader + '.frag',
+                 install_dir: shader_install_dir + '/magmasimplex',
+                 install_tag: 'runtime-shaders')
+endforeach
 foreach s : hyprsaver_shaders
     install_data('vendor/hyprsaver/shaders/' + s + '.frag',
                  install_dir: shader_install_dir, install_tag: 'runtime-shaders')
