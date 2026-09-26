@@ -1,0 +1,88 @@
+{
+  "target": "xshadertoy_driftclouds_gles3",
+  "nframes": 11,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.7112241512345678,
+    "max_changed_pct": 0.7197757523148148,
+    "min_changed_pct": 0.703422550154321
+  },
+  "coverage_mean": 1.0,
+  "coverage_max": 1.0,
+  "saturation_mean": 0.9003091680695848,
+  "saturation_max": 0.947451774691358,
+  "intensity_mean": 177.23157848011363,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 1.0,
+      "sat": 0.8357479745370371,
+      "vis_int": 184.40505981445312
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 1.0,
+      "sat": 0.8478110532407407,
+      "vis_int": 183.49234008789062
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 1.0,
+      "sat": 0.8601760223765432,
+      "vis_int": 180.91818237304688
+    },
+    {
+      "frame": "frame_000000b4.png",
+      "cov": 1.0,
+      "sat": 0.873740837191358,
+      "vis_int": 178.87464904785156
+    },
+    {
+      "frame": "frame_000000f0.png",
+      "cov": 1.0,
+      "sat": 0.8822603202160494,
+      "vis_int": 177.6337432861328
+    },
+    {
+      "frame": "frame_0000012c.png",
+      "cov": 1.0,
+      "sat": 0.9080164930555555,
+      "vis_int": 175.62570190429688
+    },
+    {
+      "frame": "frame_00000168.png",
+      "cov": 1.0,
+      "sat": 0.9287876157407408,
+      "vis_int": 174.5684356689453
+    },
+    {
+      "frame": "frame_000001a4.png",
+      "cov": 1.0,
+      "sat": 0.9473379629629629,
+      "vis_int": 173.5177001953125
+    },
+    {
+      "frame": "frame_000001e0.png",
+      "cov": 1.0,
+      "sat": 0.947451774691358,
+      "vis_int": 173.8280029296875
+    },
+    {
+      "frame": "frame_0000021c.png",
+      "cov": 1.0,
+      "sat": 0.9396368634259259,
+      "vis_int": 173.5427703857422
+    },
+    {
+      "frame": "frame_00000258.png",
+      "cov": 1.0,
+      "sat": 0.9324339313271605,
+      "vis_int": 173.14077758789062
+    }
+  ],
+  "frame_ms_mean": 993.3333333333334,
+  "frame_ms_var": 400.00000000000085,
+  "n_frame_samples": 11
+}

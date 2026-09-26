@@ -1,0 +1,73 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/driftclouds.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=100,157,209; 133,194,245; 96,169,242; 152,188,204
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=7d1a35d4fb3b1f66 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=76,140,204; 127,189,242; 96,169,242; 105,149,182
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=07224b92ab9c7f7a gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=100,158,209; 157,207,240; 114,182,244; 91,138,177
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=5e1469a0cdc8b0b3 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=205,237,238; 129,188,238; 96,169,242; 57,112,166
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=5a13300b5df1f6ff gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=205,237,238; 192,226,251; 109,177,243; 57,112,166
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=85efb10684649bf1 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=198,235,243; 194,229,251; 141,195,246; 57,112,166
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=78faa95c8b3c38fe gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=184,218,226; 138,194,246; 132,194,246; 57,112,166
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=0e18545308889c21 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=129,180,217; 96,169,242; 120,183,239; 57,112,166
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=a3203984e0ebae76 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=134,184,220; 96,169,242; 96,169,242; 57,112,166
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=b210cc6d959cb281 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=76,140,204; 101,172,242; 103,174,242; 57,112,166
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=3283de21c0ac9888 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=97,155,207; 190,235,252; 96,169,242; 111,156,188
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2073600 hash=d2ed8689619c84ad gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3
+[dump] wrote /tmp/cap-1090106-i-xshadertoy_driftclouds_gles3/frame_00000258.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1097266 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1090106-i-xshadertoy_driftclouds_gles3 timeout --kill-after=2 28 ./xshadertoy_driftclouds_gles3

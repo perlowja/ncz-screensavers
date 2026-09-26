@@ -1,0 +1,113 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/elementalring.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=255,255,255; 111,110,146; 110,109,146; 113,110,146
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=c7770343d4c9c186 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=189,143,153; 104,106,145; 83,96,140; 101,104,143
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=f34b78daf697da70 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=191,164,191; 84,97,141; 114,111,147; 81,95,139
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=4f7bfdb2ad823894 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=173,152,182; 123,116,149; 112,110,147; 104,105,143
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=30b843609e5649fd gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=145,135,172; 98,103,143; 84,97,141; 96,101,142
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=bfec6dc77cbc7fac gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=134,129,168; 86,98,141; 119,114,148; 78,93,138
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=075af2b3ebec37b1 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=128,125,165; 122,115,149; 105,106,145; 97,102,142
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=569a95141e5581a3 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=120,120,162; 97,102,143; 81,95,140; 95,101,141
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=a3597ae2080b7b48 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=113,117,160; 82,95,140; 110,109,146; 77,93,138
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=66c499ab37577198 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=110,115,159; 111,109,146; 101,104,144; 89,98,140
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=110ad0dbb7cb4205 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=109,114,158; 99,103,143; 78,94,139; 101,104,143
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2073600 hash=a4ac768e32f1b5e3 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000258.png (8294400 bytes)
+[diag] xshadertoy frame=660 gl_error=0x0 samples=101,110,157; 77,93,138; 103,105,144; 80,94,139
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2073600 hash=e3669d786f925945 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000294.png (8294400 bytes)
+[diag] xshadertoy frame=720 gl_error=0x0 samples=92,106,155; 98,103,142; 100,103,143; 84,96,139
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2073600 hash=cd5c36fddc2055bc gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000002d0.png (8294400 bytes)
+[diag] xshadertoy frame=780 gl_error=0x0 samples=97,108,156; 99,103,142; 77,93,138; 111,109,145
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2073600 hash=8f0c2a52e1d47407 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_0000030c.png (8294400 bytes)
+[diag] xshadertoy frame=840 gl_error=0x0 samples=107,113,158; 77,93,138; 98,102,142; 90,99,141
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2073600 hash=3f025ec3296217b1 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000348.png (8294400 bytes)
+[diag] xshadertoy frame=900 gl_error=0x0 samples=105,112,158; 90,98,140; 94,100,141; 83,96,140
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2073600 hash=9037bed3e203826d gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000384.png (8294400 bytes)
+[diag] xshadertoy frame=960 gl_error=0x0 samples=113,116,160; 100,103,142; 77,93,138; 113,110,146
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2073600 hash=d5463ae871624211 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000003c0.png (8294400 bytes)
+[diag] xshadertoy frame=1020 gl_error=0x0 samples=116,118,161; 81,94,139; 97,102,142; 100,104,143
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=2073600 hash=b4e5e9f8390978bf gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_000003fc.png (8294400 bytes)
+[diag] xshadertoy frame=1080 gl_error=0x0 samples=124,123,164; 84,96,139; 97,102,142; 82,96,140
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=2073600 hash=dc4232a73d38a3d5 gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1090600-i-xshadertoy_elementalring_gles3
+[dump] wrote /tmp/cap-1090600-i-xshadertoy_elementalring_gles3/frame_00000438.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1098112 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1090600-i-xshadertoy_elementalring_gles3 timeout --kill-after=2 28 ./xshadertoy_elementalring_gles3

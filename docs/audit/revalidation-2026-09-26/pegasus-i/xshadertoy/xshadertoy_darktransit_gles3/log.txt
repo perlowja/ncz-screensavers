@@ -1,0 +1,98 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/darktransit.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=68,88,163; 162,174,213; 49,61,104; 0,0,0
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=1555200 hash=6c8adf9911daec67 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=3,7,29; 57,70,118; 14,19,34; 0,0,0
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=1555200 hash=db25469a5782f0b1 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=215,245,255; 5,9,26; 214,229,255; 0,0,0
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=1555200 hash=b6f41573a2ebb1ae gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=19,35,110; 255,255,255; 40,50,88; 0,0,0
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=1555200 hash=f6b75ec8924635ee gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=93,112,180; 32,39,62; 16,21,40; 0,0,0
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=1555200 hash=968b6748d1b20e15 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=4,12,58; 15,18,30; 27,34,63; 0,0,0
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=1555200 hash=93384149e36e80bd gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=11,19,57; 90,101,138; 4,7,21; 0,0,0
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=1555200 hash=43f2ba8eb0a6f7e0 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=12,19,51; 225,239,255; 26,33,61; 0,0,0
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=1555200 hash=eced31920d76a55a gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=3,8,40; 14,17,31; 72,89,150; 0,0,0
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=1555200 hash=52afd49b1eacde87 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=1,3,16; 18,23,46; 5,8,22; 0,0,0
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=1555200 hash=77a6bfcd1457bf8f gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=64,75,112; 33,38,53; 9,13,27; 0,0,0
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=1555200 hash=788e24df26876349 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000258.png (8294400 bytes)
+[diag] xshadertoy frame=660 gl_error=0x0 samples=34,45,87; 16,21,38; 12,15,29; 0,0,0
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=1555200 hash=0acba8979bddc77f gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000294.png (8294400 bytes)
+[diag] xshadertoy frame=720 gl_error=0x0 samples=37,52,110; 255,255,255; 88,102,152; 0,0,0
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=1555200 hash=cbec16dba62023b2 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_000002d0.png (8294400 bytes)
+[diag] xshadertoy frame=780 gl_error=0x0 samples=18,37,135; 24,30,54; 57,68,108; 0,0,0
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=1555200 hash=38db0293ab7caf56 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_0000030c.png (8294400 bytes)
+[diag] xshadertoy frame=840 gl_error=0x0 samples=46,61,119; 4,6,11; 13,19,46; 0,0,0
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=1555200 hash=f743e767854cb747 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000348.png (8294400 bytes)
+[diag] xshadertoy frame=900 gl_error=0x0 samples=46,58,103; 124,140,195; 43,50,74; 0,0,0
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=1555200 hash=49aa7e10e29d1daf gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1089113-i-xshadertoy_darktransit_gles3
+[dump] wrote /tmp/cap-1089113-i-xshadertoy_darktransit_gles3/frame_00000384.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1095679 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1089113-i-xshadertoy_darktransit_gles3 timeout --kill-after=2 28 ./xshadertoy_darktransit_gles3

@@ -1,0 +1,68 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/bestill5-0.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=53,22,11; 8,3,2; 19,7,4; 76,31,16
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=d66341f25dec0f73 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=83,34,17; 27,11,5; 22,9,4; 76,31,16
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=22ed7596852ec536 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=53,22,11; 8,3,2; 22,9,4; 76,31,16
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=9cd3e2f2fd3b70e7 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=74,31,15; 21,9,4; 16,6,3; 76,31,16
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=626d6c23482e67c0 gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=113,48,24; 14,5,3; 37,15,7; 76,31,16
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=b8a6d0e1639b480d gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=62,25,13; 14,5,3; 22,9,4; 76,31,16
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=54ec244d415c7d7b gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=83,34,17; 33,13,7; 25,10,5; 76,31,16
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=7262c860f18eeb66 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=49,20,10; 8,3,2; 19,7,4; 76,31,16
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=6ef747e66b2d56a6 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=74,31,15; 19,8,4; 16,6,3; 76,31,16
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=07bb45048fe8518d gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=113,48,24; 12,5,2; 37,15,7; 76,31,16
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=bb205bb841bab5a1 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3
+[dump] wrote /tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3/frame_0000021c.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1093993 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1088486-i-xshadertoy_bestill5-0_gles3 timeout --kill-after=2 28 ./xshadertoy_bestill5-0_gles3

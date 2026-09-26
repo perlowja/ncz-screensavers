@@ -1,0 +1,34 @@
+{
+  "target": "xshadertoy_bubblecolors_gles3",
+  "nframes": 2,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.9587080439814815,
+    "max_changed_pct": 0.9587080439814815,
+    "min_changed_pct": 0.9587080439814815
+  },
+  "coverage_mean": 0.9289178240740741,
+  "coverage_max": 0.9372212577160494,
+  "saturation_mean": 0.8507995756172839,
+  "saturation_max": 0.8664641203703703,
+  "intensity_mean": 137.79559326171875,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.9206143904320988,
+      "sat": 0.8351350308641975,
+      "vis_int": 135.8863525390625
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 0.9372212577160494,
+      "sat": 0.8664641203703703,
+      "vis_int": 139.704833984375
+    }
+  ],
+  "frame_ms_mean": 933.3333333333334,
+  "frame_ms_var": 0.0,
+  "n_frame_samples": 2
+}

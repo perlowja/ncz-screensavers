@@ -1,0 +1,28 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/fluxcore.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=2 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=76,71,102; 61,48,47; 26,21,25; 41,37,53
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=419ab869e1c72838 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1090977-i-xshadertoy_fluxcore_gles3
+[dump] wrote /tmp/cap-1090977-i-xshadertoy_fluxcore_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=135,155,202; 57,49,52; 94,74,69; 34,35,44
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=7e1811bdad21b55e gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1090977-i-xshadertoy_fluxcore_gles3
+[dump] wrote /tmp/cap-1090977-i-xshadertoy_fluxcore_gles3/frame_0000003c.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1098859 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1090977-i-xshadertoy_fluxcore_gles3 timeout --kill-after=2 28 ./xshadertoy_fluxcore_gles3

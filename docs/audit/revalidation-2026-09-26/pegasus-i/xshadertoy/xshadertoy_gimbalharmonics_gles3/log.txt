@@ -1,0 +1,48 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/gimbalharmonics.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=2 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=124,63,111; 131,121,125; 117,112,109; 116,105,110
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=39e2617972f5ba8c gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3
+[dump] wrote /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=81,44,67; 171,153,162; 103,99,97; 122,119,120
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=f9267fe6f59c5d9b gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3
+[dump] wrote /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=45,31,37; 92,88,88; 97,92,93; 255,255,255
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=a76c9d31b624155b gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3
+[dump] wrote /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=42,30,36; 105,101,98; 143,131,137; 255,255,255
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=147fe52bb7da2d45 gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3
+[dump] wrote /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=94,84,94; 92,90,89; 101,98,99; 255,255,255
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=791dea9af046ef3d gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3
+[dump] wrote /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=158,142,160; 88,85,85; 97,95,95; 89,84,82
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=17a6752342f82494 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3
+[dump] wrote /tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3/frame_0000012c.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1099777 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1091660-i-xshadertoy_gimbalharmonics_gles3 timeout --kill-after=2 28 ./xshadertoy_gimbalharmonics_gles3
