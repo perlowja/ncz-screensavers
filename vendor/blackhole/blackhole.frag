@@ -128,7 +128,15 @@ vec3 disk_color(vec3 p,float drama){
  // Oil-slick iridescence: hue shifts with orbital angle and Doppler term so
  // a single frame carries several bands. Slow radius offset avoids the hue
  // fighting the temperature ramp.
- float bandHue=(a/(2.*PI))*.18+0.06*sin(ph*3.)+0.04*(dop-.35)/1.45;
+ // NOTE: `a` is atan(p.y,p.x) and therefore JUMPS from +PI to -PI along one
+ // radial line. Driving hue LINEARLY from it (previously (a/(2.*PI))*.18)
+ // stepped bandHue by a full 0.18 across that seam, which rendered as a hard
+ // straight colour boundary splitting the disk - observed live on MEDUSA as a
+ // teal/gold edge down the middle. Use a periodic function of the angle
+ // instead: sin/cos are continuous across the wrap and keep comparable
+ // amplitude (+/-.09 here vs the old 0.18 peak-to-peak), so the disk gets the
+ // same oil-slick banding with no discontinuity.
+ float bandHue=.09*sin(a)+.045*sin(2.*a)+0.06*sin(ph*3.)+0.04*(dop-.35)/1.45;
  float radiusHue=(r-3.)*.012;
  float paletteT=clamp(heat*dop/grav,0.,1.)+bandHue+radiusHue;
  // A real disk-space hot sector also appears in the lensed disk images.
