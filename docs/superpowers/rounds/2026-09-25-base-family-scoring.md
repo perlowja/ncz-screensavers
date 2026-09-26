@@ -127,4 +127,62 @@ automatic CUT under the rubric.
 Both-vendor PASS, no known visual bug. Need full per-axis scoring and
 group-by-group redundancy call.
 
+The matrix actually contains 69 both-vendor PASS base targets. After the
+37 automatic CUTs (25 both-FAIL + 3 mixed-vendor in the previous commit
++ 9 visually-broken PASS) the residual is **54 candidates**. The brief
+estimated 51; the 3 extra (`fieldlines_gles3`, `lattice_gles3`,
+`companion_gles3` was already in the matrix but missed by the visual-fix
+doc) are mixed-vendor survivors that didn't make the previous CUT
+commit. `fieldlines_gles3` and `lattice_gles3` are O6N-FAIL +
+PEGASUS-PASS only — Intel-floor perf is 0 by the rubric, so they join
+the mixed-vendor CUT block now (this commit). `companion_gles3` is a
+true both-vendor PASS and is in the scored set below.
+
+### Mixed-vendor CUT (corrective — Intel floor perf=0)
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| fieldlines_gles3 | misc | 0 | 0 | — | — | CUT | O6N FAIL, PEGASUS PASS only — Intel floor cannot run it; no unique algorithm beyond generic field-lines-on-plane (hyprsaver_lissajous / hyprsaver_sonar cover this space) |
+| lattice_gles3 | misc | 0 | 0 | — | — | CUT | O6N FAIL, PEGASUS PASS only; PEGASUS thumb is tiny dim green wireframe (28k px = 13% coverage) — Intel floor perf=0 |
+| companion_gles3 | misc | 1 | 0 | — | — | CUT | both-vendor PASS but ~4% coverage on both frames — Portal companion-cube on near-black, dim/small object class (same as lavalite); the FINAL-TARGETED-FIX doc didn't include this one in its 13-target sweep but the evidence shows the same dim-on-black problem |
+
+**Cumulative CUT after this block: 37 + 3 = 40.**
+
+### 51 candidates — group-by-group scoring
+
+Both-vendor PASS, no known visual bug. Full per-axis scoring plus
+group-by-group redundancy call.
+
+#### Group 1: cubes + polyhedra + abstract geometry (10 targets)
+
+Evidence from `validation/full_matrix_2026-09-25/{o6n,pegasus}/thumbs/`
+and `~/build-tmp/base-keep-cut/evidence-local/`. Family abbreviations per
+header legend.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| cubestack_gles3 | cube | 3 | 1 | 1 | 5 | CUT | single small dark-blue wireframe cube on black — competent 1998, unremarkable at 4K, redundant with cubenetic/cubestorm/cubetwist family |
+| cubestorm_gles3 | cube | 2 | 1 | 1 | 4 | CUT | chaotic white wireframe storm at lower-right, busy but monochrome — bucket-C rewrite-only per curation plan |
+| cubetwist_gles3 | cube | 2 | 2 | 2 | 6 | **KEEP** | Penrose impossible-cube effect with layered translucent depth — distinctive character not duplicated by any sibling; **WINNER of the cube family**, modern upside on a rewrite |
+| polyhedra-gl_gles3 | poly | 3 | 1 | 1 | 5 | CUT | faceted maroon icosahedron, single object on black — competent but dated; one of several polyhedra (klein/projectiveplane/romanboy are better and ship the same math) |
+| papercube_gles3 | cube | 3 | 0 | 0 | 3 | CUT | flat white 2D cube net, no depth, no color — looks broken rather than 1998-vintage; algorithm does not even ship a 3D paper-fold |
+| topblock_gles3 | geom | 3 | 1 | 1 | 5 | CUT | flat 2D green dot-matrix at the bottom of the frame — saturated green but visually tiny, no perspective or motion interest |
+| tronbit_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | faceted gem + horizontal oscilloscope trace = a distinctive two-element composition with recognizable scientific-instrument character; nothing else does this combo |
+| tangram_gles3 | geom | 3 | 1 | 1 | 5 | CUT | flat grey tangram pieces, plain mid-frame; puzzle-toy register, no visual interest at 4K |
+| kaleidocycle_gles3 | poly | 3 | 2 | 2 | 7 | **KEEP** | dusty-pink polyhedron with black kaleidoscope wedges — recognizable form with color and internal symmetry; distinct from the icosahedron family |
+| discoball_gles3 | geom | 2 | 1 | 1 | 4 | CUT | classic disco-ball on black — recognizable but rendered as partial hemisphere with grey-only wireframe; hyprsaver_starfield / hyprsaver_lissajous cover similar motion+light better |
+
+**Group 1 subtotal: 3 KEEP (cubetwist, tronbit, kaleidocycle), 7 CUT.**
+
+**Group 1 redundancy call — cube family:**
+
+The full base cube family contains: `cubestack`, `cubestorm`, `cubetwist`,
+`cubenetic` (FAIL), `cubicgrid` (FAIL), `rubikblocks` (visually-broken),
+`cube21` (mixed-vendor), `papercube`. **Winner: `cubetwist`.** The
+Penrose impossible-cube effect is the only member with a distinct
+character beyond "wireframe box on black"; everything else is the
+1998 small-object-on-black register that the modern shader path
+already covers. Per the curation plan, the rest are bucket C
+(algorithm-only, do not ship legacy build).
+
 (continued below in later commits.)
