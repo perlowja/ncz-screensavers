@@ -51,10 +51,13 @@ for SEED in "${SEEDS[@]}"; do
   LAUNCH_DIR="$RUNS_ROOT/launch_${SEED}"
   mkdir -p "$LAUNCH_DIR"
   echo "=== bh-sweep: seed=$SEED dir=$LAUNCH_DIR ===" >&2
-  # Hard timeout on the harness: 5s wall, ~3s of frame data captured
-  # plus a margin. The harness exits cleanly on SIGTERM via on_signal.
+  # Hard timeout on the harness: 12s wall. The harness exits cleanly on
+  # SIGTERM via on_signal. Floor hardware (Intel UHD) renders at well
+  # below 60fps; at ~25fps we get ~300 frames in 12s, which spans at
+  # least frames 4, 60, 120, 180, 240 of the harness's "report every
+  # 60th frame" cadence. That is enough to see the trajectory move.
   NCZ_BLACKHOLE_SEED="$SEED" NCZ_FRAME_DUMP="$LAUNCH_DIR" \
-    timeout --kill-after=2 5 "$BIN" >"$LAUNCH_DIR/launch.stderr" 2>&1
+    timeout --kill-after=2 12 "$BIN" >"$LAUNCH_DIR/launch.stderr" 2>&1
   rc=$?
   echo "    exit=$rc" >&2
   # Verify the launch actually ran: must have a [diag] line AND at least
