@@ -509,8 +509,8 @@ The legacy rss-sdl2 family has its own meson block
 meson include) and its own port lineage (Round 15,
 vendor/rss-sdl2-gles2-src/, Apache-2.0). All 13 rss-sdl2 are CUT on
 shared both-FAIL — held for a separate scoring round after the shared
-root-cause hypothesis is tested (see the "Correction to an earlier
-claim" section below).
+root-cause hypothesis is tested (see the "rss-sdl2 family scoring"
+section above for the per-target outcome and shared root-cause note).
 
 The reduction from 92 working base legacy PASSes to **49 ship-as-is**
 is a win: the catalogue that ships is dense with strong visual work,
@@ -568,11 +568,12 @@ superseded by the 49-of-92 base count above.)
 
 ### Outstanding items (not blockers, just honesty)
 
-1. **`rss-sdl2` family was not scored in this round.** The brief says
-   "the legacy families only — `base`, `rss-sdl2`, `shadertoy`", but
-   the rubric and evidence work was done against the `base` family
-   ledger. A separate round scoring `rss-sdl2` (13 targets) is the
-   natural follow-up.
+1. **`rss-sdl2` family was scored as a family but each target is CUT.** All
+   13 rss-sdl2 targets fail the any-axis-0 gate (11 both-vendor FAIL,
+   2 mixed-vendor with PEGASUS-only PASS); the family is held pending a
+   shared root-cause investigation before any are scored individually
+   against the redundancy test. The shared root-cause hypothesis
+   should be the first one tested, before any individual fix work.
 2. **`shadertoy` family was not scored.** Per the brief, the modern
    shader path is the visual standard; the curation plan already
    treats the 38 Shadertoy ports as flagship-tier.
