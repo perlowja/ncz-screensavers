@@ -178,24 +178,23 @@ static void init_lavafield(ModeInfo *m){
   s->v[8] = rnd(&z, 0.95f, 1.25f);                      /* contrast */
 
   /* Blob positions and radii: spread them across the visible slab so
-   * the camera's straight-down ray sees most of them. With ro=(0,0,2.6)
-   * and rays of the form normalize(uv, -1), a central ray can only
-   * hit blobs whose xz distance from the origin is less than the blob
-   * radius. We use a tight ring (0.20..0.50) so most blobs sit under
-   * the central view, with a generous radius (0.45..0.70) so the SDF
-   * blend produces large overlapping forms. Larger radii also mean
-   * the smooth-min blends cover more screen area when blobs touch,
-   * giving the "field fills the frame" look. */
+   * the camera's straight-down ray sees most of them. The brief asks
+   * for a "lava field that fills the frame" with blobs that "detach
+   * and recombine" -- so we want multiple visible blobs, not one
+   * merged form. We lay blobs on a wider ring (0.40..0.75) with
+   * moderate radii (0.30..0.45). When two adjacent blobs touch, the
+   * smooth-min blend still produces a clean merge; when separated,
+   * they read as discrete bodies. */
   for(int i = 0; i < 6; i++){
     float a = (float)i * (2.0f * (float)M_PI / 6.0f)
             + rnd(&z, 0.0f, 0.6f);
-    s->bx[i] = cosf(a) * (0.20f + 0.30f * rnd(&z, 0.0f, 1.0f));
-    s->bz[i] = sinf(a) * (0.20f + 0.30f * rnd(&z, 0.0f, 1.0f));
+    s->bx[i] = cosf(a) * (0.40f + 0.35f * rnd(&z, 0.0f, 1.0f));
+    s->bz[i] = sinf(a) * (0.40f + 0.35f * rnd(&z, 0.0f, 1.0f));
     /* Spread the y anchors across the slab so blobs are not all on the
      * same horizontal plane at t=0 — some rise, some sink, with phase
      * offsets to break synchronisation. */
     s->by[i] = rnd(&z, -0.85f, 0.85f);
-    s->br[i] = rnd(&z, 0.45f, 0.70f);
+    s->br[i] = rnd(&z, 0.30f, 0.45f);
     s->bphase[i] = rnd(&z, 0.0f, (float)(2.0 * M_PI));
   }
 
