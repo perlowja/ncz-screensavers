@@ -213,3 +213,55 @@ These are quality, not style, and apply to everything:
 The distribution's claim is that it takes screensavers seriously. That is measured by
 whether a stranger who knows nothing about any of this keeps one switched on — and, for
 the showpieces, whether they watch it twice and notice it was different the second time.
+
+## People should be able to SHOW OFF their systems with this
+
+Operator, same day: *"I want people to be able to show off their systems with this."*
+
+This is a concrete design requirement and it inverts how the quality ladder has been
+treated so far.
+
+### The ladder must ADD, not merely subtract
+
+Until now the ladder has been written as degradation: full effect on the reference target,
+cut things away for the Intel floor. That is only half of it. If the catalogue is
+something people demo their hardware with, then **better hardware must visibly buy
+something** — not the same image at a higher frame rate, but MORE: more density, more
+depth, more light, more detail that a viewer can point at.
+
+Concretely, per piece:
+
+- **Floor (Intel UHD class):** runs, looks good, coherent, no stutter. Never an apology.
+- **Reference (2016 discrete, Pascal/Polaris):** the piece as designed.
+- **Ultra (2019+ discrete and up):** **visibly more.** Higher march counts, more entities,
+  more lights, higher internal resolution, extra optical terms, longer trails, denser
+  linework. Someone switching from a laptop iGPU to a real GPU should SEE the difference
+  within seconds, not measure it.
+
+State per tier what was added, not only what was removed. A ladder that only subtracts
+means a strong machine gets nothing for being strong, which defeats the purpose.
+
+### What "showing off" implies beyond the ladder
+
+- **It has to survive a big screen.** These will be put on 4K panels, projectors and
+  ultrawides in front of other people. Composition must hold at that size, and detail must
+  not crawl or alias — at 4K a flaw is eight million fragments wide.
+- **It has to be good in the first fifteen seconds.** Someone demoing does not wait for a
+  slow build. The piece should be striking immediately AND continue to develop.
+- **Randomisation is what makes a demo repeatable.** Showing the same fixed sequence twice
+  is a screensaver; showing something visibly different each time is a machine that seems
+  alive. This is the strongest practical argument for the randomisation requirement above.
+- **It should not look like every other shader gallery.** The refuse-list exists partly for
+  this: a piece a viewer recognises as a generic tunnel or a rainbow fractal is not
+  something anyone shows off.
+
+### The connection to older hardware
+
+The operator's standing goal for `genxvectorcade` applies to the whole catalogue: show
+that six-to-ten-year-old systems still have life in them even if they cannot host modern
+AI workloads. A machine that cannot run a language model can still drive something
+genuinely beautiful at 60fps.
+
+That makes the floor tier a point of pride rather than a compromise — but only if it looks
+deliberate rather than stripped. **A reduced tier that looks cheap is a failure**, just a
+different one from a piece that will not run at all.
