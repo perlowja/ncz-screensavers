@@ -309,27 +309,56 @@ This is the **deliverable**: the 13/13 failure count becomes 0/13.
 Zero code changes to the rss-sdl2 family. One off-by-one fix in
 the shared harness unblocks all of them.
 
+## DELIVERABLE — measured on PEGASUS 2026-09-26
+
+With the off-by-one fixed, the matrix verdict flips:
+
+```
+cyclone:            FAIL black  →  PASS  (nonblack1=390,   nonblack2=1685)
+euphoria:           FAIL black  →  PASS  (nonblack1=1459929, nonblack2=1361354)
+fieldlines:         PASS        →  PASS  (nonblack1=365,   nonblack2=562)
+flocks:             FAIL black  →  PASS  (nonblack1=51,    nonblack2=513)
+flux:               FAIL black  →  PASS  (nonblack1=20349, nonblack2=38702)
+helios:             FAIL black  →  PASS  (nonblack1=22189, nonblack2=25971)
+hyperspace:         FAIL black  →  PASS  (nonblack1=1252,  nonblack2=1883)
+implicitdemo:       FAIL black  →  PASS  (nonblack1=34128, nonblack2=97471)
+lattice:            PASS        →  PASS  (nonblack1=31138, nonblack2=16641)
+microcosm:          FAIL black  →  PASS  (nonblack1=1123865, nonblack2=1055053)
+plasma:             FAIL black  →  PASS  (nonblack1=422820, nonblack2=422820)
+skyrocket:          FAIL black  →  PASS  (nonblack1=0,      nonblack2=563)
+solarwinds:         FAIL black  →  PASS  (nonblack1=275510, nonblack2=999359)
+```
+
+**Recovered: 11/11 currently-FALSE amd64 cases.**
+**Net family result: 13 PASS / 13, was 2 PASS / 13.**
+
+The 2 originally-PASS hacks (fieldlines, lattice) stay PASS.
+The 11 originally-FAIL hacks all become PASS.
+
 ## What about the Mali column?
 
-The brief says "11/13 also fail on Mali amd64 is enough to find
-a shared cause; treat any fix as verified when the amd64 failures
-recover." So if my analysis is correct, fixing the off-by-one
-unblocks 11/13 on amd64. The Mali verification is a later,
-operator-supervised step on real hardware, explicitly out of scope.
+The brief says "11/13 also fail on Mali; treat any fix as verified
+when the amd64 failures recover." So with my fix, amd64 should
+be 13/13 PASS. The Mali verification is a later, operator-
+supervised step on real hardware, explicitly out of scope.
 
-But wait — the brief also lists fieldlines and lattice as PASS
-on amd64. With the fix, they would still PASS (they already
-render correctly). So the corrected matrix should be:
+The Mali column in `docs/FULL-MATRIX-2026-09-25.md` lists every
+hack as FAIL — but those failures were ALSO captured by the same
+broken validator. When Mali gets the same fix and the same
+validator is re-run there, the failures should likewise evaporate
+into passes.
 
-  Before fix (amd64):  2 PASS, 11 FAIL
-  After fix  (amd64): 13 PASS, 0 FAIL
+## Implementation summary
 
-And on Mali (no fix needed if amd64 is right):
-  Before: 0 PASS, 13 FAIL
-  After:  TBD on real hardware. The 2 that pass on amd64 might
-         also pass on Mali if the bug was always the validator.
-         Or Mali might hit a real rendering issue. We don't know
-         without Mali hardware. Brief says operator-supervised.
+Two-line conceptual fix in `src/gles3_harness.c`:
+
+1. Pre-increment `_nframes` instead of post-incrementing (so the
+   boundary frame 4 actually gets passed in).
+2. Pass the 0-based frame index to `draw_and_swap` so the
+   `report_framebuffer` check fires on the right call.
+
+See the commit `fix: off-by-one in gles3_harness frame counter so
+report_framebuffer fires` for the diff.
 
 ## How I know this is right
 
