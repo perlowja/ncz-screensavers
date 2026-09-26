@@ -295,6 +295,10 @@ static void ai_update(State *st, float dt) {
 
     /* Always compute a target so we keep aiming at it even while
      * cooling down between shots. */
+    int n_alive = 0;
+    for (int i = 0; i < MAX_ROCKS; i++) if (st->rocks[i].alive) n_alive++;
+    int dense = (n_alive >= 8);
+
     for (int i = 0; i < MAX_ROCKS; i++) {
         Rock *r = &st->rocks[i];
         if (!r->alive) continue;
@@ -302,9 +306,22 @@ static void ai_update(State *st, float dt) {
         float t = neo_lead_target(ship->pos, r->pos, r->vel,
                                   NEO_AI_BULLET_SPEED, &aim);
         float d2 = neo_dist2(ship->pos, r->pos);
-        float score = d2 + (r->tier == ROCK_LARGE ? 0.20f : 0.f);
+        float score = d2;
+        /* When the field is dense, prefer to kill small rocks first
+         * (they don't split, removing a threat without creating
+         * new ones). */
+        if (dense) {
+            if      (r->tier == ROCK_SMALL)  score -= 0.30f;
+            else if (r->tier == ROCK_MEDIUM) score -= 0.10f;
+            else                            score += 0.20f;
+        } else {
+            /* Calm field: small rocks are cheap, large rocks give a
+             * big kill bonus. */
+            if      (r->tier == ROCK_LARGE)  score += 0.05f;
+            else if (r->tier == ROCK_SMALL)  score += 0.20f;
+        }
         if (t > 1.4f) score += 5.f;
-        /* Don't shoot if it would land a fragment on top of us. */
+        /* Don't shoot if the kill would land a fragment on top of us. */
         if (d2 < 0.06f) score += 10.f;
         if (score < shoot_score) {
             shoot_score = score;
