@@ -263,12 +263,13 @@ void main(){
   // "molten" stop rather than running off the bright end.
   float t_pal = clamp(0.32 + 0.55 * (1.0 - fieldHeat) + 0.08 * (1.0 - abs(n.z)), 0.0, 0.92);
   vec3 base = palette(t_pal);
-  // Core samples deeper into the palette so the centre of every blob
-  // is visibly hotter than the rim. The 0.30 offset keeps the core
-  // inside the same palette family -- just brighter / hotter.
-  vec3 core_col = palette(clamp(t_pal + 0.30, 0.0, 1.0));
+  // Core samples moderately deeper into the palette so the centre of
+  // every blob reads as a hotter version of the same colour rather
+  // than jumping to a near-white stop. The 0.15 offset keeps the
+  // core inside the molten range -- bright but not glass-bead white.
+  vec3 core_col = palette(clamp(t_pal + 0.15, 0.0, 1.0));
   // Rim samples a touch hotter than base.
-  vec3 rim = palette(clamp(t_pal + 0.10, 0.0, 1.0));
+  vec3 rim = palette(clamp(t_pal + 0.05, 0.0, 1.0));
   // Compose: wrap diffuse for body, hot core at centre, soft warm rim.
   vec3 col = base * (0.40 + 0.60 * wrap);
   // Inner heat: when fres is low (looking straight down at the
