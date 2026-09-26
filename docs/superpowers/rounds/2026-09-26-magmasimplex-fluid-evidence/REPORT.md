@@ -281,3 +281,62 @@ change, so it is visible which optical term did the work.
 
 This entry exists because the piece has now absorbed three rounds of effort aimed at the
 wrong layer. A fourth motion round would be the fourth wrong answer.
+
+## Refinement + a correction to the IOR figure above (2026-09-26)
+
+### CORRECTION: IOR 1.45-1.60, not 1.1-1.33
+
+The range recorded above is **water** (1.33) and is wrong for this material. Magma, wax
+and obsidian sit at roughly **1.45-1.60**. A too-low IOR under-bends the background and
+produces a weaker version of the same plastic reading, so implementing against the earlier
+number would have partially wasted the round.
+
+### The constraint the external advice does not know about
+
+Standard screen-space refraction assumes a **background colour/depth buffer** of a scene
+behind the transparent object. **We do not have one.** `magmasimplex` is a fullscreen
+procedural effect: the liquid medium is generated in the same shader, and there is no
+separate scene behind the wax.
+
+So do NOT implement a screen-space buffer lookup. **Re-evaluate the liquid/medium function
+along the refracted ray** inside the existing raymarch. This is cheaper than screen-space
+and strictly better here: no silhouette edge artifacts and no missing-information problem
+where the refracted ray leaves the screen, because the field is defined everywhere.
+
+### The three optical terms, concretely
+
+**1. Refraction.** At the phase-field boundary, refract the view ray through the surface
+normal using Snell's law at IOR ~1.5, then continue sampling the medium along that bent
+ray rather than the straight one. Background distortion is the single strongest cue that
+separates "transparent substance" from "coloured solid".
+
+**2. Thickness-driven scattering and emission.** Absorption alone only dims. Add:
+   - a cheap subsurface approximation — measure distance to the exit boundary along the
+     ray; where that distance is SHORT, let light bleed through aggressively and shift
+     toward a brighter, more saturated tone. Thin crust edges glow hot orange-red; thick
+     cores absorb down to deep crimson.
+   - emission tied **inversely to optical depth**, or directly to the local phase-field
+     density **gradient**. This is sharper than "thin edges are hot": it makes fast
+     shearing edges intensely hot while massive stagnant cores stay cooler and crust-like,
+     which is what real magma does.
+
+**3. Fresnel rim.** The "bright edges" term is the Fresnel effect. Use Schlick:
+
+    R(theta) = R0 + (1 - R0) * pow(1 - dot(N, V), 5.0)
+
+A matte surface reflects uniformly; a wet or fluid one becomes near-mirror at grazing
+angles. This puts crisp bright rims on the fluid contours and separates the material from
+its surroundings even where the internal absorption colours are identical. This term alone
+does a lot of the "wet, not matte" work.
+
+### Order of implementation, and how to measure
+
+Refraction first (biggest single cue), then thickness-driven scattering/emission, then
+Fresnel. **Same seed, same frame, capture before and after EACH term** so it is visible
+which one did the work. Do not land all three and declare victory — this piece has already
+absorbed three rounds whose contribution could not be separated afterwards.
+
+### Environment, for anyone writing against this
+
+Pure **GLSL ES 3.00** plus C, on a custom Wayland/EGL harness. No engine, no Unity, no
+Unreal, no post-processing stack, and **no background scene buffer** (see above).
