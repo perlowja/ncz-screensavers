@@ -1,6 +1,7 @@
 /* GLES3 port of Adriwin06/black-hole's Schwarzschild Binet integrator. */
 #define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,13 @@ typedef struct {
  GLint path_d_base,path_d_swing,path_d_harm_amp,path_d_harm_freq;
  GLint path_o_rate,path_o_harm_amp,path_o_harm_freq,path_o_count,path_sign;
  GLint path_e_swing,path_e_freq,path_phase_jitter;
+ // Disk-axis tilt: per-launch spin axis + slow precession. Two vec4
+ // uniforms let the shader rotate into disk-local space once per frame
+ // and reconstruct the disk normal including slow precession.
+ GLint disk_axis,disk_precess;
+ // Camera trajectory family selector: 0 = zoom-whirl (bound), 1 =
+ // hyperbolic flyby (unbound). Drawn per-launch from the seeded RNG.
+ GLint camera_family;
  double started;
  // 0:seed 1:radius 2:temp 3:density 4:rotation 5:inclination 6:orbit_rate
  // 7:jet 8:star_density 9:camera_mode 10:palette 11:approach 12:periapsis
@@ -33,7 +41,10 @@ typedef struct {
  // 23:path_d_base 24:path_d_swing 25:path_d_harm_amp 26:path_d_harm_freq
  // 27:path_o_rate 28:path_o_harm_amp 29:path_o_harm_freq 30:path_o_count 31:path_sign
  // 32:path_e_swing 33:path_e_freq 34:path_phase_jitter
- float v[35];
+ // 35:disk_axis.xyz + wobble (xyz=spin axis unit vec, w=half-angle tilt)
+ // 36..42:disk_precess.xyz + rate (xyz=precession axis, w=rate rad/s)
+ // 43:camera_family (0 or 1)
+ float v[44];
 } State;
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec*1e-9;}
 static uint32_t seed(void){uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}struct timespec t;clock_gettime(CLOCK_REALTIME,&t);return t.tv_nsec^t.tv_sec^getpid();}
@@ -70,6 +81,7 @@ static void init_blackhole(ModeInfo*m){
  L(path_d_base);L(path_d_swing);L(path_d_harm_amp);L(path_d_harm_freq);
  L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
  L(path_e_swing);L(path_e_freq);L(path_phase_jitter);
+ L(disk_axis);L(disk_precess);L(camera_family);
 #undef L
  uint32_t z=seed();
  // Optional deterministic seed for capture runs (eval harness). When
@@ -166,6 +178,55 @@ static void init_blackhole(ModeInfo*m){
  // aren't sitting at the same point on the curve at t=0.
  s->v[34]=rnd(&z,0,6.2831853);
  // ---------------------------------------------------------------------
+ // Disk axis tilt + slow precession (v[35..38] as the four vec4 components
+ // u_disk_axis.xyz + wobble, u_disk_precess.xyz + rate; then v[37] used as
+ // the scalar camera_family at draw time).
+ //
+ // u_disk_axis: v[35..38]
+ //   v[35,36,37] = spin axis (uniform on the sphere, Marsaglia)
+ //   v[38]       = wobble half-angle in [-1,1] (0=disk perp to axis,
+ //                 |w|=1 tilts the disk up to ~pi/2 from the axis)
+ // u_disk_precess: stored at v[35..38] then MOVED to the drawing step —
+ // for clarity we lay both vec4s side-by-side using v[35..42]: v[35..38]
+ // is disk_axis, v[39..42] is disk_precess. The v[] array is float[38],
+ // so we need 8 floats. Recompute: v[35..38] = disk_axis, v[39..42] =
+ // disk_precess, v[43] = camera_family. That requires extending v[] to
+ // 44 floats; see State struct above. The layout used here is:
+ //   v[35,36,37] spin axis x,y,z     v[38] wobble
+ //   v[39,40,41] precession axis x,y,z v[42] precession rate rad/s
+ //   v[43] camera_family (0 bound, 1 unbound)
+ // ---------------------------------------------------------------------
+ {
+  // Spin axis: uniform on the sphere via Marsaglia (cos^2 + sin^2 = 1,
+  // and z=1-2u1 gives a uniform z distribution).
+  float u1=rnd(&z,0,1),u2=rnd(&z,0,1);
+  float cz=1.f-2.f*u1;
+  float sn=sqrtf(fmaxf(0.f,1.f-cz*cz));
+  float th=6.2831853f*u2,ct=cosf(th),st=sinf(th);
+  s->v[35]=ct*sn;
+  s->v[36]=st*sn;
+  s->v[37]=cz;
+  // Wobble in [-1,1] so the disk normal can swing either side of the
+  // spin axis. Symmetric draw so + and - each get 50%.
+  s->v[38]=(rnd(&z,0,1)<.5?-1.f:1.f)*rnd(&z,0,1);
+  // Precession axis: another uniform draw on the sphere. We can't reuse
+  // the spin axis because we want the disk normal to swing AROUND a
+  // different axis (the typical Lense-Thirring picture is that the spin
+  // axis is mostly fixed and the disk normal precesses about it).
+  u1=rnd(&z,0,1); u2=rnd(&z,0,1);
+  cz=1.f-2.f*u1;
+  sn=sqrtf(fmaxf(0.f,1.f-cz*cz));
+  th=6.2831853f*u2; ct=cosf(th); st=sinf(th);
+  s->v[39]=ct*sn;
+  s->v[40]=st*sn;
+  s->v[41]=cz;
+  // Rate in rad/s: slow enough that a 60s capture shows a visible but
+  // unhurried motion (60s * 0.05 rad/s = 3 rad ~ 172 deg).
+  s->v[42]=rnd(&z,0.02,0.08);
+  // Camera trajectory family: 50/50 between the two real families.
+  s->v[43]=(rnd(&z,0,1)<.5)?0.f:1.f;
+ }
+ // ---------------------------------------------------------------------
  // Audit (revalidation-2026-09-26): every uniform's draw, range, and the
  // visible variety it produces. Reachable / distribution / change-of-mind.
  //   u_seed             uint32       full       random per launch
@@ -253,9 +314,10 @@ static void init_blackhole(ModeInfo*m){
  fprintf(stderr,"[diag] blackhole nebula_hue=%.9g nebula_scale=%.9g nebula_coverage=%.9g nebula_yaw=%.9g nebula_tilt=%.9g nebula_offset=%.9g nebula_scheme=%d\n",
   s->v[13],s->v[14],s->v[15],s->v[16],s->v[17],s->v[18],(int)s->v[22]);
  s->started=now();
- fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f path_d_base=%.3f path_d_swing=%.3f path_d_harm_amp=%.3f path_d_harm_freq=%.3f path_o_rate=%.3f path_o_harm_amp=%.3f path_o_harm_freq=%.3f path_o_count=%.2f path_sign=%.0f path_e_swing=%.3f path_e_freq=%.3f path_phase_jitter=%.4f GL=%s\n",
+ fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f path_d_base=%.3f path_d_swing=%.3f path_d_harm_amp=%.3f path_d_harm_freq=%.3f path_o_rate=%.3f path_o_harm_amp=%.3f path_o_harm_freq=%.3f path_o_count=%.2f path_sign=%.0f path_e_swing=%.3f path_e_freq=%.3f path_phase_jitter=%.4f disk_axis=(%.3f,%.3f,%.3f,wobble=%.3f) precess_rate=%.4f camera_family=%d GL=%s\n",
   s->v[0],s->v[1],s->v[2],s->v[3],s->v[4],s->v[5],(int)s->v[9],s->v[6],(int)s->v[10],s->v[11],s->v[12],s->v[7],s->v[8],s->v[19],s->v[20],s->v[21],
-  s->v[23],s->v[24],s->v[25],s->v[26],s->v[27],s->v[28],s->v[29],s->v[30],s->v[31],s->v[32],s->v[33],s->v[34],glGetString(GL_VERSION));
+  s->v[23],s->v[24],s->v[25],s->v[26],s->v[27],s->v[28],s->v[29],s->v[30],s->v[31],s->v[32],s->v[33],s->v[34],
+  s->v[35],s->v[36],s->v[37],s->v[38],s->v[42],(int)s->v[43],glGetString(GL_VERSION));
 }
 static void draw_blackhole(ModeInfo*m){
  State*s=m->data;
@@ -301,6 +363,11 @@ static void draw_blackhole(ModeInfo*m){
  glUniform1f(s->path_e_swing,s->v[32]);
  glUniform1f(s->path_e_freq,s->v[33]);
  glUniform1f(s->path_phase_jitter,s->v[34]);
+ // Disk axis (vec4 = unit spin axis xyz + wobble half-angle) and slow
+ // precession (vec4 = unit precession axis xyz + rate rad/s).
+ glUniform4fv(s->disk_axis,1,s->v+35);
+ glUniform4fv(s->disk_precess,1,s->v+39);
+ glUniform1f(s->camera_family,s->v[43]);
  glBindBuffer(GL_ARRAY_BUFFER,s->vbo);
  glEnableVertexAttribArray(0);
  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,0);
