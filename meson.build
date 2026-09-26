@@ -453,7 +453,7 @@ if opt_xscreensaver
         {'name': 'polyhedra-gl', 'src': 'src/polyhedra-gl.c', 'png': false, 'extra': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'glu': true, 'table': 'polyhedra'},
         {'name': 'jigsaw', 'src': 'src/jigsaw.c', 'png': false, 'extra': ['src/normals.c', 'src/rotator.c', 'src/spline.c', 'src/yarandom.c'], 'glu': true},
         {'name': 'razzledazzle', 'src': 'src/razzledazzle.c', 'png': false, 'extra': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
-        {'name': 'lavalite', 'src': 'src/lavalite.c', 'png': true, 'extra': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+        # lavalite dropped: replaced by magmasimplex, see round 18 below.
         {'name': 'unknownpleasures', 'src': 'src/unknownpleasures.c', 'png': true, 'extra': ['src/doubletime.c', 'src/easing.c']},
         {'name': 'photopile', 'src': 'src/photopile.c', 'png': true, 'extra': ['src/dropshadow.c', 'src/xftwrap.c', 'src/yarandom.c']},
         {'name': 'timetunnel', 'src': 'src/timetunnel.c', 'png': true, 'extra': ['src/rotator.c', 'src/yarandom.c'], 'glu': true},
@@ -712,7 +712,7 @@ legacy_gles3_hacks = [
     {'name': 'unknownpleasures','src': 'src/unknownpleasures.c','extras': ['src/doubletime.c', 'src/easing.c']},
     # Round 11 batch 2 — alphabetical-by-name, 11 more native GLES3 ports
     {'name': 'headroom',       'src': 'src/headroom.c',       'extras': ['src/gllist.c', 'src/headroom_model.c', 'src/rotator.c', 'src/skull_model.c', 'src/yarandom.c']},
-    {'name': 'lavalite',       'src': 'src/lavalite.c',       'extras': ['src/marching.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
+    # lavalite dropped: replaced by magmasimplex, see round 18 below.
     {'name': 'nakagin',        'src': 'src/nakagin.c',        'extras': ['src/doubletime.c', 'src/easing.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'raverhoop',      'src': 'src/raverhoop.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'razzledazzle',   'src': 'src/razzledazzle.c',   'extras': ['src/gllist.c', 'src/normals.c', 'src/ships.c', 'src/yarandom.c']},
@@ -783,7 +783,7 @@ hyprsaver_shaders = [
 shader_install_dir = '/usr/share/ncz-screensavers/shaders'
 install_data('vendor/blackhole/blackhole.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
-install_data('vendor/lavafield/lavafield.frag', install_dir: shader_install_dir,
+install_data('vendor/magmasimplex/magmasimplex.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
 foreach s : hyprsaver_shaders
     install_data('vendor/hyprsaver/shaders/' + s + '.frag',
@@ -897,22 +897,43 @@ executable(
     install: false,
 )
 
-# Round 17 — lavafield: rewrite of lavalite on the new engine. Fullscreen
-# raymarched metaball lava field, palette + blob count + viscosity + scale
-# + warmth randomised per-launch from /dev/urandom. Replaces the 1990s
-# framing of jwz's lavalite (small object on black, lamp/glass/base) with
-# the entire screen filled. Old src/lavalite.c is preserved for now; see
-# docs/.../lavafield-roundup.md for the drop-recommendation evidence.
+# Round 18 — magmasimplex: rename + full rewrite of the lavafield
+# prototype. Same line of work as lavafield (rising buoyant blobs in a
+# coloured field, palette + blob count + viscosity + scale randomised
+# per-launch) but:
+#
+#   - The "field" is now a real coloured transmissive liquid that fills
+#     the frame, not blobs on black. Coverage target: >90% non-black.
+#   - The blobs are translucent wax viewed THROUGH the liquid, so the
+#     perceived hue is a product of the wax colour and the liquid hue
+#     (Beer-Lambert-style transmission), not the wax composited over a
+#     background. Yellow wax in blue liquid reads green on screen as
+#     an emergent result of the optics, not by hardcoding green.
+#   - Different blobs carry different hues simultaneously — the field
+#     is multicoloured in a single frame, not monochrome.
+#   - Lighting is a hot emitter low in frame with vertical luminance
+#     falloff, not a uniform backlight. Wax pooled near the base is
+#     the brightest thing on screen, frequently blown out.
+#   - ~30 historical colourways (liquid / wax pairings) are randomised
+#     per-launch from /dev/urandom. Internal names: ember, orchid,
+#     ultraviolet, sunflower, opal. No manufacturer / brand / product
+#     references in code, comments, docs, or commit messages.
+#
+# Replaces lavafield_gles3 (which measured 5% non-black and rendered
+# monochrome on a mostly black field). Old src/lavalite.c and the
+# lavalite_gles3 binary are dropped from the catalogue in this change —
+# the legacy 1990s framing (small object on black) is now fully
+# superseded. See docs/superpowers/rounds/2026-09-25-magmasimplex.md.
 executable(
-    'lavafield_gles3',
+    'magmasimplex_gles3',
     files(common_gles3_sources + [
         'src/gles3_harness.c',
-        'src/gles3_lavafield.c',
+        'src/gles3_magmasimplex.c',
     ]) + gen_sources,
     include_directories: inc,
     dependencies: common_gles3_deps,
     c_args: gles3_native_c_args + [
-        '-DHACK_TABLE=lavafield_xscreensaver_function_table',
+        '-DHACK_TABLE=magmasimplex_xscreensaver_function_table',
     ],
     install: false,
 )
@@ -1182,21 +1203,23 @@ message('Run `meson compile -C build` to build.')
 #
 #   ninja -C build -t targets 2>/dev/null | grep -c _gles3
 #
-# reports 90 — not 0, which is what meson's `default all` produces for
+# reports 89 — not 0, which is what meson's `default all` produces for
 # the bare `ninja -t targets` invocation (meson hides leaf targets
 # behind the `all` phony, so they don't appear unless an arg is passed).
 #
-# The 90 aliases below are the same 90 `_gles3` executables listed
+# The 89 aliases below are the same 89 `_gles3` executables listed
 # earlier in this meson.build (boing_gles3 + companion_gles3 +
 # rubikblocks_gles3 + topblock_gles3 + tangram_gles3 + glschool_gles3 +
-# fliptext_gles3 + 82 legacy_gles3_hacks + 6 upstream hacks). Keep this
+# fliptext_gles3 + 81 legacy_gles3_hacks + 6 upstream hacks). Keep this
 # list in sync if the upstream count changes — see
 # docs/CROSS-PLATFORM-GLES3-VALIDATION-2026-09-22.md for the validation
 # pipeline that uses this gate.
+# (Round 18: lavalite_gles3 dropped — replaced by magmasimplex_gles3.
+#  90 -> 89.)
 # -----------------------------------------------------------------------
 foreach alias_name : [
     'blackhole_gles3',
-    'lavafield_gles3',
+    'magmasimplex_gles3',
     'antinspect_gles3', 'antspotlight_gles3', 'beats_gles3',
     'blinkbox_gles3', 'blocktube_gles3', 'boing_gles3',
     'bouncingcow_gles3', 'chompytower_gles3', 'cityflow_gles3',
@@ -1213,7 +1236,7 @@ foreach alias_name : [
     'highvoltage_gles3', 'hilbert_gles3', 'hydrostat_gles3',
     'hypnowheel_gles3', 'hypertorus_gles3', 'jigsaw_gles3',
     'juggler3d_gles3', 'kaleidocycle_gles3', 'kallisti_gles3',
-    'klein_gles3', 'lament_gles3', 'lavalite_gles3',
+    'klein_gles3', 'lament_gles3',
     'lockward_gles3', 'mapscroller_gles3', 'menger_gles3',
     'moebiusgears_gles3', 'molecule_gles3', 'nakagin_gles3',
     'noof_gles3', 'papercube_gles3', 'peepers_gles3',
