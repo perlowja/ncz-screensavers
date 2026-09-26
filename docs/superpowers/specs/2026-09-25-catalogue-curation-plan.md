@@ -317,3 +317,36 @@ And on visual review of all 60 passing legacy hacks, most are a single
 small object centred on black — competent in 1998, unremarkable at 4K.
 The modern shader path is both more reliable and better looking. That is
 where the effort goes.
+
+## The legacy shim is FROZEN
+
+ and  are frozen. No further
+changes. They keep running the hacks that already work; they receive no
+fixes, no features and no new hacks.
+
+**Why — the shim's own scorecard, all measured 2026-09-25:**
+
+- Pass rate **65%** (60/92), against **100%** (35/35) for the modern
+  shader path.
+- Every colour defect found today traced to it: squirtorus' ejecta rings
+  and ground rendering black (display-list material capture plus lighting
+  modulation on unlit geometry), razzledazzle's hull collapsing to the
+  20% ambient floor.
+- Of 6 both-vendor failures root-caused, **5 are its own admitted stubs**:
+   inert,  and  stubbed,
+   returning -1 forever, 
+  returning zero widths.
+- **Touching it is net-negative.** A careful, well-evidenced 61-line
+   wrapper () fixed  and silently broke
+  five working hacks — , , ,
+  ,  — three of them in the ship-as-is bucket. It
+  was reverted in  after before/after measurement on real
+  hardware. **+1 archived-tier hack, -5 working hacks.**
+
+That last point is the decisive one. The shim is a 2,545-line
+fixed-function emulation with enough hidden coupling that a targeted fix,
+verified on its target, regressed five unrelated hacks. Further
+investment cannot be made safely at a cost proportional to its value.
+
+**The rule:** anything the frozen shim cannot render correctly is either
+archived or rewritten on the new engine. It is never patched.
