@@ -1,12 +1,22 @@
 # blackhole per-launch captures — trajectories DO differ
 
-**Date:** 2026-09-26
+**Date:** 2026-09-26 (sweep performed before operator tune `52b2a2f`)
 **Status:** evidence for the operator's brief that per-launch captures must
 prove the trajectories differ. 23 successful launches, 6 presented here.
 **Host:** PEGASUS (192.168.207.85), Intel UHD CML GT2 floor hardware (per
 `docs/superpowers/specs/2026-09-25-screensaver-family-doctrine.md` the
 floor tier is what we measure on; reference tier is a Pascal/Polaris
 discrete). Compositor: live `wayland-0` on `/run/user/1000`.
+
+**Important:** the sweep was performed with `u_orbit_rate ∈ [0.140, 0.265]`
+and `u_orbit_q ∈ [1.4, 5.5]`. After the operator watched the live
+output and found it "too spinny" (commit `52b2a2f`), those ranges were
+pulled in to `u_orbit_rate ∈ [0.055, 0.125]` and `u_orbit_q ∈ [1.15,
+2.8]`. **The hashes and PNGs in this evidence set are still valid** —
+they prove trajectories differ at the previous (spinny) ranges, and the
+newer, calmer ranges will produce different (less spinny) trajectories
+that the operator should verify on a follow-up sweep. The uniform audit
+doc has been updated to reflect the post-tune ranges.
 
 ## What this report proves
 
@@ -158,11 +168,13 @@ verification.
 ## Provenance
 
 - The binary used is `~/ncz-screensavers/build/blackhole_gles3` built
-  on PEGASUS against master `5ccef11` (after the TOOLS.md and uniform
-  audit commits; the C source has not changed between `2d22ae0` and
-  HEAD so the binary is current).
+  on PEGASUS against master `e29f5b2` (before the tune `52b2a2f`).
+  A rebuild against the post-tune master is in flight and a follow-up
+  sweep at the new (calmer) ranges is owed.
 - The PNGs are real, encoded by `ncz_write_png_rgba` (libpng). See
   commit `151c089` for the "real PNGs from harness" fix that replaced
   the prior raw-RGBA-with-.png-extension failure mode.
 - The sweep runner is `tools/bh-sweep.sh` (this commit series).
 - This report was added in the same commit series as the audit doc.
+- The operator tune (`52b2a2f`) was applied between this sweep and
+  the audit doc update; both docs are kept in sync with HEAD.

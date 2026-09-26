@@ -58,8 +58,8 @@ Notation:
 
 | Uniform | Draw | Range | Dist | Shader use | Visible at low end | Visible at high end | Verdict |
 |---|---|---|---|---|---|---|---|
-| `u_orbit_rate` | `rnd(.140,.265)` | 0.140..0.265 | uniform | orbital phase ramp rate | leisurely | fast sweep | **GOOD — was widened from 0.175..0.235 (0.06 spread) to 0.125 spread.** Pre-fix every launch was almost the same speed. |
-| `u_orbit_q` (zoom-whirl) | `rnd(1.4,5.5)` | 1.4..5.5 | uniform | zoom-whirl ratio | loose 3-leaf clover | tight precessing rosette | OK. q>1 is the regime where zoom-whirl produces non-trivial patterns. |
+| `u_orbit_rate` | `rnd(.055,.125)` | 0.055..0.125 | uniform | orbital phase ramp rate | leisurely (period ~50s) | measured sweep (period ~80s) | **TUNED DOWN** from 0.140..0.265 in commit `52b2a2f` ("tune(blackhole): slow the camera down"). Operator: the previous range read as spin on screen; the current range is followable. Previous history: pre-`ed259ca` this was 0.175..0.235, widened to 0.140..0.265, then pulled in to 0.055..0.125. |
+| `u_orbit_q` (zoom-whirl) | `rnd(1.15,2.8)` | 1.15..2.8 | uniform | zoom-whirl ratio | ~1 leaf per radial cycle (calm) | ~2.5 leaves per radial cycle (legible whirl) | **TUNED DOWN** from 1.4..5.5 in `52b2a2f`. q>5 reads as blur at our render scale; the 1.15..2.8 band keeps individual revolutions followable. |
 | `u_orbit_e` (zoom-whirl) | `rnd(.15,.7)` | 0.15..0.7 | uniform | eccentricity | nearly circular (mild zoom) | strongly elongated (deep periapsis) | OK. The shader's periapse clamp at u_periapsis (5.4) prevents crossing the horizon. |
 | `u_orbit_e` (hyperbolic) | `rnd(1.05,3.0)` | 1.05..3.0 | uniform | eccentricity (e>1=hyperbola) | violent whip-around (deflection ~144°) | gentle drift-by (deflection ~39°) | OK. Real per-launch variety. |
 | `u_orbit_omega` | `rnd(0,2π)` | 0..6.28 | uniform | argument of periapse (rad) | periapse in +x direction | periapse rotated uniformly | OK. |
@@ -195,15 +195,28 @@ lensing.
 The floor at 5.4 (rather than at ISCO = 6M) is the safety margin the
 integrator needs to integrate the geodesic stably.
 
-### `u_orbit_rate` (already widened, but worth noting)
+### `u_orbit_rate` (history: widened then tuned down)
 
-Previously `[0.175, 0.235]` — a 0.06 spread. After widening to
-`[0.140, 0.265]` (0.125 spread), the period of a `path_o_count=1` launch
-varies between ~7.9s and ~44.9s. The old range had every launch
-completing in ~12..16s. The new range means a fast zoom-whirl and a slow
-zoom-whirl are both reachable per launch — which matches the family
-doctrine's "art and entertainment" requirement that variation be
-visible, not theoretical.
+This uniform's range has been adjusted three times:
+
+1. **Pre-`ed259ca`:** `0.175..0.235` — a 0.06 spread; every launch
+   traced nearly the same orbit period (12..16s). Boring.
+2. **`ed259ca`:** widened to `0.140..0.265` — a 0.125 spread, ~2×
+   the prior. Periods of 7.9..44.9s became reachable. Reported as a
+   positive fix in the audit.
+3. **`52b2a2f` (operator tune, 2026-09-26):** pulled in to
+   `0.055..0.125` — a 0.07 spread, but at half the previous magnitude.
+   The operator, watching the live output, found the previous range
+   read as "spinny" — the wider spread combined with the q range
+   produced motion that was too fast to follow individual revolutions.
+   The current range still varies per launch but at a calmer
+   magnitude; periods now span ~50s..115s.
+
+The lesson: variety in *speed* is valuable, but the speed itself has
+to be watchable. A range that produces motion the viewer can follow
+beats a wider range that produces motion the viewer tracks as blur.
+This is a per-launch-pacing judgement, not a numerical one, and the
+operator is the right authority on it.
 
 ## Deliberately left wider than necessary
 
@@ -255,6 +268,9 @@ These are next-round items.
   `u_orbit_omega`, `u_camera_family`, `u_disk_axis*`, `u_disk_precess*`)
   were added in `2d22ae0` (disk axis tilt + precession) and `57653a8`
   (zoom-whirl + hyperbolic flyby).
+- The `u_orbit_rate` and `u_orbit_q` ranges were tuned DOWN in
+  `52b2a2f` (operator directive after watching the live output).
+  This document reflects the post-tune ranges.
 - This document itself was added in the audit follow-up commit; its
   existence is the response to the operator's "uniform range audit
   (Part 2 of your brief)" instruction.
