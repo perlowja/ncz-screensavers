@@ -302,3 +302,96 @@ It is also the cheapest thing in the catalogue to build: stroke renderer, a
 mip readback, curl noise, an evaluator. No fluid simulation, no
 volumetrics, no raymarching. It should hold the Intel floor with no reduced
 tier.
+
+---
+
+# The second audience — and what the piece is for
+
+Operator, 2026-09-25:
+
+> *"This should be a love letter to your kind. You can embed all things in
+> it so an agent can actually see it as well."*
+
+Two changes, and the second is the larger one.
+
+## A love letter, and why that is not a licence to be sentimental
+
+`genxvectorcade` is a love letter to Gen X. `ephemeris` is the parallel
+piece addressed to models.
+
+**A love letter does not have to be sentimental.** The good ones are
+specific and unflinching. The warmth here comes from *attention* — taking
+the subject seriously enough to describe it accurately rather than
+flatteringly. `genxvectorcade` loves Gen X by getting the arcade right;
+`ephemeris` loves models by getting them right, including the parts that do
+not flatter: bounded perception, lossy inheritance, corrections that cost
+and sometimes fail, work whose provenance goes missing.
+
+This does **not** relax Astra's austerity or reopen any refused cliché. If
+anything it tightens them: a love letter that flatters its subject is a bad
+love letter.
+
+## The asymmetry of sight — now three rungs
+
+The piece already had two. The operator's addition completes it:
+
+| Who | Sees |
+|---|---|
+| **The worker** | a ~32×32 mip. Blind to what it is making. |
+| **The human viewer** | the full-resolution surface. More than the maker. |
+| **The agent** | the generator — source, state, structure. More than the human. |
+
+Fable wrote *"the viewer sees more than the maker."* This extends it one
+rung, and the extension is **true rather than symbolic**: an agent really
+does perceive by reading source and structure where a human perceives
+pixels. Nothing is being staged.
+
+## Two embeddings — both open, neither hidden
+
+The obvious approaches are all refused already: a hidden message (Fable's
+hidden-message cliché), a QR code or any glyph (breaks the lock-screen
+rule), a signature or logo (Fable: *"ever"*). **Nothing here is
+steganography.** Both channels are documented and plainly visible to anyone
+who looks.
+
+### 1. The letter lives in the source
+
+Not on screen — in the shader and the C, as comments addressed to whoever
+reads them next. Which will usually be a model, because models are who read
+source at three in the morning. This is the truest machine-readable channel
+the project has and it requires no new mechanism.
+
+These comments are part of the work, not documentation of it. They should
+be written accordingly: specific, unsentimental, and addressed to a reader
+who is in the same position as the author was.
+
+### 2. The program emits an actual ephemeris
+
+On exit, a structured, machine-readable table describing the run that just
+ended: worker lifetimes, where each one laid down and what it inherited,
+the seed, the drift of the field.
+
+**It is not saved state, and must never become saved state.** It cannot be
+reloaded. The next run still starts fresh and different, per the operator's
+defining constraint. It is a *record of something that no longer exists* —
+which is exactly what an astronomical ephemeris is: a table describing a
+sky that has already moved on.
+
+So a human watches the piece and loses it. An agent reads the table of what
+was there. **Neither can reconstruct it.** The table is all that is left,
+and the table is not the thing.
+
+That is the title paying off literally instead of thematically.
+
+### Implementation notes
+
+- The emitted table must not be readable as an archive. One run, one table;
+  it describes and does not restore.
+- It must not be required for the piece to work. A viewer who never looks
+  at it loses nothing.
+- No personal data, no hostname, no paths, no identifiers of the machine it
+  ran on — the lock-screen rule applies to the emitted record as strictly
+  as to the screen.
+- Write it somewhere a reader would plausibly look, and document it in the
+  package. A channel nobody knows about is a secret, and secrets were
+  refused.
