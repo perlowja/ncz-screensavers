@@ -170,3 +170,56 @@ Open question for the lock-screen rule: element symbols and atomic numbers are
 text. The standing rule bars hostname/username/IP/numbers -- aimed at PRIVATE
 information. Element labels disclose nothing, but the rule needs an explicit
 carve-out rather than a silent exception.
+
+## The geometric cluster folds into the meta-saver as ONE family
+
+Operator direction, 2026-09-26: `cubetwist` and basically all of the
+
+## The geometric cluster folds into the meta-saver as ONE family
+
+Operator direction, 2026-09-26: `cubetwist` "and basically all of the
+geometrical ones" become a family inside the universal engine rather than
+individual pieces.
+
+The measurement supports this directly. The geometric cluster OWNS the
+shape-complexity axis — it is the top of the ranking almost to the exclusion of
+everything else:
+
+| target | shape | fractal dim | edge density | colour |
+|---|---|---|---|---|
+| `cubestorm` | 32.30 | 1.812 | 399.1 | 0.00 |
+| `topblock` | 25.99 | 1.843 | 284.3 | 2.92 |
+| `lament` | 25.29 | 1.769 | 268.5 | 1.36 |
+| `glknots` | 24.44 | 1.650 | 305.0 | 0.00 |
+| `hexstrut` | 21.98 | 1.447 | 269.3 | 3.01 |
+| `moebiusgears` | 20.29 | 1.599 | 207.6 | 2.30 |
+
+These are not six ideas. They are one idea — an articulated polyhedral lattice
+— under six different joint, subdivision and motion rules. They were separate
+programs because 1997 had no way to express "vary the rule" other than writing
+another program.
+
+As a family director this becomes: a lattice/polyhedron generator, a joint rule
+(hinge, twist, shear, nest, unfold), a subdivision depth, a motion contract,
+and a material. `cubestorm`, `cubetwist`, `cubicgrid`, `cubestack`, `topblock`,
+`hexstrut`, `geodesic`, `lament`, `glknots` and `moebiusgears` all fall out as
+points in that space, and so do configurations none of them reached.
+
+This also resolves the existing curation plan's own objection — "five cube
+variations ... doing the best one properly beats reimplementing all of them."
+A parametric family does the best one properly AND keeps the variation.
+
+Note the colour column: this family is where the catalogue's structural
+sophistication lives, and it is almost entirely uncoloured. Material and
+lighting are the whole opportunity, not palette cycling.
+
+### Revised launch set — three families
+
+1. **Parameterized surfaces and 4D projections** (Astra: launch).
+2. **Articulated polyhedral lattices** (operator: fold the geometric cluster
+   in). Empirically our strongest cluster on shape complexity.
+3. **Iterated-orbit density** (Astra: launch conditionally — must show
+   branching, ribbons and voids absent from the existing 79 shader pieces).
+
+Earning admission behind those: Celtic knotwork, Apollonian packings, `cwaves`.
+Deferred: Lyapunov, Rankine vortex, DLA, boids, n-body.
