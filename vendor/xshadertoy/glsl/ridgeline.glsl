@@ -272,18 +272,19 @@ vec3 shadeTerrain(vec3 ro, vec3 rd, float t, Sky sky) {
     float sky_fill = clamp(0.5 + 0.5 * n.y, 0.0, 1.0);
     vec3 fill_col = mix(sky.horizon, sky.zenith, 0.5);
 
-    // Slope-based albedo.  Vertical faces stay in mossy/rocky hues;
-    // flat tops get snow but only at high slope values, otherwise
-    // the picture goes to a uniform white wash.  Albedo values are
-    // saturated -- not pastel -- so the land reads as land.
+    // Slope-based albedo.  The rock colour is the dominant visible
+    // hue for most pixels; snow appears only on the very top of
+    // flat areas (we do NOT make snow dominant -- it would wash
+    // out billowy runs into a single cream tone).  Albedo values
+    // are saturated, not pastel, so the land reads as land.
     float slope = clamp(n.y, 0.0, 1.0);
     vec3 rock = vec3(0.62, 0.46, 0.34);   // warm rocky tan
     vec3 moss = vec3(0.24, 0.36, 0.18);   // dark green moss
     vec3 snow = vec3(0.94, 0.95, 0.99);   // near-white snow
-    vec3 albedo = mix(moss, rock, smoothstep(0.10, 0.55, slope));
-    // Only flat tops become snow, and even then blended with rock so
-    // we keep colour.
-    albedo = mix(albedo, snow, smoothstep(0.85, 0.97, slope) * 0.75);
+    vec3 albedo = mix(moss, rock, smoothstep(0.05, 0.50, slope));
+    // Snow only at very high slope; the mix factor is small so
+    // it tints rather than dominates.
+    albedo = mix(albedo, snow, smoothstep(0.88, 0.99, slope) * 0.35);
 
     // Direct sun strong, fill weak -- this is what gives shadow
     // valleys their depth.
