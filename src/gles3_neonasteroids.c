@@ -1274,12 +1274,20 @@ static void init_neonasteroids(ModeInfo *m) {
     if (!comp_src) ncz_harness_die(1);
 
     char *lines_src = load_shader_text("lines.frag");
+    fprintf(stderr, "[diag] neonasteroids: lines_src=%p (loaded=%d)\n",
+            (void*)lines_src, lines_src ? 1 : 0); fflush(stderr);
 
     st->line_prog = build_program("lines",
         line_vs, lines_src ? lines_src : line_fs);
+    fprintf(stderr, "[diag] neonasteroids: line_prog=%u\n", st->line_prog);
+    fflush(stderr);
     if (lines_src) free(lines_src);
     st->trail_prog = build_program("trail", trail_vs, trail_fs);
+    fprintf(stderr, "[diag] neonasteroids: trail_prog=%u\n", st->trail_prog);
+    fflush(stderr);
     st->comp_prog  = build_program("composite", trail_vs, comp_src);
+    fprintf(stderr, "[diag] neonasteroids: comp_prog=%u\n", st->comp_prog);
+    fflush(stderr);
     free(comp_src);
 
     if (!st->line_prog || !st->trail_prog || !st->comp_prog)
