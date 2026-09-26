@@ -848,6 +848,7 @@ xshadertoy_shaders = [
     'physarum',
     'attractor',
     'caustics',
+    'aurora',
 ]
 
 foreach s : xshadertoy_shaders
@@ -1438,6 +1439,7 @@ foreach alias_name : [
     'xshadertoy_physarum_gles3',
     'xshadertoy_attractor_gles3',
     'xshadertoy_caustics_gles3',
+    'xshadertoy_aurora_gles3',
 ]
     run_target(
         alias_name + '_alias',
