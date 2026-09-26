@@ -961,6 +961,22 @@ foreach t : gles3_transitions_list
     )
 endforeach
 
+# Headless smoke tester for the 125 transitions. Reuses the same
+# preamble/body-rewrite as the production driver but is a
+# self-contained EGL+GLES3 program with no harness dependency.
+# See docs/audit/gl-transitions-evidence/ROUNDUP-2026-09-26.md for
+# what this is for and how to drive it.
+executable(
+    'gles3_transitions_smoke',
+    files(['src/gles3_transitions_smoke.c']),
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        '-DSTANDALONE',
+    ],
+    install: false,
+)
+
 # -----------------------------------------------------------------------
 # Round 15 — RSS-SDL2-GLES2 port (vendor/rss-sdl2-gles2-src/, Apache-2.0
 # wrapper/port layer; per-saver .cpp files keep their original GPL-2.0
