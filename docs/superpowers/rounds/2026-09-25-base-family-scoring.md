@@ -549,3 +549,27 @@ appeared to be. And the in-flight brief to "fix the 3 known rss blacks"
 it is closer to twelve. A shared root cause across the whole family is now
 much more likely than three separate bugs, and should be the first
 hypothesis tested.
+
+### `covid19_gles3` — operator decision: KEEP
+
+Operator, 2026-09-26: *"Keep it."*
+
+Restored. **Base family: 49 KEEP of 105, retention 47%.**
+
+It scores perf=3, visual=3, unique=3 — 9 of 9, the highest in the family.
+The topic cut is overruled.
+
+Recorded plainly because the reasoning matters for future editorial calls:
+a molecular visualisation of a virus is scientific imagery, not distressing
+imagery, and the piece is a well-rendered green-and-red protein model that
+a viewer reads as molecular art long before they read it as a pandemic. The
+scoring agent's instinct was defensible but it was applying a judgement
+nobody had asked it to make, on a target that passed every criterion it was
+given.
+
+**The general rule this sets:** an agent scoring against a rubric does not
+get to invent a disqualifying axis. If subject matter is to be grounds for
+exclusion it belongs in the rubric, stated up front, applied consistently —
+not discovered per-target at scoring time. Anything cut on grounds outside
+the stated axes must be surfaced for a human decision rather than resolved
+in the table.

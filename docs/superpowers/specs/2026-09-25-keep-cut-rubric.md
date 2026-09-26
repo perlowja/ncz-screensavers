@@ -143,3 +143,15 @@ Cuts made on grounds **outside** the three axes — subject matter, legal
 risk, trademark — are unaffected by this amendment and remain in force.
 They are editorial decisions, not rubric outcomes, and must be recorded
 with their actual reason rather than dressed as a low score.
+
+### Agents may not invent disqualifying axes (2026-09-26)
+
+A scoring agent evaluates against the three stated axes and nothing else.
+`covid19_gles3` scored 9 of 9 and was cut anyway, on subject matter the
+rubric never mentioned. The operator overruled it and the target ships.
+
+If subject matter, legal risk or taste is to exclude a target, it belongs
+in this rubric, stated up front and applied consistently. Discovered
+per-target at scoring time it is arbitrary. **Anything an agent wants to
+cut on grounds outside the stated axes gets surfaced for a human decision,
+not resolved silently in the table.**
