@@ -214,13 +214,13 @@ void main(){
     int max_steps = 32;
     for(int i = 0; i < 32; i++){
       if(i >= max_steps) break;
-      float z = (float)i / (float)(max_steps - 1);
+      float z = float(i) / float(max_steps - 1);
       vec3 p = vec3(uv_grid, z);
       float ph = samplePhase3D(p);
       if(ph > 0.0){
         float pres = ph;
         wax_thick += pres * 0.85;
-        if(hit == 0) wax_t_near = (float)i / (float)max_steps;
+        if(hit == 0) wax_t_near = float(i) / float(max_steps);
         vec4 hr = sampleHue3D(p);
         float w = pres * hr.a;
         hue_acc_r += hr.r * w;
@@ -248,14 +248,14 @@ void main(){
        * resample the field. This is a deliberately simple stand-
        * in for true 3D marching; the visual result is a 2D slab
        * with thickness from the field. */
-      float off = (float)(i - max_steps / 2) * 0.025;
+      float off = float(i - max_steps / 2) * 0.025;
       vec2 uv_off = uv_grid + vec2(0.0, off);
       if(uv_off.y < 0.0 || uv_off.y > 1.0) continue;
       float ph = samplePhase2D(uv_off);
       if(ph > 0.0){
         float pres = ph;
         wax_thick += pres * 0.45;
-        if(hit == 0) wax_t_near = (float)i / (float)max_steps;
+        if(hit == 0) wax_t_near = float(i) / float(max_steps);
         vec4 hr = sampleHue2D(uv_off);
         float w = pres * hr.a;
         hue_acc_r += hr.r * w;
