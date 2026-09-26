@@ -529,6 +529,7 @@ common_gles3_sources = [
     'src/xscreensaver_compat.c',
     'src/gles3_compat.c',
     'src/ncz_platform.c',
+    'src/ncz_gpu_tier.c',
 ]
 # GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
 # helpers in xscreensaver_compat.c compile to empty stubs (they
