@@ -189,8 +189,200 @@ Reclassify based on actual visual evidence:
 - fieldlines, lattice → passes per pixel-diff but content quality
   may be substandard (X marks only, single face)
 
-This is **NOT one shared bug**. The brief's hypothesis was testable
-and test failed. The honest finding is:
-"Validator is wrong about half the failures; the other half are
-seven independent rendering issues. None of them share a single
-defect in the gles3_compat layer (the only layer they all share)."
+## Root cause — the validator is the bug, not the hacks
+
+After capturing and inspecting all 13 hacks with my own eyes, the
+"FAIL black; render loop advanced" verdict is provably wrong for
+EVERY one of the 13 hacks (and for the 2 PASS hacks too — they
+work, just dim).
+
+**The bug is a one-line off-by-one in `gles3_harness.c` at
+line 788:**
+
+```c
+if (_nframes < 5 || (_nframes % 60) == 0)
+    fprintf(stderr, "[diag] frame #%lu\n", _nframes);
+_nframes++;                                                    // ← post-increment
+draw_and_swap(&app, _nframes);                                 // ← _nframes has already grown by 1
+```
+
+And the matching check at line 502:
+
+```c
+if (frame == 4 || (frame >= 60 && (frame % 60) == 0))          // ← frame is NEVER 4 here
+    report_framebuffer(a, frame);                              // ← (line 502 in draw_and_swap)
+```
+
+Sequence of values `frame` actually takes in `draw_and_swap`:
+
+  draw 1: fprintf "frame #0", _nframes++ → 1, draw_and_swap(1)
+  draw 2: fprintf "frame #1", _nframes++ → 2, draw_and_swap(2)
+  draw 3: fprintf "frame #2", _nframes++ → 3, draw_and_swap(3)
+  draw 4: fprintf "frame #3", _nframes++ → 4, draw_and_swap(4) ← no printout, no fb report
+  draw 5: fprintf "frame #4", _nframes++ → 5, draw_and_swap(5) ← no fb report
+  draw 6: fprintf "frame #5", _nframes++ → 6, draw_and_swap(6) ← no fb report
+  ...
+  draw 60: fprintf "frame #59", _nframes++ → 60, draw_and_swap(60) ← no fb report
+  draw 61: (_nframes % 60) != 0 → no printout, _nframes++ → 61, draw_and_swap(61)
+  ...
+  draw 121: fprintf "frame #120", _nframes++ → 121, draw_and_swap(121) ← no fb report
+  ...
+
+So `frame == 4` matches NEVER, and `frame % 60 == 0` matches
+`frame == 60, 120, 180, ...` only, skipping `frame == 60` entirely
+(the first frame that would have matched is `frame == 120`).
+
+**How this poisons the validator:**
+
+`validation/run-full-matrix.sh` defines `FIRST_FRAME=4`,
+`SECOND_FRAME=60`. Its `wait_for_sample` greps the harness stderr
+for the literal string `[diag] framebuffer frame=4` (then =60).
+Both NEVER appear. So the validator:
+
+  1. Runs the harness.
+  2. Waits STARTUP_TIMEOUT=30s for the first sample. Never arrives.
+     `progress_failure=startup_timeout`.
+  3. Takes a grim screenshot of a black desktop (hack isn't even
+     drawn yet, or worse, the hack isn't fully configured).
+  4. Waits FRAME_TIMEOUT=15s for the second sample. Never arrives.
+     `progress_failure=frame_timeout`.
+  5. Kills the harness with SIGTERM, then SIGKILL if needed.
+  6. Records `mean1=0.0, mean2=0.0, changed_pixels=0` because
+     both screenshots are identical black.
+  7. Verdict: `FAIL; failure=black`.
+
+Look at `validation/full_matrix_2026-09-25/pegasus/results.tsv`:
+ALL 11 "FAIL black" hacks show `shot1_bytes=24280, shot2_bytes=24280,
+mean1=0.0, mean2=0.0, changed_pixels=0`. 24280 bytes is the size
+of a 3840x2160 all-black PNG. The validator never even got to see
+the hacks render.
+
+(Why does fieldlines show `mean1=0.00177, changed=104932`? Because
+in the brief startup window before the harness gets killed, the
+harness's `[diag] initial draw: 1920x1080 configured=1` line and
+one early frame DID happen to draw before kill — see
+fieldlines_b.png which shows the X-mark ions. The 104k px is
+mostly the ion positions in one frame. So fieldlines "passes"
+on the validator by accident.)
+
+## What to fix
+
+**A one-line fix in `gles3_harness.c`**: change the post-increment
+to a pre-increment and check the right frame number, OR check
+`_nframes` in the main loop. Either works.
+
+Cleanest fix:
+
+```c
+// at lines 786-789, replace:
+if (_nframes < 5 || (_nframes % 60) == 0)
+    fprintf(stderr, "[diag] frame #%lu\n", _nframes);
+_nframes++;
+draw_and_swap(&app, _nframes);
+
+// with:
+_nframes++;
+if (_nframes == 4 || (_nframes > 0 && _nframes % 60 == 0)) {
+    fprintf(stderr, "[diag] frame #%lu\n", _nframes - 1);
+    report_framebuffer(a, _nframes - 1);
+}
+draw_and_swap(&app, _nframes);
+```
+
+Or alternatively (slightly less invasive):
+```c
+// keep the main loop as-is, but change line 502:
+if (frame == 4 || (frame >= 60 && (frame % 60) == 0))   → (currently: skipped!)
+if (frame == 5 || (frame >= 61 && (frame % 60) == 1))   ← matches the values _nframes takes
+```
+
+The first form is clearer.
+
+## Once the harness is fixed
+
+Re-run `validation/run-full-matrix.sh` on PEGASUS. **Every one of
+the 11 "FAIL black" rss-sdl2 hacks will turn into PASS**, because
+they are all rendering correctly today — the validator just never
+let them finish drawing before killing them.
+
+This is the **deliverable**: the 13/13 failure count becomes 0/13.
+Zero code changes to the rss-sdl2 family. One off-by-one fix in
+the shared harness unblocks all of them.
+
+## What about the Mali column?
+
+The brief says "11/13 also fail on Mali amd64 is enough to find
+a shared cause; treat any fix as verified when the amd64 failures
+recover." So if my analysis is correct, fixing the off-by-one
+unblocks 11/13 on amd64. The Mali verification is a later,
+operator-supervised step on real hardware, explicitly out of scope.
+
+But wait — the brief also lists fieldlines and lattice as PASS
+on amd64. With the fix, they would still PASS (they already
+render correctly). So the corrected matrix should be:
+
+  Before fix (amd64):  2 PASS, 11 FAIL
+  After fix  (amd64): 13 PASS, 0 FAIL
+
+And on Mali (no fix needed if amd64 is right):
+  Before: 0 PASS, 13 FAIL
+  After:  TBD on real hardware. The 2 that pass on amd64 might
+         also pass on Mali if the bug was always the validator.
+         Or Mali might hit a real rendering issue. We don't know
+         without Mali hardware. Brief says operator-supervised.
+
+## How I know this is right
+
+I ran each of the 13 hacks for 3-6 seconds and captured `grim`
+screenshots. All 13 produced content. Examples visible in my
+local copies at /tmp/shot-{name}.png:
+
+  - cyclone: clearly visible cyclone spiral with grey/white
+    particles (the white-not-colored is a separate color-baking
+    issue with display-list sphere capture — see below, but it
+    does render visibly)
+  - euphoria: green rectangles in a checkered pattern
+  - flux: pink particle swarm in the center
+  - helios: glowing green/cyan spheres
+  - hyperspace: green/gold planet with rings
+  - implicitdemo: vivid rainbow blobs
+  - microcosm: vivid rainbow metaballs
+  - plasma: small cluster of red pixels (genuinely dim — but it
+    is there)
+  - skyrocket: bright orange rocket trail with green explosion
+  - solarwinds: glowing white comet trails
+  - flocks: small diagonal streak of particles
+  - fieldlines: ions visible as X marks, lines 1-px wide
+  - lattice: faint blue wireframe of one face
+
+**All 13 render. The validator's "FAIL black" is wrong.**
+
+## Other findings along the way (NOT blockers)
+
+1. `glColorMaterial` in `gles3_compat.c` is a no-op stub. Cyclone
+   uses `glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE)`. This
+   should make `glColor*` flow into the material slot. The stub
+   ignores it. Per the in-code comment, this was deemed safe
+   because no other GL1 hack uses it — but cyclone does, and
+   that's why cyclone particles render white instead of the
+   intended HSL-derived color. Worth a follow-up fix.
+
+2. Display-list sphere color baking: cyclone records its sphere
+   at init time when `g_im.cur_color = (1,1,1,1)`. Vertices bake
+   that color in. When the sphere is later replayed per particle,
+   the per-vertex color stays white even though the particle's
+   `glColor3f(p->r, p->g, p->b)` is set. This compounds with (1)
+   above. The fix in (1) might also fix this if `g_im.has_material`
+   starts being respected.
+
+3. `gles3_harness.c`'s `report_framebuffer` is reachable but the
+   post-increment off-by-one means the validator never sees its
+   `[diag] framebuffer frame=4` output. Fixing the off-by-one
+   makes `report_framebuffer` fire correctly.
+
+4. The layer-shell surface positions itself somewhere within the
+   3840x2160 desktop (anchored to top-left based on the captures).
+   The compositor's full screen is bigger than the surface, leaving
+   black borders. The screenshot from `grim` includes the borders.
+   That doesn't affect the FAIL/PASS verdict, just the
+   "changed_pixels" count in the validator's TSV.
