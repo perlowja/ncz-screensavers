@@ -448,6 +448,12 @@ typedef struct {
     GLenum  primitive;          /* GL_TRIANGLES / GL_QUADS / GL_LINES / etc. */
     float  *verts;               /* 12 floats per vertex */
     int     vcount;
+    /* For INLINE: was a glColor call recorded inside this batch? If so,
+     * the per-vertex color slots in verts[] are honored at replay; if
+     * not, the live cur_color at replay time is applied uniformly to
+     * every vertex (the GL1 spec's "state-not-stored-takes-live-value"
+     * rule for replayed display lists). */
+    bool    color_set_in_batch;
     /* Color/material snapshot at recording time. */
     float   color[4];
     float   material_ambdiff[4];
