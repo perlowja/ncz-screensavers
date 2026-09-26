@@ -327,3 +327,135 @@ deriving mathematics — which is outside what Afterimage is for.
 
 **Decision: all seven cut. No overhauls. No concepts carried forward beyond the
 two already covered by the polyhedral lattice family.**
+
+# The blackhole bar — a measurable acceptance standard
+
+Operator direction, 2026-09-26: *"Black hole should be the bar for what looks
+good."* Measured on PEGASUS hardware so it is a number, not an opinion.
+
+## The bar
+
+| metric | blackhole |
+|---|---|
+| Hasler-Susstrunk colourfulness | 48.0 |
+| mean saturation | 0.35 |
+| **hue entropy (24-bin)** | **3.56** |
+| coverage | 0.87 |
+| edge density | 4.9 |
+| inter-frame motion | 1.83 |
+
+**What actually makes it good is not maximum anything.** It is mid-range on
+colourfulness and low on edge density. Its signature is **wide hue variety at
+moderate saturation, a mostly-filled frame, and smooth continuous motion**.
+Rich but restrained. A piece that maximises saturation or detail does not
+thereby match it.
+
+## First four Afterimage shaders, measured against it
+
+| shader | colour | hue | edge | motion | verdict |
+|---|---|---|---|---|---|
+| `cellmosaic` | 3.85x | 1.14x | 2.3x | **0.11x** | beats the bar on colour; **nearly static** |
+| `hexlattice` | 0.76x | **0.00** | 11x | 10-20x | single-hue, frantic, busy |
+| `ridgeline` | 0.28x | 0.38x | 2.1x | **0.00** | dim and frozen; also 0.4fps on the floor tier |
+| `wellcurve` | 0.27x | 0.08x | 1.9x | 0.30x | dim, near-monochrome; brief asked saturation 1.00, got 0.32 |
+
+**None of the four clears the bar.** Each passes some axis and fails others -
+which is precisely how a catalogue of individually-defensible, collectively
+mediocre pieces gets shipped.
+
+Caveat: `ridgeline`'s motion of 0.00 is partly an artifact of sampling frames
+at 0.4fps, where consecutive dumps are near-identical. Its real defect is
+throughput.
+
+## Measured performance — frames rendered in 10 s
+
+| shader | Intel UHD (floor) | RTX 2060 |
+|---|---|---|
+| `cellmosaic` | 600 (60fps) | 540 (54fps) |
+| `hexlattice` | 600 (60fps) | 540 (54fps) |
+| `wellcurve` | 540 (54fps) | 540 (54fps) |
+| `ridgeline` | **4 (0.4fps)** | 300 (30fps) |
+| `blackhole` | **120 (12fps)** | 540 (54fps) |
+
+Two findings worth keeping:
+
+1. **`ridgeline` is 75x slower on the iGPU than on the discrete GPU.** The
+   brief said "raymarched fBm heightfield" without a step budget - a spec
+   defect, not an implementation one. A heightfield with an analytic horizon
+   gets most of the look for a fraction of the cost.
+2. **PRIME offload has a real cost.** `cellmosaic` and `hexlattice` are FASTER
+   on the iGPU (600) than offloaded to the RTX (540) because they already hit
+   vsync and offload adds a copy back across the bus. **The adaptive tier must
+   not blindly offload**; doing so would make cheap shaders worse.
+
+Note the tension this exposes: blackhole is the visual bar AND runs at 12fps on
+the floor tier. The quality standard and the performance floor are in direct
+conflict, which is exactly why adaptive quality tiering is required rather than
+optional.
+
+## Proposed acceptance gate
+
+All four together, not any one:
+
+- hue entropy >= 3.0
+- motion within a BAND (roughly 0.5 - 8), not a maximum - static fails, frantic
+  fails
+- coverage >= 0.8
+- >= 30fps at 1920x1080 on Intel UHD, or an adaptive tier that reaches it
+- per-run variation: two runs differ in hash at the same frame index
+
+`cellmosaic` already satisfies colour, hue, coverage and performance. It fails
+only on motion. That is a tractable fix, not a rewrite.
+
+# POLICY CORRECTION — clean-room ONLY where the licence requires it
+
+Operator directive, 2026-09-26: *"If we do not NEED to clean room we should
+not."*
+
+This **supersedes** the blanket "CLEAN ROOM FROM THE MATHEMATICS" rule written
+into `2026-09-26-afterimage-design.md` earlier the same day. That rule was
+applied everywhere. It should have been applied only where a licence compels
+it.
+
+## Where reuse is permitted — read the original, port the real algorithm
+
+| source | licence | reuse |
+|---|---|---|
+| **xscreensaver (jwz)** | *"Permission to use, copy, modify, distribute, and sell this software..."* | **Yes.** Port the actual algorithm. Retain his copyright notice |
+| **hyprsaver** | MIT (Copyright (c) 2026 Mara Vexa) | Yes, retain notice |
+| **Shadertoy MIT** (17) | MIT | Yes, retain notice |
+| **Shadertoy CC0** (17) | CC0 | Yes |
+| **Shadertoy CC BY** (1, `synthwavecity`) | CC BY 3.0 | Yes, with attribution |
+
+## Where clean-room IS required
+
+Only shaders under **CC BY-NC-SA** — non-commercial and share-alike. Reuse
+would produce a derivative bound by both terms, and no amount of modification
+escapes that. As of this writing that was three shaders (`driftclouds`,
+`bubblecolors`, `synthwavecity` pending its CC BY confirmation), now replaced
+by `stratus`, `iridescence` and `neonhorizon`.
+
+## Why this matters — the blanket rule cost real quality
+
+The first four Afterimage shaders were written clean-room from a prose
+description I wrote, rather than from the actual algorithm. Measured against
+the blackhole bar, none cleared it:
+
+- `ridgeline` - dim, effectively frozen, and **0.4fps on the floor tier**
+- `wellcurve` - brief specified saturation 1.00, delivered 0.32
+- `hexlattice` - hue entropy 0.00, single-hue
+- `cellmosaic` - good colour, but motion 0.11x the bar
+
+They were guessing at an effect instead of implementing a known one. For
+xscreensaver-derived work there was never a legal reason to make them guess.
+
+**The correct division of effort:** take the real algorithm, then spend the
+budget on the rendering upgrade that 2003 could not do - PBR materials,
+ambient occlusion, HDR accumulation, ACES tonemapping, depth of field,
+anti-aliasing. That is where the value is, not in re-deriving a heightfield
+from prose.
+
+## Standing rule
+
+Before imposing clean-room on any piece, state which licence compels it. If
+none does, read the original.
