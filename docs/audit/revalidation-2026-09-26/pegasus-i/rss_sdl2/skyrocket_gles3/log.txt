@@ -1,0 +1,115 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=0 hash=0e33e2d8dffc1383 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=378 hash=bcf21dbe279dd119 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=7276 hash=802bdde38bd2e4b1 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=8040 hash=d95819372bd06980 gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=11380 hash=02a2b17d4fddec39 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=11766 hash=1fb4cb626247ee76 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=10366 hash=d3864c0a35070c80 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=7424 hash=d648a4442a013ad8 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000001a4.png (8294400 bytes)
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=10460 hash=678afd59b6195352 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000001e0.png (8294400 bytes)
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=9000 hash=4137a66967adfd3d gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_0000021c.png (8294400 bytes)
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=11314 hash=a60cf90e152951fa gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000258.png (8294400 bytes)
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=9411 hash=8266cc719b4f2aa4 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000294.png (8294400 bytes)
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=7232 hash=99fdde3b46040034 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000002d0.png (8294400 bytes)
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=7366 hash=1e7692622ba607d9 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_0000030c.png (8294400 bytes)
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=9859 hash=dfeabd288918ff97 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000348.png (8294400 bytes)
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=10876 hash=8930b4bd7f75aa36 gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000384.png (8294400 bytes)
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=10161 hash=7f3083ddf32e27f1 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000003c0.png (8294400 bytes)
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=10011 hash=ceb9790f5c56b15b gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000003fc.png (8294400 bytes)
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=9201 hash=169df1b891a76aac gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000438.png (8294400 bytes)
+[diag] frame #1140
+[diag] framebuffer frame=1140 pixels=2073600 nonblack=9158 hash=1da256c31758d71b gl_error=0x0
+[dump] writing frame_00000474 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000474.png (8294400 bytes)
+[diag] frame #1200
+[diag] framebuffer frame=1200 pixels=2073600 nonblack=8424 hash=1eadd832b1d3211b gl_error=0x0
+[dump] writing frame_000004b0 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000004b0.png (8294400 bytes)
+[diag] frame #1260
+[diag] framebuffer frame=1260 pixels=2073600 nonblack=12356 hash=cf0bce92aa3e3344 gl_error=0x0
+[dump] writing frame_000004ec to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000004ec.png (8294400 bytes)
+[diag] frame #1320
+[diag] framebuffer frame=1320 pixels=2073600 nonblack=13674 hash=3258d72719137ebb gl_error=0x0
+[dump] writing frame_00000528 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000528.png (8294400 bytes)
+[diag] frame #1380
+[diag] framebuffer frame=1380 pixels=2073600 nonblack=10337 hash=2700b8c9e58f9eb8 gl_error=0x0
+[dump] writing frame_00000564 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_00000564.png (8294400 bytes)
+[diag] frame #1440
+[diag] framebuffer frame=1440 pixels=2073600 nonblack=6750 hash=7902094f825704e2 gl_error=0x0
+[dump] writing frame_000005a0 to /tmp/cap-1126602-i-skyrocket_gles3
+[dump] wrote /tmp/cap-1126602-i-skyrocket_gles3/frame_000005a0.png (8294400 bytes)
+EXITCODE=124
