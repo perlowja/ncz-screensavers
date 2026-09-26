@@ -252,6 +252,9 @@ read_entire_file(const char *path, size_t *out_len) {
 static char *
 locate_shader(const char *name, char *out_used_path, size_t out_path_cap) {
     static const char *prefixes[] = {
+        "vendor/wave2-materia/glsl/",
+        "../vendor/wave2-materia/glsl/",
+        "../../vendor/wave2-materia/glsl/",
         "vendor/xshadertoy/glsl/",
         "../vendor/xshadertoy/glsl/",
         "../../vendor/xshadertoy/glsl/",

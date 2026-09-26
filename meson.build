@@ -880,6 +880,50 @@ foreach s : xshadertoy_shaders
 endforeach
 
 # -----------------------------------------------------------------------
+# Round 20 — wave 2 quiet-materiality shaders. Six original .glsl files
+# under vendor/wave2-materia/glsl/. The driver
+# (src/gles3_xshadertoy.c) is the same one as above; its shader-search
+# prefixes were extended with vendor/wave2-materia/glsl/ entries so the
+# binary resolves its .glsl from build tree or repo root. Each shader is
+# shipped in two places: the build tree (so dev iteration works) and
+# /usr/share/ncz-screensavers/shaders/ on install.
+#
+# The six are independent GLES3-native fragment shaders, all written
+# from scratch (no Shadertoy ports — its default CC BY-NC-SA licence
+# is non-commercial and unshippable). Each follows the wave-2 brief:
+# light RECEIVED rather than emitted. See
+# docs/superpowers/specs/wave2-materia.md for the perceptual brief
+# and the per-shader design intent.
+# -----------------------------------------------------------------------
+
+wave2_materia_shaders = [
+    'caustics-on-stone',
+]
+
+foreach s : wave2_materia_shaders
+    install_data('vendor/wave2-materia/glsl/' + s + '.glsl',
+                 install_dir: shader_install_dir,
+                 install_tag: 'runtime-shaders')
+    s_id = s.replace('-', '_')
+    executable(
+        'xshadertoy_' + s + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_xshadertoy.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DSHADER_FILE="@0@.glsl"'.format(s),
+            '-DHACK_PREFIX=xshadertoy_@0@'.format(s),
+            '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
+            '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
 # Round 19 — gl-transitions shader port (vendor/gl-transitions/,
 # 123 MIT / 1 BSD-3-Clause / 1 BSD-2-Clause; per-file Author +
 # License headers preserved; see vendor/gl-transitions-PORTED.md).
