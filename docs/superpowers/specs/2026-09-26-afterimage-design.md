@@ -173,10 +173,6 @@ carve-out rather than a silent exception.
 
 ## The geometric cluster folds into the meta-saver as ONE family
 
-Operator direction, 2026-09-26: `cubetwist` and basically all of the
-
-## The geometric cluster folds into the meta-saver as ONE family
-
 Operator direction, 2026-09-26: `cubetwist` "and basically all of the
 geometrical ones" become a family inside the universal engine rather than
 individual pieces.
