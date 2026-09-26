@@ -20,12 +20,20 @@ typedef struct {
  GLuint program,vbo;
  GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis;
  GLint palette_phase,palette_rate,palette_contrast,nebula_scheme;
+ // Per-launch path-shape parameters (replaces the hardcoded curve
+ // coefficients that were previously literals in disk_color's camera block).
+ GLint path_d_base,path_d_swing,path_d_harm_amp,path_d_harm_freq;
+ GLint path_o_rate,path_o_harm_amp,path_o_harm_freq,path_o_count,path_sign;
+ GLint path_e_swing,path_e_freq,path_phase_jitter;
  double started;
  // 0:seed 1:radius 2:temp 3:density 4:rotation 5:inclination 6:orbit_rate
  // 7:jet 8:star_density 9:camera_mode 10:palette 11:approach 12:periapsis
  // 13..16:nebula vec4 (hue,scale,coverage,yaw) 17..18:nebula_axis vec2 (tilt,offset)
  // 19:palette_phase 20:palette_rate 21:palette_contrast 22:nebula_scheme
- float v[23];
+ // 23:path_d_base 24:path_d_swing 25:path_d_harm_amp 26:path_d_harm_freq
+ // 27:path_o_rate 28:path_o_harm_amp 29:path_o_harm_freq 30:path_o_count 31:path_sign
+ // 32:path_e_swing 33:path_e_freq 34:path_phase_jitter
+ float v[35];
 } State;
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec*1e-9;}
 static uint32_t seed(void){uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}struct timespec t;clock_gettime(CLOCK_REALTIME,&t);return t.tv_nsec^t.tv_sec^getpid();}
@@ -59,6 +67,9 @@ static void init_blackhole(ModeInfo*m){
 #define L(n) s->n=glGetUniformLocation(s->program,"u_"#n)
  L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);
  L(palette_phase);L(palette_rate);L(palette_contrast);L(nebula_scheme);
+ L(path_d_base);L(path_d_swing);L(path_d_harm_amp);L(path_d_harm_freq);
+ L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
+ L(path_e_swing);L(path_e_freq);L(path_phase_jitter);
 #undef L
  uint32_t z=seed();
  s->v[0]=(float)z;
@@ -96,11 +107,55 @@ static void init_blackhole(ModeInfo*m){
  // Decorrelation scheme for nebula hue vs disk hue: 0=complement, 1=triad,
  // 2=split-complement. Drawn per-launch so the relationship is visible.
  s->v[22]=(float)(z%3);
+ // ---------------------------------------------------------------------
+ // Per-launch flight-path parameters (v[23..34]).
+ // These replace the hardcoded curve coefficients that used to live in
+ // disk_color's camera block. Each launch now draws a different shape, not
+ // a rescaled copy. The mode still selects the *character* (diving arc,
+ // slingshot, polar pass, enveloped arrival); the magnitudes / harmonics
+ // are randomised within each so the specific path varies.
+ // ---------------------------------------------------------------------
+ // Base distance from the BH for the arc. The four modes used 9.8..18;
+ // widen so even mode 3's "fast arrival" can be a slow one.
+ s->v[23]=rnd(&z,9.2,18.5);
+ // Radial swing amplitude (the coefficient in front of cos(phase) in dist).
+ // 2.8..4.8 covers everything the four modes used and beyond; too low and
+ // the camera is essentially stationary, too high and the path crosses
+ // u_periapsis (clamped later at 5.4).
+ s->v[24]=rnd(&z,2.8,4.8);
+ // Secondary dist harmonic: amplitude and frequency multiplier on a sin(2*ph)
+ // style wiggle. Modes 0/1 used this directly; mode 2 used a cos(.91*ph)
+ // stretch and mode 3 uses envelopes (this term is only used for modes 0/1).
+ s->v[25]=rnd(&z,0.5,1.4);
+ s->v[26]=rnd(&z,1.6,2.4);
+ // Orbital rate multiplier on the phase ramp. Modes used 1.0..1.35; widen
+ // so some launches trace a leisurely arc and others a fast sweep.
+ s->v[27]=rnd(&z,0.85,1.55);
+ // Orbital secondary-harmonic amplitude (the .28/.34/.55 in front of the
+ // trig term on orbit). Widen so some arcs wobble visibly, others are clean.
+ s->v[28]=rnd(&z,0.18,0.55);
+ // Orbital secondary-harmonic frequency multiplier on phase.
+ s->v[29]=rnd(&z,1.6,2.4);
+ // How many orbits the arc covers before phase wraps. 1 = single pass,
+ // 2 = double, 3 = triple. Combined with the slow orbit_rate this
+ // determines how long the user sees a coherent shot.
+ s->v[30]=rnd(&z,1.0,3.0);
+ // Prograde (+1) or retrograde (-1) relative to the disk's spin. Flips
+ // orbit direction and (for mode 3) roll direction. Equal probability.
+ s->v[31]=(rnd(&z,0,1)<.5)?-1.f:1.f;
+ // Elevation swing amplitude and frequency. Modes used .48..78 and
+ // .69..1.17; widen so the arc climbs/falls more or less.
+ s->v[32]=rnd(&z,0.32,0.92);
+ s->v[33]=rnd(&z,0.65,1.35);
+ // Deterministic per-launch phase offset so two launches of the same mode
+ // aren't sitting at the same point on the curve at t=0.
+ s->v[34]=rnd(&z,0,6.2831853);
  fprintf(stderr,"[diag] blackhole nebula_hue=%.9g nebula_scale=%.9g nebula_coverage=%.9g nebula_yaw=%.9g nebula_tilt=%.9g nebula_offset=%.9g nebula_scheme=%d\n",
   s->v[13],s->v[14],s->v[15],s->v[16],s->v[17],s->v[18],(int)s->v[22]);
  s->started=now();
- fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f GL=%s\n",
-  s->v[0],s->v[1],s->v[2],s->v[3],s->v[4],s->v[5],(int)s->v[9],s->v[6],(int)s->v[10],s->v[11],s->v[12],s->v[7],s->v[8],s->v[19],s->v[20],s->v[21],glGetString(GL_VERSION));
+ fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f path_d_base=%.3f path_d_swing=%.3f path_d_harm_amp=%.3f path_d_harm_freq=%.3f path_o_rate=%.3f path_o_harm_amp=%.3f path_o_harm_freq=%.3f path_o_count=%.2f path_sign=%.0f path_e_swing=%.3f path_e_freq=%.3f path_phase_jitter=%.4f GL=%s\n",
+  s->v[0],s->v[1],s->v[2],s->v[3],s->v[4],s->v[5],(int)s->v[9],s->v[6],(int)s->v[10],s->v[11],s->v[12],s->v[7],s->v[8],s->v[19],s->v[20],s->v[21],
+  s->v[23],s->v[24],s->v[25],s->v[26],s->v[27],s->v[28],s->v[29],s->v[30],s->v[31],s->v[32],s->v[33],s->v[34],glGetString(GL_VERSION));
 }
 static void draw_blackhole(ModeInfo*m){
  State*s=m->data;
@@ -131,6 +186,21 @@ static void draw_blackhole(ModeInfo*m){
  glUniform1f(s->palette_rate,s->v[20]);
  glUniform1f(s->palette_contrast,s->v[21]);
  glUniform1f(s->nebula_scheme,s->v[22]);
+ // Per-launch flight-path parameters. The shader uses these in place of
+ // the previously-hardcoded curve coefficients in disk_color's camera
+ // block; every launch draws a distinct path shape, not a rescaled one.
+ glUniform1f(s->path_d_base,s->v[23]);
+ glUniform1f(s->path_d_swing,s->v[24]);
+ glUniform1f(s->path_d_harm_amp,s->v[25]);
+ glUniform1f(s->path_d_harm_freq,s->v[26]);
+ glUniform1f(s->path_o_rate,s->v[27]);
+ glUniform1f(s->path_o_harm_amp,s->v[28]);
+ glUniform1f(s->path_o_harm_freq,s->v[29]);
+ glUniform1f(s->path_o_count,s->v[30]);
+ glUniform1f(s->path_sign,s->v[31]);
+ glUniform1f(s->path_e_swing,s->v[32]);
+ glUniform1f(s->path_e_freq,s->v[33]);
+ glUniform1f(s->path_phase_jitter,s->v[34]);
  glBindBuffer(GL_ARRAY_BUFFER,s->vbo);
  glEnableVertexAttribArray(0);
  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,0);
