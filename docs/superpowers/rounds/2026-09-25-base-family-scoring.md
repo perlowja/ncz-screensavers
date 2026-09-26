@@ -542,6 +542,70 @@ preserves uniqueness ranking for the rewrite shortlist.
 
 ---
 
+## Reconciliation under the amended rule (2026-09-26 night)
+
+After the reversions of `e069b1f` and `a74c3fe` above, the base family
+is restored to the amended-rule state:
+
+| Outcome | Count |
+|---|---:|
+| **KEEP** (perf > 0 AND visual > 0) | **49** |
+| CUT (perf = 0 OR visual = 0 — any-axis-0 auto-CUT) | 43 |
+| **Total base family** | **92** |
+
+**Base family: 49 of 92 ship-as-is (53% retention).** This is the same
+KEEP total that the original `495eda6` reconciliation produced —
+reverting the two pre-amendment re-instatement commits restores the
+state that existed before the wrong-direction batches landed.
+
+### WINNER designations — now RANK, do not REMOVE
+
+The WINNERs named in the body of this round are kept. They no longer
+remove the losers, but they still rank the family for the chooser and
+inform the new-engine rewrite shortlist. Reaffirmed list:
+
+- **Cube family — WINNER `cubetwist`** (Penrose impossible-cube,
+  layered translucent depth). Sibling KEEPs: `cubestack`, `cubestorm`,
+  `lament`.
+- **Polyhedron / mesh family — WINNER `kaleidocycle`** (colour +
+  internal symmetry). Sibling KEEPs: `polyhedra-gl`, `crumbler`,
+  `lament`.
+- **Flat-geometry / puzzle family — WINNER `gibson`** (saturated blue
+  translucent cube grid). Sibling KEEPs: `topblock`, `tangram`,
+  `tronbit`.
+- **Reflective-sphere family — WINNER `hypertorus`** (3D rainbow
+  ribbon-strip torus). Sibling KEEPs: `discoball`, `squirtorus`.
+- **Mechanical-subject family — WINNER `geodesicgears`** (tied with
+  `moebiusgears`, both 9/9 flagship-tier). Sibling KEEPs:
+  `flyingtoasters` (historic IP value noted, ships as 1989 After Dark
+  classic), `handsy`, `gears` is CUT (visually-broken PASS).
+- **Surface-immersion family — WINNER `klein`** (most polished, deepest
+  in frame, first-pointer). Sibling KEEPs: `projectiveplane`, `romanboy`,
+  `etruscanvenus`. `sphereeversion` is a different *visual* class
+  (animation vs static immersion) and ships on its own merits, not as a
+  sibling to the immersion winners.
+- **Articulated-figure family — WINNER `juggler3d`** (wooden mannequin,
+  saturated and readable at 4K). Sibling KEEP: `handsy` (distinct
+  subject — robot hands, not mannequin).
+- **Dazzle-camouflage family — single member**: `razzledazzle` ships.
+  There is no peer to WIN against — this is the family WINNER by
+  default.
+- **Ant family — WINNER `antinspect`** (continuous ant-trail).
+  Sibling KEEP: `antspotlight` (distinct vignette against the trail).
+- **Polyhedron / mesh body** see `kaleidocycle` above.
+- **Molecular family — WINNER `molecule`** (ball-and-stick).
+  Sibling KEEP: `covid19` (protein surface — distinct visualisation).
+- **Tunnel family — WINNER `blocktube`** (3D receding tunnel). No
+  sibling survives.
+- **Knot family — WINNER `glknots`**. No sibling survives.
+- **Fractal-space-filling — WINNER `hilbert`**. No sibling survives.
+
+All these WINNERs are RANKING, never CUTTING. Every sibling cited as
+"KEEP" above currently ships under the amended rule (perf > 0 AND
+visual > 0). The chooser order is set by this ranking, not by removal.
+
+---
+
 ## REINSTATEMENT 2026-09-26 — 10 redundancy CUTs restored
 
 Per the rubric amendment (uniqueness alone may not cut), every target cut
