@@ -1,4 +1,4 @@
-/* gles3_neonasteroids.c — self-playing neon vector rock-shooter.
+/* gles3_neonspacewar.c — self-playing neon vector rock-shooter.
  *
  * Working name: GenXRockCade (operator-controlled placeholder; rename
  * at the top of this file if it changes). The screensaver plays itself
@@ -15,15 +15,15 @@
  * Per-launch randomisation (ship colour scheme, palette, rock
  * density, starting wave, AI aggression) is seeded from
  * /dev/urandom and printed to stderr in the established [diag]
- * format. NCZ_NEO_ASTEROIDS_FIXED_SEED overrides for A/B.
+ * format. NCZ_NEO_SPACEWAR_FIXED_SEED overrides for A/B.
  *
- * The demo AI is the feature — see neonasteroids_ai.h for the
+ * The demo AI is the feature — see neonspacewar_ai.h for the
  * threat-triage + lead-targeting + pacing logic. Death is rare
  * but spectacular: the ship shatters into its own line segments.
  */
 
-#define NCZ_NEO_ASTEROIDS_NAME  "GenXRockCade"
-#define NCZ_NEO_ASTEROIDS_CLASS "GenXRockCade"
+#define NCZ_NEO_SPACEWAR_NAME  "neonspacewar"
+#define NCZ_NEO_SPACEWAR_CLASS "neonspacewar"
 
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE
@@ -257,7 +257,7 @@ static void draw_fade_quad(State *st);
 static void draw_lines(State *st);
 static void draw_composite(State *st);
 
-#include "neonasteroids_ai.h"
+#include "neonspacewar_ai.h"
 
 /* ===================================================================== */
 /* Time + RNG                                                              */
@@ -270,7 +270,7 @@ static double now_monotonic(void) {
 
 /* Session seed is computed once at init and threaded through every
  * subsequent rnd() call. Per-launch randomisation derives from
- * /dev/urandom unless NCZ_NEO_ASTEROIDS_FIXED_SEED overrides (for
+ * /dev/urandom unless NCZ_NEO_SPACEWAR_FIXED_SEED overrides (for
  * A/B testing). All in-session randomness uses the same xorshift
  * LCG state so successive calls produce uncorrelated streams.
  *
@@ -281,7 +281,7 @@ static double now_monotonic(void) {
 static uint32_t g_session_seed = 0;
 
 static uint32_t session_seed(void) {
-    const char *override = getenv("NCZ_NEO_ASTEROIDS_FIXED_SEED");
+    const char *override = getenv("NCZ_NEO_SPACEWAR_FIXED_SEED");
     if (override && *override) {
         uint32_t s = (uint32_t)strtoul(override, NULL, 10);
         if (s != 0) return s;
@@ -333,10 +333,10 @@ static int rnd_int(uint32_t *s, int a, int b) {
 static char *load_shader_text(const char *basename) {
     char path[256];
     const char *prefixes[] = {
-        "vendor/neonasteroids/",
-        "../vendor/neonasteroids/",
-        "../../vendor/neonasteroids/",
-        "/usr/share/ncz-screensavers/shaders/neonasteroids/",
+        "vendor/neonspacewar/",
+        "../vendor/neonspacewar/",
+        "../../vendor/neonspacewar/",
+        "/usr/share/ncz-screensavers/shaders/neonspacewar/",
     };
     for (unsigned i = 0; i < 4; i++) {
         snprintf(path, sizeof path, "%s%s", prefixes[i], basename);
@@ -348,10 +348,10 @@ static char *load_shader_text(const char *basename) {
             free(b); fclose(f); return NULL;
         }
         fclose(f); b[n] = 0;
-        fprintf(stderr, "[diag] neonasteroids shader=%s\n", path);
+        fprintf(stderr, "[diag] neonspacewar shader=%s\n", path);
         return b;
     }
-    fprintf(stderr, "neonasteroids: cannot locate %s\n", basename);
+    fprintf(stderr, "neonspacewar: cannot locate %s\n", basename);
     return NULL;
 }
 
@@ -364,7 +364,7 @@ static GLuint compile_shader(GLenum t, const char *src, const char *tag) {
     if (!ok) {
         char log[8192];
         glGetShaderInfoLog(s, sizeof log, NULL, log);
-        fprintf(stderr, "neonasteroids %s compile: %s\n", tag, log);
+        fprintf(stderr, "neonspacewar %s compile: %s\n", tag, log);
         glDeleteShader(s);
         return 0;
     }
@@ -385,7 +385,7 @@ static GLuint link_program(GLuint vs, GLuint fs, const char *tag) {
     if (!ok) {
         char log[8192];
         glGetProgramInfoLog(p, sizeof log, NULL, log);
-        fprintf(stderr, "neonasteroids %s link: %s\n", tag, log);
+        fprintf(stderr, "neonspacewar %s link: %s\n", tag, log);
         glDeleteProgram(p);
         return 0;
     }
@@ -424,7 +424,7 @@ static int create_fbo(int w, int h, GLuint *out_tex, GLuint *out_fbo) {
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     int rv = (status == GL_FRAMEBUFFER_COMPLETE) ? 0 : -1;
     if (rv < 0)
-        fprintf(stderr, "neonasteroids: FBO incomplete 0x%x\n",
+        fprintf(stderr, "neonspacewar: FBO incomplete 0x%x\n",
                 (unsigned)status);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     return rv;
@@ -647,7 +647,7 @@ static void game_init(State *st) {
     g_session_seed = 0;
 
     /* Per-launch randomisation. Capture the session seed first
-     * (this is what NCZ_NEO_ASTEROIDS_FIXED_SEED / /dev/urandom
+     * (this is what NCZ_NEO_SPACEWAR_FIXED_SEED / /dev/urandom
      * produces) before the LCG gets stepped by subsequent rnd()
      * calls. */
     uint32_t session = seed_rng();
@@ -669,7 +669,7 @@ static void game_init(State *st) {
     spawn_wave(st);
 
     fprintf(stderr,
-        "[diag] neonasteroids seed=%u palette=%d palette_phase=%.4f "
+        "[diag] neonspacewar seed=%u palette=%d palette_phase=%.4f "
         "palette_rate=%.5f density=%.3f start_wave=%d aggression=%.3f "
         "ship_hue=%.3f plume_hue=%.3f GL=%s\n",
         session, (int)st->palette_idx, st->palette_phase, st->palette_rate,
@@ -739,7 +739,7 @@ static void spawn_wave(State *st) {
     st->wave_duration = 35.f + (float)st->wave * 2.5f;
     st->rocks_spawned_this_wave = n_large;
     st->rocks_alive_this_wave = n_large;
-    fprintf(stderr, "[diag] neonasteroids wave=%d spawned=%d duration=%.1f\n",
+    fprintf(stderr, "[diag] neonspacewar wave=%d spawned=%d duration=%.1f\n",
             st->wave, n_large, st->wave_duration);
 }
 
@@ -1288,7 +1288,7 @@ static void game_render(State *st) {
 /* Init / draw / free                                                      */
 /* ===================================================================== */
 
-static void init_neonasteroids(ModeInfo *m) {
+static void init_neonspacewar(ModeInfo *m) {
     State *st = calloc(1, sizeof *st);
     if (!st) { ncz_harness_die(1); return; }
     m->data = st;
@@ -1396,7 +1396,7 @@ static void init_neonasteroids(ModeInfo *m) {
     glEnable(GL_BLEND);
 }
 
-static void reshape_neonasteroids(ModeInfo *m, int w, int h) {
+static void reshape_neonspacewar(ModeInfo *m, int w, int h) {
     State *st = m->data;
     if (!st) return;
     if (w < 1) w = 1;
@@ -1430,14 +1430,14 @@ static void reshape_neonasteroids(ModeInfo *m, int w, int h) {
     memcpy(st->mvp, mvp, sizeof mvp);
 }
 
-static void draw_neonasteroids(ModeInfo *m) {
+static void draw_neonspacewar(ModeInfo *m) {
     State *st = m->data;
     if (!st || !st->line_prog) return;
 
     int w = m->xgwa.width, h = m->xgwa.height;
     if (w < 1) w = 1; if (h < 1) h = 1;
     if (w != st->fb_w || h != st->fb_h) {
-        reshape_neonasteroids(m, w, h);
+        reshape_neonspacewar(m, w, h);
     }
 
     double t_now = now_monotonic();
@@ -1455,13 +1455,13 @@ static void draw_neonasteroids(ModeInfo *m) {
     static double _ft_prev;
     static int _ft_enabled;
     if (!_ft_enabled)
-        _ft_enabled = (getenv("NCZ_NEO_ASTEROIDS_PERF_LOG") != NULL);
+        _ft_enabled = (getenv("NCZ_NEO_SPACEWAR_PERF_LOG") != NULL);
     if (_ft_enabled) {
         if ((++_ft_counter % 30) == 0) {
             if (_ft_prev > 0.0) {
                 double _dt = (t_now - _ft_prev) / 30.0;
                 fprintf(stderr,
-                    "[diag] neonasteroids frame_t frame=%lu dt_ms=%.3f\n",
+                    "[diag] neonspacewar frame_t frame=%lu dt_ms=%.3f\n",
                     _ft_counter, _dt * 1000.0);
                 fflush(stderr);
             }
@@ -1475,7 +1475,7 @@ static void draw_neonasteroids(ModeInfo *m) {
         double dpm = (double)st->deaths / (elapsed / 60.0);
         double rpm = (double)st->rocks_killed / (elapsed / 60.0);
         fprintf(stderr,
-            "[diag] neonasteroids t=%.1fs wave=%d alive=%d killed=%d "
+            "[diag] neonspacewar t=%.1fs wave=%d alive=%d killed=%d "
             "fired=%d deaths=%d (%.2f/min) rocks=%.1f/min\n",
             elapsed, st->wave, count_alive_rocks(st), st->rocks_killed,
             st->bullets_fired, st->deaths, dpm, rpm);
@@ -1491,7 +1491,7 @@ static void draw_neonasteroids(ModeInfo *m) {
         glReadPixels(w/2, h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+12);
         GLenum e = glGetError();
         fprintf(stderr,
-            "[diag] neonasteroids first draw gl_error=0x%x samples="
+            "[diag] neonspacewar first draw gl_error=0x%x samples="
             "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
             e, px[0], px[1], px[2], px[4], px[5], px[6], px[8], px[9], px[10],
             px[12], px[13], px[14]);
@@ -1507,18 +1507,18 @@ static void draw_neonasteroids(ModeInfo *m) {
         glReadPixels(st->fb_w/2, st->fb_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+12);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         fprintf(stderr,
-            "[diag] neonasteroids trail FBO samples="
+            "[diag] neonspacewar trail FBO samples="
             "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
             tpx[0], tpx[1], tpx[2], tpx[4], tpx[5], tpx[6], tpx[8], tpx[9], tpx[10],
             tpx[12], tpx[13], tpx[14]);
-        fprintf(stderr, "[diag] neonasteroids line_n=%d fb=%dx%d trail_fbo=%u tex=%u\n",
+        fprintf(stderr, "[diag] neonspacewar line_n=%d fb=%dx%d trail_fbo=%u tex=%u\n",
                 st->line_n, st->fb_w, st->fb_h, st->trail_fbo, st->trail_tex);
         fflush(stderr);
         once = 1;
     }
 }
 
-static void free_neonasteroids(ModeInfo *m) {
+static void free_neonspacewar(ModeInfo *m) {
     State *st = m->data;
     if (!st) return;
     if (st->line_prog) glDeleteProgram(st->line_prog);
@@ -1532,24 +1532,24 @@ static void free_neonasteroids(ModeInfo *m) {
     m->data = NULL;
 }
 
-static Bool neonasteroids_handle_event(ModeInfo *m, XEvent *e) {
+static Bool neonspacewar_handle_event(ModeInfo *m, XEvent *e) {
     (void)m; (void)e;
     return False;
 }
 
-static void release_neonasteroids(ModeInfo *m) { (void)m; }
+static void release_neonspacewar(ModeInfo *m) { (void)m; }
 
-static ModeSpecOpt neonasteroids_opts = { 0, NULL, 0, NULL, NULL };
+static ModeSpecOpt neonspacewar_opts = { 0, NULL, 0, NULL, NULL };
 
-struct xscreensaver_function_table neonasteroids_xscreensaver_function_table = {
-    .name      = NCZ_NEO_ASTEROIDS_NAME,
-    .class_    = NCZ_NEO_ASTEROIDS_CLASS,
-    .init_cb   = init_neonasteroids,
-    .draw_cb   = draw_neonasteroids,
-    .reshape_cb = reshape_neonasteroids,
-    .event_cb  = neonasteroids_handle_event,
-    .free_cb   = free_neonasteroids,
-    .release_cb = release_neonasteroids,
-    .opts      = &neonasteroids_opts,
+struct xscreensaver_function_table neonspacewar_xscreensaver_function_table = {
+    .name      = NCZ_NEO_SPACEWAR_NAME,
+    .class_    = NCZ_NEO_SPACEWAR_CLASS,
+    .init_cb   = init_neonspacewar,
+    .draw_cb   = draw_neonspacewar,
+    .reshape_cb = reshape_neonspacewar,
+    .event_cb  = neonspacewar_handle_event,
+    .free_cb   = free_neonspacewar,
+    .release_cb = release_neonspacewar,
+    .opts      = &neonspacewar_opts,
     .defaults_str = DEFAULTS,
 };

@@ -1,4 +1,4 @@
-/* neonasteroids_ai.h — the demo AI for the neon vector rock-shooter.
+/* neonspacewar_ai.h — the demo AI for the neon vector rock-shooter.
  *
  * This is the feature. The mechanics are simple; what separates a
  * "competent" bot from a twitchy one is the threat model.
@@ -30,8 +30,8 @@
  * actual motion.
  */
 
-#ifndef NCZ_NEO_ASTEROIDS_AI_H
-#define NCZ_NEO_ASTEROIDS_AI_H
+#ifndef NCZ_NEO_SPACEWAR_AI_H
+#define NCZ_NEO_SPACEWAR_AI_H
 
 #include <math.h>
 #include <stddef.h>
@@ -462,10 +462,10 @@ static void ai_update(State *st, float dt) {
     /* Debug log — only when perf log is on AND every 60 frames. */
     static int _dbg_counter;
     static int _dbg_enabled;
-    if (!_dbg_enabled) _dbg_enabled = (getenv("NCZ_NEO_ASTEROIDS_AI_LOG") != NULL);
+    if (!_dbg_enabled) _dbg_enabled = (getenv("NCZ_NEO_SPACEWAR_AI_LOG") != NULL);
     if (_dbg_enabled && (_dbg_counter++ % 60) == 0) {
         fprintf(stderr,
-            "[diag] neonasteroids ai threat=%d ttc=%.2f shoot=%d "
+            "[diag] neonspacewar ai threat=%d ttc=%.2f shoot=%d "
             "heading=%.2f->%.2f thrust=%.2f\n",
             threat_idx, threat_ttc, shoot_idx,
             ship->heading, target_heading, ship->thrust_cmd);
@@ -473,4 +473,4 @@ static void ai_update(State *st, float dt) {
     }
 }
 
-#endif /* NCZ_NEO_ASTEROIDS_AI_H */
+#endif /* NCZ_NEO_SPACEWAR_AI_H */

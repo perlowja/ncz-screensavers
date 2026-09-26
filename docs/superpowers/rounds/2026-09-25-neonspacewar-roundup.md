@@ -1,24 +1,24 @@
-# neonasteroids (working name: GenXRockCade) — roundup
+# neonspacewar (working name: GenXRockCade) — roundup
 
 **Date:** 2026-09-25
 **Branch:** master
 **Operator direction:** "a self-playing neon vector rock-shooter".
 **Working name:** `GenXRockCade` (operator-controlled placeholder;
-rename at the top of `src/gles3_neonasteroids.c`).
+rename at the top of `src/gles3_neonspacewar.c`).
 
 This is a self-playing screensaver: a ship in a wrapping playfield,
 drifting rocks that split when shot, all rendered as glowing neon
 vector lines. Nobody ever touches the keyboard. The AI plays
 competently, forever.
 
-The demo AI is the feature — see `src/neonasteroids_ai.h` for the
+The demo AI is the feature — see `src/neonspacewar_ai.h` for the
 threat-triage + lead-targeting + pacing logic that distinguishes
 "a bot twitching and dying" (broken) from "a bot that plays well"
 (the point).
 
 ## TL;DR
 
-- **New target:** `neonasteroids_gles3` — self-playing neon vector
+- **New target:** `neonspacewar_gles3` — self-playing neon vector
   rock-shooter, GLES3-native, no gl4es, no X11.
 - **Demo AI:** lead-target with wrap-aware geometry, threat triage
   by time-to-collision, evasion that sums inverse-TTC push from
@@ -44,16 +44,16 @@ threat-triage + lead-targeting + pacing logic that distinguishes
 
 | File | Lines | Purpose |
 |---|---|---|
-| `src/gles3_neonasteroids.c` | 1545 | GLES3 driver + game state + AI glue |
-| `src/neonasteroids_ai.h` | 460 | Demo AI — threat triage, lead targeting, evasion, pacing |
-| `vendor/neonasteroids/composite.frag` | 247 | Final post-process: bloom, chromatic aberration, palette cycling, shockwave warps |
-| `vendor/neonasteroids/lines.frag` | 35 | Vector-line fragment shader (optional override of the inline default) |
+| `src/gles3_neonspacewar.c` | 1545 | GLES3 driver + game state + AI glue |
+| `src/neonspacewar_ai.h` | 460 | Demo AI — threat triage, lead targeting, evasion, pacing |
+| `vendor/neonspacewar/composite.frag` | 247 | Final post-process: bloom, chromatic aberration, palette cycling, shockwave warps |
+| `vendor/neonspacewar/lines.frag` | 35 | Vector-line fragment shader (optional override of the inline default) |
 
 ## Files modified
 
 - `meson.build`: one `install_data` per shader (under the
   `/usr/share/ncz-screensavers/shaders/` runtime-shader install
-  rule from f58ae3a), one `executable('neonasteroids_gles3', ...)`
+  rule from f58ae3a), one `executable('neonspacewar_gles3', ...)`
   block. Touches the minimum necessary lines, in the same style as
   the blackhole / lavafield blocks above.
 
@@ -181,7 +181,7 @@ When the ship collides with a rock:
 
 ## Per-launch randomisation
 
-The `[diag] neonasteroids seed=...` line lists the seven
+The `[diag] neonspacewar seed=...` line lists the seven
 randomised parameters plus the GL version string. The seed is
 sampled from `/dev/urandom` (with `clock_gettime(CLOCK_REALTIME) ^
 getpid()` fallback if urandom isn't readable). `NCZ_NEO_ASTEROIDS_FIXED_SEED=<n>`
@@ -193,7 +193,7 @@ sub-streams from the same session seed.
 
 ## Performance — frame time on all three GPUs
 
-Per-frame `dt_ms` from `[diag] neonasteroids frame_t` lines
+Per-frame `dt_ms` from `[diag] neonspacewar frame_t` lines
 (env: `NCZ_NEO_ASTEROIDS_PERF_LOG=1`, no grim interference):
 
 | GPU | Resolution | Mean dt_ms | fps |
@@ -248,35 +248,35 @@ respawn is better television than an invincible bot" — both
 satisfied. Kill-to-death ratio is 10-15× in the AI's favour, so
 the wave counter advances steadily.
 
-The captures in `docs/superpowers/rounds/2026-09-25-neonasteroids-shot/`
+The captures in `docs/superpowers/rounds/2026-09-25-neonspacewar-shot/`
 show the AI actually playing — ships turning to lead targets,
 rock polygons being shot and split into smaller ones, the ship
 evading perpendicular to threats, waves advancing every 25-35 s.
 
 ## Launched-from-`/` proof
 
-Run with cwd `/` (no `vendor/neonasteroids/` and no `../vendor/...`
+Run with cwd `/` (no `vendor/neonspacewar/` and no `../vendor/...`
 exist relative to `/`):
 
 ```
-$ cd / && ./home/pegasus/ncz-screensavers/build/neonasteroids_gles3
+$ cd / && ./home/pegasus/ncz-screensavers/build/neonspacewar_gles3
 [diag] gles3_harness: EGL 1.5, GLES3 context live
 [diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
 RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
-[diag] neonasteroids shader=/usr/share/ncz-screensavers/shaders/neonasteroids/composite.frag
-[diag] neonasteroids shader=/usr/share/ncz-screensavers/shaders/neonasteroids/lines.frag
+[diag] neonspacewar shader=/usr/share/ncz-screensavers/shaders/neonspacewar/composite.frag
+[diag] neonspacewar shader=/usr/share/ncz-screensavers/shaders/neonspacewar/lines.frag
 ```
 
 Same proof on MEDUSA:
 
 ```
-$ cd / && ./home/medusamedusa/ncz-screensavers/build/neonasteroids_gles3
+$ cd / && ./home/medusamedusa/ncz-screensavers/build/neonspacewar_gles3
 RENDERER=AMD Radeon Graphics (radeonsi, navi14, ...)
-[diag] neonasteroids shader=/usr/share/ncz-screensavers/shaders/neonasteroids/composite.frag
+[diag] neonspacewar shader=/usr/share/ncz-screensavers/shaders/neonspacewar/composite.frag
 ```
 
 The shaders were installed at
-`/usr/share/ncz-screensavers/shaders/neonasteroids/{composite,lines}.frag`
+`/usr/share/ncz-screensavers/shaders/neonspacewar/{composite,lines}.frag`
 by the `install_data` rule in `meson.build`. The loader's fallback
 chain tries cwd-relative paths first, then the absolute installed
 path. With cwd `/`, the cwd-relative paths don't exist, so the
@@ -286,7 +286,7 @@ absolute path is used and the binary renders correctly.
 
 The brief's hard limit was: "no sustained rapid full-field
 luminance flashing, especially in the ~3-30 Hz band". The
-neonasteroids render pipeline bounds this as follows:
+neonspacewar render pipeline bounds this as follows:
 
 - **Trail fade rate is fixed at 60 Hz** (one multiplicative fade
   per frame). On a 60 fps display this is 60 Hz; on a 30 fps
@@ -331,12 +331,12 @@ risk band.
 - **Per-frame shader reload.** Like the blackhole and lavafield
   hacks, the `.frag` files are loaded at runtime via `fopen()`
   with no build dependency in ninja. After editing a shader on
-  a remote, you must `touch vendor/neonasteroids/composite.frag`
+  a remote, you must `touch vendor/neonspacewar/composite.frag`
   or remove the build artefact before `ninja -C build
-  neonasteroids_gles3` will rebuild.
+  neonspacewar_gles3` will rebuild.
 - **Concurrent-agent collision.** Other agents pushed commits
   during this work; rebases were clean (no conflicts landed in
-  the neonasteroids files specifically, but a few adjacent
+  the neonspacewar files specifically, but a few adjacent
   meson.build edits required `git fetch && git rebase` before
   every push).
 
@@ -390,23 +390,23 @@ spawned and started drawing).
 ## Commits in this PR (chronological)
 
 ```
-593b7af neonasteroids: thread LCG state through all RNG calls
-541b8a1 neonasteroids: AI pacing - prefer small-rock kills in dense fields
-2000936 neonasteroids: gentler wave ramp so the field stays readable
-7e431ed neonasteroids: safer respawn - clear nearby rocks + longer invuln
-8892bad neonasteroids: slower split children + slightly wider panic zone
-eae3ebe neonasteroids: evasion sums inverse-TTC push from all nearby rocks
-54e8560 neonasteroids: dial back evasion thrust + widen panic threshold
-4e3f34b neonasteroids: route AI's want_to_shoot through ship struct field
-67b5e61 neonasteroids: AI keeps aim on target even while bullet cooldown
-a7bfaf8 neonasteroids: fix critical bug - game_init was wiping GL programs
-05569c8 neonasteroids: trace program build steps to find prog=0 cause
-96c1a20 neonasteroids: flush diag + sentinel print to find missing first draw
-a5c5104 neonasteroids: add trail FBO readback to first-frame diag
-5af3106 neonasteroids: tune for fewer deaths + faster bullets + longer waves
-c5c1bb3 neonasteroids: snappier visuals + slightly more cautious AI
-865a9e6 neonasteroids: brighter ambient backdrop so the screen reads as alive
-9eee0f3 neonasteroids: initial self-playing neon vector rock-shooter
+593b7af neonspacewar: thread LCG state through all RNG calls
+541b8a1 neonspacewar: AI pacing - prefer small-rock kills in dense fields
+2000936 neonspacewar: gentler wave ramp so the field stays readable
+7e431ed neonspacewar: safer respawn - clear nearby rocks + longer invuln
+8892bad neonspacewar: slower split children + slightly wider panic zone
+eae3ebe neonspacewar: evasion sums inverse-TTC push from all nearby rocks
+54e8560 neonspacewar: dial back evasion thrust + widen panic threshold
+4e3f34b neonspacewar: route AI's want_to_shoot through ship struct field
+67b5e61 neonspacewar: AI keeps aim on target even while bullet cooldown
+a7bfaf8 neonspacewar: fix critical bug - game_init was wiping GL programs
+05569c8 neonspacewar: trace program build steps to find prog=0 cause
+96c1a20 neonspacewar: flush diag + sentinel print to find missing first draw
+a5c5104 neonspacewar: add trail FBO readback to first-frame diag
+5af3106 neonspacewar: tune for fewer deaths + faster bullets + longer waves
+c5c1bb3 neonspacewar: snappier visuals + slightly more cautious AI
+865a9e6 neonspacewar: brighter ambient backdrop so the screen reads as alive
+9eee0f3 neonspacewar: initial self-playing neon vector rock-shooter
 ```
 
 Many concurrent-agent commits interleaved during this work (the

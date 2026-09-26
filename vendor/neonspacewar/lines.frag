@@ -1,7 +1,7 @@
 #version 300 es
 /* lines.frag — optional override for the line-shader fragment.
  *
- * The default (inline in gles3_neonasteroids.c) outputs solid colour
+ * The default (inline in gles3_neonspacewar.c) outputs solid colour
  * into the additive-blended trail FBO:
  *
  *   o_col = vec4(v_color * v_alpha, v_alpha);

@@ -6,7 +6,7 @@ pass that spirals the trails each frame.
 
 See `docs/superpowers/specs/2026-09-25-genxvectorcade-vision.md`
 for the creative spine this is part of. Differs from the
-`neonasteroids` Round-18 piece in that there is no game and no
+`neonspacewar` Round-18 piece in that there is no game and no
 geometry to model — the journey itself is the artwork.
 
 ## What it does

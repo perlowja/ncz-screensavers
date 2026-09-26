@@ -943,7 +943,7 @@ executable(
 # visual that blends vector tunnel / grid horizon / starfield warp /
 # kaleidoscope bloom / lattice canyon into one continuous trip with
 # persistent feedback trails as the through-line. Differs from the
-# neonasteroids piece (Round 18) in that there is no game and no
+# neonspacewar piece (Round 18) in that there is no game and no
 # geometry to model — the journey IS the artwork. See
 # docs/superpowers/specs/2026-09-25-genxvectorcade-vision.md for the
 # shared creative spine.
@@ -975,8 +975,8 @@ executable(
 )
 
 
-# Round 18 — neonasteroids (working name: GenXRockCade, placeholder
-# rename at the top of src/gles3_neonasteroids.c).
+# Round 18 — neonspacewar (working name: GenXRockCade, placeholder
+# rename at the top of src/gles3_neonspacewar.c).
 #
 # Self-playing neon vector rock-shooter: ship in a wrapping playfield,
 # drifting rocks that split when shot, all rendered as glowing neon
@@ -986,24 +986,24 @@ executable(
 # Pattern matches the blackhole / lavafield GLES3-native targets:
 # one driver .c, three vendor shaders (lines / trail-fade / composite),
 # loaded at runtime from the source tree or from
-# /usr/share/ncz-screensavers/shaders/neonasteroids/ (the
+# /usr/share/ncz-screensavers/shaders/neonspacewar/ (the
 # install_data rule below ensures the binary works when launched
 # from / — the cwd-relative-only path was a real ship-blocker on
 # the flagship blackhole hack).
-install_data('vendor/neonasteroids/composite.frag',
+install_data('vendor/neonspacewar/composite.frag',
              install_dir: shader_install_dir, install_tag: 'runtime-shaders')
-install_data('vendor/neonasteroids/lines.frag',
+install_data('vendor/neonspacewar/lines.frag',
              install_dir: shader_install_dir, install_tag: 'runtime-shaders')
 executable(
-    'neonasteroids_gles3',
+    'neonspacewar_gles3',
     files(common_gles3_sources + [
         'src/gles3_harness.c',
-        'src/gles3_neonasteroids.c',
+        'src/gles3_neonspacewar.c',
     ]) + gen_sources,
     include_directories: inc,
     dependencies: common_gles3_deps,
     c_args: gles3_native_c_args + [
-        '-DHACK_TABLE=neonasteroids_xscreensaver_function_table',
+        '-DHACK_TABLE=neonspacewar_xscreensaver_function_table',
     ],
     install: false,
 )
