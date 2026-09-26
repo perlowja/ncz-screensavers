@@ -681,7 +681,7 @@ static int count_alive_rocks(State *st) {
 static int count_alive_rocks(State *st);
 
 static void spawn_wave(State *st) {
-    int n_large = 3 + st->wave / 2;
+    int n_large = 2 + st->wave / 2;
     n_large = (int)((float)n_large * st->density);
     if (n_large > 10) n_large = 10;
     if (n_large < 2) n_large = 2;
@@ -696,7 +696,7 @@ static void spawn_wave(State *st) {
         spawn_rock(st, pos, vel, ROCK_LARGE);
     }
     st->wave_started = now_monotonic();
-    st->wave_duration = 30.f + (float)st->wave * 2.0f;
+    st->wave_duration = 35.f + (float)st->wave * 2.5f;
     st->rocks_spawned_this_wave = n_large;
     st->rocks_alive_this_wave = n_large;
     fprintf(stderr, "[diag] neonasteroids wave=%d spawned=%d duration=%.1f\n",
