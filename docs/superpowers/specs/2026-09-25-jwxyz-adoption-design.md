@@ -141,3 +141,43 @@ INCONCLUSIVE separately.
 - A measurable reduction in the 21 both-vendor failures, ideally without
   per-hack fixes — that is the core bet of this design.
 - One compat layer instead of five, tracking upstream.
+
+## Does this drag X11 in? No — verified, not assumed
+
+The concern was raised that adopting jwxyz means taking on Xlib. It does
+not. Verified directly against upstream `b99f621`:
+
+- **No X11 headers.** `grep '#include <X11'` across `jwxyz-common.c`,
+  `jwxyz-gl.c`, `jwzgles.c`, `jwxyz.h` and `jwxyzI.h` returns nothing.
+- **No X11 linkage.** No `-lX11` / `libX11` in `jwxyz/Makefile.in`.
+- `jwxyz.h` opens with the line: `/* JWXYZ Is Not Xlib.`
+
+jwxyz *reimplements the shape of the Xlib API* on top of GL/GLES. That is
+the entire reason it exists: jwz wrote it so the hacks could run on macOS,
+iOS and Android, none of which have X11. Adopting it requires no X server,
+no Xwayland and no libX11. What it does bring is Xlib-*shaped* names
+(`XFillRectangle`, `Display*`, `GC`) in vendored code.
+
+`jwzgles` and `jwxyz` are independent and separable:
+- `jwzgles` alone (GL 1.3 → GLES) fixes the fixed-function/display-list/
+  lighting bug class behind our broken hacks and makes the 46 remaining GL
+  hacks mechanical. No Xlib-shaped API at all.
+- `jwxyz` is required only for the 144 2D hacks.
+
+**Decision (operator, 2026-09-25): adopt both.**
+
+### Repo boundary — whose review rules apply
+
+`ncz-screensavers` is NCZ-owned (`perlowja/ncz-screensavers`,
+`gitlab.com/ncz-os/ncz-screensavers`). The Singularity upstream
+contribution rules in `~/.claude/rules/singularity-contribution-guidelines.md`
+govern `singularityos-lab/*` — singularity-shell and singularity-desktop —
+not this repo. Vendored compat code here is not subject to that review.
+
+The piece that IS subject to it is the screensaver **settings UI**
+(`docs/superpowers/specs/2026-09-25-screensaver-preferences-design.md`,
+fork branch `feat/screensaver-preferences` on
+`perlowja/singularity-shell`). That design already carries the required
+constraints: libsingularity widgets only (no libadwaita), no NCZ-specific
+names or paths in the generic layer, and the per-hack schema data kept
+downstream. Nothing from jwxyz belongs in that UI.
