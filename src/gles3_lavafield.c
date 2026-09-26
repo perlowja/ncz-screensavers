@@ -177,20 +177,24 @@ static void init_lavafield(ModeInfo *m){
   s->v[7] = rnd(&z, 0.7f, 1.45f);                       /* warmth */
   s->v[8] = rnd(&z, 0.95f, 1.25f);                      /* contrast */
 
-  /* Blob positions and radii: lay them out on a loose ring in xz with
-   * a per-blob vertical anchor and phase. Buoyancy is then computed on
-   * the GPU as a slow wave; the CPU just supplies the steady-state
-   * anchor per blob. */
+  /* Blob positions and radii: spread them across the visible slab so
+   * the camera's straight-down ray sees most of them. With ro=(0,0,2.6)
+   * and rays of the form normalize(uv, -1), the rays diverge
+   * moderately but a centrally-placed ray still misses a blob sitting
+   * on a 0.7-radius ring. We use a smaller ring (0.35..0.55) and a
+   * y-anchor that genuinely varies so the blobs sit at different
+   * heights of the slab — which projects to different screen-Y
+   * positions, giving the eye real vertical motion to read. */
   for(int i = 0; i < 6; i++){
     float a = (float)i * (2.0f * (float)M_PI / 6.0f)
             + rnd(&z, 0.0f, 0.6f);
-    s->bx[i] = cosf(a) * (0.55f + 0.25f * rnd(&z, 0.0f, 1.0f));
-    s->bz[i] = sinf(a) * (0.55f + 0.25f * rnd(&z, 0.0f, 1.0f));
+    s->bx[i] = cosf(a) * (0.35f + 0.20f * rnd(&z, 0.0f, 1.0f));
+    s->bz[i] = sinf(a) * (0.35f + 0.20f * rnd(&z, 0.0f, 1.0f));
     /* Spread the y anchors across the slab so blobs are not all on the
      * same horizontal plane at t=0 — some rise, some sink, with phase
      * offsets to break synchronisation. */
-    s->by[i] = rnd(&z, -1.0f, 1.0f);
-    s->br[i] = rnd(&z, 0.20f, 0.36f);
+    s->by[i] = rnd(&z, -0.85f, 0.85f);
+    s->br[i] = rnd(&z, 0.22f, 0.40f);
     s->bphase[i] = rnd(&z, 0.0f, (float)(2.0 * M_PI));
   }
 
@@ -238,8 +242,8 @@ static void draw_lavafield(ModeInfo *m){
 
   /* Animate blob positions: a global buoyancy wave plus per-blob phase
    * offset, slowed by u_viscosity. Vertical range stays inside
-   * roughly [-1.3, 1.3]. xz position also wobbles a touch to break the
-   * perfect ring. */
+   * roughly [-1.0, 1.0] in y (matches the new CPU-side anchor range).
+   * xz position also wobbles a touch to break the perfect ring. */
   float visc = s->v[5];
   float blob_data[6][4];
   int n = (int)s->v[4];
@@ -250,12 +254,12 @@ static void draw_lavafield(ModeInfo *m){
       /* Global slow wave: everyone rises and falls together on a long
        * timescale; per-blob phase modulates amplitude so they do not
        * lockstep. */
-      float global = 0.55f * sinf(t * (0.42f / visc) + ph * 0.7f);
-      float per_blob = 0.35f * sinf(t * (0.78f / visc) + ph);
+      float global = 0.45f * sinf(t * (0.42f / visc) + ph * 0.7f);
+      float per_blob = 0.30f * sinf(t * (0.78f / visc) + ph);
       float y = y_anchor + global + per_blob;
       /* Clamp so blobs do not drift out of view. */
-      if(y >  1.25f) y =  1.25f;
-      if(y < -1.25f) y = -1.25f;
+      if(y >  1.00f) y =  1.00f;
+      if(y < -1.00f) y = -1.00f;
       float x = s->bx[i] + 0.10f * sinf(t * (0.55f / visc) + ph);
       float z = s->bz[i] + 0.10f * cosf(t * (0.61f / visc) + ph);
       blob_data[i][0] = x;

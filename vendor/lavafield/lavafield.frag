@@ -238,28 +238,40 @@ void main(){
   }
 
   vec3 n = normal(p);
-  // Gradient temperature: cooler at the top of the field (rising,
-  // cooling), hotter at the bottom (sinking, reheating). Maps to
-  // palette parameter.
-  float cool = clamp((p.y + 1.4) / 2.8, 0.0, 1.0);
-  float heat = 1.0 - cool;
-  float t_pal = clamp(0.10 + 0.85 * heat + 0.18 * (1.0 - abs(n.z)), 0.0, 1.0);
+  // Subsurface-style shading designed to read as molten material, not
+  // shaded plastic. Three layers stacked:
+  //   1. Strong wrap-around diffuse (1 - dot(n, lightDir)) so light
+  //      "wraps" past the terminator like it would through translucent
+  //      rock or wax. Standard lambert would put the unlit half in
+  //      shadow; here we want the unlit half to still glow.
+  //   2. Aggressive warm rim glow driven by fresnel, biased to the
+  //      hot end of the palette so the blob edges look incandescent.
+  //   3. Emissive hot core: depth into the field (estimated from the
+  //      marching step count) lifts the centre of every blob into
+  //      near-white-hot territory.
+  vec3 lightDir = normalize(vec3(0.25, 0.55, 0.85));
+  float ndl = dot(n, lightDir);
+  // Wrap diffuse: lambert + (1-ndl) bias. Range [0.1, 1.0] instead of
+  // [0, 1] so the dark side still glows.
+  float wrap = clamp(0.5 + 0.5 * ndl, 0.0, 1.0);
+  // Fresnel rim. Use a soft pow so the rim is gradual not a hard line.
+  float fres = pow(1.0 - max(dot(n, -rd), 0.0), 1.4);
+  // Vertical temperature gradient inside the field: bottom of slab
+  // (cool side of the palette) heats up; top stays warmer. Adds depth.
+  float fieldHeat = clamp((p.y + 1.4) / 2.8, 0.0, 1.0);
+  float t_pal = clamp(0.20 + 0.65 * (1.0 - fieldHeat) + 0.10 * (1.0 - abs(n.z)), 0.0, 0.95);
   vec3 base = palette(t_pal);
-
-  // Subsurface-style shading: a soft front-light + a strong back-glow
-  // rim that simulates internal scatter. No specular highlight on
-  // purpose — molten lava is matte-emissive, not glossy.
-  vec3 lightDir = normalize(vec3(0.3, 0.6, 0.8));
-  float lambert = max(dot(n, lightDir), 0.0);
-  float fres = pow(1.0 - max(dot(n, -rd), 0.0), 1.7);
-  vec3 col = base * (0.55 + 0.55 * lambert);
-  col += base * fres * 1.55 * u_warmth;
-  // Hot core: in the deep interior (negative h2 = inside the field)
-  // lift brightness. h2 was returned from blobs() but we re-derive here
-  // by sampling once more to keep normal() pure. Use length(p)-0.0 is
-  // not informative; instead rely on a single inner estimate.
-  float core = clamp(0.5 + 0.5 * (heat - 0.5), 0.0, 1.0);
-  col += base * core * 0.30;
+  // Rim uses the hot end of the palette, so the glow shifts toward
+  // white-hot at the edge.
+  vec3 rim = palette(clamp(t_pal + 0.15, 0.0, 1.0));
+  // Compose: wrap diffuse for body, strong rim glow, soft hot core.
+  vec3 col = base * (0.45 + 0.55 * wrap);
+  col += rim * fres * 1.85 * u_warmth;
+  // Inner heat: when fres is low (looking straight down at the
+  // surface), the centre is hot. Smoothstep keeps it from being a
+  // hard disk.
+  float core = 1.0 - smoothstep(0.0, 0.7, fres);
+  col += base * core * 0.45 * u_warmth;
 
   // Tone map (Reinhard) + gamma, then small contrast toe.
   col = col / (1.0 + col);
