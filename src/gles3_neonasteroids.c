@@ -781,7 +781,7 @@ static void collision_step(State *st) {
             float dx = st->ship.pos.x - rk->pos.x;
             float dy = st->ship.pos.y - rk->pos.y;
             float d2 = dx * dx + dy * dy;
-            float sum = 0.03f + rk->radius;
+            float sum = 0.04f + rk->radius;
             if (d2 < sum * sum) {
                 kill_ship(st);
                 break;
