@@ -644,20 +644,27 @@ static void draw_genxvectorcade(ModeInfo *m){
     static int once;
     if(!once){
         once = 1;
+        /* Read back the CURRENT FBO texture (not the window) — this is
+         * what the user is going to see after the blit. If this is
+         * black, something is wrong with the FBO path; if it's
+         * colourful but the screen is still black, the blit pass is
+         * the problem. */
+        glBindFramebuffer(GL_FRAMEBUFFER, (s->fb_index == 0) ? s->fbo_a : s->fbo_b);
         unsigned char px[16] = {0};
-        glReadPixels(w/2, h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
-        glReadPixels(w/4, h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+4);
-        glReadPixels(3*w/4, h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+8);
-        glReadPixels(w/2, 3*h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+12);
+        glReadPixels(s->fb_w/2, s->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        glReadPixels(s->fb_w/4, s->fb_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+4);
+        glReadPixels(3*s->fb_w/4, s->fb_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+8);
+        glReadPixels(s->fb_w/2, 3*s->fb_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+12);
         GLenum e = glGetError();
         fprintf(stderr,
-            "[diag] genxvectorcade first draw gl_error=0x%x samples="
+            "[diag] genxvectorcade first draw gl_error=0x%x fbo_samples="
             "ctr=%u,%u,%u tl=%u,%u,%u tr=%u,%u,%u br=%u,%u,%u fb=%ux%u uniforms="
             "time:%d res:%d prev:%d phase_ab:%d phase_e:%d shape:%d pal:%d sym:%d\n",
             e, px[0], px[1], px[2], px[4], px[5], px[6], px[8], px[9], px[10],
             px[12], px[13], px[14], s->fb_w, s->fb_h,
             s->u_time, s->u_resolution, s->u_prev, s->u_phase_ab, s->u_phase_e,
             s->u_shape_speed, s->u_pal_pair, s->u_sym_burst);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     /* Optional frame-time measurement */
