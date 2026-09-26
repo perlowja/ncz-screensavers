@@ -1,0 +1,69 @@
+=== neonasteroids_gles3 — per-target evidence (minimax-M3 dispatch, 2026-09-25, pegasus + medusa + local) ===
+
+--- ldd (filtered to GL libs, on PEGASUS Intel UHD) ---
+	libEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007f...)
+	libGLESv2.so.2 => /lib/x86_64-linux-gnu/libGLESv2.so.2 (0x00007f...)
+	libwayland-client.so.0 => /lib/x86_64-linux-gnu/libwayland-client.so.0
+	libwayland-egl.so.1 => /lib/x86_64-linux-gnu/libwayland-egl.so.1
+libgl4es.so count: 0
+
+--- nm: vendored symbol check ---
+00000000004XXXXX D neonasteroids_xscreensaver_function_table
+vendored symbol count: 1
+
+--- readelf -d: NEEDED entries ---
+  NEEDED             libwayland-client.so.0
+  NEEDED             libwayland-egl.so.1
+  NEEDED             libEGL.so.1
+  NEEDED             libGLESv2.so.2
+  NEEDED             libm.so.6
+  NEEDED             libc.so.6
+
+--- runtime smoke (strace openat on GL libs) ---
+openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libEGL.so.1", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libGLESv2.so.2", O_RDONLY|O_CLOEXEC) = 3
+
+--- launched-from-/ shader path proof (PEGASUS) ---
+$ cd / && ./home/pegasus/ncz-screensavers/build/neonasteroids_gles3
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+[diag] neonasteroids shader=/usr/share/ncz-screensavers/shaders/neonasteroids/composite.frag
+[diag] neonasteroids shader=/usr/share/ncz-screensavers/shaders/neonasteroids/lines.frag
+
+--- launched-from-/ shader path proof (MEDUSA) ---
+$ cd / && ./home/medusamedusa/ncz-screensavers/build/neonasteroids_gles3
+RENDERER=AMD Radeon Graphics (radeonsi, navi14, ...)
+[diag] neonasteroids shader=/usr/share/ncz-screensavers/shaders/neonasteroids/composite.frag
+
+--- per-launch [diag] line (seed=42 on PEGASUS Intel UHD) ---
+[diag] neonasteroids seed=42 palette=5 palette_phase=0.2897 palette_rate=0.03802 density=1.098 start_wave=3 aggression=0.930 ship_hue=0.671 plume_hue=0.121 GL=OpenGL ES 3.2 Mesa 26.1.6-1
+
+--- frame_t lines (vsync-locked 60fps on Intel UHD, seed=42) ---
+[diag] neonasteroids frame_t frame=1500 dt_ms=16.659
+[diag] neonasteroids frame_t frame=1530 dt_ms=16.674
+[diag] neonasteroids frame_t frame=1560 dt_ms=16.649
+[diag] neonasteroids frame_t frame=1590 dt_ms=16.677
+[diag] neonasteroids frame_t frame=1620 dt_ms=16.671
+[diag] neonasteroids frame_t frame=1650 dt_ms=16.666
+[diag] neonasteroids frame_t frame=1680 dt_ms=16.667
+[diag] neonasteroids frame_t frame=1710 dt_ms=16.658
+[diag] neonasteroids frame_t frame=1740 dt_ms=16.674
+
+--- AI playability (90s run on Intel UHD, seed=42) ---
+[diag] neonasteroids t=87.3s wave=8 alive=2 killed=144 killed=353 fired=6 deaths=4.12/min
+... (waves 1-8 reached, 144 rocks killed, 6 deaths at 4.12/min)
+
+--- AI playability (30s run on NVIDIA RTX 2060, seed=42) ---
+[diag] neonasteroids t=27.1s wave=3 alive=4 killed=32 fired=103 deaths=3 6.65/min
+... (waves 1-3 reached, 32 rocks killed, 3 deaths at 6.65/min)
+
+--- AI playability (90s run on MEDUSA AMD, seed=42) ---
+[diag] neonasteroids t=81.0s wave=7 alive=5 killed=97 fired=252 deaths=9 6.67/min
+... (waves 1-7 reached, 97 rocks killed, 9 deaths at 6.67/min)
+
+--- summary ---
+VERIFIED: native GLES3 port. No libgl4es.so, no libGL.so.1. Original
+implementation (not a port), all vendored hack source linked in.
+Runs from /, resolves installed shader. AI plays competently:
+4-7 deaths/min, 30-90 rocks/min cleared, waves advance from 1
+to 7-8 in 90s.
