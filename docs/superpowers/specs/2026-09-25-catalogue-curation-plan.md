@@ -191,3 +191,50 @@ random-category / specific). With era and appeal available:
 Both new columns are NCZ-owned data. Per the repo boundary recorded in
 the jwxyz design doc, the generic chooser widgets go upstream to
 Singularity while this metadata stays downstream.
+
+## Rewrite shortlist — what is actually worth building on the new engine
+
+Roughly **12 must-have, ~12 more if the engine makes them cheap** — out of
+a 288-hack upstream catalogue. The gap between those numbers is the point
+of curating.
+
+### Top tier (12)
+
+| Hack | Algorithm | Why it earns a rewrite |
+|---|---|---|
+| `flame` | fractal flame / IFS | Scott Draves' algorithm. Best single candidate: built for additive blending and HDR, visibly constrained by 1997 hardware |
+| `coral` | diffusion-limited aggregation | organic growth; glow and depth transform it |
+| `galaxy` | n-body gravity | particles + bloom; thematic sibling to the black hole |
+| `glschool` | boids / flocking | clean classic, large modern upside |
+| `munch` | Munching Squares (PDP-1, 1962) | genuinely historic, trivially cheap, razor-sharp at 4K |
+| `cloudlife` | Conway's Life variant | cellular automata with modern palettes |
+| `thornbird` | "Bird in a Thornbush" attractor | chaos as a glowing point cloud |
+| `discrete` | discrete-map fractals | same family, different character |
+| `gravitywell` | spacetime deformation | pairs with the black hole |
+| `noof` | spirograph / harmonograph | trails and bloom are the whole point |
+| `raverhoop` | light-trail persistence | trails are the entire concept |
+| `lavalite` -> metaballs | implicit-surface blobs | in progress; first new-engine piece |
+
+### Second tier (~8-12)
+
+`whirlwindwarp`, `moire`, `rorschach`, `kaleidescope`, `hextrail`,
+`glforestfire`, `crackberg`, `hypnowheel`, `lockward`, plus **two** of the
+surface-math family and **one** space-filling fractal.
+
+### Three reasons the number is smaller than the catalogue
+
+1. **Redundancy.** Whole clusters are one idea each: five cube variations,
+   four non-orientable surfaces, three space-filling fractals. Doing the
+   best one properly beats reimplementing all of them.
+2. **Some are drawings, not algorithms.** `helix`, `spiral`, `squiral`,
+   `pedal`, `rotor`, `cynosure` are parametric curve renderings — little
+   algorithmic substance to preserve; they would be new shader pieces
+   wearing a 1990s name.
+3. **We already cover several themes better.** The 38 Shadertoy ports and
+   35 hyprsaver hacks already deliver fractals, fluids, tunnels and plasma
+   at modern quality. Rebuilding `julia` when shader fractals exist is
+   duplicated effort.
+
+Start order: `lavalite`/metaballs (in flight), then `flame` and
+`glschool` — both famous, both clean, both dramatically better with
+modern rendering than 1997 could show.
