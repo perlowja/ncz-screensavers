@@ -1325,7 +1325,10 @@ static void init_neonasteroids(ModeInfo *m) {
 
     if (create_fbo(st->fb_w, st->fb_h,
                    &st->trail_tex, &st->trail_fbo) < 0) ncz_harness_die(1);
-    clear_fbo(st->trail_fbo, 0.02f, 0.02f, 0.04f, 1.f);
+    /* Bright ambient backdrop so the screen always reads as
+     * "alive" rather than "black with floating entities". The
+     * palette recolours it through the composite pass. */
+    clear_fbo(st->trail_fbo, 0.06f, 0.05f, 0.10f, 1.f);
 
     game_init(st);
 
@@ -1353,7 +1356,7 @@ static void reshape_neonasteroids(ModeInfo *m, int w, int h) {
     }
     if (create_fbo(w, h, &st->trail_tex, &st->trail_fbo) < 0)
         ncz_harness_die(1);
-    clear_fbo(st->trail_fbo, 0.02f, 0.02f, 0.04f, 1.f);
+    clear_fbo(st->trail_fbo, 0.06f, 0.05f, 0.10f, 1.f);
 
     /* Aspect-correct ortho: keep [-1,1] playfield, fit to longer axis. */
     float sx = 1.f, sy = 1.f;
