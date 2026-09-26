@@ -917,6 +917,39 @@ executable(
     install: false,
 )
 
+# Round 18 — neonasteroids (working name: GenXRockCade, placeholder
+# rename at the top of src/gles3_neonasteroids.c).
+#
+# Self-playing neon vector rock-shooter: ship in a wrapping playfield,
+# drifting rocks that split when shot, all rendered as glowing neon
+# vector lines with bloom + chromatic aberration + palette cycling +
+# shockwave warps. AI plays the game; nobody touches the keyboard.
+#
+# Pattern matches the blackhole / lavafield GLES3-native targets:
+# one driver .c, three vendor shaders (lines / trail-fade / composite),
+# loaded at runtime from the source tree or from
+# /usr/share/ncz-screensavers/shaders/neonasteroids/ (the
+# install_data rule below ensures the binary works when launched
+# from / — the cwd-relative-only path was a real ship-blocker on
+# the flagship blackhole hack).
+install_data('vendor/neonasteroids/composite.frag',
+             install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+install_data('vendor/neonasteroids/lines.frag',
+             install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+executable(
+    'neonasteroids_gles3',
+    files(common_gles3_sources + [
+        'src/gles3_harness.c',
+        'src/gles3_neonasteroids.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        '-DHACK_TABLE=neonasteroids_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
 
 rss_sdl2_gles2_hacks = [
     {'name': 'cyclone',       'src': 'src/cyclone_gles3.c'},
