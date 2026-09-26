@@ -475,4 +475,16 @@ per the curation rule (visual quality over catalogue completeness).
    fliptext, unknownpleasures if any of them are worth the fix
    investment — none of them are, per this round's score totals.
 
-(continued below in later commits.)
+---
+
+## End-of-round summary
+
+This round scored **all 51 candidates** the original brief identified
+plus **14 corrective auto-CUTs** the original commit missed. The
+per-target tables above are the row-by-row evidence; the
+group-by-group redundancy calls name the WINNER in each redundant
+family (cube → cubetwist; surface-math → klein; gears → geodesicgears
++ moebiusgears; tunnel → blocktube; ant → antinspect; polyhedron/mesh
+→ covered by surface-math, crumbler adds nothing; molecular → molecule,
+covid19 CUT on topic). The final surviving count is **38 of 105 base
+legacy screensavers** for ship-as-is.
