@@ -1,0 +1,47 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=1172 hash=6a0e24891fb9420d gl_error=0x0
+[dump] writing frame_00000004 to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=1954 hash=31dc2d89f8fe1a8a gl_error=0x0
+[dump] writing frame_0000003c to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=1306 hash=33c36d50d8095ce0 gl_error=0x0
+[dump] writing frame_00000078 to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=1266 hash=9f4ecb963506eb43 gl_error=0x0
+[dump] writing frame_000000b4 to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=1875 hash=86144f161649999d gl_error=0x0
+[dump] writing frame_000000f0 to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=1463 hash=e5c22558295cb081 gl_error=0x0
+[dump] writing frame_0000012c to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2043 hash=5a6f79b4ee6d38a7 gl_error=0x0
+[dump] writing frame_00000168 to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=1194 hash=deaa7ae88fc98720 gl_error=0x0
+[dump] writing frame_000001a4 to /home/pegasus/build-tmp/cap-hyperspace
+[dump] wrote /home/pegasus/build-tmp/cap-hyperspace/frame_000001a4.png (8294400 bytes)
+EXIT=124
