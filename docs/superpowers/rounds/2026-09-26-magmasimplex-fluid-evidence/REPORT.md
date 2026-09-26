@@ -340,3 +340,74 @@ absorbed three rounds whose contribution could not be separated afterwards.
 
 Pure **GLSL ES 3.00** plus C, on a custom Wayland/EGL harness. No engine, no Unity, no
 Unreal, no post-processing stack, and **no background scene buffer** (see above).
+
+---
+
+## A working reference implementation is already in this repo: `prococean`
+
+Operator, 2026-09-26, watching the shadertoy set on MEDUSA: *"several are highly fluidic...
+might want to look at those algorithms for inspiration for the magmasimplex."*
+
+This is the strongest evidence yet for the optics-not-simulation conclusion, and it is
+empirical rather than argued:
+
+**`vendor/xshadertoy/glsl/prococean.glsl` is 224 lines with NO fluid simulation — no
+Navier-Stokes, no phase field, no buoyancy, no surface tension — and it reads as more
+convincingly fluid than magmasimplex does WITH all of that.** Several others in the set
+(`driftclouds`, `fluxcore`, `noxfire`, `hexplasma`) land the same way.
+
+Whatever makes something look like a liquid, it is not the simulation.
+
+### What prococean actually does — copy this structure
+
+Its entire material model is four lines at the end of `mainImage`:
+
+```glsl
+// Schlick Fresnel, R0 = 0.04
+float fresnel = (0.04 + (1.0-0.04)*(pow(1.0 - max(0.0, dot(-N, ray)), 5.0)));
+
+vec3 R = normalize(reflect(ray, N));
+vec3 reflection = getAtmosphere(R) + getSun(R);
+
+// thickness/depth-driven scattering
+vec3 scattering = vec3(0.0293, 0.0698, 0.1717) * 0.1
+                * (0.2 + (waterHitPos.y + WATER_DEPTH) / WATER_DEPTH);
+
+vec3 C = fresnel * reflection + scattering;
+fragColor = vec4(aces_tonemap(C * 2.0), 1.0);
+```
+
+Five techniques, in order of how much they matter here:
+
+1. **ACES tonemapping on the way out.** `aces_tonemap()` — a filmic curve applied to the
+   final colour. **This was missed in the earlier optics analysis and may be a large part
+   of the problem.** Writing linear colour straight to the framebuffer looks flat and
+   waxy regardless of how good the shading underneath is. Check whether magmasimplex
+   tonemaps at all; if it does not, add this first, because it is the cheapest change on
+   the list and affects every pixel.
+2. **Schlick Fresnel with R0=0.04**, exactly the formula specified earlier. Note it is
+   used as a WEIGHT between reflection and scattering, not added on top.
+3. **`fresnel * reflection + scattering`** — the whole material in one expression.
+   Grazing angles go reflective, face-on goes to the scattering colour. That single
+   relationship is most of what the eye reads as "wet".
+4. **Scattering scaled by depth**: `(y + WATER_DEPTH)/WATER_DEPTH`. Thickness-driven,
+   exactly as specified, and trivially cheap.
+5. **Normals from finite differences of the height field**, then **smoothed with
+   distance** (`mix(N, up, 0.8*min(1.0, sqrt(dist*0.01)*1.1))`) to keep high-frequency
+   noise from reading as sparkle. magmasimplex has a phase field to take normals from and
+   should do the same smoothing.
+
+### The instruction this produces
+
+Do not port prococean. **Port its ENDING.** Keep the existing fluid simulation — it works
+and it produces good motion — and replace the final shading with this structure:
+normals from the phase field, Schlick Fresnel as a weight, depth-driven scattering,
+refraction along the bent ray (per the earlier note), and ACES tonemapping last.
+
+Measure it the same way: same seed, same frame, before and after each term, so it is
+visible which one did the work. If ACES alone moves the piece substantially, that is worth
+knowing before any other change is made.
+
+`prococean` is in-tree, MIT-compatible with the rest of the vendored Shadertoy set, and
+already known to compile and run on our harness — so it can be read, diffed against and
+tested directly rather than treated as an external reference.
