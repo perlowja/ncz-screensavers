@@ -403,25 +403,11 @@ static void ai_update(State *st, float dt) {
     /* --- 6. Smoothly approach target thrust. */
     ship->thrust_cmd = neo_clamp(target_thrust, 0.f, 1.f);
 
-    /* --- 7. Trigger fire. fire_bullet() in main respects cooldown;
-     * we just set want_to_shoot. The ship itself doesn't have a
-     * want_to_shoot field — fire_bullet() is called every frame in
-     * game_step(); we want to suppress it when not aiming at a
-     * rock. We do this by setting shoot_cooldown to a positive
-     * value when we don't want to shoot, blocking fire_bullet. */
-    if (want_to_shoot) {
-        /* Allow fire: leave cooldown alone (it'll tick down to 0). */
-        /* If cooldown is exactly 0 by physics, fire_bullet will fire. */
-    } else {
-        /* Block firing until cooldown is high enough to make a stray
-         * shot unlikely. Actually simpler: just set cooldown to a
-         * small positive number if we'd otherwise be ready. The
-         * physics will still tick it down, so we don't permanently
-         * lock shooting — we just delay the next shot until the AI
-         * wants it. */
-        if (ship->shoot_cooldown <= 0.05f)
-            ship->shoot_cooldown = 0.05f;
-    }
+    /* --- 7. Trigger fire. The ship has a `want_to_shoot` field
+     * which fire_bullet reads in physics_step. We compute that here
+     * from want_to_shoot (which already accounts for cooldown,
+     * panic, and rock presence). */
+    ship->want_to_shoot = want_to_shoot;
 
     /* Debug log — only when perf log is on AND every 60 frames. */
     static int _dbg_counter;

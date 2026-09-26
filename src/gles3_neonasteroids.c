@@ -159,6 +159,7 @@ typedef struct {
     float shoot_cooldown;
     float turn_rate;          /* AI commanded angular velocity */
     float thrust_cmd;         /* AI commanded throttle */
+    int   want_to_shoot;      /* AI: 1 if trigger should be down */
     int   dying;              /* death animation in progress */
     float die_t;              /* death time */
     V2   die_frag[8];         /* ship break-apart fragments (line ends) */
@@ -587,6 +588,7 @@ static void reset_ship(Ship *s) {
     s->shoot_cooldown = 0.f;
     s->turn_rate = 0.f;
     s->thrust_cmd = 0.f;
+    s->want_to_shoot = 0;
     s->dying = 0;
     s->die_t = 0.f;
     for (int i = 0; i < 8; i++) {
@@ -864,6 +866,7 @@ static void emit_particles(State *st, V2 p, V2 impulse, int count, float hue) {
 static void fire_bullet(State *st) {
     if (st->ship.shoot_cooldown > 0.f) return;
     if (!st->ship.alive || st->ship.dying) return;
+    if (!st->ship.want_to_shoot) return;
     for (int i = 0; i < MAX_BULLETS; i++) {
         if (st->bullets[i].alive) continue;
         Bullet *b = &st->bullets[i];
@@ -917,6 +920,8 @@ static void physics_step(State *st, float dt) {
             s->heading = 0.f;
             s->thrust = 0.f;
             s->invuln = 2.5f;
+            s->want_to_shoot = 0;
+            s->shoot_cooldown = 0.f;
             s->trail_n = 0;
         }
     }
