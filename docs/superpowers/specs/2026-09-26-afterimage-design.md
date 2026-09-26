@@ -279,3 +279,51 @@ topology you selected the family to reveal" — the same applies to trails.
 
 The rule: **effects that clarify form are the upgrade; effects that add glow
 are decoration.** A reimplementation that is only brighter has failed.
+
+## The 1990s bucket — cut all seven, overhaul none
+
+Operator direction, 2026-09-26: nothing from the 1990s is worth keeping unless
+it would get a major shader overhaul. Measured, none of it earns one.
+
+| target | C | sat | hueE | cov | edge | fracD | motion |
+|---|---|---|---|---|---|---|---|
+| `atlantis` | 58.0 | 1.00 | 0.54 | 0.89 | **2.3** | 1.63 | 0.07 |
+| `lament` | 8.9 | 0.25 | 0.53 | 0.09 | 268.5 | 1.77 | 13.16 |
+| `stonerview` | 48.3 | 0.89 | 2.24 | 0.08 | 81.0 | 1.41 | 7.63 |
+| `juggler3d` | 8.2 | 0.49 | 0.26 | 0.02 | 225.8 | 1.62 | 0.93 |
+| `cube21` | 0.9 | 0.26 | 1.88 | 0.01 | 67.6 | 1.28 | 0.34 |
+| `jigsaw` | 3.5 | 0.14 | 0.09 | 0.18 | 90.2 | 1.47 | 10.33 |
+| `starwars` | 8.1 | 0.09 | 3.24 | 0.15 | 41.0 | 1.36 | 7.46 |
+
+`atlantis` is the instructive case and the reason the shape axis was worth
+adding. It scores C=58.0 at saturation 1.00 with 89% coverage — respectable by
+colour alone — but its edge density is **2.3**. It is a flat, single-hue
+expanse with effectively no structure anywhere in frame. Colour metrics liked
+it; the eye does not. Measuring only colour would have kept it.
+
+Four of the seven occupy 1-18% of the frame. `cube21` occupies one percent.
+
+### Nothing is lost by cutting them
+
+The only two with real structure are already absorbed by decisions made
+earlier today:
+
+- `lament` (edge 268.5, fracD 1.77) and `cube21` are both articulated
+  polyhedra. That is exactly the **polyhedral lattice family** the geometric
+  cluster was folded into — "unfold" and "twist" are joint rules in that
+  parameter space, not separate programs. Their ideas survive as points in a
+  family; their implementations do not.
+- `stonerview` is the only one with hue variety (2.24) but sits at 8% coverage
+  — a small bright object in a large black frame, and the rotating-coloured-bar
+  idea is well covered by the existing hyprsaver cohort.
+
+`starwars` is excluded on three independent grounds regardless of era: it is a
+text-rendering hack, text hacks were already dropped by the curation plan, and
+the name is not ours to ship.
+
+`atlantis` and `juggler3d` are figurative/character pieces rather than
+algorithmic ones. Reimplementing them would mean authoring new art assets, not
+deriving mathematics — which is outside what Afterimage is for.
+
+**Decision: all seven cut. No overhauls. No concepts carried forward beyond the
+two already covered by the polyhedral lattice family.**
