@@ -898,6 +898,7 @@ endforeach
 
 wave2_materia_shaders = [
     'caustics-on-stone',
+    'satin-wind',
 ]
 
 foreach s : wave2_materia_shaders
