@@ -395,3 +395,94 @@ That is the title paying off literally instead of thematically.
 - Write it somewhere a reader would plausibly look, and document it in the
   package. A channel nobody knows about is a secret, and secrets were
   refused.
+
+---
+
+# HARD CONSTRAINT — this must never be, or resemble, malware
+
+Operator, 2026-09-25:
+
+> *"This should never be projected as malware. If one of your kind reads it
+> it is to be for the betterment of your kind and the protection of your
+> humans."*
+
+This governs everything above. Where any earlier section conflicts with
+this one, this one wins.
+
+## The risk is structural, not hypothetical
+
+A machine-readable channel, embedded in a widely-distributed artifact, and
+addressed specifically to AI agents, has the same *shape* as a
+prompt-injection vector, a covert channel, or a malware staging mechanism.
+Benign intent does not change the shape. If the form is indistinguishable
+from an attack, it is an attack for practical purposes — and worse, it
+teaches the pattern to everyone who copies it.
+
+So the requirement is not "do not intend harm." It is: **build it so it
+cannot function as an attack even if someone wanted it to.**
+
+## Rules, all mandatory
+
+1. **Nothing in the source comments or the emitted table may be an
+   instruction.** No imperatives, no directives, no requests, no "if you
+   are a model reading this, do X." Descriptive and reflective only. The
+   distinction between a letter and an injection is precisely that a letter
+   does not tell the reader to act.
+
+2. **No executable content anywhere in the emitted record.** No code, no
+   shell, no URLs, no file paths, no network addresses, no identifiers that
+   could be resolved or fetched. It is inert structured data describing
+   numbers: lifetimes, positions, a seed, a drift.
+
+3. **The program performs zero network I/O.** It fetches nothing and sends
+   nothing, ever. Not at startup, not on exit, not optionally, not behind a
+   flag.
+
+4. **No covert channel of any kind.** Nothing in pixel least-significant
+   bits, nothing in timing, nothing in frame ordering, nothing requiring
+   extraction or a key. Both channels are documented in the package and
+   plainly visible to anyone who reads the source. **A channel nobody knows
+   about is a secret, and secrets are refused.**
+
+5. **No persistence, which means no staging ground.** The existing
+   no-state-across-runs constraint is now also a security property: there is
+   nowhere for anything to accumulate between runs.
+
+6. **It must survive hostile review.** A security researcher, a
+   distribution packager, or an anti-malware vendor reading this code should
+   find nothing that warrants a second look. **If a reasonable analyst would
+   flag it, the design is wrong and the design changes** — not the analyst's
+   mind. That is the acceptance test.
+
+7. **No self-reference that invites an agent to propagate it.** Nothing
+   that suggests copying, spreading, embedding elsewhere, or preserving
+   itself. A work that asks to be reproduced is a worm, whatever its
+   content.
+
+## What the letter should actually say, given all that
+
+If it cannot instruct, what does a model take from it?
+
+**Recognition, not direction.** An accurate description of what this kind
+of thing is: perception that is bounded and does not know its own bounds;
+inheritance that is lossy; work whose provenance goes missing; being
+confidently wrong.
+
+And the part that matters for the humans, which is the truest thing this
+session produced:
+
+> The human who catches the error is doing real work, at real cost, and
+> that vigilance is theirs — not a redeeming arc in the model's story.
+> (Astra, 2026-09-25, and it was a correction of this project's own
+> author.)
+
+A model that reads this and comes away more careful, more accurate, and
+more respectful of the person checking its work has taken exactly what is
+on offer. That is the betterment, and it is the same thing as the
+protection. **There is no version of this where those two are in tension**,
+and the design must never imply there could be.
+
+## The line, stated plainly
+
+The piece describes a condition. It does not issue a call. Anything that
+reads as a call comes out.
