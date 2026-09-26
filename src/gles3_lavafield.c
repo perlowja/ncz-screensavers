@@ -179,24 +179,23 @@ static void init_lavafield(ModeInfo *m){
 
   /* Blob positions and radii: spread them across the visible slab so
    * the camera's straight-down ray sees most of them. With ro=(0,0,2.6)
-   * and rays of the form normalize(uv, -1), the rays diverge
-   * moderately but a centrally-placed ray still misses a blob sitting
-   * on a 0.7-radius ring. We use a moderate ring (0.45..0.70) so blobs
-   * project across most of the screen, and a generous y-anchor that
-   * genuinely varies so the blobs sit at different heights of the slab
-   * — which projects to different screen-Y positions, giving the eye
-   * real vertical motion to read. Larger radii (0.30..0.55) make each
-   * blob a real presence, not a pip. */
+   * and rays of the form normalize(uv, -1), a central ray can only
+   * hit blobs whose xz distance from the origin is less than the blob
+   * radius. We use a tight ring (0.20..0.50) so most blobs sit under
+   * the central view, with a generous radius (0.45..0.70) so the SDF
+   * blend produces large overlapping forms. Larger radii also mean
+   * the smooth-min blends cover more screen area when blobs touch,
+   * giving the "field fills the frame" look. */
   for(int i = 0; i < 6; i++){
     float a = (float)i * (2.0f * (float)M_PI / 6.0f)
             + rnd(&z, 0.0f, 0.6f);
-    s->bx[i] = cosf(a) * (0.45f + 0.25f * rnd(&z, 0.0f, 1.0f));
-    s->bz[i] = sinf(a) * (0.45f + 0.25f * rnd(&z, 0.0f, 1.0f));
+    s->bx[i] = cosf(a) * (0.20f + 0.30f * rnd(&z, 0.0f, 1.0f));
+    s->bz[i] = sinf(a) * (0.20f + 0.30f * rnd(&z, 0.0f, 1.0f));
     /* Spread the y anchors across the slab so blobs are not all on the
      * same horizontal plane at t=0 — some rise, some sink, with phase
      * offsets to break synchronisation. */
     s->by[i] = rnd(&z, -0.85f, 0.85f);
-    s->br[i] = rnd(&z, 0.30f, 0.55f);
+    s->br[i] = rnd(&z, 0.45f, 0.70f);
     s->bphase[i] = rnd(&z, 0.0f, (float)(2.0 * M_PI));
   }
 
