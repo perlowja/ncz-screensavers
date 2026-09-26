@@ -283,7 +283,9 @@ static void ai_update(State *st, float dt) {
 
     /* --- 2. Pick what to shoot. Prefer the closest medium/small
      * rock by *lead-corrected distance*. If no such rock exists, or
-     * we're in panic, skip shooting. */
+     * we're in panic, skip shooting. We always pick a target —
+     * shoot_idx is what we aim at; want_to_shoot says whether the
+     * trigger should be pressed right now. */
     int shoot_idx = -1;
     float shoot_score = 1e6f;
     /* Suppress shooting while turning hard toward a threat — the
@@ -291,37 +293,33 @@ static void ai_update(State *st, float dt) {
     int panic = (threat_ttc < NEO_AI_PANIC_TTC);
     int in_combat_zone = (threat_ttc < NEO_AI_SAFE_TTC);
 
-    if (!panic && ship->shoot_cooldown <= 0.f) {
-        for (int i = 0; i < MAX_ROCKS; i++) {
-            Rock *r = &st->rocks[i];
-            if (!r->alive) continue;
-            V2 aim;
-            float t = neo_lead_target(ship->pos, r->pos, r->vel,
-                                      NEO_AI_BULLET_SPEED, &aim);
-            /* Score: prefer close rocks we can hit soon, with a
-             * bonus for medium/small (kills take longer for large). */
-            float d2 = neo_dist2(ship->pos, r->pos);
-            float score = d2 + (r->tier == ROCK_LARGE ? 0.20f : 0.f);
-            /* If the bullet would take more than 1.4s, skip — too
-             * slow, the rock will have moved too far. */
-            if (t > 1.4f) score += 5.f;
-            /* Don't shoot if it would land a fragment on top of us
-             * (cheap check: if the rock is within 0.3 of the ship,
-             * shooting spawns children close enough to be a threat). */
-            if (d2 < 0.10f) score += 10.f;
-            if (score < shoot_score) {
-                shoot_score = score;
-                shoot_idx = i;
-            }
+    /* Always compute a target so we keep aiming at it even while
+     * cooling down between shots. */
+    for (int i = 0; i < MAX_ROCKS; i++) {
+        Rock *r = &st->rocks[i];
+        if (!r->alive) continue;
+        V2 aim;
+        float t = neo_lead_target(ship->pos, r->pos, r->vel,
+                                  NEO_AI_BULLET_SPEED, &aim);
+        float d2 = neo_dist2(ship->pos, r->pos);
+        float score = d2 + (r->tier == ROCK_LARGE ? 0.20f : 0.f);
+        if (t > 1.4f) score += 5.f;
+        /* Don't shoot if it would land a fragment on top of us. */
+        if (d2 < 0.06f) score += 10.f;
+        if (score < shoot_score) {
+            shoot_score = score;
+            shoot_idx = i;
         }
     }
+    /* Trigger only fires when ready and not panicking. */
+    int want_to_shoot = (shoot_idx >= 0) && !panic
+                        && (ship->shoot_cooldown <= 0.f);
 
     /* --- 3. Aim direction. If we have a shoot target, aim at its
      * lead-corrected position. Otherwise, if we have a threat, aim
      * perpendicular to its velocity (evasion). Otherwise, drift. */
     float target_heading = ship->heading;
     float target_thrust  = 0.4f;
-    int want_to_shoot = 0;
 
     if (shoot_idx >= 0) {
         Rock *r = &st->rocks[shoot_idx];
@@ -329,7 +327,6 @@ static void ai_update(State *st, float dt) {
         float t = neo_lead_target(ship->pos, r->pos, r->vel,
                                   NEO_AI_BULLET_SPEED, &aim);
         target_heading = atan2f(aim.y, aim.x);
-        want_to_shoot = 1;
         /* Throttle back slightly while lining up a shot. */
         target_thrust = 0.25f;
         (void)t;
