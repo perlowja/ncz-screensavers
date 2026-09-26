@@ -1,0 +1,413 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.7-2-t2-trixie)
+VENDOR=AMD
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] magmasimplex shader=vendor/magmasimplex/sim_advect_v.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_advect_t.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_advect_p.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_advect_h.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_buoyancy.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_project.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_heat.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_phase.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_init_seed.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim_zero.frag
+[diag] magmasimplex shader=vendor/magmasimplex/render.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_advect_v.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_advect_t.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_advect_p.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_advect_h.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_buoyancy.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_project.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_heat.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_phase.frag
+[diag] magmasimplex shader=vendor/magmasimplex/sim3d_init_seed.frag
+[diag] magmasimplex seed=25 way=12 (ultraviolet) tier=3d-voxel grid=256x256 (3d atlas 512x512) surface_tension=0.00168 visc=0.00083 buoy=2.038 emitter=(0.00,-0.85,r=0.55,str=2.00) amb_cool=0.046 hotness=1.093 scale=1.040 rainbow=0 clear_liquid=0 half_float_rt=1 GL=OpenGL ES 3.2 Mesa 26.1.6-1
+[diag] magmasimplex blobs: b0=(0.700,-0.271,0.106,r=0.199,hue=0.380) b1=(0.193,-0.220,0.489,r=0.191,hue=0.254) b2=(-0.518,0.331,0.321,r=0.184,hue=0.941) b3=(-0.850,0.287,-0.001,r=0.102,hue=0.861) b4=(-0.172,-0.242,-0.701,r=0.157,hue=0.285) b5=(0.564,-0.753,-0.802,r=0.110,hue=0.538)
+[diag] gles3_harness: init returned
+[diag] initial draw: 1280x720 configured=1
+[diag] magmasimplex first draw gl_error=0x502 samples=y90:(183,152,128)(191,172,142)(205,199,161)(220,225,179)(212,203,164)(191,172,142)(181,151,126)(173,134,115) y360:(234,154,131)(230,162,136)(232,173,142)(247,185,152)(253,185,153)(239,168,140)(219,145,124)(212,131,114) y540:(250,138,120)(248,145,123)(252,153,129)(254,156,131)(255,158,133)(252,147,125)(243,134,116)(238,125,110) y630:(255,131,115)(255,138,119)(255,144,123)(255,146,125)(255,147,125)(255,138,119)(255,130,113)(253,121,108) 
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] framebuffer frame=4 pixels=921600 nonblack=921600 hash=dd18e7d41bdb2c40 gl_error=0x502
+[dump] writing frame_00000004 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000004.png (3686400 bytes)
+[diag] frame #4
+[diag] magmasimplex frame_t frame=60 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=60 pixels=921600 nonblack=921600 hash=fbcefa5dea402331 gl_error=0x502
+[dump] writing frame_0000003c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_0000003c.png (3686400 bytes)
+[diag] frame #60
+[diag] magmasimplex frame_t frame=90 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=120 dt_ms=16.060 tier=3d
+[diag] framebuffer frame=120 pixels=921600 nonblack=921600 hash=f61e29dbfe0006d5 gl_error=0x502
+[dump] writing frame_00000078 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000078.png (3686400 bytes)
+[diag] frame #120
+[diag] magmasimplex frame_t frame=150 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=180 dt_ms=16.060 tier=3d
+[diag] framebuffer frame=180 pixels=921600 nonblack=921600 hash=0bb4882433ff58d4 gl_error=0x502
+[dump] writing frame_000000b4 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000000b4.png (3686400 bytes)
+[diag] frame #180
+[diag] magmasimplex frame_t frame=210 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=240 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=240 pixels=921600 nonblack=921600 hash=a4ad2995b2fff300 gl_error=0x502
+[dump] writing frame_000000f0 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000000f0.png (3686400 bytes)
+[diag] frame #240
+[diag] magmasimplex frame_t frame=270 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=300 dt_ms=16.054 tier=3d
+[diag] framebuffer frame=300 pixels=921600 nonblack=921600 hash=a8484054941d0e11 gl_error=0x502
+[dump] writing frame_0000012c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_0000012c.png (3686400 bytes)
+[diag] frame #300
+[diag] magmasimplex frame_t frame=330 dt_ms=16.055 tier=3d
+[diag] magmasimplex frame_t frame=360 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=360 pixels=921600 nonblack=921600 hash=4c35e3a504b3ca38 gl_error=0x502
+[dump] writing frame_00000168 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000168.png (3686400 bytes)
+[diag] frame #360
+[diag] magmasimplex frame_t frame=390 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=420 dt_ms=16.056 tier=3d
+[diag] framebuffer frame=420 pixels=921600 nonblack=921600 hash=f457b45a1e8fd771 gl_error=0x502
+[dump] writing frame_000001a4 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000001a4.png (3686400 bytes)
+[diag] frame #420
+[diag] magmasimplex frame_t frame=450 dt_ms=16.055 tier=3d
+[diag] magmasimplex frame_t frame=480 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=480 pixels=921600 nonblack=921600 hash=f2840e714acf623e gl_error=0x502
+[dump] writing frame_000001e0 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000001e0.png (3686400 bytes)
+[diag] frame #480
+[diag] magmasimplex frame_t frame=510 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=540 dt_ms=16.060 tier=3d
+[diag] framebuffer frame=540 pixels=921600 nonblack=921600 hash=188d6a58965d1f26 gl_error=0x502
+[dump] writing frame_0000021c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_0000021c.png (3686400 bytes)
+[diag] frame #540
+[diag] magmasimplex frame_t frame=570 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=600 dt_ms=16.056 tier=3d
+[diag] framebuffer frame=600 pixels=921600 nonblack=921600 hash=6a406c1f8caddeb1 gl_error=0x502
+[dump] writing frame_00000258 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000258.png (3686400 bytes)
+[diag] frame #600
+[diag] magmasimplex frame_t frame=630 dt_ms=16.055 tier=3d
+[diag] magmasimplex frame_t frame=660 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=660 pixels=921600 nonblack=921600 hash=f192426600228354 gl_error=0x502
+[dump] writing frame_00000294 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000294.png (3686400 bytes)
+[diag] frame #660
+[diag] magmasimplex frame_t frame=690 dt_ms=16.053 tier=3d
+[diag] magmasimplex frame_t frame=720 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=720 pixels=921600 nonblack=921600 hash=c370eac3c8503d4e gl_error=0x502
+[dump] writing frame_000002d0 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000002d0.png (3686400 bytes)
+[diag] frame #720
+[diag] magmasimplex frame_t frame=750 dt_ms=16.053 tier=3d
+[diag] magmasimplex frame_t frame=780 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=780 pixels=921600 nonblack=921600 hash=87f209b88091bd6f gl_error=0x502
+[dump] writing frame_0000030c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_0000030c.png (3686400 bytes)
+[diag] frame #780
+[diag] magmasimplex frame_t frame=810 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=840 dt_ms=16.055 tier=3d
+[diag] framebuffer frame=840 pixels=921600 nonblack=921600 hash=d8b9163a0c8c9ac5 gl_error=0x502
+[dump] writing frame_00000348 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000348.png (3686400 bytes)
+[diag] frame #840
+[diag] magmasimplex frame_t frame=870 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=900 dt_ms=16.053 tier=3d
+[diag] framebuffer frame=900 pixels=921600 nonblack=921600 hash=3ee60aecd6603c61 gl_error=0x502
+[dump] writing frame_00000384 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000384.png (3686400 bytes)
+[diag] frame #900
+[diag] magmasimplex frame_t frame=930 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=960 dt_ms=16.054 tier=3d
+[diag] framebuffer frame=960 pixels=921600 nonblack=921600 hash=fe491c0b2a2cfec1 gl_error=0x502
+[dump] writing frame_000003c0 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000003c0.png (3686400 bytes)
+[diag] frame #960
+[diag] magmasimplex frame_t frame=990 dt_ms=16.054 tier=3d
+[diag] magmasimplex frame_t frame=1020 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1020 pixels=921600 nonblack=921600 hash=496d83cd4d9d8ca6 gl_error=0x502
+[dump] writing frame_000003fc to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000003fc.png (3686400 bytes)
+[diag] frame #1020
+[diag] magmasimplex frame_t frame=1050 dt_ms=16.051 tier=3d
+[diag] magmasimplex frame_t frame=1080 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1080 pixels=921600 nonblack=921600 hash=a6732f51e9fc1561 gl_error=0x502
+[dump] writing frame_00000438 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000438.png (3686400 bytes)
+[diag] frame #1080
+[diag] magmasimplex frame_t frame=1110 dt_ms=16.054 tier=3d
+[diag] magmasimplex frame_t frame=1140 dt_ms=16.056 tier=3d
+[diag] framebuffer frame=1140 pixels=921600 nonblack=921600 hash=12a67f943af70d4b gl_error=0x502
+[dump] writing frame_00000474 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000474.png (3686400 bytes)
+[diag] frame #1140
+[diag] magmasimplex frame_t frame=1170 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=1200 dt_ms=16.055 tier=3d
+[diag] framebuffer frame=1200 pixels=921600 nonblack=921600 hash=31b26d3dbac2a8d9 gl_error=0x502
+[dump] writing frame_000004b0 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000004b0.png (3686400 bytes)
+[diag] frame #1200
+[diag] magmasimplex frame_t frame=1230 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=1260 dt_ms=16.060 tier=3d
+[diag] framebuffer frame=1260 pixels=921600 nonblack=921600 hash=9b6d2766bc52aa61 gl_error=0x502
+[dump] writing frame_000004ec to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000004ec.png (3686400 bytes)
+[diag] frame #1260
+[diag] magmasimplex frame_t frame=1290 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1320 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=1320 pixels=921600 nonblack=921600 hash=f834e90a85853b13 gl_error=0x502
+[dump] writing frame_00000528 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000528.png (3686400 bytes)
+[diag] frame #1320
+[diag] magmasimplex frame_t frame=1350 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=1380 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=1380 pixels=921600 nonblack=921600 hash=50f6c8f329ce2046 gl_error=0x502
+[dump] writing frame_00000564 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000564.png (3686400 bytes)
+[diag] frame #1380
+[diag] magmasimplex frame_t frame=1410 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1440 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1440 pixels=921600 nonblack=921600 hash=ac022d5291f33ec3 gl_error=0x502
+[dump] writing frame_000005a0 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000005a0.png (3686400 bytes)
+[diag] frame #1440
+[diag] magmasimplex frame_t frame=1470 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1500 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1500 pixels=921600 nonblack=921600 hash=932f84fef30ea770 gl_error=0x502
+[dump] writing frame_000005dc to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000005dc.png (3686400 bytes)
+[diag] frame #1500
+[diag] magmasimplex frame_t frame=1530 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1560 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1560 pixels=921600 nonblack=921600 hash=a8ca3ca5f2944519 gl_error=0x502
+[dump] writing frame_00000618 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000618.png (3686400 bytes)
+[diag] frame #1560
+[diag] magmasimplex frame_t frame=1590 dt_ms=16.058 tier=3d
+[diag] magmasimplex frame_t frame=1620 dt_ms=16.056 tier=3d
+[diag] framebuffer frame=1620 pixels=921600 nonblack=921600 hash=1e932fa7f6e21f57 gl_error=0x502
+[dump] writing frame_00000654 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000654.png (3686400 bytes)
+[diag] frame #1620
+[diag] magmasimplex frame_t frame=1650 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=1680 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1680 pixels=921600 nonblack=921600 hash=bb9624614427f2bd gl_error=0x502
+[dump] writing frame_00000690 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000690.png (3686400 bytes)
+[diag] frame #1680
+[diag] magmasimplex frame_t frame=1710 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1740 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1740 pixels=921600 nonblack=921600 hash=82185b107f5e065c gl_error=0x502
+[dump] writing frame_000006cc to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000006cc.png (3686400 bytes)
+[diag] frame #1740
+[diag] magmasimplex frame_t frame=1770 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1800 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=1800 pixels=921600 nonblack=921600 hash=a032c58144122815 gl_error=0x502
+[dump] writing frame_00000708 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000708.png (3686400 bytes)
+[diag] frame #1800
+[diag] magmasimplex frame_t frame=1830 dt_ms=16.055 tier=3d
+[diag] magmasimplex frame_t frame=1860 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=1860 pixels=921600 nonblack=921600 hash=476323f6ea8cff10 gl_error=0x502
+[dump] writing frame_00000744 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000744.png (3686400 bytes)
+[diag] frame #1860
+[diag] magmasimplex frame_t frame=1890 dt_ms=16.050 tier=3d
+[diag] magmasimplex frame_t frame=1920 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=1920 pixels=921600 nonblack=921600 hash=22b072d4e3517af8 gl_error=0x502
+[dump] writing frame_00000780 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000780.png (3686400 bytes)
+[diag] frame #1920
+[diag] magmasimplex frame_t frame=1950 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=1980 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=1980 pixels=921600 nonblack=921600 hash=882f925bc4dc3089 gl_error=0x502
+[dump] writing frame_000007bc to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000007bc.png (3686400 bytes)
+[diag] frame #1980
+[diag] magmasimplex frame_t frame=2010 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=2040 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=2040 pixels=921600 nonblack=921600 hash=b2c556deb983ac38 gl_error=0x502
+[dump] writing frame_000007f8 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000007f8.png (3686400 bytes)
+[diag] frame #2040
+[diag] magmasimplex frame_t frame=2070 dt_ms=16.058 tier=3d
+[diag] magmasimplex frame_t frame=2100 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=2100 pixels=921600 nonblack=921600 hash=839e50c3c5236534 gl_error=0x502
+[dump] writing frame_00000834 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000834.png (3686400 bytes)
+[diag] frame #2100
+[diag] magmasimplex frame_t frame=2130 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=2160 dt_ms=16.060 tier=3d
+[diag] framebuffer frame=2160 pixels=921600 nonblack=921600 hash=3e06b2c6c4c7557a gl_error=0x502
+[dump] writing frame_00000870 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000870.png (3686400 bytes)
+[diag] frame #2160
+[diag] magmasimplex frame_t frame=2190 dt_ms=16.058 tier=3d
+[diag] magmasimplex frame_t frame=2220 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=2220 pixels=921600 nonblack=921600 hash=4d309aad071546b0 gl_error=0x502
+[dump] writing frame_000008ac to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000008ac.png (3686400 bytes)
+[diag] frame #2220
+[diag] magmasimplex frame_t frame=2250 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=2280 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=2280 pixels=921600 nonblack=921600 hash=825a1b32b5cdf597 gl_error=0x502
+[dump] writing frame_000008e8 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000008e8.png (3686400 bytes)
+[diag] frame #2280
+[diag] magmasimplex frame_t frame=2310 dt_ms=16.058 tier=3d
+[diag] magmasimplex frame_t frame=2340 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=2340 pixels=921600 nonblack=921600 hash=9b59ce9c94746061 gl_error=0x502
+[dump] writing frame_00000924 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000924.png (3686400 bytes)
+[diag] frame #2340
+[diag] magmasimplex frame_t frame=2370 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=2400 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=2400 pixels=921600 nonblack=921600 hash=792aca8cd40624c7 gl_error=0x502
+[dump] writing frame_00000960 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000960.png (3686400 bytes)
+[diag] frame #2400
+[diag] magmasimplex frame_t frame=2430 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=2460 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=2460 pixels=921600 nonblack=921600 hash=5789686acc27447e gl_error=0x502
+[dump] writing frame_0000099c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_0000099c.png (3686400 bytes)
+[diag] frame #2460
+[diag] magmasimplex frame_t frame=2490 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=2520 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=2520 pixels=921600 nonblack=921600 hash=a5838d935f47f645 gl_error=0x502
+[dump] writing frame_000009d8 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_000009d8.png (3686400 bytes)
+[diag] frame #2520
+[diag] magmasimplex frame_t frame=2550 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=2580 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=2580 pixels=921600 nonblack=921600 hash=80592d2cc1360a92 gl_error=0x502
+[dump] writing frame_00000a14 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000a14.png (3686400 bytes)
+[diag] frame #2580
+[diag] magmasimplex frame_t frame=2610 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=2640 dt_ms=16.056 tier=3d
+[diag] framebuffer frame=2640 pixels=921600 nonblack=921600 hash=c7af701a54d00016 gl_error=0x502
+[dump] writing frame_00000a50 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000a50.png (3686400 bytes)
+[diag] frame #2640
+[diag] magmasimplex frame_t frame=2670 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=2700 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=2700 pixels=921600 nonblack=921600 hash=2e72bcac50a1a713 gl_error=0x502
+[dump] writing frame_00000a8c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000a8c.png (3686400 bytes)
+[diag] frame #2700
+[diag] magmasimplex frame_t frame=2730 dt_ms=16.058 tier=3d
+[diag] magmasimplex frame_t frame=2760 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=2760 pixels=921600 nonblack=921600 hash=c8dbdb1512c1119a gl_error=0x502
+[dump] writing frame_00000ac8 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000ac8.png (3686400 bytes)
+[diag] frame #2760
+[diag] magmasimplex frame_t frame=2790 dt_ms=16.059 tier=3d
+[diag] magmasimplex frame_t frame=2820 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=2820 pixels=921600 nonblack=921600 hash=79e6bd988bca69d8 gl_error=0x502
+[dump] writing frame_00000b04 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000b04.png (3686400 bytes)
+[diag] frame #2820
+[diag] magmasimplex frame_t frame=2850 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=2880 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=2880 pixels=921600 nonblack=921600 hash=585116ba5fa4ca52 gl_error=0x502
+[dump] writing frame_00000b40 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000b40.png (3686400 bytes)
+[diag] frame #2880
+[diag] magmasimplex frame_t frame=2910 dt_ms=16.059 tier=3d
+[diag] magmasimplex frame_t frame=2940 dt_ms=16.054 tier=3d
+[diag] framebuffer frame=2940 pixels=921600 nonblack=921600 hash=022f4682aa09a317 gl_error=0x502
+[dump] writing frame_00000b7c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000b7c.png (3686400 bytes)
+[diag] frame #2940
+[diag] magmasimplex frame_t frame=2970 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=3000 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=3000 pixels=921600 nonblack=921600 hash=3aa493a8096bd72d gl_error=0x502
+[dump] writing frame_00000bb8 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000bb8.png (3686400 bytes)
+[diag] frame #3000
+[diag] magmasimplex frame_t frame=3030 dt_ms=16.055 tier=3d
+[diag] magmasimplex frame_t frame=3060 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=3060 pixels=921600 nonblack=921600 hash=a916c28f4dc8816c gl_error=0x502
+[dump] writing frame_00000bf4 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000bf4.png (3686400 bytes)
+[diag] frame #3060
+[diag] magmasimplex frame_t frame=3090 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=3120 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=3120 pixels=921600 nonblack=921600 hash=e57994bea7378e18 gl_error=0x502
+[dump] writing frame_00000c30 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000c30.png (3686400 bytes)
+[diag] frame #3120
+[diag] magmasimplex frame_t frame=3150 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=3180 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=3180 pixels=921600 nonblack=921600 hash=af5613e7f6539b7e gl_error=0x502
+[dump] writing frame_00000c6c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000c6c.png (3686400 bytes)
+[diag] frame #3180
+[diag] magmasimplex frame_t frame=3210 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=3240 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=3240 pixels=921600 nonblack=921600 hash=fd773cf7ec0f351a gl_error=0x502
+[dump] writing frame_00000ca8 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000ca8.png (3686400 bytes)
+[diag] frame #3240
+[diag] magmasimplex frame_t frame=3270 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=3300 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=3300 pixels=921600 nonblack=921600 hash=e082c364324695b9 gl_error=0x502
+[dump] writing frame_00000ce4 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000ce4.png (3686400 bytes)
+[diag] frame #3300
+[diag] magmasimplex frame_t frame=3330 dt_ms=16.061 tier=3d
+[diag] magmasimplex frame_t frame=3360 dt_ms=16.055 tier=3d
+[diag] framebuffer frame=3360 pixels=921600 nonblack=921600 hash=ce974b0455259d2a gl_error=0x502
+[dump] writing frame_00000d20 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000d20.png (3686400 bytes)
+[diag] frame #3360
+[diag] magmasimplex frame_t frame=3390 dt_ms=16.058 tier=3d
+[diag] magmasimplex frame_t frame=3420 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=3420 pixels=921600 nonblack=921600 hash=fb5200e924291242 gl_error=0x502
+[dump] writing frame_00000d5c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000d5c.png (3686400 bytes)
+[diag] frame #3420
+[diag] magmasimplex frame_t frame=3450 dt_ms=16.056 tier=3d
+[diag] magmasimplex frame_t frame=3480 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=3480 pixels=921600 nonblack=921600 hash=f7e14b21d08fffd5 gl_error=0x502
+[dump] writing frame_00000d98 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000d98.png (3686400 bytes)
+[diag] frame #3480
+[diag] magmasimplex frame_t frame=3510 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=3540 dt_ms=16.059 tier=3d
+[diag] framebuffer frame=3540 pixels=921600 nonblack=921600 hash=13dc5473ea2edeaf gl_error=0x502
+[dump] writing frame_00000dd4 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000dd4.png (3686400 bytes)
+[diag] frame #3540
+[diag] magmasimplex frame_t frame=3570 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=3600 dt_ms=16.057 tier=3d
+[diag] framebuffer frame=3600 pixels=921600 nonblack=921600 hash=7196a42a4c1e317b gl_error=0x502
+[dump] writing frame_00000e10 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000e10.png (3686400 bytes)
+[diag] frame #3600
+[diag] magmasimplex frame_t frame=3630 dt_ms=16.059 tier=3d
+[diag] magmasimplex frame_t frame=3660 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=3660 pixels=921600 nonblack=921600 hash=816a59b4facfacf1 gl_error=0x502
+[dump] writing frame_00000e4c to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000e4c.png (3686400 bytes)
+[diag] frame #3660
+[diag] magmasimplex frame_t frame=3690 dt_ms=16.057 tier=3d
+[diag] magmasimplex frame_t frame=3720 dt_ms=16.058 tier=3d
+[diag] framebuffer frame=3720 pixels=921600 nonblack=921600 hash=afc9f40f4325c820 gl_error=0x502
+[dump] writing frame_00000e88 to /tmp/m260-neck-25-long
+[dump] wrote /tmp/m260-neck-25-long/frame_00000e88.png (3686400 bytes)
+[diag] frame #3720
+EXIT=124
