@@ -219,3 +219,63 @@ lighting are the whole opportunity, not palette cycling.
 
 Earning admission behind those: Celtic knotwork, Apollonian packings, `cwaves`.
 Deferred: Lyapunov, Rankine vortex, DLA, boids, n-body.
+
+## Era filter — 2000-2006 is the reimplementation pool
+
+Operator direction, 2026-09-26: everything from the early-to-mid 2000s in the
+upstream collection is game to reimplement.
+
+Built from the first copyright year in each target's own source (an era proxy,
+not an exact date — several carry ranges such as 2003-2019 and the minimum was
+taken). Excludes hyprsaver, xshadertoy and the transition targets.
+
+| era | count | notable |
+|---|---|---|
+| 1985-1999 | 7 | atlantis, lament, stonerview, juggler3d, jigsaw, cube21, starwars |
+| **2000-2006** | **31** | klein, hypertorus, spheremonics, cubestorm, cubenetic, glknots, crackberg, molecule, menger, noof, glschool, polyhedra-gl, dangerball, flurry, blocktube, glblur, glsnake |
+| 2007-2014 | 23 | cityflow, voronoi, projectiveplane, romanboy, quasicrystal, hypnowheel, lockward, geodesic, hilbert, moebiusgears |
+| 2015+ | 31 | covid19, crumbler, cubetwist, cubestack, hexstrut, gravitywell, raverhoop, sphereeversion, etruscanvenus, hextrail |
+
+The 2000-2006 bucket independently contains most of what the colour and shape
+measurements already flagged as strongest. That is a useful convergence: the
+era filter and the visual-quality metrics agree, which means neither is doing
+the work alone.
+
+## What "improved" has to mean
+
+Reimplementing is only worth it if the result is categorically better, not
+merely current. The trap is that the cheapest-looking upgrades are the ones
+that destroy what made these worth keeping.
+
+**The improvements that matter for THIS catalogue**, because our strongest
+cluster is structural and almost entirely uncoloured:
+
+- **Linear-space lighting and ACES tone mapping.** The single largest
+  "generational" lever. Most of the 1997-2006 pieces composite in gamma space,
+  which is why their colour reads as flat and their highlights clip.
+- **Ambient occlusion.** This is what makes a complex lattice legible —
+  contact darkening in the interior is the difference between a readable
+  structure and a wireframe mess. Highest value per cost for the polyhedral
+  family.
+- **Real self-shadowing.** An articulated lattice that cannot shadow itself is
+  not showing its articulation.
+- **PBR materials** — metallic/roughness, anisotropic highlights on machined
+  forms, clearcoat. The geometric cluster measured at colour 0.00; material,
+  not palette, is its opportunity.
+- **Depth of field.** Directs the eye. Solves the "everything equally sharp,
+  therefore flat" problem that afflicts the surface family.
+- **Image-based / procedural environment lighting.** Coherent reflections turn
+  a flat-shaded solid into an object with a place.
+- **Anti-aliasing.** The 1997 pieces alias badly at 4K; MSAA or temporal AA
+  alone is a visible jump.
+- **Subsurface scattering** for organic forms (molecules, virions,
+  radiolaria) — the difference between plastic and living.
+
+**The improvements to distrust**, per Astra's review: bloom and motion trails.
+They read as "modern" instantly and cost almost nothing, which is exactly why
+they get over-applied. On a legible structure they smear it. Astra's warning
+about volumetric accumulation was specifically that it "can obscure the
+topology you selected the family to reveal" — the same applies to trails.
+
+The rule: **effects that clarify form are the upgrade; effects that add glow
+are decoration.** A reimplementation that is only brighter has failed.
