@@ -1415,6 +1415,21 @@ static void draw_neonasteroids(ModeInfo *m) {
             "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
             e, px[0], px[1], px[2], px[4], px[5], px[6], px[8], px[9], px[10],
             px[12], px[13], px[14]);
+
+        /* Also sample the trail FBO so we know whether the line
+         * renderer actually got anything onto it. */
+        glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo);
+        unsigned char tpx[16] = {0};
+        glReadPixels(st->fb_w/2, st->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx);
+        glReadPixels(st->fb_w/4, st->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+4);
+        glReadPixels(3*st->fb_w/4, st->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+8);
+        glReadPixels(st->fb_w/2, st->fb_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+12);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        fprintf(stderr,
+            "[diag] neonasteroids trail FBO samples="
+            "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
+            tpx[0], tpx[1], tpx[2], tpx[4], tpx[5], tpx[6], tpx[8], tpx[9], tpx[10],
+            tpx[12], tpx[13], tpx[14]);
         once = 1;
     }
 }
