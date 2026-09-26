@@ -112,30 +112,31 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec3 L = normalize(vec3(-0.55, 0.45, 0.85));
 
     // ---- Anisotropic highlight ----
-    // The satin sheen is along the fold direction. We compute the
-    // reflected vector R = reflect(-L, N), then take dot(R, view)
-    // where view is roughly +z (we're looking at the silk straight
-    // on, the highlight is a horizontal sheen).
+    // The satin sheen is along the fold direction. The reflection
+    // vector R = reflect(-L, N) bounces off the surface; the
+    // portion that reaches the camera (V) is dot(R, V). At a flat
+    // pixel the reflection goes away from the camera (no highlight);
+    // on a fold crest tilted toward the light, R tilts back toward
+    // V and we see the highlight.
     vec3 V = vec3(0.0, 0.0, 1.0);
     vec3 R = reflect(-L, N);
 
-    // Anisotropy: stretch the highlight along the fold direction
-    // (x-axis). We compute the half-vector style spec but
-    // separately scale the x and y components — making the lobe
-    // elongated along the folds.
+    // The fold direction is along x; the anisotropic lobe is
+    // elongated along that axis. We stretch the lobe by computing
+    // the reflection dot product separately against the two
+    // perpendicular axes and squaring the more-aligned component.
+    float rdot = max(0.0, dot(R, V));
+
+    // Anisotropic factor: emphasised where R is tilted toward V in
+    // the fold direction (x-axis component). Smooth, broad lobe —
+    // sharp power-of-N would alias on this small number of folds.
+    float aniso = pow(rdot, 24.0) * (1.0 + 0.6 * abs(R.x));
+
+    // Combined: anisotropic for the sheen, isotropic Phong for
+    // softer fold-crest brightening.
     vec3 Hr = normalize(L + V);
-    float iso = pow(max(dot(N, Hr), 0.0), 32.0);
-
-    // Anisotropic version: elongate along x. Use the x-component of
-    // R projected to the camera plane and amplify.
-    float aniso_x = R.x;
-    float aniso_y = R.y;
-    float aniso = pow(max(0.0, sqrt(aniso_x * aniso_x * 4.0 + aniso_y * aniso_y)), 64.0);
-
-    // Combine: the anisotropic term gives the satin "ribbon"
-    // highlight; the isotropic term gives a softer broad glow on
-    // fold crests.
-    float spec = aniso * 1.2 + iso * 0.4;
+    float iso = pow(max(dot(N, Hr), 0.0), 8.0) * 0.6;
+    float spec = aniso + iso;
 
     // ---- Base silk colour ----
     // Warm cream satin — stable, slow gradient. The colour does not
