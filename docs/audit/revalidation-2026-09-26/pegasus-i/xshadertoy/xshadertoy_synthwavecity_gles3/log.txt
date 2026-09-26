@@ -1,0 +1,123 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/synthwavecity.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=c9337941cdf10392 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=a9e9feeb22fbbdfd gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=255,34,157; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=b50e0d97815e5dbb gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=159,2,88; 78,29,63; 75,29,62; 50,4,59
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=861d5d2a93da48fa gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=159,2,88; 70,28,60; 67,28,59; 50,4,59
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=14bc3cbe1f85ae3e gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=255,34,157; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=2d086ab0df1365c0 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=6a2f118f4482cbf5 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=8fc7cf2c502e4503 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=159,2,88; 78,29,63; 75,29,62; 50,4,59
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=b45a95f31e75d6ea gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=159,2,88; 70,28,60; 67,28,59; 50,4,59
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=b6f35747e8631182 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2073600 hash=065f45408cb91927 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000258.png (8294400 bytes)
+[diag] xshadertoy frame=660 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2073600 hash=45089da6176ea556 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000294.png (8294400 bytes)
+[diag] xshadertoy frame=720 gl_error=0x0 samples=255,34,157; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2073600 hash=51e3586793788863 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000002d0.png (8294400 bytes)
+[diag] xshadertoy frame=780 gl_error=0x0 samples=159,2,88; 78,29,62; 74,29,61; 50,4,59
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2073600 hash=60e134891ebc9853 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_0000030c.png (8294400 bytes)
+[diag] xshadertoy frame=840 gl_error=0x0 samples=159,2,88; 71,28,60; 68,28,59; 50,4,59
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2073600 hash=5bd157996dd51d5b gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000348.png (8294400 bytes)
+[diag] xshadertoy frame=900 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2073600 hash=a708dbe7bb9428ca gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000384.png (8294400 bytes)
+[diag] xshadertoy frame=960 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2073600 hash=fa391282bf768d03 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000003c0.png (8294400 bytes)
+[diag] xshadertoy frame=1020 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=2073600 hash=51298ce4c65c9e96 gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000003fc.png (8294400 bytes)
+[diag] xshadertoy frame=1080 gl_error=0x0 samples=159,2,88; 77,29,62; 74,29,61; 50,4,59
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=2073600 hash=35e537e5884539dd gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000438.png (8294400 bytes)
+[diag] xshadertoy frame=1140 gl_error=0x0 samples=255,34,157; 72,28,61; 69,28,60; 50,4,59
+[diag] frame #1140
+[diag] framebuffer frame=1140 pixels=2073600 nonblack=2073600 hash=4bcd26322e4c3c69 gl_error=0x0
+[dump] writing frame_00000474 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_00000474.png (8294400 bytes)
+[diag] xshadertoy frame=1200 gl_error=0x0 samples=159,2,88; 28,22,48; 25,21,47; 50,4,59
+[diag] frame #1200
+[diag] framebuffer frame=1200 pixels=2073600 nonblack=2073600 hash=564555ae10438b3a gl_error=0x0
+[dump] writing frame_000004b0 to /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3
+[dump] wrote /tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3/frame_000004b0.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1114107 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1098810-i-xshadertoy_synthwavecity_gles3 timeout --kill-after=2 28 ./xshadertoy_synthwavecity_gles3

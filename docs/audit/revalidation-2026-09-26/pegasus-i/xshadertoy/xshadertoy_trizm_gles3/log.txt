@@ -1,0 +1,63 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/trizm.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=60,44,32; 255,56,252; 105,83,58; 105,58,56
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=10b4c9832aa56ea8 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=255,255,255; 88,61,41; 49,68,71; 220,183,88
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=3c34bbbbbfde6ccd gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=112,127,99; 218,139,63; 50,84,90; 103,78,57
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=b5330c38db256ffb gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=122,68,61; 94,56,86; 133,135,109; 54,40,44
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=7e480bb173f0a4ef gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=61,40,65; 50,144,177; 71,49,58; 40,52,63
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=e97c008cba3c21e1 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=72,35,47; 50,61,74; 255,228,103; 96,155,193
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=4fa54a0de5f64edf gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=100,84,54; 76,46,46; 57,179,184; 82,47,46
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=74f485c2da5ed673 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=148,196,176; 99,93,70; 76,163,203; 170,92,49
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=4c2d47a0e60c37a9 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=254,255,237; 131,93,77; 49,113,122; 154,60,50
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=6e67d8514acdee86 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1099762-i-xshadertoy_trizm_gles3
+[dump] wrote /tmp/cap-1099762-i-xshadertoy_trizm_gles3/frame_000001e0.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1116710 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1099762-i-xshadertoy_trizm_gles3 timeout --kill-after=2 28 ./xshadertoy_trizm_gles3

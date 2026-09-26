@@ -1,0 +1,118 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/trainmandala.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=255,255,153; 33,29,71; 33,29,55; 33,29,17
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=304881f5abb22b9a gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=255,163,25; 29,98,101; 117,124,123; 29,18,3
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=3cbcf40e98764ace gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=163,25,119; 121,128,85; 22,3,13; 56,88,100
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=035da8fea1cc6aad gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=25,119,233; 95,64,26; 3,13,26; 87,88,91
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=37aaf82aab33aa5b gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=119,233,255; 107,87,48; 13,26,33; 19,26,33
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=a4380681adc91b71 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=233,255,255; 26,33,31; 26,33,31; 26,33,31
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=f26f7f2185aad7b2 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=255,255,196; 33,31,22; 36,72,96; 33,31,23
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=6bace29e02f7418e gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=255,196,66; 31,22,8; 96,86,44; 80,95,91
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=65c67eab4024cd96 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=196,66,79; 31,79,104; 116,7,9; 122,47,9
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=9646db0d91f74d01 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=66,79,206; 7,76,104; 7,9,23; 7,9,23
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=ac38cf2bb8a3b200 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=79,206,255; 9,23,32; 9,23,32; 9,23,32
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2073600 hash=e60f14c5cee954a7 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000258.png (8294400 bytes)
+[diag] xshadertoy frame=660 gl_error=0x0 samples=206,255,255; 23,32,33; 23,32,44; 42,79,104
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2073600 hash=8a81a8bcda9985c0 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000294.png (8294400 bytes)
+[diag] xshadertoy frame=720 gl_error=0x0 samples=255,255,225; 32,33,25; 41,84,87; 87,51,25
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2073600 hash=4482ba6ea83da3c8 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000002d0.png (8294400 bytes)
+[diag] xshadertoy frame=780 gl_error=0x0 samples=255,225,106; 33,25,74; 34,114,110; 33,25,12
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2073600 hash=e7a0be23408013b9 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_0000030c.png (8294400 bytes)
+[diag] xshadertoy frame=840 gl_error=0x0 samples=225,106,38; 25,41,86; 123,28,26; 25,12,4
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2073600 hash=2e3511f81d8589a2 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000348.png (8294400 bytes)
+[diag] xshadertoy frame=900 gl_error=0x0 samples=106,38,174; 56,55,58; 12,4,20; 12,4,20
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2073600 hash=50f37db8f25abe0a gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000384.png (8294400 bytes)
+[diag] xshadertoy frame=960 gl_error=0x0 samples=38,174,255; 4,20,30; 82,47,30; 4,59,94
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2073600 hash=6f3b60713ac1d242 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000003c0.png (8294400 bytes)
+[diag] xshadertoy frame=1020 gl_error=0x0 samples=174,255,255; 20,30,33; 20,30,33; 83,72,33
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=2073600 hash=a6f3157d9232df1d gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_000003fc.png (8294400 bytes)
+[diag] xshadertoy frame=1080 gl_error=0x0 samples=255,255,249; 76,106,120; 30,33,28; 119,92,28
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=2073600 hash=9cdffe6a24a58834 gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000438.png (8294400 bytes)
+[diag] xshadertoy frame=1140 gl_error=0x0 samples=255,247,140; 108,113,104; 33,28,16; 33,28,16
+[diag] frame #1140
+[diag] framebuffer frame=1140 pixels=2073600 nonblack=2073600 hash=e6bd34a6c59a7f74 gl_error=0x0
+[dump] writing frame_00000474 to /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3
+[dump] wrote /tmp/cap-1099451-i-xshadertoy_trainmandala_gles3/frame_00000474.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1115865 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1099451-i-xshadertoy_trainmandala_gles3 timeout --kill-after=2 28 ./xshadertoy_trainmandala_gles3

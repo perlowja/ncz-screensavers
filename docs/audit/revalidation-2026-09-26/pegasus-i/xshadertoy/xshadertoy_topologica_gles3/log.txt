@@ -1,0 +1,43 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/topologica.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=2 imouse=3 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=92,255,255; 29,92,255; 25,79,250; 97,255,255
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=1bf245dbd8e6bfb7 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1099094-i-xshadertoy_topologica_gles3
+[dump] wrote /tmp/cap-1099094-i-xshadertoy_topologica_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=16,50,157; 47,148,255; 19,61,192; 255,255,255
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=14c292f426283fa3 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1099094-i-xshadertoy_topologica_gles3
+[dump] wrote /tmp/cap-1099094-i-xshadertoy_topologica_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=255,255,255; 48,151,255; 255,255,255; 32,100,255
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=015800ced3ee6f1c gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1099094-i-xshadertoy_topologica_gles3
+[dump] wrote /tmp/cap-1099094-i-xshadertoy_topologica_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=6,19,59; 59,187,255; 92,255,255; 255,255,255
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=7f9ebd75e7c67c6f gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1099094-i-xshadertoy_topologica_gles3
+[dump] wrote /tmp/cap-1099094-i-xshadertoy_topologica_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=13,42,132; 247,255,255; 15,47,149; 97,255,255
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=6f74ad27322b6091 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1099094-i-xshadertoy_topologica_gles3
+[dump] wrote /tmp/cap-1099094-i-xshadertoy_topologica_gles3/frame_000000f0.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1114958 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1099094-i-xshadertoy_topologica_gles3 timeout --kill-after=2 28 ./xshadertoy_topologica_gles3
