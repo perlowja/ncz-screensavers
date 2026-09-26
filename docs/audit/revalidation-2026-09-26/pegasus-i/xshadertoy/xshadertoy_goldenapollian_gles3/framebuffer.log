@@ -1,0 +1,17 @@
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2071147 hash=5a87078f0ae7a655 gl_error=0x0
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2071529 hash=4840bcbdd26e13d8 gl_error=0x0
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073417 hash=b028d0972b2f333c gl_error=0x0
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073219 hash=dc9838ee150f5c87 gl_error=0x0
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2072361 hash=e68c1a7bfa93c798 gl_error=0x0
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073035 hash=687c5d31159b44d8 gl_error=0x0
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2070432 hash=7fdae30018a6330b gl_error=0x0
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2070517 hash=5c625137b229d931 gl_error=0x0
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2070998 hash=e29eda234ba86c28 gl_error=0x0
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2071524 hash=d33bcc4851044467 gl_error=0x0
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2071729 hash=675304fb27f47369 gl_error=0x0
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2067579 hash=54031fc6e4c3db5b gl_error=0x0
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2069023 hash=94f6aa375a121d9b gl_error=0x0
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2066265 hash=85598d5969ce6cf7 gl_error=0x0
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2067811 hash=245ec9cfbd7a321b gl_error=0x0
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2072064 hash=a1d7eb6298049b8a gl_error=0x0
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2065841 hash=a35082020c77a739 gl_error=0x0

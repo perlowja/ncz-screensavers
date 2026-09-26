@@ -1,0 +1,3 @@
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2069256 hash=f2e0b29b8b56394d gl_error=0x0
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=6b382c1adb1796a1 gl_error=0x0
+[diag] framebuffer frame=120 pixels=2073600 nonblack=1153453 hash=179110337bd4bbf9 gl_error=0x0

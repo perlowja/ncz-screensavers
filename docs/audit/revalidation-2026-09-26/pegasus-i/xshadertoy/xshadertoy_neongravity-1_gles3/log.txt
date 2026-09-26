@@ -1,0 +1,83 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/neongravity-1.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=244,207,174; 51,65,82; 48,64,82; 0,10,27
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073364 hash=d1f665a71a8190a9 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=224,153,115; 107,78,86; 49,68,86; 5,9,24
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2072293 hash=f7f67be525043f68 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=215,136,98; 39,54,72; 47,72,91; 5,5,21
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073370 hash=b34dbea197779e65 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=252,234,214; 25,47,66; 41,71,90; 7,3,19
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073461 hash=afc06a34765ad59f gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=235,180,139; 21,42,62; 43,69,88; 128,51,42
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073481 hash=c095089ef8b73e7c gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=220,145,103; 58,49,63; 80,77,92; 94,34,31
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073506 hash=bd145c46067574bb gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=210,128,87; 17,35,54; 66,73,89; 0,0,13
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2070976 hash=eeeccb68dd7c3f36 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=244,207,171; 22,33,51; 63,71,88; 0,0,12
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2068549 hash=8fe4ebd5293b2d5c gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=223,150,107; 198,120,99; 51,68,86; 0,0,12
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2067210 hash=a1b1d8d4df954efe gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=214,133,92; 24,27,43; 42,66,86; 0,0,12
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2064794 hash=4dbea530c6c884b8 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=252,232,211; 1,14,31; 36,65,86; 0,0,11
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2068168 hash=cfa8573daef90d59 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_00000258.png (8294400 bytes)
+[diag] xshadertoy frame=660 gl_error=0x0 samples=238,189,149; 0,13,30; 41,67,87; 38,11,17
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2073598 hash=fa4d5a61912338de gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_00000294.png (8294400 bytes)
+[diag] xshadertoy frame=720 gl_error=0x0 samples=223,153,112; 28,20,33; 65,74,92; 57,17,20
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2073543 hash=67b9bf2fab1c5cea gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3
+[dump] wrote /tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3/frame_000002d0.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1103993 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1093382-i-xshadertoy_neongravity-1_gles3 timeout --kill-after=2 28 ./xshadertoy_neongravity-1_gles3

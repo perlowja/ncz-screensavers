@@ -1,0 +1,118 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/hexplasma.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=255,255,255; 44,61,68; 53,74,82; 86,117,129
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=40e98e21b5205030 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=3,18,24; 19,27,30; 71,97,108; 6,8,9
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=8e21303d0115f58d gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=18,101,129; 60,84,93; 8,11,13; 35,49,55
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=14d9718691c073f9 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=44,198,225; 254,255,255; 70,97,107; 69,96,106
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=20c520b5b6bac3ec gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=24,131,163; 41,58,64; 199,230,237; 10,14,15
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=e076f6aec6f10c71 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=6,37,49; 47,65,73; 5,7,7; 82,112,124
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=265fb03ba484c074 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=15,85,110; 11,16,18; 13,19,21; 235,249,252
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=ff5e49384a56ba97 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000168.png (8294400 bytes)
+[diag] xshadertoy frame=420 gl_error=0x0 samples=5,31,42; 11,16,17; 17,24,26; 6,8,9
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=a3592d9c7eb245d4 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000001a4.png (8294400 bytes)
+[diag] xshadertoy frame=480 gl_error=0x0 samples=16,92,119; 13,19,21; 4,6,7; 5,8,8
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=a76eec8027d5a832 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000001e0.png (8294400 bytes)
+[diag] xshadertoy frame=540 gl_error=0x0 samples=14,83,107; 71,99,109; 20,29,32; 255,255,255
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=b567b8d0b6eb1201 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_0000021c.png (8294400 bytes)
+[diag] xshadertoy frame=600 gl_error=0x0 samples=9,52,68; 41,58,64; 255,255,255; 13,18,20
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2073600 hash=e06541092f768da5 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000258.png (8294400 bytes)
+[diag] xshadertoy frame=660 gl_error=0x0 samples=10,61,80; 81,111,122; 5,6,7; 4,6,7
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2073600 hash=270964a887be6f67 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000294.png (8294400 bytes)
+[diag] xshadertoy frame=720 gl_error=0x0 samples=8,47,62; 9,13,14; 7,10,11; 27,38,43
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2073600 hash=7d33d8efe2662025 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000002d0.png (8294400 bytes)
+[diag] xshadertoy frame=780 gl_error=0x0 samples=11,67,87; 40,56,63; 109,146,158; 9,13,15
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2073600 hash=39105cb1e0e0da6b gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_0000030c.png (8294400 bytes)
+[diag] xshadertoy frame=840 gl_error=0x0 samples=6,37,49; 14,20,22; 8,12,13; 5,6,7
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2073600 hash=5e8d515bb8186920 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000348.png (8294400 bytes)
+[diag] xshadertoy frame=900 gl_error=0x0 samples=102,252,254; 25,35,39; 10,14,16; 84,115,126
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2073600 hash=5905c63d784eba91 gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000384.png (8294400 bytes)
+[diag] xshadertoy frame=960 gl_error=0x0 samples=27,142,175; 32,45,50; 164,203,214; 203,232,239
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2073600 hash=862b80b5f0ea9b79 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000003c0.png (8294400 bytes)
+[diag] xshadertoy frame=1020 gl_error=0x0 samples=254,255,255; 32,45,50; 24,35,39; 7,11,12
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=2073600 hash=941b49041825bfdb gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_000003fc.png (8294400 bytes)
+[diag] xshadertoy frame=1080 gl_error=0x0 samples=3,16,22; 36,51,56; 6,8,9; 22,32,35
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=2073600 hash=dc04fd960aac958d gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000438.png (8294400 bytes)
+[diag] xshadertoy frame=1140 gl_error=0x0 samples=39,185,215; 81,111,122; 50,70,78; 207,235,241
+[diag] frame #1140
+[diag] framebuffer frame=1140 pixels=2073600 nonblack=2073600 hash=f05aeffa54393b73 gl_error=0x0
+[dump] writing frame_00000474 to /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3
+[dump] wrote /tmp/cap-1092302-i-xshadertoy_hexplasma_gles3/frame_00000474.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1101365 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1092302-i-xshadertoy_hexplasma_gles3 timeout --kill-after=2 28 ./xshadertoy_hexplasma_gles3

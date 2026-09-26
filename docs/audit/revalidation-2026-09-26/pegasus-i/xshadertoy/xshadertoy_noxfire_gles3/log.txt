@@ -1,0 +1,33 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/noxfire.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=4,2,1; 255,242,184; 22,9,4; 157,71,36
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2069256 hash=f2e0b29b8b56394d gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1094119-i-xshadertoy_noxfire_gles3
+[dump] wrote /tmp/cap-1094119-i-xshadertoy_noxfire_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=255,255,248; 105,44,22; 4,2,1; 253,208,132
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=6b382c1adb1796a1 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1094119-i-xshadertoy_noxfire_gles3
+[dump] wrote /tmp/cap-1094119-i-xshadertoy_noxfire_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=28,11,6; 0,0,0; 0,0,0; 0,0,0
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=1153453 hash=179110337bd4bbf9 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1094119-i-xshadertoy_noxfire_gles3
+[dump] wrote /tmp/cap-1094119-i-xshadertoy_noxfire_gles3/frame_00000078.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1105678 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1094119-i-xshadertoy_noxfire_gles3 timeout --kill-after=2 28 ./xshadertoy_noxfire_gles3

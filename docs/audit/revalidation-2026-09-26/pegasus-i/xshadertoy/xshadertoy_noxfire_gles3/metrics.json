@@ -1,0 +1,40 @@
+{
+  "target": "xshadertoy_noxfire_gles3",
+  "nframes": 3,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.9950407503858024,
+    "max_changed_pct": 0.9999922839506172,
+    "min_changed_pct": 0.9900892168209876
+  },
+  "coverage_mean": 0.7077343749999999,
+  "coverage_max": 1.0,
+  "saturation_mean": 0.47378134645061726,
+  "saturation_max": 0.7928023726851852,
+  "intensity_mean": 136.03840510050455,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.8686053240740741,
+      "sat": 0.7928023726851852,
+      "vis_int": 135.1475372314453
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 1.0,
+      "sat": 0.4747313850308642,
+      "vis_int": 224.8885955810547
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 0.25459780092592593,
+      "sat": 0.15381028163580246,
+      "vis_int": 48.07908248901367
+    }
+  ],
+  "frame_ms_mean": 966.6666666666667,
+  "frame_ms_var": 1111.1111111111136,
+  "n_frame_samples": 3
+}

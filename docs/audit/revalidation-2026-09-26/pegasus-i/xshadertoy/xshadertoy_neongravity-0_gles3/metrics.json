@@ -1,0 +1,136 @@
+{
+  "target": "xshadertoy_neongravity-0_gles3",
+  "nframes": 19,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.0,
+    "max_changed_pct": 0.0,
+    "min_changed_pct": 0.0
+  },
+  "coverage_mean": 0.0,
+  "coverage_max": 0.0,
+  "saturation_mean": 0.0,
+  "saturation_max": 0.0,
+  "intensity_mean": 0.0,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000000b4.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000000f0.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_0000012c.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000168.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000001a4.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000001e0.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_0000021c.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000258.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000294.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000002d0.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_0000030c.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000348.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000384.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000003c0.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_000003fc.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    },
+    {
+      "frame": "frame_00000438.png",
+      "cov": 0.0,
+      "sat": 0.0,
+      "vis_int": 0.0
+    }
+  ],
+  "frame_ms_mean": 996.2962962962964,
+  "frame_ms_var": 233.19615912208553,
+  "n_frame_samples": 19
+}
