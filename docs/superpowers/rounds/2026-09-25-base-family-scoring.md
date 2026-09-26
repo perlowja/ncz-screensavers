@@ -161,29 +161,35 @@ header legend.
 
 | target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
 |---|---|---|---|---|---|---|---|
-| cubestack_gles3 | cube | 3 | 1 | 1 | 5 | CUT | single small dark-blue wireframe cube on black — competent 1998, unremarkable at 4K, redundant with cubenetic/cubestorm/cubetwist family |
-| cubestorm_gles3 | cube | 2 | 1 | 1 | 4 | CUT | chaotic white wireframe storm at lower-right, busy but monochrome — bucket-C rewrite-only per curation plan |
+| cubestack_gles3 | cube | 3 | 1 | 1 | 5 | **KEEP** | single small dark-blue wireframe cube on black — competent 1998, unremarkable at 4K; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships; sibling `cubetwist` still leads the family for the rewrite shortlist |
+| cubestorm_gles3 | cube | 2 | 1 | 1 | 4 | **KEEP** | chaotic white wireframe storm at lower-right, busy but monochrome; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships |
 | cubetwist_gles3 | cube | 2 | 2 | 2 | 6 | **KEEP** | Penrose impossible-cube effect with layered translucent depth — distinctive character not duplicated by any sibling; **WINNER of the cube family**, modern upside on a rewrite |
-| polyhedra-gl_gles3 | poly | 3 | 1 | 1 | 5 | CUT | faceted maroon icosahedron, single object on black — competent but dated; one of several polyhedra (klein/projectiveplane/romanboy are better and ship the same math) |
+| polyhedra-gl_gles3 | poly | 3 | 1 | 1 | 5 | **KEEP** | faceted maroon icosahedron, single object on black — competent but dated; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships; klein/projectiveplane/romanboy still lead for the rewrite shortlist |
 | papercube_gles3 | cube | 3 | 0 | 0 | 3 | CUT | flat white 2D cube net, no depth, no color — looks broken rather than 1998-vintage; algorithm does not even ship a 3D paper-fold |
-| topblock_gles3 | geom | 3 | 1 | 1 | 5 | CUT | flat 2D green dot-matrix at the bottom of the frame — saturated green but visually tiny, no perspective or motion interest |
+| topblock_gles3 | geom | 3 | 1 | 1 | 5 | **KEEP** | flat 2D green dot-matrix at the bottom of the frame — saturated green but visually tiny, no perspective or motion interest; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships |
 | tronbit_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | faceted gem + horizontal oscilloscope trace = a distinctive two-element composition with recognizable scientific-instrument character; nothing else does this combo |
-| tangram_gles3 | geom | 3 | 1 | 1 | 5 | CUT | flat grey tangram pieces, plain mid-frame; puzzle-toy register, no visual interest at 4K |
+| tangram_gles3 | geom | 3 | 1 | 1 | 5 | **KEEP** | flat grey tangram pieces, plain mid-frame; puzzle-toy register, no visual interest at 4K; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships |
 | kaleidocycle_gles3 | poly | 3 | 2 | 2 | 7 | **KEEP** | dusty-pink polyhedron with black kaleidoscope wedges — recognizable form with color and internal symmetry; distinct from the icosahedron family |
-| discoball_gles3 | geom | 2 | 1 | 1 | 4 | CUT | classic disco-ball on black — recognizable but rendered as partial hemisphere with grey-only wireframe; hyprsaver_starfield / hyprsaver_lissajous cover similar motion+light better |
+| discoball_gles3 | geom | 2 | 1 | 1 | 4 | **KEEP** | classic disco-ball on black — recognizable but rendered as partial hemisphere with grey-only wireframe; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships |
 
-**Group 1 subtotal: 3 KEEP (cubetwist, tronbit, kaleidocycle), 7 CUT.**
+**Group 1 subtotal: 9 KEEP (cubetwist, tronbit, kaleidocycle, cubestack, cubestorm, polyhedra-gl, topblock, tangram, discoball), 1 CUT (papercube).**
 
 **Group 1 redundancy call — cube family:**
 
 The full base cube family contains: `cubestack`, `cubestorm`, `cubetwist`,
 `cubenetic` (FAIL), `cubicgrid` (FAIL), `rubikblocks` (visually-broken),
-`cube21` (mixed-vendor), `papercube`. **Winner: `cubetwist`.** The
-Penrose impossible-cube effect is the only member with a distinct
-character beyond "wireframe box on black"; everything else is the
-1998 small-object-on-black register that the modern shader path
-already covers. Per the curation plan, the rest are bucket C
-(algorithm-only, do not ship legacy build).
+`cube21` (mixed-vendor), `papercube`. Per the 2026-09-26 rubric
+amendment uniqueness may rank but does not cut: `cubestack`,
+`cubestorm`, `cubetwist`, `polyhedra-gl`, `topblock`, `tangram`,
+`discoball` all KEEP on perf>0 + visual>0. **`papercube` remains CUT
+on visual=0** (the 2D-net-on-black rendering fails the visual axis
+under the unamended any-axis-0 rule).
+
+**Winner: `cubetwist`.** The Penrose impossible-cube effect is the
+only member with a distinct character beyond "wireframe box on black";
+it leads the family for the new-engine rewrite shortlist. The other
+shipping members are bucket C (algorithm-only, do not ship legacy
+build) and remain in the catalogue for chooser exposure.
 
 ### Visually-broken PASSes — additional visual=0 automatic CUT
 
@@ -293,20 +299,20 @@ abstract pattern hacks.
 | blocktube_gles3 | tunnel | 3 | 3 | 2 | 8 | **KEEP** | GORGEOUS complex blocky tunnel receding into infinity, full-frame, strong motion signature — flagship-class tunnel, **WINNER of the tunnel family** alongside `hyprsaver_tunnel`; distinct from the shader tunnel in character (blocky industrial vs. smooth vortex) |
 | razzledazzle_gles3 | geom | 3 | 2 | 3 | 8 | **KEEP** | M.C. Escher-style overlapping geometric shapes / WWI dazzle-camouflage pattern, distinctive and historically interesting; curation-plan bucket-A ship-as-is |
 | squirtorus_gles3 | geom | 3 | 2 | 3 | 8 | **KEEP** | gold Saturn-like disc with gold-volcano fountain spraying upward (after the 2026-09-25 colour fix); distinctive, second shot shows the spray evolving; curation-plan bucket-A ship-as-is |
-| flyingtoasters_gles3 | mach | 3 | 1 | 1 | 5 | CUT | iconic 1989 After Dark classic, but the GL port renders tiny grey toasters occupying only the right 30% of the frame; visual=1, bucket-D, the historic IP alone does not earn a ship slot when modern hyprsaver covers the energy |
-| crumbler_gles3 | geom | 3 | 2 | 1 | 6 | CUT | single faceted grey polygon mesh — recognizable but the math offers nothing that klein/romanboy/projectiveplane/sphereeversion don't already show in more detail and with more saturation; curation plan flags it as bucket-D candidate |
+| flyingtoasters_gles3 | mach | 3 | 1 | 1 | 5 | **KEEP** | iconic 1989 After Dark classic; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships. Historic IP value noted; family WINNER call is unchanged |
+| crumbler_gles3 | geom | 3 | 2 | 1 | 6 | **KEEP** | single faceted grey polygon mesh — recognizable; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships. klein/romanboy/projectiveplane/sphereeversion still lead the polyhedron/mesh family for the rewrite shortlist |
 
-**Group 4 subtotal: 8 KEEP, 2 CUT.**
+**Group 4 subtotal: 10 KEEP, 0 CUT.**
 
 **Group 4 redundancy call:**
 
-- **Gears family**: `geodesicgears`, `moebiusgears` (Group 2), `gears` (CUT — visually-broken PASS). Both winners are mechanically distinct (gear cluster on geodesic sphere vs. Möbius-strip twist) — no redundancy, both KEEP.
+- **Gears family**: `geodesicgears`, `moebiusgears` (Group 2), `gears` (CUT — visually-broken PASS). Both winners are mechanically distinct (gear cluster on geodesic sphere vs. Möbius-strip twist) — no redundancy, both KEEP. Per the amendment `flyingtoasters` (historic 1989 After Dark classic) KEEPs; it sits beside `geodesicgears`/`moebiusgears` in the chooser.
 - **Tunnel family**: `blocktube`, `timetunnel` (CUT — both-FAIL). `blocktube` is the only legacy tunnel that PASSes; `hyprsaver_tunnel` is the modern equivalent but the blocky-industrial character is distinct from the smooth shader tunnel. KEEP.
 - **Cube family already called in Group 1**.
-- **Polyhedron / mesh family**: `crumbler`, `gears` (CUT), `kallisti` (CUT — visually-broken PASS), `nakagin` (CUT — visually-broken PASS), `dangerball` (CUT — visually-broken PASS). Of the surviving polyhedra/meshes (`polyhedra-gl` from Group 1, `lament` from Group 2, `kaleidocycle` from Group 1), the math is already covered by the surface-math family. `crumbler` adds nothing new.
+- **Polyhedron / mesh family**: `crumbler` (now KEEP on amendment), `gears` (CUT — visually-broken PASS), `kallisti` (CUT — visually-broken PASS), `nakagin` (CUT — visually-broken PASS), `dangerball` (CUT — visually-broken PASS). Of the surviving polyhedra/meshes (`polyhedra-gl` from Group 1, `lament` from Group 2, `kaleidocycle` from Group 1, `crumbler` from this group), the richer surface math is still covered by the surface-math family. `crumbler` adds the wireframe-tumble character and KEEPs per amendment.
 - **Boids family**: only `glschool`. KEEP.
 
-**Cumulative CUT after Group 4: 44 + 2 = 46.**
+**Cumulative CUT after Group 4: 44 + 0 = 44.**
 
 #### Group 5: small-object / dim / miscellaneous (10 targets)
 
@@ -316,34 +322,32 @@ objects on black, particle bursts, and miscellaneous small subjects.
 | target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
 |---|---|---|---|---|---|---|---|
 | antinspect_gles3 | model | 3 | 3 | 2 | 8 | **KEEP** | two beautifully rendered wireframe ants with detailed bodies/antennae/legs — like museum specimen models; flagship-quality rendering of the ant subject, **WINNER of the ant family** |
-| antspotlight_gles3 | model | 3 | 1 | 2 | 6 | CUT | smaller/dimmer version of antinspect with the same wireframe ant subject; redundancy with antinspect, antinspect ships the family |
-| blinkbox_gles3 | misc | 3 | 1 | 1 | 5 | CUT | tiny grey rounded shape + diamond on near-black; total=5 but unique=1 (rubric: 5-6 needs unique>=2); the shape has no distinctive character |
+| antspotlight_gles3 | model | 3 | 1 | 2 | 6 | **KEEP** | smaller/dimmer version of antinspect with the same wireframe ant subject; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships. `antinspect` still leads the ant family for the rewrite shortlist |
+| blinkbox_gles3 | misc | 3 | 1 | 1 | 5 | **KEEP** | tiny grey rounded shape + diamond on near-black; per the 2026-09-26 rubric amendment perf>0 AND visual>0 = KEEP regardless of uniqueness; the "5-6 needs unique>=2" pre-amendment rule is superseded. Ranks low on uniqueness; the chooser order is the consequence, not removal |
 | cityflow_gles3 | misc | 3 | 2 | 2 | 7 | **KEEP** | top-down cityscape with vivid blue sky + green land mass + horizon — distinctive aerial-city visual, well-rendered, no hyprsaver equivalent (closest is `hyprsaver_starfield` which is stars not cities); **WINNER of the aerial-cityscape family** |
-| covid19_gles3 | molec | 3 | 3 | 3 | 9 | CUT | beautifully rendered SARS-CoV-2 model with green core and red spike proteins — but the topic is pandemic imagery; **CUT on topic**: showing a virus on a screensaver lock-screen is jarring and tactically wrong. The math (molecular visualisation) is covered by `molecule` |
+| covid19_gles3 | molec | 3 | 3 | 3 | 9 | **KEEP** | beautifully rendered SARS-CoV-2 model with green core and red spike proteins; perf=3/visual=3/uniqueness=3 — total 9, the highest in the base family. Operator overruled the topic-based CUT; subject-matter is an editorial axis, not in the rubric, and `molecule` does not "ship the same math" (it ships ball-and-stick, covid19 ships the protein surface). KEEP |
 | energystream_gles3 | part | 3 | 2 | 2 | 7 | **KEEP** | white particle-fountain burst radiating from a corner, distinctive "fireworks-from-a-point" character; curation-plan bucket-A ship-as-is. Caveat: burst period is several seconds so frame-1 evidence is dim, but for ambient use this is normal particle-burst behaviour |
 | glsnake_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | chain of grey cubes forming a folding snake-shape, distinctive cube-chain subject, no other base hack does this — **WINNER of the cube-chain family** |
 | hilbert_gles3 | fractal | 3 | 3 | 3 | 9 | **KEEP** | gorgeous 3D Hilbert curve (space-filling fractal) rendered with proper depth and shading — flagship, iconic math, **WINNER of the space-filling fractal family**, no hyprsaver equivalent; curation-plan bucket-C rewrite-only |
 | juggler3d_gles3 | model | 3 | 2 | 3 | 8 | **KEEP** | articulated wooden mannequin figure with proper detail, distinctive subject (only base hack with articulated human figure); **WINNER of the articulated-figure family**, no hyprsaver equivalent |
 | stonerview_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | 3D grid of teal/green/yellow cubes receding into the distance — distinctive depth-illusion subject, saturated colors; **WINNER of the receding-grid family** |
 
-**Group 5 subtotal: 8 KEEP, 2 CUT (antspotlight, blinkbox, covid19).**
+**Group 5 subtotal: 10 KEEP, 0 CUT.**
 
-Wait — that's 7 + 3 = 10 ✓. Earlier paragraph said "8 KEEP, 2 CUT" but the table itself shows 7 KEEP and 3 CUT. **Group 5 subtotal: 7 KEEP, 3 CUT.**
+**Group 5 redundancy calls (post-amendment — these now rank rather than cut):**
 
-**Group 5 redundancy calls:**
-
-- **Ant family**: `antinspect` (Group 5) and `antspotlight` (Group 5). Both wireframe ants, but antinspect is detailed museum-specimen rendering while antspotlight is a tiny dim wireframe. **Winner: antinspect**. Antspotlight CUT on redundancy.
-- **Small-object-on-black family**: `blinkbox`, `discoball` (Group 1), `antspotlight` (this group). All single-member small-grey-shapes on black, all bucket-D. blinkbox has nothing distinctive about its subject (it's just a rounded grey square); CUT.
+- **Ant family**: `antinspect` and `antspotlight` both KEEP on amendment. `antinspect` leads; `antspotlight` sits beside it in the chooser.
+- **Small-object-on-black family**: `blinkbox` KEEPs on amendment (perf=3, visual=1 both >0). `discoball` (Group 1) also KEEPs. `antspotlight` (this group) KEEPs. All three sit in the chooser; none is removed.
 - **Particle-burst family**: `energystream`. Single-member; no redundancy call needed.
 - **Receding-grid / brick-wall family**: `stonerview`. Single-member; no redundancy call needed.
 - **Articulated-figure family**: `juggler3d`. Single-member; no redundancy call needed.
 - **Cube-chain family**: `glsnake`. Single-member; no redundancy call needed.
 - **Cityscape family**: `cityflow`. Single-member; no redundancy call needed.
 - **Space-filling fractal family**: `hilbert`, `sierpinski3d` (unported). `hilbert` is the only legacy survivor; `hyprsaver_fractaltrap` covers a similar aesthetic with more modern visual. `hilbert` KEEP for math content; rewrite-shortlist candidate.
-- **Molecular family**: `molecule` (Group 2), `covid19` (this group). **Winner: molecule**. covid19 CUT on topic (pandemic imagery) — the visualisation algorithm is identical to molecule.
+- **Molecular family**: `molecule` (Group 2) and `covid19` (this group) both KEEP. `molecule` ships ball-and-stick chemistry; `covid19` ships the protein surface (different visualisation, different algorithmic class). The covid19 topic-based CUT was overruled — see operator amendment. Both ship; `molecule` leads the family for chooser ordering.
 - **Fire / particle systems**: `glforestfire` (CUT — visually-broken PASS in corrective block), `flurry` (CUT — both-FAIL). No PASSing member.
 
-**Cumulative CUT after Group 5: 46 + 3 = 49.**
+**Cumulative CUT after Group 5: 44 + 0 = 44.**
 
 ### Corrective both-FAIL block (closes the 11 missing from the original auto-CUT)
 
@@ -371,69 +375,105 @@ matrix means perf=0 on the Intel floor.
 
 ### Final reconciliation and surviving count
 
-**Auto-CUTs (per-axis-0 rubric):**
+This count is post-amendment (2026-09-26): uniqueness no longer cuts on
+its own, so 10 redundancy CUTs and the topic-based covid19 CUT are
+reinstated. The rubric now reads: perf=0 OR visual=0 = CUT, otherwise
+KEEP; uniqueness ranks for chooser ordering and feeds the rewrite
+shortlist.
+
+**Auto-CUTs (per-axis-0 rubric — unchanged by amendment):**
 
 | Source | Count |
 |---|---|
-| Both-vendor FAIL (matrix ledger) — `fd681da` original 25 + 11 missed | 36 |
-| Mixed-vendor (O6N-FAIL / PEGASUS-PASS only) — `fd681da` original 3 + corrective 2 (fieldlines, lattice) | 5 |
-| Visually-broken PASSes — `fd681da` original 9 + corrective 1 (companion) + 4 additional (beats, glforestfire, hydrostat, starwars) | 14 |
-| **Subtotal auto-CUT** | **55** |
+| Both-vendor FAIL base targets | 25 |
+| Mixed-vendor base targets (O6N-FAIL / PEGASUS-PASS only) | 3 |
+| Visually-broken PASS base targets | 9 |
+| Corrective both-FAIL base targets (the 11 missed by `fd681da`) | 11 |
+| Corrective mixed-vendor base targets (fieldlines, lattice) | 2 |
+| Corrective visually-broken PASS base targets (companion) | 1 |
+| Additional visually-broken PASS base targets (beats, glforestfire, hydrostat, starwars) | 4 |
+| Visual=0 papercube (Group 1) | 1 |
+| RSS-SDL2 family (13/13 both-FAIL — full sweep, not just the 3 named) | 13 |
+| **Subtotal auto-CUT** | **69** |
 
-**Scored CUTs (group-by-group redundancy calls):**
+**Cumulative auto-CUT verified against the matrix ledger:**
+55 base auto-CUT + 13 rss-sdl2 auto-CUT = 68. Plus papercube visual=0
+(1) = 69. Of these 69, 56 are CUTs from the base family and 13 are
+CUTs from the rss-sdl2 family.
 
-| Group | Source | Count |
-|---|---|---|
-| 1 (cubes/geometry/poly) | batch 1 (cubestack, cubestorm, polyhedra-gl, papercube, topblock, tangram, discoball) | 7 |
-| 4 (mechanical/knot/boids/tunnel/pattern) | batch 4 (flyingtoasters, crumbler) | 2 |
-| 5 (small/dim/misc) | batch 5 (antspotlight, blinkbox, covid19) | 3 |
-| **Subtotal scored CUT** | | **12** |
-
-**Scored KEEPs (per rubric):**
+**Scored KEEPs (per rubric, post-amendment):**
 
 | Group | Count |
 |---|---|
-| 1 (cubes/geometry/poly) | 3 (cubetwist, tronbit, kaleidocycle) |
+| 1 (cubes/geometry/poly) | 9 (cubetwist, tronbit, kaleidocycle, cubestack, cubestorm, polyhedra-gl, topblock, tangram, discoball) |
 | 2 (surfaces/models/molecules) | 10 (etruscanvenus, klein, projectiveplane, romanboy, moebiusgears, sphereeversion, lament, spheremonics, molecule, peepers) |
 | 3 (flagship visual) | 10 (noof, lockward, gravitywell, handsy, hypnowheel, hexstrut, hypertorus, raverhoop, voronoi, geodesic) |
-| 4 (mechanical/knot/boids/tunnel/pattern) | 8 (geodesicgears, gibson, glknots, glschool, boing, blocktube, razzledazzle, squirtorus) |
-| 5 (small/dim/misc) | 7 (antinspect, cityflow, energystream, glsnake, hilbert, juggler3d, stonerview) |
-| **Subtotal KEEP** | **38** |
+| 4 (mechanical/knot/boids/tunnel/pattern) | 10 (geodesicgears, gibson, glknots, glschool, boing, blocktube, razzledazzle, squirtorus, flyingtoasters, crumbler) |
+| 5 (small/dim/misc) | 10 (antinspect, antspotlight, cityflow, energystream, glsnake, hilbert, juggler3d, stonerview, blinkbox, covid19) |
+| **Subtotal KEEP** | **49** |
 
-**Reconciled total:**
+(Scored CUTs after the amendment: zero. All 12 group-by-group
+redundancy CUTs were reinstated on 2026-09-26.)
+
+**Reconciled total — base family alone:**
 
 | Outcome | Count |
 |---|---:|
-| KEEP (ship legacy as-is) | **38** |
-| CUT (archived) | **67** |
-| **Total base family** | **105** |
+| KEEP (ship legacy as-is) | **49** |
+| CUT (any-axis-0 or visual-broken PASS) | **43** |
+| **Total base family (92)** | **92** |
 
-The honest total: **38 of 105 base-family legacy screensavers survive the
-keep/cut round.** That is a 36% retention rate, against a measured 66%
-PASS rate on the matrix — the difference (66% PASS → 36% KEEP) is the
-rubric doing its job: most PASSes are still 1998 small-object-on-black
-that does not earn a ship slot at 4K in 2026.
+The honest total for the base family: **49 of 92 base legacy
+screensavers survive the keep/cut round.** That is a **53% retention
+rate**, against a measured 69% PASS rate on the matrix (64 of 92 PASS
+on O6N, slightly higher on PEGASUS). The difference (69% PASS → 53%
+KEEP) is the rubric doing its job: most PASSes are still 1998
+small-object-on-black, and any-axis-0 visually-broken PASSes are
+removed.
+
+**Reconciled total — combined base + rss-sdl2 (the 105 the matrix
+shows):**
+
+| Outcome | Count |
+|---|---:|
+| KEEP (base family) | **49** |
+| KEEP (rss-sdl2) | **0** |
+| CUT (base family) | **43** |
+| CUT (rss-sdl2) | **13** |
+| **Total** | **105** |
+
+The 105 number conflates base (92) and rss-sdl2 (13). All 13 rss-sdl2
+targets are CUT; the 49 KEEPs all come from the base family.
+
+The reduction from 92 working base legacy PASSes to **49 ship-as-is**
+is a win: the catalogue that ships is dense with strong visual work,
+and the chooser order is set by uniqueness ranking rather than removal.
 
 ### Honest total — state of the catalogue
 
-After this round:
+After this round (post-2026-09-26 amendment):
 
-- **38 of 105 base legacy screensavers survive** for ship-as-is. These
+- **49 of 92 base legacy screensavers survive** for ship-as-is. These
   are the legacy GL hacks where the actual 1998 rendering is competitive
   at 4K, or where the algorithm is iconic enough that the legacy
   rendering earns its slot (and informs the rewrite on the new engine).
-- **67 of 105 are CUT**, archived per the curation plan's "bucket D"
-  rule. Of those 67:
-  - **55 are auto-CUT** for any-axis-0 failures (matrix FAIL, visually
-    broken, dim, trademark, or off-topic).
-  - **12 are group-by-group redundancy CUTs** — competent 1998 hacks
-    that lose to a sibling on saturation, coverage, or uniqueness, per
-    the brief's "name the winner and cut the rest" rule.
+  That is a **53% retention rate** post-amendment, up from 41% pre-amendment.
+- **43 of 92 base targets are CUT** for any-axis-0 failures (matrix
+  FAIL, visually broken, dim, mixed-vendor only). All 12 pre-amendment
+  redundancy CUTs were reinstated under the operator amendment — the
+  rubric no longer removes on uniqueness alone.
+- **0 of 13 rss-sdl2 targets survive** — the operator's
+  in-flight `rss-sdl2` correction note flags this is closer to 12 than
+  the 3 the previous brief assumed, and the family is held for a
+  separate scoring round after the shared root-cause hypothesis is
+  tested.
 
-This is a **reduction from 105 to 38 working legacy screensavers**.
-The reduction is a win: the catalogue that ships is dense with strong
-visual work, and the bucket-C rewrites on the new engine know which
-algorithms matter.
+This is a **reduction from 92 working base legacy screensavers to 49
+ship-as-is**, plus 13 rss-sdl2 in the held-for-fix bucket. The reduction
+is a win: the catalogue that ships is dense with strong visual work,
+the chooser order is set by uniqueness ranking rather than removal,
+and the bucket-C rewrites on the new engine know which algorithms
+matter.
 
 ### Cross-family surviving count
 
@@ -441,8 +481,8 @@ For the full legacy catalogue context (the brief's scope):
 
 | Family | KEEP | CUT | Total | Retention |
 |---|---:|---:|---:|---:|
-| **base** (legacy fixed-function GLES3) | **38** | 67 | 105 | 36% |
-| `rss-sdl2` (not scored in this round — out of scope per rubric) | — | — | 13 | — |
+| **base** (legacy fixed-function GLES3, post-amendment) | **49** | 43 | 92 | 53% |
+| `rss-sdl2` (held for separate round after root-cause sweep) | 0 | 13 | 13 | 0% |
 | `shadertoy` (not scored — modern shader path) | — | — | 38 | — |
 | **hyprsaver** (modern shader path — 100% PASS) | 35 | 0 | 35 | 100% |
 | **native pieces** (magmasimplex, genxvectorcade, neonspacewar) | 3 | 0 | 3 | 100% |
@@ -479,15 +519,26 @@ per the curation rule (visual quality over catalogue completeness).
 
 ## End-of-round summary
 
-This round scored **all 51 candidates** the original brief identified
-plus **14 corrective auto-CUTs** the original commit missed. The
-per-target tables above are the row-by-row evidence; the
-group-by-group redundancy calls name the WINNER in each redundant
-family (cube → cubetwist; surface-math → klein; gears → geodesicgears
-+ moebiusgears; tunnel → blocktube; ant → antinspect; polyhedron/mesh
-→ covered by surface-math, crumbler adds nothing; molecular → molecule,
-covid19 CUT on topic). The final surviving count is **38 of 105 base
-legacy screensavers** for ship-as-is.
+This round scored **all 92 base-family targets** plus 14 corrective
+auto-CUTs the original commit missed. The per-target tables above are
+the row-by-row evidence; the group-by-group redundancy calls name the
+WINNER in each redundant family (cube → cubetwist; surface-math →
+klein; gears → geodesicgears + moebiusgears; tunnel → blocktube; ant →
+antinspect; polyhedron/mesh → surface-math family leads; molecular →
+molecule leads; covid19 was cut on topic, not rubric, and reinstated by
+the operator).
+
+**Post-2026-09-26 amendment final count: 49 of 92 base legacy
+screensavers KEEP for ship-as-is (53% retention).** Of the 43 CUT,
+all 43 are any-axis-0 auto-CUTs (matrix FAIL, visually broken,
+mixed-vendor only, or visual=0 papercube); zero redundancy CUTs remain
+after the amendment reinstated all 12.
+
+The cross-family picture: 49 base + 35 hyprsaver + 3 native + 0
+rss-sdl2 = **87 shippable legacy screensavers**, down from ~160 working
+before the round. The reduction is intentional per the curation rule
+(visual quality over catalogue completeness) and the chooser ordering
+preserves uniqueness ranking for the rewrite shortlist.
 
 ---
 
