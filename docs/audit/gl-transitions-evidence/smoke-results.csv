@@ -1,0 +1,210 @@
+Warning: Permanently added '192.168.207.84' (ED25519) to the list of known hosts.
+name,compile,link,render,fail
+AdvancedMosaic,1,1,1,
+angular,0,0,0,FS: 0:16(33): error: `PI' undeclared
+0:16(17): error: operands to arithmetic operators must be numeric
+0:16(17): error: operands to arithmetic operators must be numeric
+0:17(47): warning: `offset' used uninitialized
+0:18(35): error: `PI' u
+BlockDissolve,1,1,1,
+BookFlip,1,1,1,
+Bounce,1,1,1,
+BowTieHorizontal,1,1,1,
+BowTieVertical,1,1,1,
+BowTieWithParameter,1,1,1,
+Box,1,1,1,
+burn,1,1,1,
+burn0,1,1,1,
+ButterflyWaveScrawler,1,1,1,
+cannabisleaf,1,1,1,
+chessboard,1,1,1,
+circle,1,1,0,rendered all-black
+CircleCrop,0,0,0,FS: 0:14(31): error: `ratio' undeclared
+0:14(25): error: operands to arithmetic operators must be numeric
+0:14(15): error: cannot construct `vec2' from a non-numeric data type
+0:14(15): error: initializer of global variable `ratio2' must b
+circleopen,1,1,1,
+colorphase,1,1,1,
+ColourDistance,1,1,1,
+coord-from-in,1,1,1,
+CrazyParametricFun,1,1,1,
+crosshatch,1,1,1,
+crosswarp,1,1,1,
+CrossZoom,1,1,1,
+cube,1,1,1,
+DefocusBlur,1,1,1,
+Directional,1,1,1,
+directional-easing,1,1,1,
+DirectionalScaled,0,0,0,FS: 0:16(24): error: `PI' undeclared
+0:16(20): error: operands to arithmetic operators must be numeric
+0:16(16): error: no matching function for call to `sin(error)'; candidates are:
+0:16(16): error:    float sin(float)
+0:16(16): error:   
+directionalwarp,1,1,1,
+directionalwipe,1,1,1,
+displacement,1,1,1,
+dissolve,1,1,1,
+DoomScreenTransition,1,1,1,
+doorway,1,1,1,
+Dreamy,1,1,1,
+DreamyZoom,0,0,0,FS: 0:23(59): error: `DEG2RAD' undeclared
+0:23(48): error: operands to arithmetic operators must be numeric
+0:23(39): error: no matching function for call to `mix(float, error, float)'; candidates are:
+0:23(39): error:    float mix(float, 
+Drop_Zone_Flicker,1,1,1,
+EdgeTransition,1,1,0,rendered all-black
+fade,1,1,1,
+fadecolor,1,1,1,
+fadegrayscale,1,1,1,
+FilmBurn,0,0,0,FS: 0:36(6): error: A shader cannot redefine or overload built-in function `texture' in GLSL ES 3.00
+0:63(19): error: no matching function for call to `texture(vec2)'; candidates are:
+0:63(19): error:    vec4 texture(sampler1D, float)
+0:63
+flyeye,1,1,1,
+Fold,1,1,1,
+fragment,0,0,0,FS: 0:27(13): error: `POINTS' undeclared
+0:27(13): error: array size must be integer type
+0:27(2): error: unsized array declarations are not allowed in GLSL ES
+0:28(22): error: `POINTS' undeclared
+0:28(18): error: operands to relational op
+GlitchDisplace,1,1,1,
+GlitchMemories,1,1,1,
+GridFlip,1,1,0,rendered all-black
+heart,1,1,1,
+hexagonalize,0,0,0,FS: 0:51(13): error: `ratio' undeclared
+0:67(21): error: `ratio' undeclared
+0:67(17): error: operands to arithmetic operators must be numeric
+0:67(9): error: cannot construct `vec2' from a non-numeric data type
+0:67(2): error: `return' wit
+HorizontalClose,1,1,1,
+HorizontalOpen,1,1,1,
+HSVfade,1,1,1,
+InvertedPageCurl,1,1,1,
+kaleidoscope,1,1,1,
+LeftRight,1,1,1,
+LinearBlur,1,1,1,
+luma,1,1,1,
+luminance_melt,0,0,0,FS: 0:104(15): error: initializer of global variable `center' must be a constant expression
+
+morph,1,1,1,
+Mosaic,0,0,0,FS: 0:24(16): error: `PI' undeclared
+0:24(14): error: operands to arithmetic operators must be numeric
+0:24(10): error: no matching function for call to `cos(error)'; candidates are:
+0:24(10): error:    float cos(float)
+0:24(10): error:   
+mosaic_transition,1,1,1,
+multiply_blend,1,1,1,
+old_tv_lost_signal,1,1,1,
+Overexposure,1,1,1,
+parametric_glitch,1,1,1,
+perlin,1,1,1,
+pinwheel,1,1,1,
+pixelize,0,0,0,FS: 0:16(11): error: initializer of global variable `d' must be a constant expression
+0:17(14): error: initializer of global variable `dist' must be a constant expression
+0:18(19): error: initializer of global variable `squareSize' must be
+polar_function,0,0,0,FS: 0:16(53): error: `PI' undeclared
+0:16(47): error: operands to arithmetic operators must be numeric
+0:16(16): error: operands to arithmetic operators must be numeric
+0:17(22): warning: `angle' used uninitialized
+0:17(36): error: `PI' un
+PolkaDotsCurtain,1,1,1,
+powerKaleido,0,0,0,FS: 0:13(32): error: `PI' undeclared
+0:13(19): error: operands to arithmetic operators must be numeric
+0:13(19): error: initializer of const variable `deg' must be a constant expression
+0:16(14): error: initializer of global variable `dist
+PuzzleRight,1,1,0,rendered all-black
+Radial,1,1,1,
+randomNoisex,1,1,1,
+randomsquares,1,1,1,
+Rectangle,0,0,0,FS: 0:14(11): error: initializer of global variable `s' must be a constant expression
+
+RectangleCrop,1,1,0,rendered all-black
+Revolve_Left,0,0,0,FS: 0:48(9): error: `ratio' undeclared
+0:63(9): error: `ratio' undeclared
+0:96(9): error: `ratio' undeclared
+
+ripple,1,1,1,
+Rolls,0,0,0,FS: 0:22(25): error: `ratio' undeclared
+0:22(20): error: cannot construct `vec2' from a non-numeric data type
+0:31(18): warning: `iResolution' used uninitialized
+0:31(47): warning: `iResolution' used uninitialized
+0:32(18): warning: `iReso
+rotate_scale_fade,0,0,0,FS: 0:23(22): error: `PI' undeclared
+0:23(16): error: operands to arithmetic operators must be numeric
+0:23(16): error: operands to arithmetic operators must be numeric
+0:23(16): error: operands to arithmetic operators must be numeric
+0:25
+RotateScaleVanish,0,0,0,FS: 0:21(25): error: `ratio' undeclared
+0:21(20): error: cannot construct `vec2' from a non-numeric data type
+0:27(28): warning: `iResolution' used uninitialized
+0:28(28): warning: `iResolution' used uninitialized
+0:31(23): warning: `iReso
+rotateTransition,0,0,0,FS: 0:18(47): error: `PI' undeclared
+0:18(36): error: operands to arithmetic operators must be numeric
+0:18(36): error: operands to arithmetic operators must be numeric
+0:18(17): error: no matching function for call to `rotate2D(vec2, erro
+scale-in,1,1,1,
+SimpleFlip,1,1,0,rendered all-black
+SimpleZoom,0,0,0,FS: 0:13(16): error: initializer of global variable `nQuick' must be a constant expression
+
+SimpleZoomOut,0,0,0,FS: 0:14(16): error: initializer of global variable `nQuick' must be a constant expression
+
+Slides,1,1,1,
+splitSlideInHorizontal,1,1,1,
+splitSlideInOutHorizontal,1,1,1,
+splitSlideInOutVertical,1,1,1,
+splitSlideInVertical,1,1,1,
+splitSlideOutHorizontal,1,1,1,
+splitSlideOutVertical,1,1,1,
+squareswire,1,1,1,
+squeeze,1,1,1,
+StarWipe,0,0,0,FS: 0:29(52): error: `STAR_ANGLE' undeclared
+0:29(36): error: operands to arithmetic operators must be numeric
+0:29(16): error: no matching function for call to `rotate(vec2, error)'; candidates are:
+0:29(16): error:    vec2 rotate(vec2, f
+StaticFade,1,1,1,
+static_wipe,0,0,0,FS: 0:24(41): error: `PI' undeclared
+0:24(41): error: operands to arithmetic operators must be numeric
+0:24(37): error: no matching function for call to `sin(error)'; candidates are:
+0:24(37): error:    float sin(float)
+0:24(37): error:   
+StereoViewer,0,0,0,FS: 0:194(42): error: `ratio' undeclared
+0:194(26): error: operands to arithmetic operators must be numeric
+0:194(21): error: cannot construct `vec2' from a non-numeric data type
+0:202(44): warning: `corner_size' used uninitialized
+0:206(4
+StripDatamoshGlitch,0,0,0,FS: 0:180(39): error: `ratio' undeclared
+0:180(31): error: operands to arithmetic operators must be numeric
+0:180(26): error: cannot construct `vec2' from a non-numeric data type
+0:180(21): error: operands to arithmetic operators must be n
+swap,1,1,1,
+Swirl,1,1,1,
+tangentMotionBlur,0,0,0,FS: 0:117(22): error: `ratio' undeclared
+0:117(19): error: operands to arithmetic operators must be numeric
+0:119(19): error: `ratio' undeclared
+0:131(19): error: `ratio' undeclared
+0:131(16): error: operands to arithmetic operators must b
+TilesWave,1,1,1,
+TopBottom,1,1,1,
+TVStatic,1,1,1,
+undulatingBurnOut,1,1,1,
+VerticalClose,1,1,1,
+VerticalOpen,1,1,1,
+WaterDrop,1,1,1,
+wind,1,1,1,
+windowblinds,1,1,1,
+windowslice,1,1,1,
+wipeDown,1,1,1,
+wipeLeft,1,1,1,
+wipeRight,1,1,1,
+wipeUp,1,1,1,
+x_axis_translation,1,1,1,
+ZoomInCircles,0,0,0,FS: 0:16(31): error: `ratio' undeclared
+0:16(25): error: operands to arithmetic operators must be numeric
+0:16(15): error: cannot construct `vec2' from a non-numeric data type
+0:16(15): error: initializer of global variable `ratio2' must b
+zoomInOut,1,1,1,
+ZoomLeftWipe,0,0,0,FS: 0:13(16): error: initializer of global variable `nQuick' must be a constant expression
+
+ZoomRigthWipe,0,0,0,FS: 0:13(16): error: initializer of global variable `nQuick' must be a constant expression
+
