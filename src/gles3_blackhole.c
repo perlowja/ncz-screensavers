@@ -28,7 +28,17 @@ typedef struct {
  float v[23];
 } State;
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec*1e-9;}
-static uint32_t seed(void){uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}struct timespec t;clock_gettime(CLOCK_REALTIME,&t);return t.tv_nsec^t.tv_sec^getpid();}
+static uint32_t seed(void){
+ /* Allow tests / A-B comparisons to force a specific seed via env var.
+  * Default behaviour (no env var) is unchanged: pull from /dev/urandom,
+  * fall back to clock XOR pid. */
+ const char*override=getenv("NCZ_BLACKHOLE_FIXED_SEED");
+ if(override&&*override){uint32_t s=(uint32_t)strtoul(override,NULL,10);if(s!=0)return s;}
+ uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);
+ if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}
+ struct timespec t;clock_gettime(CLOCK_REALTIME,&t);
+ return t.tv_nsec^t.tv_sec^getpid();
+}
 static float rnd(uint32_t*s,float a,float b){*s^=*s<<13;*s^=*s>>17;*s^=*s<<5;return a+(b-a)*(float)(*s&0xffffffu)/16777215.f;}
 static char*load(void){const char*p[]={"vendor/blackhole/blackhole.frag","../vendor/blackhole/blackhole.frag","../../vendor/blackhole/blackhole.frag","/usr/share/ncz-screensavers/shaders/blackhole.frag"};FILE*f=0;const char*u=0;for(unsigned i=0;i<4;i++)if((f=fopen(p[i],"rb"))){u=p[i];break;}if(!f){fprintf(stderr,"blackhole: cannot locate shader\n");return 0;}fseek(f,0,SEEK_END);long n=ftell(f);rewind(f);char*b=malloc(n+1);if(!b||fread(b,1,n,f)!=(size_t)n){free(b);fclose(f);return 0;}fclose(f);b[n]=0;fprintf(stderr,"[diag] blackhole shader=%s\n",u);return b;}
 static GLuint comp(GLenum t,const char*x){GLuint s=glCreateShader(t);glShaderSource(s,1,&x,0);glCompileShader(s);GLint ok=0;glGetShaderiv(s,GL_COMPILE_STATUS,&ok);if(!ok){char l[8192];glGetShaderInfoLog(s,sizeof l,0,l);fprintf(stderr,"blackhole compile: %s\n",l);glDeleteShader(s);return 0;}return s;}
