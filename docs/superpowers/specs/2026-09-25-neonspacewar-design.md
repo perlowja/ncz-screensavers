@@ -463,8 +463,9 @@ a close pass and an orthographic wide shot cost very differently.
 ## Test host correction (2026-09-25)
 
 **MEDUSA is 192.168.207.84, user `medusa`, password `medusa`.** Verified
-working. The account was created by the NCZ-OS installer as a malformed
-`medusamedusa` — the name doubled — and was renamed in place with
+working. The account was originally `medusamedusa` (an operator typo at
+install time, NOT an installer defect — an earlier note in this file said
+otherwise and is retracted) and was renamed in place with
 `usermod -l medusa -d /home/medusa -m`, preserving uid 1000 and all file
 ownership. Any brief or note using `medusamedusa@` is stale.
 
