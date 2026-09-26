@@ -1,35 +1,42 @@
 #version 300 es
-/* lines.frag — optional override for the line-shader fragment.
+/* lines.frag — fragment shader for the thick-stroke line renderer.
  *
- * The default (inline in gles3_neonspacewar.c) outputs solid colour
- * into the additive-blended trail FBO:
+ * Layout per-vertex (LineVert):
+ *   x, y            world-space endpoint
+ *   ox, oy          world-space other endpoint of the segment
+ *   r, g, b         line colour
+ *   a               alpha multiplier
+ *   w               half-thickness in pixels
+ *   s               side: -1 or +1 (perpendicular offset from line center)
  *
- *   o_col = vec4(v_color * v_alpha, v_alpha);
+ * The vertex shader expands each segment into two triangles and
+ * extrudes the four vertices by +-a_width*u_px_to_clip along the
+ * segment's perpendicular, so the line ends up a thick stroked quad
+ * with sub-pixel control.
  *
- * This file exists for cases where you want line shading to vary
- * along the segment length (e.g. a per-end gradient or noise
- * dithering). For now it matches the default.
+ * This fragment shader converts v_side (a -1..+1 "signed distance
+ * to line center" expressed as the extrusion offset) into a sharp
+ * bright core and a soft halo via exp(-d*d*k), without a blur pass.
  *
- * Vertex inputs:
- *   in vec3 v_color;
- *   in float v_alpha;
- * Output (RGBA8 trail FBO, additive):
- *   o_col.rgb = contribution to add
- *   o_col.a   = alpha contribution (kept around in case the
- *               compositing pass wants to read coverage)
+ * Default (when this file isn't found on disk and the inline shader
+ * in src/gles3_neonspacewar.c is used) does the same.
  */
 precision mediump float;
 
 in vec3 v_color;
 in float v_alpha;
-
+in float v_side;
 out vec4 o_col;
 
 void main() {
-    /* Centre-weighted: lines look slightly brighter at the middle
-     * of the segment than at the ends when the segment is long.
-     * We approximate that by a slight luminance boost based on
-     * alpha (already saturated in practice). */
-    vec3 c = v_color * v_alpha;
-    o_col = vec4(c, v_alpha);
+    /* d in [0..1] across the half-quad. */
+    float d = abs(v_side);
+    /* Sharp core for d<0.55, falls off smoothly to 0 by d=1.0.
+     * The 1.6x boost gives the core a hot inner line. */
+    float core = 1.0 - smoothstep(0.55, 1.0, d);
+    /* Soft exponential halo without a blur pass. The 0.55 factor
+     * weights the halo contribution relative to the core. */
+    float halo = exp(-d * d * 3.5);
+    vec3 c = v_color * v_alpha * (core * 1.6 + halo * 0.55);
+    o_col = vec4(c, core * v_alpha + halo * 0.25);
 }

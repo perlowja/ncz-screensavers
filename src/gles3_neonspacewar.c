@@ -183,11 +183,19 @@ typedef struct {
 typedef struct {
     /* GLES plumbing */
     GLuint line_prog, trail_prog, comp_prog;
-    GLuint trail_fbo, trail_tex;
-    int fb_w, fb_h;
+    /* Two ping-pong FBOs for the persistent phosphor trail.
+     * draw_decay reads trail_tex[t_read] and writes trail_tex[t_write];
+     * draw_lines then writes additively into trail_fbo=t_write. */
+    GLuint trail_fbo[2], trail_tex[2];
+    int trail_idx;          /* index of the *write* FBO this frame */
+    int trail_fbo_w, trail_fbo_h;
+    int fb_w, fb_h;         /* visible drawable / composite size */
     GLuint full_vbo;
     GLint  u_line_mvp;
-    GLint  u_trail_fade;
+    GLint  u_line_px_to_clip;
+    GLint  u_trail_prev;
+    GLint  u_trail_decay;
+    GLint  u_trail_decay_strength;
     GLint  u_comp_samp;
     GLint  u_comp_resolution;
     GLint  u_comp_time;
@@ -253,7 +261,7 @@ static void push_rock_outline(State *st, int idx);
 static void push_bullet_outline(State *st, int idx);
 static void push_debris_outline(State *st, int idx);
 static void push_particles_outline(State *st);
-static void draw_fade_quad(State *st);
+static void draw_trail_decay(State *st);
 static void draw_lines(State *st);
 static void draw_composite(State *st);
 
@@ -450,14 +458,28 @@ static void setup_geometry_vbo(GLuint *vbo) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-/* Dynamic VBO for line segments. */
+/* Dynamic VBO for line segments. Each segment is expanded to two
+ * triangles (6 verts) at draw time: a perpendicular extrusion by
+ * +-a_width*u_px_to_clip in clip space, which gives sub-pixel
+ * control without needing a CPU-side polyline expansion.
+ *
+ * Layout per-vertex (LineVert):
+ *   x, y            world-space endpoint
+ *   ox, oy          world-space other endpoint of the segment
+ *   r, g, b         line colour
+ *   a               alpha multiplier
+ *   w               half-thickness in pixels
+ *   s               side: -1 or +1
+ */
 typedef struct {
-    float x, y;
+    float x,  y;
+    float ox, oy;
     float r, g, b;
     float a;
     float w;
+    float s;
 } LineVert;
-#define MAX_LINE_VERTS (MAX_LINES * 2)
+#define MAX_LINE_VERTS (MAX_LINES * 6)
 static LineVert g_lineverts[MAX_LINE_VERTS];
 static GLuint g_line_vbo;
 
@@ -486,20 +508,28 @@ static void push_line(State *st, V2 a, V2 b, float r, float g, float bl,
 /* Draw passes                                                             */
 /* ===================================================================== */
 
-static void draw_fade_quad(State *st) {
-    /* Fade the trail FBO multiplicatively. 0.82 means trails drop
-     * to 1% in ~24 frames (~0.4s at 60fps) — short, snappy trails
-     * that look like motion blur, not smear. Earlier values
-     * (0.93+) accumulated 60+ frames of rock outlines, turning the
-     * rocks into long tubes. */
+/* ===================================================================== */
+/* Trail ping-pong: read previous frame, multiply by per-channel decay,    */
+/* write to the other FBO. Line draws in draw_lines() then add into the   */
+/* *write* FBO additively afterwards.                                      */
+/* ===================================================================== */
+static void draw_trail_decay(State *st) {
+    int write = st->trail_idx;
+    int read  = 1 - st->trail_idx;
     glUseProgram(st->trail_prog);
-    glUniform1f(st->u_trail_fade, 0.82f);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, st->trail_tex[read]);
+    glUniform1i(st->u_trail_prev, 0);
+    /* Per-channel phosphor decay: red fades faster than blue. */
+    glUniform3f(st->u_trail_decay, 0.94f, 0.965f, 0.992f);
+    glUniform1f(st->u_trail_decay_strength, 1.0f);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo);
-    glViewport(0, 0, st->fb_w, st->fb_h);
+    glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo[write]);
+    glViewport(0, 0, st->trail_fbo_w, st->trail_fbo_h);
 
-    /* Multiplicative fade: GL_ZERO, GL_SRC_COLOR → dst *= src. */
-    glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+    /* Plain copy: dst = sampled value (no blend). The fade shader
+     * itself applies the per-channel decay. */
+    glDisable(GL_BLEND);
 
     glBindBuffer(GL_ARRAY_BUFFER, st->full_vbo);
     glEnableVertexAttribArray(0);
@@ -507,33 +537,80 @@ static void draw_fade_quad(State *st) {
     ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glEnable(GL_BLEND);
     glUseProgram(0);
 }
 
 static void draw_lines(State *st) {
     if (st->line_n == 0) return;
+    /* Expand each segment into two triangles (6 verts). Each triangle's
+     * vertex pair along the segment shares an endpoint. The vertex
+     * shader extrudes them by +-a_width*u_px_to_clip along the segment's
+     * perpendicular. Two triangles per segment drawn as GL_TRIANGLES. */
     int vcount = 0;
+    int max_v = MAX_LINE_VERTS;
     for (int i = 0; i < st->line_n; i++) {
         const LineSeg *L = &st->lines[i];
-        if (vcount + 2 > MAX_LINE_VERTS) break;
-        LineVert *v0 = &g_lineverts[vcount++];
-        LineVert *v1 = &g_lineverts[vcount++];
-        v0->x = L->x0; v0->y = L->y0; v1->x = L->x1; v1->y = L->y1;
-        v0->r = L->r; v0->g = L->g; v0->b = L->b;
-        v1->r = L->r; v1->g = L->g; v1->b = L->b;
-        v0->a = L->a; v1->a = L->a;
-        v0->w = L->width; v1->w = L->width;
+        if (vcount + 6 > max_v) break;
+        LineVert *verts = &g_lineverts[vcount];
+        /* Endpoint A (x0,y0) - both sides */
+        verts[0].x = L->x0; verts[0].y = L->y0;
+        verts[1].x = L->x0; verts[1].y = L->y0;
+        /* Endpoint B (x1,y1) - both sides */
+        verts[2].x = L->x1; verts[2].y = L->y1;
+        verts[3].x = L->x1; verts[3].y = L->y1;
+        /* 'other' endpoint is the opposite corner of this segment */
+        verts[0].ox = L->x1; verts[0].oy = L->y1;
+        verts[1].ox = L->x1; verts[1].oy = L->y1;
+        verts[2].ox = L->x0; verts[2].oy = L->y0;
+        verts[3].ox = L->x0; verts[3].oy = L->y0;
+        /* colours / alpha / width are shared across the 4 extruded
+         * verts; sides 0,2 = -1 and 1,3 = +1 (the perpendicular
+         * normal flips sign on the second triangle). */
+        float cols[4][3] = {
+            {L->r, L->g, L->b},
+            {L->r, L->g, L->b},
+            {L->r, L->g, L->b},
+            {L->r, L->g, L->b},
+        };
+        float sides[4]  = {-1.0f, 1.0f, -1.0f, 1.0f};
+        float alphas[4] = {L->a, L->a, L->a, L->a};
+        float widths[4] = {L->width, L->width, L->width, L->width};
+        for (int k = 0; k < 4; k++) {
+            verts[k].r = cols[k][0];
+            verts[k].g = cols[k][1];
+            verts[k].b = cols[k][2];
+            verts[k].a = alphas[k];
+            verts[k].w = widths[k];
+            verts[k].s = sides[k];
+        }
+        /* Two-triangle quad (indexed implicitly): 0,1,2 and 1,3,2 */
+        LineVert tri0[3] = {verts[0], verts[1], verts[2]};
+        LineVert tri1[3] = {verts[1], verts[3], verts[2]};
+        memcpy(&verts[0], tri0, sizeof tri0);
+        memcpy(&verts[3], tri1, sizeof tri1);
+        vcount += 6;
     }
+    if (vcount == 0) return;
 
     glBindBuffer(GL_ARRAY_BUFFER, g_line_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0,
                     (GLsizeiptr)(vcount * sizeof (LineVert)),
                     g_lineverts);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo);
-    glViewport(0, 0, st->fb_w, st->fb_h);
+    glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo[st->trail_idx]);
+    glViewport(0, 0, st->trail_fbo_w, st->trail_fbo_h);
     glUseProgram(st->line_prog);
     glUniformMatrix4fv(st->u_line_mvp, 1, GL_FALSE, st->mvp);
+    /* px_to_clip converts 1 pixel into NDC units. With the aspect-
+     * corrected ortho both X and Y span 2.0 NDC units; using
+     * min(w,h) gives isotropic stroke widths. */
+    float min_dim = (float)(st->trail_fbo_w < st->trail_fbo_h
+                             ? st->trail_fbo_w
+                             : st->trail_fbo_h);
+    float px_to_clip = 2.0f / min_dim;
+    glUniform1f(st->u_line_px_to_clip, px_to_clip);
 
     glBlendFunc(GL_ONE, GL_ONE);  /* additive */
 
@@ -541,21 +618,29 @@ static void draw_lines(State *st) {
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
     glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(4);
+    glEnableVertexAttribArray(5);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof (LineVert),
                           (void *)offsetof(LineVert, x));
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof (LineVert),
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof (LineVert),
+                          (void *)offsetof(LineVert, ox));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof (LineVert),
                           (void *)offsetof(LineVert, r));
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof (LineVert),
-                          (void *)offsetof(LineVert, a));
     glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof (LineVert),
+                          (void *)offsetof(LineVert, a));
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof (LineVert),
                           (void *)offsetof(LineVert, w));
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof (LineVert),
+                          (void *)offsetof(LineVert, s));
 
-    ncz_gles3_draw_arrays(GL_LINES, 0, vcount);
+    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, vcount);
 
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
     glDisableVertexAttribArray(3);
+    glDisableVertexAttribArray(4);
+    glDisableVertexAttribArray(5);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -567,9 +652,12 @@ static void draw_composite(State *st) {
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    /* Composite reads the just-written trail FBO (this frame's source
+     * for the visible composite output). The ping-pong swap happens
+     * at frame end, so the *next* frame's decay reads this one. */
     glUseProgram(st->comp_prog);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, st->trail_tex);
+    glBindTexture(GL_TEXTURE_2D, st->trail_tex[st->trail_idx]);
     glUniform1i(st->u_comp_samp, 0);
     glUniform2f(st->u_comp_resolution, (float)st->fb_w, (float)st->fb_h);
     glUniform1f(st->u_comp_time, (float)(now_monotonic() - st->started));
@@ -1279,9 +1367,17 @@ static void game_render(State *st) {
     for (int i = 0; i < MAX_DEBRIS; i++) push_debris_outline(st, i);
     push_particles_outline(st);
 
-    draw_fade_quad(st);
+    /* ping-pong: decay previous frame into current write FBO,
+     * then additively rasterise thick strokes into it (which now
+     * compose on top of the decayed phosphor trail), then composite
+     * the write-FBO to the visible default framebuffer. */
+    draw_trail_decay(st);
     draw_lines(st);
     draw_composite(st);
+
+    /* End-of-frame swap: the FBO we just wrote is the source for the
+     * next frame's decay pass. */
+    st->trail_idx = 1 - st->trail_idx;
 }
 
 /* ===================================================================== */
@@ -1305,19 +1401,34 @@ static void init_neonspacewar(ModeInfo *m) {
     };
     memcpy(st->mvp, ident, sizeof ident);
 
+    /* ------------------------------------------------------------------ */
+    /* Lines program: thick extruded-quad strokes with sharp core + halo  */
+    /* ------------------------------------------------------------------ */
     static const char *line_vs =
         "#version 300 es\n"
         "layout(location=0) in vec2 a_pos;\n"
-        "layout(location=1) in vec3 a_color;\n"
-        "layout(location=2) in float a_alpha;\n"
-        "layout(location=3) in float a_width;\n"
+        "layout(location=1) in vec2 a_other;\n"
+        "layout(location=2) in vec3 a_color;\n"
+        "layout(location=3) in float a_alpha;\n"
+        "layout(location=4) in float a_width;\n"
+        "layout(location=5) in float a_side;\n"
         "uniform mat4 u_mvp;\n"
+        "uniform float u_px_to_clip;\n"  /* pixels to NDC units */
         "out vec3 v_color;\n"
         "out float v_alpha;\n"
+        "out float v_side;\n"
         "void main(){\n"
+        "  vec4 p  = u_mvp * vec4(a_pos,    0.0, 1.0);\n"
+        "  vec4 po = u_mvp * vec4(a_other, 0.0, 1.0);\n"
+        "  vec2 d  = po.xy - p.xy;\n"
+        "  float len2 = dot(d, d);\n"
+        "  d = (len2 > 1e-10) ? d * inversesqrt(len2) : vec2(1.0, 0.0);\n"
+        "  vec2 n  = vec2(-d.y, d.x);\n"
+        "  vec2 off = n * (a_side * a_width * u_px_to_clip);\n"
         "  v_color = a_color;\n"
         "  v_alpha = a_alpha;\n"
-        "  gl_Position = u_mvp * vec4(a_pos, 0.0, 1.0);\n"
+        "  v_side  = a_side;\n"
+        "  gl_Position = vec4(p.xy + off, 0.0, 1.0);\n"
         "}\n";
 
     static const char *line_fs =
@@ -1325,11 +1436,25 @@ static void init_neonspacewar(ModeInfo *m) {
         "precision mediump float;\n"
         "in vec3 v_color;\n"
         "in float v_alpha;\n"
+        "in float v_side;\n"
         "out vec4 o_col;\n"
         "void main(){\n"
-        "  o_col = vec4(v_color * v_alpha, v_alpha);\n"
+        "  /* d in [0..1] across the half-quad (v_side is +-1 at the edges,\n"
+        "   * so abs(v_side)=1 at the outer edge, -> 0 at the line center).\n"
+        "   * exp(-d*d*k) gives a soft halo without a blur pass. */\n"
+        "  float d = abs(v_side);\n"
+        "  float core = 1.0 - smoothstep(0.55, 1.0, d);\n"
+        "  float halo = exp(-d * d * 3.5);\n"
+        "  vec3 c = v_color * v_alpha * (core * 1.6 + halo * 0.55);\n"
+        "  o_col = vec4(c, core * v_alpha + halo * 0.25);\n"
         "}\n";
 
+    /* ------------------------------------------------------------------ */
+    /* Trail-fade program: per-channel phosphor decay on the FBO.         */
+    /* Inputs are the previous-frame trail texture + a per-channel       */
+    /* decay vector; outputs the decayed (and re-energised by line       */
+    /* draws later this frame) buffer for the composite step.            */
+    /* ------------------------------------------------------------------ */
     static const char *trail_vs =
         "#version 300 es\n"
         "layout(location=0) in vec2 a_pos;\n"
@@ -1342,10 +1467,20 @@ static void init_neonspacewar(ModeInfo *m) {
     static const char *trail_fs =
         "#version 300 es\n"
         "precision mediump float;\n"
-        "uniform float u_trail_fade;\n"
+        "in vec2 v_uv;\n"
+        "uniform sampler2D u_prev;\n"
+        "uniform vec3 u_decay;          /* per-channel decay, e.g. (0.95, 0.97, 0.995) */\n"
+        "uniform float u_decay_strength;/* 0..1 -- 1.0 means full per-channel decay */\n"
         "out vec4 o_col;\n"
         "void main(){\n"
-        "  o_col = vec4(u_trail_fade, u_trail_fade, u_trail_fade, 1.0);\n"
+        "  vec3 p = texture(u_prev, v_uv).rgb;\n"
+        "  vec3 d = mix(vec3(1.0), u_decay, u_decay_strength);\n"
+        "  // Per-channel decay; blue lingers longer than red.\n"
+        "  // Clamp low to avoid underflow noise on the trailing edge.\n"
+        "  vec3 f = p * d;\n"
+        "  float m = max(max(f.r, f.g), f.b);\n"
+        "  if (m < 0.004) f = vec3(0.0);\n"
+        "  o_col = vec4(f, 1.0);\n"
         "}\n";
 
     char *comp_src = load_shader_text("composite.frag");
@@ -1363,7 +1498,11 @@ static void init_neonspacewar(ModeInfo *m) {
         ncz_harness_die(1);
 
     st->u_line_mvp = glGetUniformLocation(st->line_prog, "u_mvp");
-    st->u_trail_fade = glGetUniformLocation(st->trail_prog, "u_trail_fade");
+    st->u_line_px_to_clip = glGetUniformLocation(st->line_prog, "u_px_to_clip");
+    st->u_trail_prev = glGetUniformLocation(st->trail_prog, "u_prev");
+    st->u_trail_decay = glGetUniformLocation(st->trail_prog, "u_decay");
+    st->u_trail_decay_strength =
+        glGetUniformLocation(st->trail_prog, "u_decay_strength");
     st->u_comp_samp = glGetUniformLocation(st->comp_prog, "u_trail");
     st->u_comp_resolution = glGetUniformLocation(st->comp_prog, "u_resolution");
     st->u_comp_time = glGetUniformLocation(st->comp_prog, "u_time");
@@ -1382,12 +1521,21 @@ static void init_neonspacewar(ModeInfo *m) {
     setup_geometry_vbo(&st->full_vbo);
     setup_line_vbo();
 
-    if (create_fbo(st->fb_w, st->fb_h,
-                   &st->trail_tex, &st->trail_fbo) < 0) ncz_harness_die(1);
-    /* Bright ambient backdrop so the screen always reads as
-     * "alive" rather than "black with floating entities". The
-     * palette recolours it through the composite pass. */
-    clear_fbo(st->trail_fbo, 0.06f, 0.05f, 0.10f, 1.f);
+    /* Two ping-pong trail FBOs. trail_idx identifies the *write* FBO
+     * this frame; the decay pass reads the other one. */
+    st->trail_fbo_w = st->fb_w;
+    st->trail_fbo_h = st->fb_h;
+    if (create_fbo(st->trail_fbo_w, st->trail_fbo_h,
+                   &st->trail_tex[0], &st->trail_fbo[0]) < 0
+        || create_fbo(st->trail_fbo_w, st->trail_fbo_h,
+                      &st->trail_tex[1], &st->trail_fbo[1]) < 0)
+        ncz_harness_die(1);
+    st->trail_idx = 0;
+    /* Both FBOs seeded with the same baseline phosphor colour, so the
+     * very first frame (when we have no "previous" trail yet) still
+     * looks alive. The palette recolours it through the composite pass. */
+    for (int i = 0; i < 2; i++)
+        clear_fbo(st->trail_fbo[i], 0.06f, 0.05f, 0.10f, 1.f);
 
     game_init(st);
 
@@ -1405,17 +1553,18 @@ static void reshape_neonspacewar(ModeInfo *m, int w, int h) {
     st->fb_w = w;
     st->fb_h = h;
 
-    if (st->trail_tex) {
-        glDeleteTextures(1, &st->trail_tex);
-        st->trail_tex = 0;
-    }
-    if (st->trail_fbo) {
-        glDeleteFramebuffers(1, &st->trail_fbo);
-        st->trail_fbo = 0;
-    }
-    if (create_fbo(w, h, &st->trail_tex, &st->trail_fbo) < 0)
+    if (st->trail_tex[0]) glDeleteTextures(1, &st->trail_tex[0]);
+    if (st->trail_tex[1]) glDeleteTextures(1, &st->trail_tex[1]);
+    if (st->trail_fbo[0]) glDeleteFramebuffers(1, &st->trail_fbo[0]);
+    if (st->trail_fbo[1]) glDeleteFramebuffers(1, &st->trail_fbo[1]);
+    st->trail_tex[0] = st->trail_tex[1] = 0;
+    st->trail_fbo[0] = st->trail_fbo[1] = 0;
+    st->trail_fbo_w = w; st->trail_fbo_h = h;
+    if (create_fbo(w, h, &st->trail_tex[0], &st->trail_fbo[0]) < 0
+        || create_fbo(w, h, &st->trail_tex[1], &st->trail_fbo[1]) < 0)
         ncz_harness_die(1);
-    clear_fbo(st->trail_fbo, 0.06f, 0.05f, 0.10f, 1.f);
+    for (int i = 0; i < 2; i++)
+        clear_fbo(st->trail_fbo[i], 0.06f, 0.05f, 0.10f, 1.f);
 
     /* Aspect-correct ortho: keep [-1,1] playfield, fit to longer axis. */
     float sx = 1.f, sy = 1.f;
@@ -1499,20 +1648,23 @@ static void draw_neonspacewar(ModeInfo *m) {
 
         /* Also sample the trail FBO so we know whether the line
          * renderer actually got anything onto it. */
-        glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo[st->trail_idx]);
         unsigned char tpx[16] = {0};
-        glReadPixels(st->fb_w/2, st->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx);
-        glReadPixels(st->fb_w/4, st->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+4);
-        glReadPixels(3*st->fb_w/4, st->fb_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+8);
-        glReadPixels(st->fb_w/2, st->fb_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+12);
+        glReadPixels(st->trail_fbo_w/2, st->trail_fbo_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx);
+        glReadPixels(st->trail_fbo_w/4, st->trail_fbo_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+4);
+        glReadPixels(3*st->trail_fbo_w/4, st->trail_fbo_h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+8);
+        glReadPixels(st->trail_fbo_w/2, st->trail_fbo_h/4, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, tpx+12);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         fprintf(stderr,
             "[diag] neonspacewar trail FBO samples="
             "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
             tpx[0], tpx[1], tpx[2], tpx[4], tpx[5], tpx[6], tpx[8], tpx[9], tpx[10],
             tpx[12], tpx[13], tpx[14]);
-        fprintf(stderr, "[diag] neonspacewar line_n=%d fb=%dx%d trail_fbo=%u tex=%u\n",
-                st->line_n, st->fb_w, st->fb_h, st->trail_fbo, st->trail_tex);
+        fprintf(stderr, "[diag] neonspacewar line_n=%d fb=%dx%d trail_fbo=%u,%u tex=%u,%u idx=%d\n",
+                st->line_n, st->fb_w, st->fb_h,
+                st->trail_fbo[0], st->trail_fbo[1],
+                st->trail_tex[0], st->trail_tex[1],
+                st->trail_idx);
         fflush(stderr);
         once = 1;
     }
@@ -1524,8 +1676,10 @@ static void free_neonspacewar(ModeInfo *m) {
     if (st->line_prog) glDeleteProgram(st->line_prog);
     if (st->trail_prog) glDeleteProgram(st->trail_prog);
     if (st->comp_prog) glDeleteProgram(st->comp_prog);
-    if (st->trail_tex) glDeleteTextures(1, &st->trail_tex);
-    if (st->trail_fbo) glDeleteFramebuffers(1, &st->trail_fbo);
+    if (st->trail_tex[0]) glDeleteTextures(1, &st->trail_tex[0]);
+    if (st->trail_tex[1]) glDeleteTextures(1, &st->trail_tex[1]);
+    if (st->trail_fbo[0]) glDeleteFramebuffers(1, &st->trail_fbo[0]);
+    if (st->trail_fbo[1]) glDeleteFramebuffers(1, &st->trail_fbo[1]);
     if (st->full_vbo) glDeleteBuffers(1, &st->full_vbo);
     if (g_line_vbo) { glDeleteBuffers(1, &g_line_vbo); g_line_vbo = 0; }
     free(st);
