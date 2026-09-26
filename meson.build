@@ -850,6 +850,8 @@ xshadertoy_shaders = [
     'caustics',
     'aurora',
     'marble',
+    'ridgeline',
+    'wellcurve',
 ]
 
 foreach s : xshadertoy_shaders

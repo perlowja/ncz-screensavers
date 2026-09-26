@@ -83,6 +83,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>
 
 #include <GLES3/gl32.h>
 
@@ -146,9 +147,14 @@ typedef struct {
     GLint loc_ichan1;
     GLint loc_ichan2;
     GLint loc_ichan3;
+    GLint loc_iseed;
     double start_time;
     double last_time;
     unsigned long frame;
+    /* Per-run random seed (4 floats in [0,1)). Generated once at init
+     * from a wall-clock+pid seed and uploaded to the shader every
+     * frame. Lets the shader pick its composition per launch. */
+    float seed_v[4];
 } XSToyState;
 
 /* ------------------------------------------------------------------- */
@@ -197,7 +203,12 @@ static const char *frag_preamble =
     "uniform sampler2D iChannel0;\n"
     "uniform sampler2D iChannel1;\n"
     "uniform sampler2D iChannel2;\n"
-    "uniform sampler2D iChannel3;\n";
+    "uniform sampler2D iChannel3;\n"
+    "/* iSeed — four random floats, constant per run, differ every run.\n"
+    " * Lets shaders pick their per-launch composition without reading\n"
+    " * iTime (which would also drift the composition over the run).\n"
+    " * Generated once at init from a wall-clock+pid seed. */\n"
+    "uniform vec4 iSeed;\n";
 
 /* The `void main()` wrapper — appended AFTER the body so the
  * `mainImage` call resolves forward to the body. The body declares
@@ -436,6 +447,7 @@ init_xshadertoy(ModeInfo *mi) {
     st->loc_ichan1      = glGetUniformLocation(st->program, "iChannel1");
     st->loc_ichan2      = glGetUniformLocation(st->program, "iChannel2");
     st->loc_ichan3      = glGetUniformLocation(st->program, "iChannel3");
+    st->loc_iseed       = glGetUniformLocation(st->program, "iSeed");
 
     /* Fullscreen quad — 2 triangles, 6 vertices. */
     static const float quad[] = {
@@ -463,16 +475,35 @@ init_xshadertoy(ModeInfo *mi) {
 
     st->start_time = now_seconds();
     st->last_time  = st->start_time;
+
+    /* Generate the per-run iSeed. Four random floats in [0,1). Wall
+     * clock + pid gives a different mix every launch. Using a small
+     * inline xorshift instead of rand() avoids pulling in the stdlib
+     * PRNG state — reproducible and stateless across invocations of
+     * different shader binaries within the same second. */
+    {
+        uint64_t s = (uint64_t)(now_seconds() * 1e6) ^
+                     ((uint64_t)getpid() << 32) ^
+                     ((uint64_t)(uintptr_t)st << 16);
+        if (s == 0) s = 0xdeadbeefULL;
+        for (int i = 0; i < 4; i++) {
+            s ^= s << 13; s ^= s >> 7; s ^= s << 17;
+            st->seed_v[i] = (float)((s & 0x00FFFFFFULL) /
+                                    (double)0x01000000ULL);
+        }
+    }
     fprintf(stderr,
             "[diag] xshadertoy init ok: program=%u vbo=%u GL=%s "
-            "uniforms ires=%d itime=%d iframe=%d imouse=%d "
-            "ichan0..3=%d,%d,%d,%d\n",
+            "uniforms ires=%d itime=%d iframe=%d imouse=%d iseed=%d "
+            "ichan0..3=%d,%d,%d,%d\n"
+            "[diag] xshadertoy iSeed=%f,%f,%f,%f\n",
             st->program, st->vbo,
             (const char *)glGetString(GL_VERSION),
             st->loc_iresolution, st->loc_itime, st->loc_iframe,
-            st->loc_imouse,
+            st->loc_imouse, st->loc_iseed,
             st->loc_ichan0, st->loc_ichan1,
-            st->loc_ichan2, st->loc_ichan3);
+            st->loc_ichan2, st->loc_ichan3,
+            st->seed_v[0], st->seed_v[1], st->seed_v[2], st->seed_v[3]);
 }
 
 static void
@@ -535,6 +566,11 @@ draw_xshadertoy(ModeInfo *mi) {
     }
     glUniform4fv(st->loc_idate, 1, date_v);
     glUniform4fv(st->loc_imouse, 1, zero4);
+
+    /* iSeed is constant for the run, but GL silently no-ops writes
+     * to -1 (location) so we don't need a guard here. Upload every
+     * frame is cheap (one vec4). */
+    glUniform4fv(st->loc_iseed, 1, st->seed_v);
 
     /* Bind the black 1x1 to all four iChannel units. */
     if (st->ichan_tex) {

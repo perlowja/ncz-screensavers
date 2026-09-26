@@ -64,7 +64,8 @@ static const char *frag_preamble =
     "uniform sampler2D iChannel0;\n"
     "uniform sampler2D iChannel1;\n"
     "uniform sampler2D iChannel2;\n"
-    "uniform sampler2D iChannel3;\n";
+    "uniform sampler2D iChannel3;\n"
+    "uniform vec4 iSeed;\n";
 
 static const char *frag_tail =
     "\nvoid main() {\n"
@@ -200,8 +201,16 @@ static GLint       loc_iFrameRate;
 static GLint       loc_iFrame;
 static GLint       loc_iDate;
 static GLint       loc_iMouse;
+static GLint       loc_iSeed;
 static GLint       loc_iChannelRes[4];
 static GLint       loc_iChannelTime[4];
+
+/* iSeed: parsed from --seed=N (repeatable). The defaults below give
+ * a deterministic run if no override is supplied. With overrides,
+ * frame k uses g_seed_overrides[k % g_n_seed_overrides] so a single
+ * invocation can probe multiple compositions. */
+static float g_seed_overrides[16][4];
+static int   g_n_seed_overrides = 0;
 static GLuint      dummy_tex;
 
 static int dst_w = 320, dst_h = 180;
@@ -375,7 +384,7 @@ static int setup_fullscreen_quad(void) {
 
 /* ---------- render one frame at a given iTime ---------- */
 
-static int render_frame(float t, const char *out_png,
+static int render_frame(int frame_idx, float t, const char *out_png,
                         double *out_coverage, double *out_red,
                         double *out_green, double *out_blue,
                         double *out_brightness) {
@@ -389,6 +398,14 @@ static int render_frame(float t, const char *out_png,
     glUniform1i(loc_iFrame, frame);
     glUniform4f(loc_iDate, 2026.0f, 9.0f, 26.0f, 0.5f);
     glUniform4f(loc_iMouse, 0.0f, 0.0f, 0.0f, 0.0f);
+    /* iSeed: per-frame from the override list if present (cycles),
+     * otherwise the deterministic default. */
+    if (g_n_seed_overrides > 0) {
+        const float *src = g_seed_overrides[frame_idx % g_n_seed_overrides];
+        glUniform4f(loc_iSeed, src[0], src[1], src[2], src[3]);
+    } else {
+        glUniform4f(loc_iSeed, 0.137f, 0.421f, 0.731f, 0.953f);
+    }
     for (int i = 0; i < 4; i++) {
         glUniform3f(loc_iChannelRes[i], 1.0f, 1.0f, 1.0f);
         glUniform1f(loc_iChannelTime[i], 0.0f);
@@ -461,7 +478,8 @@ static int render_frame(float t, const char *out_png,
 int main(int argc, char **argv) {
     if (argc < 3) {
         fprintf(stderr,
-                "usage: %s <shader.glsl> <out-dir> [t1 t2 t3 ...]\n",
+                "usage: %s <shader.glsl> <out-dir> [t1 t2 t3 ...] "
+                "[--seed=A,B,C,D (repeatable)]\n",
                 argv[0]);
         return 2;
     }
@@ -470,11 +488,40 @@ int main(int argc, char **argv) {
 
     float times[8];
     int ntimes = 0;
-    if (argc >= 4) {
-        for (int i = 3; i < argc && ntimes < 8; i++) {
-            times[ntimes++] = strtof(argv[i], NULL);
+    int perf_n = 0;  /* --perf=N: do N silent renders for timing */
+    for (int i = 3; i < argc; i++) {
+        const char *a = argv[i];
+        if (strncmp(a, "--seed=", 7) == 0) {
+            /* Parse "A,B,C,D" — four floats in [0,1]. */
+            if (g_n_seed_overrides < 16) {
+                float *s = g_seed_overrides[g_n_seed_overrides++];
+                int got = 0;
+                const char *p = a + 7;
+                while (*p && got < 4) {
+                    char *end = NULL;
+                    float v = strtof(p, &end);
+                    if (end == p) break;
+                    s[got++] = v;
+                    p = end;
+                    if (*p == ',') p++;
+                }
+                if (got != 4) {
+                    fprintf(stderr,
+                            "smoke: --seed expects 4 floats, got %d\n", got);
+                    return 2;
+                }
+            }
+            continue;
         }
-    } else {
+        if (strncmp(a, "--perf=", 7) == 0) {
+            perf_n = atoi(a + 7);
+            continue;
+        }
+        if (ntimes < 8) {
+            times[ntimes++] = strtof(a, NULL);
+        }
+    }
+    if (ntimes == 0) {
         times[0] = 2.0f;  times[1] = 10.0f; times[2] = 25.0f;
         ntimes = 3;
     }
@@ -541,6 +588,7 @@ int main(int argc, char **argv) {
     loc_iFrame      = glGetUniformLocation(program, "iFrame");
     loc_iDate       = glGetUniformLocation(program, "iDate");
     loc_iMouse      = glGetUniformLocation(program, "iMouse");
+    loc_iSeed       = glGetUniformLocation(program, "iSeed");
     char chname[16];
     for (int i = 0; i < 4; i++) {
         snprintf(chname, sizeof chname, "iChannelResolution[%d]", i);
@@ -561,7 +609,7 @@ int main(int argc, char **argv) {
         snprintf(out_path, sizeof out_path,
                  "%s/%s_t%.1fs.png", out_dir, basename, times[i]);
         double cov = 0, r = 0, g = 0, b = 0, L = 0;
-        render_frame(times[i], out_path, &cov, &r, &g, &b, &L);
+        render_frame(i, times[i], out_path, &cov, &r, &g, &b, &L);
         int rendered = (cov > 0.05) ? 1 : 0;
         if (!rendered) all_ok = 0;
         fprintf(stderr,
@@ -573,5 +621,27 @@ int main(int argc, char **argv) {
     }
     fprintf(stderr, "[diag] %s %s\n",
             basename, all_ok ? "PASS" : "PARTIAL");
+
+    /* Optional --perf=N: do N silent renders at the LAST captured
+     * time, measure total wall time. Useful for benchmarking a
+     * shader at a fixed resolution. */
+    if (perf_n > 0) {
+        struct timespec t0, t1;
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        for (int i = 0; i < perf_n; i++) {
+            double cov, r, g, b, L;
+            render_frame(i, times[(i < ntimes) ? i : 0], NULL,
+                         &cov, &r, &g, &b, &L);
+        }
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        double dt = (t1.tv_sec - t0.tv_sec) +
+                    (t1.tv_nsec - t0.tv_nsec) * 1e-9;
+        fprintf(stderr,
+                "[perf] %s N=%d size=%dx%d total=%.3fs "
+                "avg=%.3fms (%.1f fps)\n",
+                basename, perf_n, dst_w, dst_h, dt,
+                dt * 1000.0 / perf_n,
+                perf_n / dt);
+    }
     return all_ok ? 0 : 3;
 }
