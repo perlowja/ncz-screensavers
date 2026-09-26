@@ -148,7 +148,6 @@ typedef struct {
     GLint loc_ichan1;
     GLint loc_ichan2;
     GLint loc_ichan3;
-    GLint loc_iseed;
     double start_time;
     double last_time;
     unsigned long frame;
@@ -493,7 +492,6 @@ init_xshadertoy(ModeInfo *mi) {
     st->loc_ichan1      = glGetUniformLocation(st->program, "iChannel1");
     st->loc_ichan2      = glGetUniformLocation(st->program, "iChannel2");
     st->loc_ichan3      = glGetUniformLocation(st->program, "iChannel3");
-    st->loc_iseed       = glGetUniformLocation(st->program, "iSeed");
 
     /* Fullscreen quad — 2 triangles, 6 vertices. */
     static const float quad[] = {
@@ -613,11 +611,6 @@ draw_xshadertoy(ModeInfo *mi) {
     glUniform4fv(st->loc_idate, 1, date_v);
     glUniform4fv(st->loc_imouse, 1, zero4);
     /* iSeed — per-run constant, set once and re-uploaded each frame. */
-    glUniform4fv(st->loc_iseed, 1, st->iseed);
-
-    /* iSeed is constant for the run, but GL silently no-ops writes
-     * to -1 (location) so we don't need a guard here. Upload every
-     * frame is cheap (one vec4). */
     glUniform4fv(st->loc_iseed, 1, st->seed_v);
 
     /* Bind the black 1x1 to all four iChannel units. */
