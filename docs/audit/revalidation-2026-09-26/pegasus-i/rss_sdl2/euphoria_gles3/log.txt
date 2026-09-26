@@ -1,0 +1,96 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=6ca6b80e87664267 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=529b38b1f4186cff gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=f84e6a87de46169d gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=68d019cac57d57d0 gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=1ae64461e2f679fd gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=cb674e93e0f7cfb2 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=b5990e625783a001 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=2073600 hash=1d192ca75594075e gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000001a4.png (8294400 bytes)
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=2073600 hash=1a3407341499df3a gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000001e0.png (8294400 bytes)
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=2073600 hash=6af664a3ac2d9b39 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_0000021c.png (8294400 bytes)
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2073600 hash=23d512225f91795c gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000258.png (8294400 bytes)
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2073600 hash=69246607429cf020 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000294.png (8294400 bytes)
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2073600 hash=22eb4da4500eeed6 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000002d0.png (8294400 bytes)
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2073600 hash=bb180eeeab2242f7 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_0000030c.png (8294400 bytes)
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2073600 hash=a91e610368f3f4a9 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000348.png (8294400 bytes)
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2073600 hash=cf74f7ae3e83fc5b gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000384.png (8294400 bytes)
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2073600 hash=893d2658ef670969 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000003c0.png (8294400 bytes)
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=2073600 hash=702a8a9626bc6561 gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_000003fc.png (8294400 bytes)
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=2073600 hash=40a957aed0ebada2 gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000438.png (8294400 bytes)
+[diag] frame #1140
+[diag] framebuffer frame=1140 pixels=2073600 nonblack=2073600 hash=aec12abc19ce1de7 gl_error=0x0
+[dump] writing frame_00000474 to /tmp/cap-1101074-i-euphoria_gles3
+[dump] wrote /tmp/cap-1101074-i-euphoria_gles3/frame_00000474.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1120080 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1101074-i-euphoria_gles3 timeout --kill-after=2 28 ./euphoria_gles3
