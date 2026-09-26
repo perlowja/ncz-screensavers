@@ -72,6 +72,8 @@
 
 #include "gles3_compat.h"
 #include "xscreensaver_compat.h"
+#include "ncz_platform.h"
+#include "gles3_harness_hooks.h"
 
 /* xscreensaver_compat.h transitively includes gl4es_include/GL/gl.h,
  * which redefines the same GL_FALSE/GL_TRUE/etc. values. Same fix as
@@ -443,6 +445,7 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
 }
 
 static void draw_and_swap(struct app *a, unsigned long frame) {
+    ncz_harness_attach_frame_size(a->width, a->height);
     hack->draw_cb(&a->mi);
     if (frame == 4 || (frame >= 60 && (frame % 60) == 0))
         report_framebuffer(a, frame);

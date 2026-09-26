@@ -215,7 +215,7 @@ endforeach
 # Add the build directory to the include path so generated headers are
 # reachable via `#include "wayland-client-protocol.h"` etc. The source
 # root is added so source files can find them via relative path.
-inc = include_directories('.', 'src')
+inc = include_directories('.', 'src', 'include')
 
 # Build-wide -Wall -Wextra. All our code (and the compat shim) must stay
 # warning-clean under these. Vendored third-party code (xscreensaver
@@ -528,6 +528,7 @@ endif
 common_gles3_sources = [
     'src/xscreensaver_compat.c',
     'src/gles3_compat.c',
+    'src/ncz_platform.c',
 ]
 # GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
 # helpers in xscreensaver_compat.c compile to empty stubs (they

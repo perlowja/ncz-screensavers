@@ -40,6 +40,7 @@
 #include <GLES3/gl3ext.h>
 #include "gles3_compat.h"
 #include "xscreensaver_compat.h"
+#include "ncz_platform.h"
 
 #ifdef NCZ_GLES3_BUILD
 extern void ncz_harness_die(int code);
@@ -272,15 +273,15 @@ static void draw_composite(State *st);
 /* ===================================================================== */
 
 static double now_monotonic(void) {
-    struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
-    return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
+    return ncz_now();
 }
 
 /* Session seed is computed once at init and threaded through every
  * subsequent rnd() call. Per-launch randomisation derives from
- * /dev/urandom unless NCZ_NEO_SPACEWAR_FIXED_SEED overrides (for
- * A/B testing). All in-session randomness uses the same xorshift
- * LCG state so successive calls produce uncorrelated streams.
+ * ncz_seed() (entropy from /dev/urandom, with a fallback) unless
+ * NCZ_NEO_SPACEWAR_FIXED_SEED overrides (for A/B testing). All in-
+ * session randomness uses the same xorshift LCG state so successive
+ * calls produce uncorrelated streams.
  *
  * Pattern: game_init() calls session_seed() once, stores the
  * result, and threads it through. spawn_rock / emit_debris etc
@@ -294,17 +295,7 @@ static uint32_t session_seed(void) {
         uint32_t s = (uint32_t)strtoul(override, NULL, 10);
         if (s != 0) return s;
     }
-    uint32_t s = 0;
-    int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-    if (f >= 0) {
-        ssize_t n = read(f, &s, 4); close(f);
-        if (n == 4) {
-            if (s == 0) s = 1;
-            return s;
-        }
-    }
-    struct timespec t; clock_gettime(CLOCK_REALTIME, &t);
-    s = (uint32_t)(t.tv_nsec ^ t.tv_sec ^ getpid());
+    uint32_t s = ncz_seed();
     if (s == 0) s = 1;
     return s;
 }
@@ -339,14 +330,30 @@ static int rnd_int(uint32_t *s, int a, int b) {
 /* ===================================================================== */
 
 static char *load_shader_text(const char *basename) {
+    /* 1) absolute installed-asset path via the platform abstraction. */
+    char abs_path[512];
+    if (ncz_asset_path(basename, abs_path, sizeof abs_path)) {
+        FILE *f = fopen(abs_path, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END); long n = ftell(f); rewind(f);
+            char *b = malloc((size_t)n + 1);
+            if (b && fread(b, 1, (size_t)n, f) == (size_t)n) {
+                b[n] = 0; fclose(f);
+                ncz_log_diag("neonspacewar shader=%s", abs_path);
+                return b;
+            }
+            free(b); fclose(f);
+        }
+    }
+    /* 2) dev build fallback -- look under vendor/neonspacewar/
+     *    relative to cwd (or one or two dirs up). */
     char path[256];
     const char *prefixes[] = {
         "vendor/neonspacewar/",
         "../vendor/neonspacewar/",
         "../../vendor/neonspacewar/",
-        "/usr/share/ncz-screensavers/shaders/neonspacewar/",
     };
-    for (unsigned i = 0; i < 4; i++) {
+    for (unsigned i = 0; i < 3; i++) {
         snprintf(path, sizeof path, "%s%s", prefixes[i], basename);
         FILE *f = fopen(path, "rb");
         if (!f) continue;
@@ -356,10 +363,10 @@ static char *load_shader_text(const char *basename) {
             free(b); fclose(f); return NULL;
         }
         fclose(f); b[n] = 0;
-        fprintf(stderr, "[diag] neonspacewar shader=%s\n", path);
+        ncz_log_diag("neonspacewar shader=%s", path);
         return b;
     }
-    fprintf(stderr, "neonspacewar: cannot locate %s\n", basename);
+    ncz_log_diag("neonspacewar cannot locate %s", basename);
     return NULL;
 }
 
