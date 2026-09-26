@@ -43,3 +43,9 @@ vendor/hyprsaver/flake.lock
 vendor/hyprsaver/deny.toml
 vendor/hyprsaver/rustfmt.toml
 vendor/hyprsaver/.github/
+
+# Per-launch capture evidence (PNG + stderr) for the blackhole
+# per-launch captures sweep. Local-only; regenerated on demand by
+# tools/bh-sweep.sh. Tracked captures land inside the relevant
+# docs/superpowers/rounds/ evidence directory when worth keeping.
+build-tmp/
