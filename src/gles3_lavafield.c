@@ -57,6 +57,14 @@ static double now(void){
 }
 
 static uint32_t seed_rng(void){
+  /* Allow tests / A-B comparisons to force a specific seed via env var.
+   * Default behaviour (no env var) is unchanged: pull from
+   * /dev/urandom, fall back to clock XOR pid. */
+  const char *override = getenv("NCZ_LAVAFIELD_FIXED_SEED");
+  if(override && *override){
+    uint32_t s = (uint32_t)strtoul(override, NULL, 10);
+    if(s != 0) return s;
+  }
   uint32_t s = 0;
   int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
   if(f >= 0){
