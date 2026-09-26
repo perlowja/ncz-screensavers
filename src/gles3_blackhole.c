@@ -109,7 +109,7 @@ static void init_blackhole(ModeInfo*m){
  s->v[3]=rnd(&z,.72,1.3);
  s->v[4]=(rnd(&z,0,1)<.5?-1:1)*rnd(&z,.65,1.35);
  s->v[5]=rnd(&z,.18,.48);
- s->v[6]=rnd(&z,.140,.265);
+ s->v[6]=rnd(&z,.055,.125);
  // u_jet: the operator observed 0.000 in one launch. Cause: 58% of launches
  // drew jet=0 (jet disabled). That made the jet feature effectively dead
  // even though the shader supports it. Always draw a positive jet; the
@@ -256,7 +256,7 @@ static void init_blackhole(ModeInfo*m){
    // the spread covers loose 3-leaf clovers through tight precessing
    // rosettes. Combined with eccentricity this draws a different
    // rosette essentially every launch.
-   s->v[44]=rnd(&z,1.4,5.5);
+   s->v[44]=rnd(&z,1.15,2.8);
    // Eccentricity: 0.15 keeps the orbit nearly circular (mild zoom);
    // 0.7 is strongly elongated (deep periapsis dips). Both visible.
    s->v[45]=rnd(&z,0.15,0.7);
