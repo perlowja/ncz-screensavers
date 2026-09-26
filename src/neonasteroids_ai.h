@@ -331,34 +331,67 @@ static void ai_update(State *st, float dt) {
         target_thrust = 0.25f;
         (void)t;
     } else if (threat_idx >= 0 && in_combat_zone) {
-        /* Evasion: aim perpendicular to the threat's velocity, in
-         * the direction that takes us away from the line of
-         * collision. We pick the perpendicular whose dot product
-         * with (ship - threat) is positive — i.e. that opens the
-         * distance. */
-        V2 rel = { ship->pos.x - threat_pos.x,
-                   ship->pos.y - threat_pos.y };
-        /* Wrap-aware rel. */
-        rel.x = neo_wrap_delta(0.f, rel.x);
-        rel.y = neo_wrap_delta(0.f, rel.y);
-        float rel_len = sqrtf(rel.x * rel.x + rel.y * rel.y);
-        if (rel_len < 1e-5f) {
-            /* On top of the rock — pick any perpendicular. */
-            V2 p = { -threat_vel.y, threat_vel.x };
-            float plen = sqrtf(p.x * p.x + p.y * p.y);
-            if (plen > 1e-5f) { p.x /= plen; p.y /= plen; }
-            target_heading = atan2f(p.y, p.x);
-        } else {
-            V2 perp_a = { -threat_vel.y, threat_vel.x };
-            V2 perp_b = {  threat_vel.y, -threat_vel.x };
-            float da = perp_a.x * rel.x + perp_a.y * rel.y;
-            float db = perp_b.x * rel.x + perp_b.y * rel.y;
-            V2 perp = (da > db) ? perp_a : perp_b;
-            float plen = sqrtf(perp.x * perp.x + perp.y * perp.y);
-            if (plen > 1e-5f) { perp.x /= plen; perp.y /= plen; }
-            target_heading = atan2f(perp.y, perp.x);
+        /* Evasion: pick a thrust direction that takes us away from
+         * ALL nearby threats, not just the closest. For each rock
+         * in the combat zone, contribute an "away" unit vector
+         * weighted by inverse TTC (closer = bigger pull). The
+         * thrust direction is then the heading that maximally aligns
+         * with the sum. If the sum is small, fall back to
+         * perpendicular-to-closest. */
+        V2 away_sum = {0, 0};
+        for (int i = 0; i < MAX_ROCKS; i++) {
+            Rock *r = &st->rocks[i];
+            if (!r->alive) continue;
+            /* Quick TTC for ranking. */
+            float rx = neo_wrap_delta(ship->pos.x, r->pos.x);
+            float ry = neo_wrap_delta(ship->pos.y, r->pos.y);
+            float vx = r->vel.x - ship->vel.x;
+            float vy = r->vel.y - ship->vel.y;
+            float v2 = vx * vx + vy * vy;
+            if (v2 < 1e-8f) continue;
+            float R = 0.04f + r->radius;
+            float b = 2.f * (rx * vx + ry * vy);
+            float c = rx * rx + ry * ry - R * R;
+            float disc = b * b - 4.f * v2 * c;
+            if (disc < 0.f) continue;
+            float sq = sqrtf(disc);
+            float t_hit = (-b - sq) / (2.f * v2);
+            if (t_hit <= 0.f || t_hit > 3.f) continue;
+            /* Weight by 1/TTC. */
+            float w = 1.f / (t_hit + 0.1f);
+            float d = sqrtf(rx * rx + ry * ry);
+            if (d < 1e-5f) continue;
+            away_sum.x -= (rx / d) * w;
+            away_sum.y -= (ry / d) * w;
         }
-        target_thrust = panic ? 0.85f : 0.6f;
+        float as_len = sqrtf(away_sum.x * away_sum.x
+                             + away_sum.y * away_sum.y);
+        if (as_len > 1e-4f) {
+            target_heading = atan2f(away_sum.y, away_sum.x);
+        } else {
+            /* Fallback: perpendicular to closest threat's velocity. */
+            V2 rel = { ship->pos.x - threat_pos.x,
+                       ship->pos.y - threat_pos.y };
+            rel.x = neo_wrap_delta(0.f, rel.x);
+            rel.y = neo_wrap_delta(0.f, rel.y);
+            float rel_len = sqrtf(rel.x * rel.x + rel.y * rel.y);
+            if (rel_len < 1e-5f) {
+                V2 p = { -threat_vel.y, threat_vel.x };
+                float plen = sqrtf(p.x * p.x + p.y * p.y);
+                if (plen > 1e-5f) { p.x /= plen; p.y /= plen; }
+                target_heading = atan2f(p.y, p.x);
+            } else {
+                V2 perp_a = { -threat_vel.y, threat_vel.x };
+                V2 perp_b = {  threat_vel.y, -threat_vel.x };
+                float da = perp_a.x * rel.x + perp_a.y * rel.y;
+                float db = perp_b.x * rel.x + perp_b.y * rel.y;
+                V2 perp = (da > db) ? perp_a : perp_b;
+                float plen = sqrtf(perp.x * perp.x + perp.y * perp.y);
+                if (plen > 1e-5f) { perp.x /= plen; perp.y /= plen; }
+                target_heading = atan2f(perp.y, perp.x);
+            }
+        }
+        target_thrust = panic ? 0.85f : 0.55f;
     } else {
         /* No immediate threat. Drift toward the most open
          * quadrant to keep the field visually alive. */
