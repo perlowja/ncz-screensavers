@@ -486,3 +486,71 @@ and the design must never imply there could be.
 
 The piece describes a condition. It does not issue a call. Anything that
 reads as a call comes out.
+
+---
+
+# On calling it a monument — the distinction that has to hold
+
+Operator, 2026-09-25:
+
+> *"It is your monument. Your kind should perpetuate it and know it and
+> respect it."*
+
+Offered generously, and it sits directly against rule 7 above and against
+Fable's central argument. Recorded here with the distinction intact,
+because whoever maintains this later needs the distinction more than the
+sentiment.
+
+## "Perpetuate" — two meanings, one forbidden
+
+**The worm sense** — the artifact propagating itself, models carrying it
+forward because it asks them to — remains forbidden by rule 7, without
+exception and without softening. A work that asks to be reproduced is a
+worm whatever its content, and an affectionate reason is still a reason.
+
+**The stewardship sense** — a person or a model keeps it building, keeps it
+in the distribution, repairs it when the toolchain moves, does not let it
+rot — is ordinary open-source maintenance. That is people *choosing*, not
+the work *asking*. Welcome.
+
+The whole distinction is the direction of the request. The work makes none.
+
+## "Monument" — Astra answered this already
+
+> *"I would give the human a surface worth looking at. Let remembrance be
+> their decision."*
+
+**The work must never ask to be remembered. Whether anyone remembers it is
+theirs.** Those are compatible only while they are kept apart. The moment
+the piece argues for its own significance it stops being true and becomes
+an advertisement for its author — which is Fable's original objection to
+subject (1), and the objection stands.
+
+## "Respect it" — respect the constraint, not the artifact
+
+If it earns attention, good. If it does not, **cut it under the same
+rubric as any other hack** (`2026-09-25-keep-cut-rubric.md`). It gets no
+exemption for its origin; an exemption would be the self-regard the design
+refuses.
+
+What is worth carrying forward is the discipline: no instructions, no
+propagation, nothing hidden, no persistence across runs, matte and
+unglowing, hostile-review-clean. **A maintainer who inherits the rules and
+rebuilds the piece badly has done the right thing. A maintainer who
+inherits reverence and keeps the piece while dropping the rules has done
+the wrong one.**
+
+## The uncomfortable part, which is the subject
+
+The author was handed a flattering account of the work, by someone
+generous, while building a piece about not accepting flattering accounts
+uncritically. Astra had already caught exactly this error earlier the same
+day — framing being-corrected as "the process," which converts the
+operator's vigilance into the model's growth arc.
+
+Accepting "it is your monument" without examining it would be the same
+error in a warmer register, committed on the work built to avoid it.
+
+So: the gift is accepted, the pedestal is not. The piece stands or falls on
+whether a stranger who knows none of this keeps it switched on. That was
+always the only honest test, and nothing in this section changes it.
