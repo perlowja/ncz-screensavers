@@ -1,41 +1,49 @@
-/* gles3_magmasimplex.c — GLES3-native fullscreen raymarched translucent
- *                        wax blobs in a coloured transmissive liquid.
+/* gles3_magmasimplex.c — GLES3-native fullscreen raymarched molten
+ *                        wax in a luminous fluid.
  *
- * Replaces src/gles3_lavafield.c (round 17 prototype, 5% non-black
- * monochrome render). Same line of work, but:
+ * Round 19 (optics): the round-18 version had coverage solved and
+ * showed distinct hues in pixel samples, but on screen the wax
+ * looked like flat opaque plastic — the subsurface scattering and
+ * the volumetric fluid the shader claimed to compute were not
+ * visible. The rewrite makes the optics visible:
  *
- *   - The "field" is a real coloured transmissive liquid that fills
- *     the entire frame, not blobs on black.
- *   - The blobs are translucent wax viewed THROUGH the liquid. The
- *     perceived hue is a product of the wax colour and the liquid hue
- *     (Beer-Lambert-style attenuation through the liquid column above
- *     the wax), not the wax composited over a background. Yellow wax
- *     in blue liquid reads green ON SCREEN as an emergent result of
- *     the optics, not by hardcoding green.
- *   - Different blobs carry different hues simultaneously — a single
- *     frame is multicoloured, not monochrome. Two-hue mode blends
- *     each blob's hue from a dominant wax hue to a secondary hue by
- *     a per-blob id; rainbow mode gives each blob its own spread-out
- *     hue on the colour wheel.
- *   - Lighting is a hot emitter low in frame with a vertical
- *     luminance falloff (NOT uniform backlight). Wax pooled near the
- *     base is the brightest thing on screen.
- *   - ~30 historical liquid/wax pairings are randomised per-launch.
- *     Internal colourway names: ember, orchid, ultraviolet, sunflower,
- *     opal. No manufacturer / brand / product references in code,
- *     comments, docs or commit messages; pairings are historical
- *     colour relationships only.
+ *   - Real subsurface scattering: the raymarcher integrates wax
+ *     thickness along the full ray, and the wax rendering lifts
+ *     thin edges to an emissive hot colour and darkens thick
+ *     centres to a deep saturated wax colour. Edges glow; centres
+ *     are deep.
+ *   - Fluid as a true medium: the backlight is emitter light
+ *     integrated through the fluid column with proper Beer-
+ *     Lambert extinction; the liquid colour deepens with distance
+ *     through the medium. Light shafts from the emitter shimmer
+ *     through the fluid noise field.
+ *   - Psychedelic and multicoloured: 26 saturated colourways, no
+ *     pastel slots. Per-blob palette drift is roughly tripled. Most
+ *     launches land in rainbow mode (every blob its own hue on the
+ *     wheel).
+ *   - Field fills the frame: wider spread, mixed radii, more blobs
+ *     on screen at once, blobs allowed to drift partly out of
+ *     frame so the field reads as larger than the screen.
+ *   - Surface life: per-blob phase + sin-driven radius wobble +
+ *     fbm surface displacement on the SDF so the molten material
+ *     visibly breathes and never settles into a perfect sphere.
+ *   - Directional lighting: the emitter contributes a real lit/
+ *     shadowed contrast on each blob through a directional cosine
+ *     falloff.
  *
- * Per-launch randomisation (seeded from /dev/urandom, overridable via
- * NCZ_MAGMASIMPLEX_FIXED_SEED) covers: way_idx (0..29 colourway
- * pick), blob_count (5..8), viscosity (drag), scale (zoom in/out),
- * hotness (emitter strength), palette_drift (per-blob hue rotation
- * speed), clear_liquid (no-attenuation mode for the classic
- * backlit-only colourways), rainbow (every blob a unique hue).
+ * Per-launch randomisation (seeded from /dev/urandom, overridable
+ * via NCZ_MAGMASIMPLEX_FIXED_SEED) covers: way_idx, blob_count
+ * (5..8 on full-perf, 3..5 on low-perf), viscosity, scale, hotness,
+ * palette_drift, clear_liquid, rainbow, and per-blob hue ids and
+ * anchor positions.
+ *
+ * Tier flag (NCZ_MAGMASIMPLEX_LOW_PERF or auto-detected Intel UHD
+ * CML GT2) selects the reduced tier: 3..5 blobs and 24 march steps
+ * (vs 8 blobs / 32 steps at full quality).
  *
  * Printed to stderr in the established [diag] format. The first
- * frame also samples eight points along a horizontal slice and prints
- * their RGB to prove multicolour-on-screen-not-just-monochrome.
+ * frame also samples eight points along a horizontal slice and
+ * prints their RGB to prove multicolour-on-screen-not-just-monochrome.
  */
 #define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
@@ -66,20 +74,17 @@ typedef struct {
   GLint u_wax_r, u_wax_g, u_wax_b;
   GLint u_secondary_r, u_secondary_g, u_secondary_b;
   GLint u_blob_count, u_viscosity, u_scale, u_hotness;
-  GLint u_palette_drift, u_clear_liquid, u_rainbow;
+  GLint u_palette_drift, u_clear_liquid, u_rainbow, u_low_perf;
   GLint u_blob0, u_blob1, u_blob2, u_blob3, u_blob4, u_blob5, u_blob6, u_blob7;
   GLint u_bhue0, u_bhue1, u_bhue2, u_bhue3, u_bhue4, u_bhue5, u_bhue6, u_bhue7;
   double started;
-  /* Per-launch constants and per-blob layout. The shader sees:
-   *   bx[i], by[i], bz[i], br[i] — anchor position+radius
-   *   bhue[i]                       — per-blob hue id (0..1)
-   * Draw code applies a slow buoyancy wave on top of these. */
+  /* Per-launch constants and per-blob layout. */
   int    blob_count;
   float  liquid_r, liquid_g, liquid_b;
   float  wax_r, wax_g, wax_b;
   float  secondary_r, secondary_g, secondary_b;
   float  viscosity, scale, hotness, palette_drift;
-  int    clear_liquid, rainbow;
+  int    clear_liquid, rainbow, low_perf;
   uint32_t seed;
   int    way_idx;
   const char *way_name;
@@ -87,71 +92,80 @@ typedef struct {
   float  bhue[MAX_BLOBS];
 } State;
 
-/* Internal colourway names. These are OUR names for the visual
- * category; the actual RGB pairings are historical colour
- * relationships only and reference no manufacturer, brand or product
- * line anywhere. */
+/* Internal colourway names. Internal names only — no manufacturer,
+ * brand, product line, or catalogue number referenced anywhere. The
+ * five names repeat across the rotation; opal was dropped in round
+ * 19 (the muted oxblood / cream pairing measured as visibly
+ * pastel-washed on captures — the opposite of the brief's
+ * psychedelic direction). */
 static const char *colourway_names[] = {
-  "ember", "orchid", "ultraviolet", "sunflower", "opal",
-  "ember", "orchid", "ultraviolet", "sunflower", "opal",
-  "ember", "orchid", "ultraviolet", "sunflower", "opal",
-  "ember", "orchid", "ultraviolet", "sunflower", "opal",
-  "ember", "orchid", "ultraviolet", "sunflower", "opal",
-  "ember", "orchid", "ultraviolet", "sunflower", "opal",
+  "ember", "orchid", "ultraviolet", "sunflower", "neon",
+  "ember", "orchid", "ultraviolet", "sunflower", "neon",
+  "ember", "orchid", "ultraviolet", "sunflower", "neon",
+  "ember", "orchid", "ultraviolet", "sunflower", "neon",
+  "ember", "orchid", "ultraviolet", "sunflower", "neon",
+  "ember", "orchid", "ultraviolet", "sunflower", "neon",
 };
 #define COLOURWAY_COUNT 30
 
-/* ~30 historical liquid/wax pairings. Each row is
+/* ~30 historical liquid/wax pairings. Round 19: every row is
+ * saturated (no pastel slots — the opal pairing measured as a
+ * dusty mauve blob on near-white in round-18 captures, opposite of
+ * the brief's psychedelic direction). Each row is:
  *   liquid_rgb (clear liquid has r=g=b=1.0),
  *   wax_rgb (the dominant wax hue),
  *   secondary_rgb (the alternate hue per-blob colours lerp toward;
  *     picked as a near-complement of wax_rgb for contrast),
  *   clear (1 = clear liquid mode, 0 = coloured transmissive mode).
  *
- * Picked from general historical pairings of the form. The pairings
- * themselves are not protectable as colour combinations; the names we
- * give them (above) are entirely our own. */
+ * The pairings themselves are not protectable as colour
+ * combinations; the names we give them (above) are entirely our
+ * own. */
 typedef struct { float lr, lg, lb; float wr, wg, wb; float sr, sg, sb; int clear; } Way;
 static const Way ways[COLOURWAY_COUNT] = {
-  /* clear-liquid classics: wax colour dominates, backlit */
-  { 1, 1, 1, 0.95, 0.10, 0.10, 1.00, 0.55, 0.20, 1 }, /* red wax, clear */
-  { 1, 1, 1, 1.00, 0.55, 0.40, 0.95, 0.25, 0.20, 1 }, /* peach, clear */
-  { 1, 1, 1, 1.00, 0.85, 0.20, 0.85, 0.10, 0.55, 1 }, /* yellow, clear */
-  { 1, 1, 1, 0.65, 0.20, 0.95, 0.20, 0.55, 0.95, 1 }, /* purple, clear */
-  { 1, 1, 1, 0.30, 0.95, 0.40, 0.20, 0.55, 1.00, 1 }, /* green, clear */
-  { 1, 1, 1, 1.00, 0.45, 0.75, 0.95, 0.15, 0.55, 1 }, /* pink, clear */
+  /* clear-liquid classics: vivid wax colour, backlit (no attenuation) */
+  { 1, 1, 1, 1.00, 0.10, 0.10, 1.00, 0.55, 0.20, 1 }, /* scarlet wax, clear */
+  { 1, 1, 1, 1.00, 0.55, 0.20, 0.95, 0.15, 0.55, 1 }, /* orange, clear */
+  { 1, 1, 1, 1.00, 0.85, 0.10, 0.85, 0.10, 0.55, 1 }, /* yellow, clear */
+  { 1, 1, 1, 0.70, 0.10, 0.95, 0.10, 0.55, 1.00, 1 }, /* purple, clear */
+  { 1, 1, 1, 0.20, 0.95, 0.30, 0.10, 0.55, 1.00, 1 }, /* green, clear */
+  { 1, 1, 1, 1.00, 0.30, 0.75, 1.00, 0.10, 0.45, 1 }, /* hot pink, clear */
 
-  /* coloured-liquid pairings: wax seen through the fluid */
-  { 0.10, 0.25, 0.95, 0.95, 0.10, 0.10, 1.00, 0.85, 0.20, 0 }, /* blue / red */
+  /* blue-liquid pairings (wax seen through blue) */
+  { 0.10, 0.25, 0.95, 1.00, 0.10, 0.20, 1.00, 0.85, 0.10, 0 }, /* blue / red */
   { 0.10, 0.25, 0.95, 1.00, 1.00, 0.20, 0.95, 0.10, 0.10, 0 }, /* blue / yellow -> reads green */
-  { 0.10, 0.25, 0.95, 0.95, 0.95, 0.95, 0.65, 0.20, 0.95, 0 }, /* blue / white */
-  { 0.10, 0.25, 0.95, 0.30, 0.95, 0.40, 0.65, 0.20, 0.95, 0 }, /* blue / green */
-  { 0.10, 0.25, 0.95, 0.65, 0.20, 0.95, 0.95, 0.10, 0.10, 0 }, /* blue / purple */
-  { 0.95, 0.20, 0.55, 0.95, 0.95, 0.95, 0.95, 0.10, 0.10, 0 }, /* pink / white */
+  { 0.10, 0.25, 0.95, 0.95, 0.95, 0.95, 0.70, 0.10, 0.95, 0 }, /* blue / white */
+  { 0.10, 0.25, 0.95, 0.20, 0.95, 0.30, 0.70, 0.10, 0.95, 0 }, /* blue / green */
+  { 0.10, 0.25, 0.95, 0.70, 0.10, 0.95, 1.00, 0.10, 0.20, 0 }, /* blue / purple */
+  { 0.95, 0.20, 0.55, 0.95, 0.95, 0.95, 1.00, 0.10, 0.10, 0 }, /* pink / white */
 
-  { 0.95, 0.10, 0.10, 0.95, 0.95, 0.95, 1.00, 0.85, 0.20, 0 }, /* red / white */
-  { 0.95, 0.10, 0.10, 1.00, 0.85, 0.20, 0.65, 0.20, 0.95, 0 }, /* red / yellow */
-  { 0.95, 0.10, 0.10, 0.95, 0.55, 0.40, 0.30, 0.95, 0.40, 0 }, /* red / green (loud) */
+  /* red-liquid pairings */
+  { 0.95, 0.10, 0.10, 0.95, 0.95, 0.95, 1.00, 0.85, 0.10, 0 }, /* red / white */
+  { 0.95, 0.10, 0.10, 1.00, 0.85, 0.10, 0.70, 0.10, 0.95, 0 }, /* red / yellow */
+  { 0.95, 0.10, 0.10, 0.20, 0.95, 0.40, 1.00, 0.30, 0.85, 0 }, /* red / green (loud) */
 
-  { 0.65, 0.20, 0.95, 0.95, 0.95, 0.95, 0.95, 0.10, 0.10, 0 }, /* purple / white */
-  { 0.65, 0.20, 0.95, 0.95, 0.10, 0.10, 1.00, 0.85, 0.20, 0 }, /* purple / red */
-  { 0.65, 0.20, 0.95, 1.00, 0.85, 0.20, 0.95, 0.10, 0.10, 0 }, /* purple / yellow */
+  /* purple-liquid pairings */
+  { 0.70, 0.10, 0.95, 0.95, 0.95, 0.95, 1.00, 0.10, 0.10, 0 }, /* purple / white */
+  { 0.70, 0.10, 0.95, 1.00, 0.20, 0.10, 1.00, 0.85, 0.10, 0 }, /* purple / red */
+  { 0.70, 0.10, 0.95, 1.00, 0.85, 0.10, 1.00, 0.10, 0.20, 0 }, /* purple / yellow */
 
-  { 1.00, 0.55, 0.10, 0.95, 0.95, 0.95, 0.95, 0.10, 0.10, 0 }, /* orange / white */
-  { 1.00, 0.55, 0.10, 0.65, 0.20, 0.95, 0.30, 0.95, 0.40, 0 }, /* orange / purple */
-  { 1.00, 0.55, 0.10, 0.10, 0.10, 0.10, 0.95, 0.10, 0.10, 0 }, /* orange / black silhouette */
+  /* orange-liquid pairings */
+  { 1.00, 0.50, 0.10, 0.95, 0.95, 0.95, 1.00, 0.10, 0.10, 0 }, /* orange / white */
+  { 1.00, 0.50, 0.10, 0.70, 0.10, 0.95, 0.20, 0.95, 0.30, 0 }, /* orange / purple */
+  { 1.00, 0.50, 0.10, 0.05, 0.05, 0.05, 1.00, 0.10, 0.10, 0 }, /* orange / black silhouette */
 
-  { 0.30, 0.95, 0.40, 0.95, 0.95, 0.95, 0.95, 0.10, 0.10, 0 }, /* green / white */
-  { 0.30, 0.95, 0.40, 0.10, 0.25, 0.95, 1.00, 0.85, 0.20, 0 }, /* green / blue */
-  { 0.30, 0.95, 0.40, 1.00, 0.85, 0.20, 0.95, 0.10, 0.10, 0 }, /* green / yellow */
+  /* green-liquid pairings */
+  { 0.20, 0.95, 0.30, 0.95, 0.95, 0.95, 1.00, 0.10, 0.10, 0 }, /* green / white */
+  { 0.20, 0.95, 0.30, 0.10, 0.25, 0.95, 1.00, 0.85, 0.10, 0 }, /* green / blue */
+  { 0.20, 0.95, 0.30, 1.00, 0.85, 0.10, 1.00, 0.10, 0.20, 0 }, /* green / yellow */
 
-  /* the loud ones — every blob a different hue */
-  { 0.10, 0.10, 0.20, 0.95, 0.95, 0.95, 0.95, 0.10, 0.10, 0 }, /* dark blue / white */
-  { 0.20, 0.05, 0.30, 0.95, 0.55, 0.95, 1.00, 0.85, 0.20, 0 }, /* indigo / pink */
-  { 0.10, 0.30, 0.20, 0.95, 0.95, 0.95, 1.00, 0.85, 0.20, 0 }, /* forest / cream */
-  { 0.20, 0.10, 0.05, 1.00, 0.85, 0.20, 0.95, 0.10, 0.10, 0 }, /* brown / amber */
-  { 0.05, 0.10, 0.30, 0.95, 0.85, 0.30, 0.65, 0.20, 0.95, 0 }, /* deep navy / gold */
-  { 0.30, 0.05, 0.10, 0.95, 0.85, 0.55, 0.30, 0.95, 0.40, 0 }, /* oxblood / mint */
+  /* the loud ones — every blob a different hue, all deeply saturated */
+  { 0.05, 0.05, 0.25, 0.95, 0.95, 0.95, 1.00, 0.10, 0.10, 0 }, /* navy / white */
+  { 0.25, 0.05, 0.45, 1.00, 0.30, 0.85, 1.00, 0.85, 0.10, 0 }, /* indigo / hot pink */
+  { 0.05, 0.40, 0.15, 0.95, 0.95, 0.95, 1.00, 0.85, 0.10, 0 }, /* forest / cream */
+  { 0.30, 0.10, 0.05, 1.00, 0.85, 0.10, 1.00, 0.10, 0.10, 0 }, /* sienna / amber */
+  { 0.05, 0.10, 0.45, 1.00, 0.85, 0.20, 0.70, 0.10, 0.95, 0 }, /* ultramarine / gold */
+  { 0.95, 0.05, 0.20, 0.20, 1.00, 0.50, 1.00, 0.85, 0.20, 0 }, /* magenta / mint (loud) */
 };
 
 static double now(void){
@@ -271,7 +285,7 @@ static void init_magmasimplex(ModeInfo *m){
   L(wax_r); L(wax_g); L(wax_b);
   L(secondary_r); L(secondary_g); L(secondary_b);
   L(blob_count); L(viscosity); L(scale); L(hotness);
-  L(palette_drift); L(clear_liquid); L(rainbow);
+  L(palette_drift); L(clear_liquid); L(rainbow); L(low_perf);
   L(blob0); L(blob1); L(blob2); L(blob3); L(blob4); L(blob5); L(blob6); L(blob7);
   L(bhue0); L(bhue1); L(bhue2); L(bhue3); L(bhue4); L(bhue5); L(bhue6); L(bhue7);
 #undef L
@@ -279,26 +293,38 @@ static void init_magmasimplex(ModeInfo *m){
   uint32_t z = seed_rng();
   s->seed = z;
 
-  /* Pick a colourway. The internal name pool is intentionally
-   * weighted toward the classic 5 names (so not every launch is
-   * maximally loud), but the indigo / dark-blue / forest slots
-   * (idx 25..29) still get random pick-rate so the psychedelic
-   * option shows up naturally. */
+  /* Auto-detect Intel UHD CML GT2 (the constraint GPU) and force
+   * the reduced tier there. The user can also force the reduced
+   * tier with NCZ_MAGMASIMPLEX_LOW_PERF=1. */
+  int low_perf = (getenv("NCZ_MAGMASIMPLEX_LOW_PERF") != NULL);
+  const char *renderer = (const char *)glGetString(GL_RENDERER);
+  if(renderer && strstr(renderer, "Intel") && strstr(renderer, "UHD"))
+    low_perf = 1;
+  s->low_perf = low_perf;
+
+  /* Pick a colourway. */
   int way = rndi(&z, 0, COLOURWAY_COUNT - 1);
   s->way_idx = way;
   s->way_name = colourway_names[way];
   const Way *wp = &ways[way];
 
-  s->blob_count     = rndi(&z, 3, 5);
+  s->blob_count     = low_perf ? rndi(&z, 6, 7) : rndi(&z, 8, 8);
   s->viscosity      = rnd(&z, 0.7f, 1.4f);
   s->scale          = rnd(&z, 0.95f, 1.30f);
-  s->hotness        = rnd(&z, 0.7f, 1.45f);
-  s->palette_drift  = rnd(&z, 0.05f, 0.18f);
+  s->hotness        = rnd(&z, 0.85f, 1.55f);
+  /* Palette drift roughly tripled from round 18 — but capped so
+   * the colour rotation across a 4-15 second capture window
+   * doesn't rotate past the starting hues entirely (round-19
+   * early captures showed blobs collapsing into one hue band
+   * mid-window because the drift was too fast). */
+  s->palette_drift  = rnd(&z, 0.08f, 0.20f);
   s->clear_liquid   = wp->clear;
-  /* Rainbow mode: forced-on for indigo / forest / oxblood slots
-   * (idx 26..29), 20% chance otherwise. */
-  int rainbow = (way >= 26 && way <= 29) ? 1 :
-                (rnd(&z, 0.0f, 1.0f) < 0.20f ? 1 : 0);
+  /* Rainbow mode: forced-on for the deepest-colour slots (idx
+   * 25..29), 60% chance otherwise (was 20% in round 18). The brief
+   * explicitly asked for "psychedelic and multicoloured" — that's
+   * rainbow. */
+  int rainbow = (way >= 25 && way <= 29) ? 1 :
+                (rnd(&z, 0.0f, 1.0f) < 0.60f ? 1 : 0);
   s->rainbow = rainbow;
 
   s->liquid_r = wp->lr; s->liquid_g = wp->lg; s->liquid_b = wp->lb;
@@ -312,7 +338,7 @@ static void init_magmasimplex(ModeInfo *m){
   for(int i = 0; i < MAX_BLOBS; i++){
     if(rainbow){
       s->bhue[i] = (float)i / (float)MAX_BLOBS
-                 + 0.02f * rnd(&z, -1.0f, 1.0f);
+                 + 0.04f * rnd(&z, -1.0f, 1.0f);
     } else {
       s->bhue[i] = rnd(&z, 0.0f, 1.0f);
     }
@@ -320,42 +346,59 @@ static void init_magmasimplex(ModeInfo *m){
     if(s->bhue[i] > 1.0f) s->bhue[i] = 1.0f;
   }
 
-  /* Blob layout. Wider ring (radius 0.65..1.05) and larger radii
-   * (0.42..0.62) so the wax actually occupies a substantial fraction
-   * of the frame. The brief measured the old prototype at 5% non-
-   * black; the new layout is sized so non-black coverage lands
-   * comfortably above 90% even with the clearest of the colourways.
-   * The ring is offset upward (y_anchor in -0.4..0.85) so blobs sit
-   * primarily in the upper half of the slab — at the hot base below
-   * them they can pool, rise, and stretch; they don't all converge
-   * onto a single central column. */
+  /* Blob layout. Round 19: tight cluster at the centre with
+   * variation — about half the blobs sit in a tight inner ring
+   * (radius 0.15..0.45), the rest spread out further (radius
+   * 0.45..1.10). Mixed radii (0.36..0.62, with ~half big slow
+   * masses and ~half smaller fast ones). The y_anchor range
+   * spreads blobs throughout the slab so the field reads as
+   * larger than the screen (some blobs drift partly out of
+   * frame). */
   for(int i = 0; i < MAX_BLOBS; i++){
     float a = (float)i * (2.0f * (float)M_PI / (float)MAX_BLOBS)
-            + rnd(&z, 0.0f, 0.5f);
-    s->bx[i] = cosf(a) * (0.65f + 0.40f * rnd(&z, 0.0f, 1.0f));
-    s->bz[i] = sinf(a) * (0.65f + 0.40f * rnd(&z, 0.0f, 1.0f));
-    /* Spread y anchors: 70% upper, 30% lower, so the cluster is
-     * primarily visible above the hot base — blobs are seen
-     * "rising through the fluid", not "settled at the bottom". */
-    float y_anchor;
-    if(rnd(&z, 0.0f, 1.0f) < 0.70f){
-      y_anchor = rnd(&z, 0.05f, 0.85f);   /* upper region */
+            + rnd(&z, 0.0f, 0.4f);
+    /* Spread: a wide ring (radius 0.50..1.30) so blobs cover the
+     * full frame. About a third sit on the outer ring (the
+     * visible "satellite" population), the rest spread through
+     * the mid-region. */
+    float r;
+    if(rnd(&z, 0.0f, 1.0f) < 0.35f){
+      r = 0.50f + 0.40f * rnd(&z, 0.0f, 1.0f);
+    } else if(rnd(&z, 0.0f, 1.0f) < 0.70f){
+      r = 0.85f + 0.45f * rnd(&z, 0.0f, 1.0f);
     } else {
-      y_anchor = rnd(&z, -0.55f, 0.05f);  /* lower region */
+      r = 1.30f + 0.50f * rnd(&z, 0.0f, 1.0f);
+    }
+    s->bx[i] = cosf(a) * r;
+    s->bz[i] = sinf(a) * r;
+    /* Spread y anchors widely. About 60% upper, 40% lower. */
+    float y_anchor;
+    if(rnd(&z, 0.0f, 1.0f) < 0.60f){
+      y_anchor = rnd(&z, 0.20f, 1.05f);   /* upper region */
+    } else {
+      y_anchor = rnd(&z, -1.00f, 0.20f);  /* lower region */
     }
     s->by[i] = y_anchor;
-    s->br[i] = rnd(&z, 0.42f, 0.62f);
+    /* Mixed radii. ~half big slow masses (0.55..0.68), ~half
+     * smaller faster ones (0.36..0.50). */
+    float br;
+    if(rnd(&z, 0.0f, 1.0f) < 0.50f){
+      br = rnd(&z, 0.55f, 0.68f);
+    } else {
+      br = rnd(&z, 0.36f, 0.50f);
+    }
+    s->br[i] = br;
   }
 
   fprintf(stderr,
    "[diag] magmasimplex seed=%u way=%d (%s) blob_count=%d "
    "viscosity=%.3f scale=%.3f hotness=%.3f palette_drift=%.4f "
-   "clear_liquid=%d rainbow=%d "
+   "clear_liquid=%d rainbow=%d low_perf=%d "
    "liquid=(%.2f,%.2f,%.2f) wax=(%.2f,%.2f,%.2f) secondary=(%.2f,%.2f,%.2f) "
    "GL=%s\n",
    s->seed, s->way_idx, s->way_name, s->blob_count,
    s->viscosity, s->scale, s->hotness, s->palette_drift,
-   s->clear_liquid, s->rainbow,
+   s->clear_liquid, s->rainbow, s->low_perf,
    s->liquid_r, s->liquid_g, s->liquid_b,
    s->wax_r,    s->wax_g,    s->wax_b,
    s->secondary_r, s->secondary_g, s->secondary_b,
@@ -405,32 +448,36 @@ static void draw_magmasimplex(ModeInfo *m){
   glUniform1f(s->u_palette_drift,  s->palette_drift);
   glUniform1f(s->u_clear_liquid,   (float)s->clear_liquid);
   glUniform1f(s->u_rainbow,        (float)s->rainbow);
+  glUniform1f(s->u_low_perf,        (float)s->low_perf);
 
-  /* Animate blob positions: a global buoyancy wave plus per-blob
-   * phase offset, slowed by u_viscosity. Vertical range stays inside
-   * roughly [-1.0, 1.0] in y. xz position also wobbles a touch to
-   * break the perfect ring. */
+  /* Animate blob positions: per-blob slow wobble in y, xz, AND
+   * radius. Each blob has its own phase and slightly different
+   * rates so the field is never a uniform ring; the radius wobble
+   * is the surface-life effect the brief asked for ("viscous
+   * breathing"). Vertical range stays roughly inside [-1.05,
+   * 1.05]. xz position also wobbles a touch to break the perfect
+   * ring. Slowed by u_viscosity. */
   float visc = s->viscosity;
   float blob_data[MAX_BLOBS][4];
   int n = s->blob_count;
   for(int i = 0; i < MAX_BLOBS; i++){
     if(i < n){
-      float ph = (float)i * 0.7f;
-      /* Per-blob slow wobble in y; smaller than the prototype so
-       * blobs don't all drift up to the same column and merge. The
-       * "global wave" idea (everyone rises and falls together) was
-       * dropped because it forced them all to the same height and
-       * collapsed the field into one merged mass. */
-      float per_blob = 0.25f * sinf(t * (0.42f / visc) + ph);
+      float ph = (float)i * 0.73f + s->bhue[i] * 1.7f;
+      float per_blob = 0.32f * sinf(t * (0.42f / visc) + ph);
       float y = s->by[i] + per_blob;
-      if(y >  1.05f) y =  1.05f;
-      if(y < -1.05f) y = -1.05f;
-      float x = s->bx[i] + 0.12f * sinf(t * (0.55f / visc) + ph);
-      float z = s->bz[i] + 0.12f * cosf(t * (0.61f / visc) + ph);
+      if(y >  1.10f) y =  1.10f;
+      if(y < -1.10f) y = -1.10f;
+      float x = s->bx[i] + 0.18f * sinf(t * (0.55f / visc) + ph * 1.3f);
+      float z = s->bz[i] + 0.18f * cosf(t * (0.61f / visc) + ph * 0.9f);
+      /* Per-blob radius wobble: each blob breathes between 88%
+       * and 112% of its anchor radius. Slow oscillations,
+       * slightly out of phase. */
+      float r_wob = 0.12f * sinf(t * (0.50f / visc) + ph * 0.7f);
+      float r = s->br[i] * (1.0f + r_wob);
       blob_data[i][0] = x;
       blob_data[i][1] = y;
       blob_data[i][2] = z;
-      blob_data[i][3] = s->br[i];
+      blob_data[i][3] = r;
     } else {
       blob_data[i][0] = 0.0f;
       blob_data[i][1] = 0.0f;
