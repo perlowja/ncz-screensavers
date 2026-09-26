@@ -846,6 +846,7 @@ xshadertoy_shaders = [
     'trizm', 'truchetzoom', 'universeball',
     'leviathan',
     'physarum',
+    'attractor',
 ]
 
 foreach s : xshadertoy_shaders
@@ -1434,6 +1435,7 @@ foreach alias_name : [
     'xshadertoy_universeball_gles3',
     'xshadertoy_leviathan_gles3',
     'xshadertoy_physarum_gles3',
+    'xshadertoy_attractor_gles3',
 ]
     run_target(
         alias_name + '_alias',
