@@ -917,6 +917,43 @@ executable(
     install: false,
 )
 
+# Round 19 — genxvectorcade: psychedelic vector-arcade journey. The
+# second piece of the GenX vision: a non-interactive, ever-evolving
+# visual that blends vector tunnel / grid horizon / starfield warp /
+# kaleidoscope bloom / lattice canyon into one continuous trip with
+# persistent feedback trails as the through-line. Differs from the
+# neonasteroids piece (Round 18) in that there is no game and no
+# geometry to model — the journey IS the artwork. See
+# docs/superpowers/specs/2026-09-25-genxvectorcade-vision.md for the
+# shared creative spine.
+#
+# Architecture: one driver .c (src/gles3_genxvectorcade.c) +
+# one fragment shader (vendor/genxvectorcade/genxvectorcade.frag)
+# loaded at runtime from the source tree or from
+# /usr/share/ncz-screensavers/shaders/. The host owns a half-
+# resolution RGBA8 ping-pong FBO for the feedback trail buffer (the
+# feature that separates this from a generic tunnel shader) plus a
+# tiny "fade + rotate" pass that spirals the wakes each frame. Trail
+# buffer is intentionally half-resolution: full-resolution on Intel
+# UHD nearly doubled per-frame cost (measured on PEGASUS 2026-09-25)
+# and trails are intentionally soft.
+install_data('vendor/genxvectorcade/genxvectorcade.frag',
+             install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+executable(
+    'genxvectorcade_gles3',
+    files(common_gles3_sources + [
+        'src/gles3_harness.c',
+        'src/gles3_genxvectorcade.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        '-DHACK_TABLE=genxvectorcade_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+
 # Round 18 — neonasteroids (working name: GenXRockCade, placeholder
 # rename at the top of src/gles3_neonasteroids.c).
 #
