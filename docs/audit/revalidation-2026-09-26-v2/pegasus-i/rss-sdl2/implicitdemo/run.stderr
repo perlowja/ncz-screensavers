@@ -1,0 +1,47 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=34128 hash=3598ef22eaecdaf8 gl_error=0x0
+[dump] writing frame_00000004 to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=97471 hash=6f43874e244aa820 gl_error=0x0
+[dump] writing frame_0000003c to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=48668 hash=c136ad4ff988a302 gl_error=0x0
+[dump] writing frame_00000078 to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=420139 hash=fd6cb30ed5691e30 gl_error=0x0
+[dump] writing frame_000000b4 to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=45988 hash=be83c1d09d43504b gl_error=0x0
+[dump] writing frame_000000f0 to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=65331 hash=5c930a34dcdf673a gl_error=0x0
+[dump] writing frame_0000012c to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=31568 hash=45102a405aad45a1 gl_error=0x0
+[dump] writing frame_00000168 to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=67381 hash=b4502c2e9971ffdf gl_error=0x0
+[dump] writing frame_000001a4 to /home/pegasus/build-tmp/cap-implicitdemo
+[dump] wrote /home/pegasus/build-tmp/cap-implicitdemo/frame_000001a4.png (8294400 bytes)
+EXIT=124

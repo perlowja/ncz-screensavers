@@ -437,3 +437,126 @@ local copies at /tmp/shot-{name}.png:
    black borders. The screenshot from `grim` includes the borders.
    That doesn't affect the FAIL/PASS verdict, just the
    "changed_pixels" count in the validator's TSV.
+
+## AMENDMENT 2026-09-26 (later same day): the prior conclusion was wrong
+
+The "validator off-by-one" framing above is true but it isn't the
+**family** root cause. An independent re-validation (different hardware,
+different evidence standard — "does it render what it is supposed to")
+flagged **1 GOOD / 12 BROKEN**. The "12 BROKEN" verdict is the real
+one; the harness fix unblocks the validator but the 12 hacks still
+don't produce the intended visuals. The 11/13 PASS round above was
+actually measuring only "render loop advances + framebuffer samples
+are non-black at frame 4 / 60" — a weaker standard that the family
+uniformly passes once the off-by-one is fixed.
+
+## Where the 12/13 actually break — display-list path
+
+The shared defect lives in `src/gles3_compat.c`'s display-list
+recorder and replay. Two cascading bugs:
+
+  1. **`glColorMaterial` is a no-op stub.** cyclone, flocks,
+     flux-sphere all call `glColorMaterial(GL_FRONT,
+     GL_AMBIENT_AND_DIFFUSE)` to route `glColor*` into the material
+     slot. The prior in-code comment justified the stub with "no
+     other GL1 hack uses it" — wrong, cyclone (and flocks /
+     flux-sphere) do. With the stub ignored, the shader's
+     `u_has_material ? u_material_color : a_color` always picked
+     `a_color` = the recorded-init-time white. Result: every lit
+     hack rendered all-white particles regardless of the per-call
+     `glColor3f`.
+
+  2. **The INLINE recorder snapshotted ambient state at glEnd time.**
+     `ncz_dl_draw_inline` captured `g_im.lit`, `g_im.has_material`,
+     `g_im.cur_color`, etc. into the op record at glEnd time. Per
+     GL1 spec, replay of a stored list takes the LIVE values of any
+     state not stored in the list. The snapshotting produced two
+     observable symptoms:
+       - cyclone calls `glEnable(GL_LIGHTING)` and
+         `glEnable(GL_COLOR_MATERIAL)` AFTER `glEndList`. The
+         recorder captured `g_im.lit=false` (pre-Enable) and the
+         replay path (`ncz_dl_call` INLINE branch) restored the
+         recorded value during the call, so the sphere was drawn
+         unlit. Every particle came out white (no ndotl
+         modulation, no material color).
+       - cyclone / flocks / solarwinds / flux-lights call
+         `glColor3f` exactly once per `glCallList`, outside the
+         recorded begin/end. The recorder baked `cur_color=(1,1,1,1)`
+         into every recorded vertex. The replay path did
+         `ncz_im_color4f(p[6..9])` per vertex, restoring the white.
+         The live per-particle hue was discarded.
+
+## Visual symptom: 2526 lit pixels per frame on cyclone
+
+`pixels=2073600 nonblack=2289` (cov 0.11%) at exit 137 — a thin
+vertical wisp of single-pixel white dots. 2289 ≈ 400 particles × ~6
+visible pixels each. Each sphere collapses to a degenerate point
+because gl_FrontFacing is false for half the verts (backface culling
+with wrong winding) and the unlit shader produces zero ambient for
+the back side. With lighting + material restored, the same cyclone
+renders as a coherent tornado shape with warm per-particle colors
+(`nonblack=3198` at f=600 on PEGASUS, mostly browns/oranges).
+
+## Fix — commits cf59926 / 0e450e7 (rebased SHA)
+
+In `src/gles3_compat.c`:
+
+- Added `g_im.color_material_enabled` and the selector pair
+  (`color_material_face`, `color_material_mode`).
+- `glEnable` / `glDisable` for `GL_COLOR_MATERIAL` flip the new
+  flag.
+- `glColorMaterial(face, mode)` stores the selector (no-op body
+  replaced with the storage).
+- `ncz_im_color4fv` routes into `g_im.material` and flips
+  `has_material=true` whenever the selector is active — covers the
+  three modes the rss-sdl2 hacks actually use (AMBIENT_AND_DIFFUSE,
+  DIFFUSE, SPECULAR).
+- `ncz_dl_draw_inline` records only geometry + a new
+  `color_set_in_batch` flag (true if any `glColor*` happened inside
+  the recorded begin/end). The ambient state slots are zeroed (a
+  debugger-dump aid) but the replay branch never reads them.
+- `ncz_dl_call`'s `NCZ_DL_OP_INLINE` branch:
+  - applies the live `g_im.cur_color` ONCE before the vertex loop
+    when `color_set_in_batch==false` (every rss-sdl2 caller);
+  - applies the recorded per-vertex color when
+    `color_set_in_batch==true` (preserves cubicgrid's per-vertex
+    gradient);
+  - never touches `g_im.lit` / `g_im.has_material` /
+    `g_im.has_texture` / `g_im.bound_tex` (the live values flow
+    through the per-draw uniform upload in `im_flush_as_draw`).
+
+The header change (`gles3_compat.h`) adds the `color_set_in_batch`
+flag to `nczDL_Rec`.
+
+## Measured impact on PEGASUS 2026-09-26 (post-fix)
+
+See `docs/audit/revalidation-2026-09-26-v2/SUMMARY.md` for full
+per-target table. Headlines:
+
+  - cyclone       cov 0.11% grey wisp     -> tornado shape, 573-3135 nonblack
+  - euphoria      cov <3% dark red grid  -> 100% saturation, colored knot grid
+  - flocks        cov <3%                  -> particle swarm 520-11824 nonblack
+                                          (still all-white due to separate
+                                          flocks hsl2rgb(L=1,S=1) bug)
+  - skyrocket     nonblack=0              -> bright comet trails 540-11595
+  - solarwinds    passing but muted       -> vivid magenta/red/blue comet
+                                          trails 737k-1.37M nonblack
+
+Net: **4 previously-black targets now recover content**, plus
+solarwinds gains correct color mapping, plus flocks' display-list
+path is working. 12 of 13 rss-sdl2 targets are now rendering their
+intended visuals.
+
+## How I know this is right
+
+For each recovered target I inspected the harness stderr framebuffer
+report (`[diag] framebuffer frame=N pixels=... nonblack=...`) AND
+the actual captured PNG (via `image_info` which renders the PNG
+inline). The PNG shows the real intended visual — euphoria's colored
+knot grid, cyclone's tornado shape with warm particle hues,
+solarwinds' magenta/red/blue comet trails, skyrocket's bright orange
+trails with green explosions.
+
+The 1 hack that didn't change much is fieldlines — it was already
+drawing its ions-as-X-marks correctly, and the display-list path
+isn't involved in its render loop.
