@@ -356,31 +356,36 @@ risk band.
 
 ## Captures
 
-All captures below are seed=42, NCZ_NEO_ASTEROIDS_FIXED_SEED=42,
-captured via `WAYLAND_DISPLAY=wayland-0 grim`.
+All captures below are seed=42 (`NCZ_NEO_ASTEROIDS_FIXED_SEED=42`),
+captured via `WAYLAND_DISPLAY=wayland-0 grim`. Each timestamp is
+the number of seconds since launch (which is when the binary
+spawned and started drawing).
 
 ### PEGASUS Intel UHD CML GT2 (1920x1080 logical → 3840x2160 physical)
 
-- `intel-t20.png` — wave 1, ship spawning, rocks at edges
-- `intel-t45.png` — wave 5-6, mid-play, ship turning to lead
-- `intel-t70.png` — wave 7+, dense field, multiple rocks in motion
-- `intel-t95.png` — wave 8+, ship + bullets + chromatic aberration visible
+- `intel-t10.png` — wave 1, ship + first rocks appearing
+- `intel-t60.png` — wave 8, dense field, chromatic aberration
+  creating RGB fringes on rock polygons
+- `intel-t90.png` — wave 8+, multiple rock polygons overlapping
+  with motion trails, the "warp" effect from composite shader
 
 ### PEGASUS NVIDIA RTX 2060 (offload, 1920x1080 logical → 3840x2160 physical)
 
-- `nv-t20.png` — early play
-- `nv-t45.png` — mid-play
-- `nv-t70.png` — late wave, dense field
-- `nv-t90.png` — late wave
+- `nv-t10.png` — wave 1-2, single hex rock + death starburst debris
+- `nv-t30.png` — wave 4-5, three hex rock polygons, chromatic
+  aberration visible
+- `nv-t60.png` — wave 8-9, dense field with chromatic aberration
+  on every entity
+- `nv-t90.png` — wave 10, late-game state
 
 ### MEDUSA AMD Navi14 RX 5500M (1536x960)
 
-- `med-t05.png` — initial spawn
-- `med-t20.png` — early play, ship + rocks
-- `med-t35.png` — mid-play
-- `med-t50.png` — mid-late
-- `med-t65.png` — late wave
-- `med-t80.png` — late wave, dense field
+- `med-t05.png` — wave 1 initial spawn, ship + rocks
+- `med-t20.png` — early play, ship shooting bullets
+- `med-t35.png` — wave 3-4, mid-play with bullets visible
+- `med-t50.png` — wave 5-6, mid-late
+- `med-t65.png` — wave 6-7, late wave, denser field
+- `med-t80.png` — wave 7-8, dense field
 
 ## Commits in this PR (chronological)
 
