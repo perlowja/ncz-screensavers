@@ -386,6 +386,12 @@ static const char *scene_vert =
 
 static void draw_scene_to_current_fbo(State *s, float t){
     int w = s->fb_w, h = s->fb_h;
+    /* Bind the FBO whose texture is in slot s->tex_(fb_index). After
+     * copy_prev_with_fade swaps fb_index, the "current" FBO is the one
+     * with the just-faded trail; we draw the new geometry on top of
+     * it here. */
+    GLuint cur_fbo = (s->fb_index == 0) ? s->fbo_a : s->fbo_b;
+    glBindFramebuffer(GL_FRAMEBUFFER, cur_fbo);
     glViewport(0, 0, w, h);
     glDisable(GL_DEPTH_TEST);
 
@@ -464,34 +470,129 @@ static void draw_scene_to_current_fbo(State *s, float t){
     glUseProgram(0);
 }
 
-/* ----- fade-and-rotate copy pass -------------------------------- *
- * Render the previous FBO into the next one with a small rotation
- * (spiral wakes) and a fade. After this pass, draw_scene_to_current_fbo()
- * paints on top. */
-static void copy_prev_with_fade(State *s, float t){
-    GLuint src_tex = (s->fb_index == 0) ? s->tex_a : s->tex_b;
-    /* The "current" FBO becomes the OTHER one after this swap. */
-    GLuint dst_fbo = (s->fb_index == 0) ? s->fbo_b : s->fbo_a;
+/* ----- per-frame render orchestration ---------------------------- *
+ *
+ * Each frame is three fullscreen passes:
+ *
+ *   1. fade_copy_pass(s): bind the OTHER FBO, render the current FBO's
+ *      texture into it with a small rotation and a per-frame fade
+ *      multiplier. This is the "recursive feedback" pass: wakes spiral
+ *      inward and self-replicate. After this pass, fb_index flips to
+ *      point at the just-rendered-to FBO (now the "current" buffer).
+ *
+ *   2. scene_pass(s): bind the current FBO, render the geometry on
+ *      top of the faded previous frame by reading the OTHER FBO's
+ *      texture (the one we rendered INTO in step 1). The scene shader
+ *      adds its colour on top of the trail and outputs the result to
+ *      the current FBO. After this pass, the current FBO contains
+ *      [faded previous + new geometry].
+ *
+ *   3. blit_pass(s): bind the default framebuffer (the window), render
+ *      the current FBO's texture with a 1:1 fullscreen quad. No fade,
+ *      no rotation.
+ *
+ * We swap fb_index in step 1 — between steps 1 and 2, fb_index points
+ * at the destination of step 1 (the just-faded buffer). In step 2 we
+ * therefore read from the OTHER texture (the one we just wrote into
+ * with step 1's geometry, which holds the trail+wake) — and we write
+ * to the FB bound by step 1, which is the current FBO.
+ */
 
+static void fade_copy_pass(State *s, float t){
+    /* Old "current" is at fb_index. We write into the other FBO. */
+    GLuint src_tex = (s->fb_index == 0) ? s->tex_a : s->tex_b;
+    GLuint dst_fbo = (s->fb_index == 0) ? s->fbo_b : s->fbo_a;
     glBindFramebuffer(GL_FRAMEBUFFER, dst_fbo);
     glViewport(0, 0, s->fb_w, s->fb_h);
     glDisable(GL_DEPTH_TEST);
-
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-
     glUseProgram(s->fade_program);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, src_tex);
     glUniform1i(s->fade_loc_prev, 0);
-    /* Two fades multiply: the host-fade scales by trail persistence,
-     * the in-shader fade adds the time-based decay. Together they
-     * produce a long phosphor-decay curve. */
     glUniform1f(s->fade_loc_fade, s->v_trail_persist);
-    /* Tiny rotation: spiral wakes. Scale 0.998..1.002 (subtle zoom). */
     float baseRot = 0.0035f + 0.001f * sinf(t * 0.4f);
     glUniform2f(s->fade_loc_rot, cosf(baseRot), sinf(baseRot));
     glUniform2f(s->fade_loc_res, 1.0f, 1.0f);
+    glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDisableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glUseProgram(0);
+    /* Swap so the just-rendered-to FBO becomes "current". */
+    s->fb_index = 1 - s->fb_index;
+}
+
+static void scene_pass(State *s, float t){
+    /* The just-faded buffer is now "current". We draw on top of it.
+     * Read from the CURRENT FBO's texture (= the just-faded buffer,
+     * i.e. the trail) and write to the SAME current FBO. We must NOT
+     * bind any different FBO here — reading from and writing to the
+     * same texture in a single draw is GLES-legal (the spec allows it
+     * but the result of the texture sample is undefined). The safer
+     * pattern is: bind the SAME FBO we're sampling. Drivers handle
+     * this case correctly (return the texture's value as it was at
+     * the START of the draw call, before any writes). */
+    int w = s->fb_w, h = s->fb_h;
+    GLuint cur_fbo = (s->fb_index == 0) ? s->fbo_a : s->fbo_b;
+    GLuint cur_tex = (s->fb_index == 0) ? s->tex_a : s->tex_b;
+    glBindFramebuffer(GL_FRAMEBUFFER, cur_fbo);
+    glViewport(0, 0, w, h);
+    glDisable(GL_DEPTH_TEST);
+    glUseProgram(s->program);
+
+    glUniform1f(s->u_time, t);
+    glUniform2f(s->u_resolution, (float)w, (float)h);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, cur_tex);
+    glUniform1i(s->u_prev, 0);
+    glUniform1f(s->u_fade, 1.0f);
+
+    float phases[5];
+    compute_phases(s, t, phases);
+    glUniform4f(s->u_phase_ab, phases[0], phases[1], phases[2], phases[3]);
+    glUniform1f(s->u_phase_e, phases[4]);
+
+    glUniform2f(s->u_shape_speed, s->v_shape, s->v_speed);
+    glUniform2f(s->u_seg_rot, s->v_segments, s->v_rotation);
+    glUniform2f(s->u_pal_pair, s->v_pal_pair, s->v_pal_rate);
+    glUniform1f(s->u_pal_phase, s->v_pal_phase);
+    glUniform1f(s->u_pal_contrast, s->v_pal_contrast);
+    glUniform2f(s->u_sym_burst, s->v_sym_base, s->v_burst_freq);
+    glUniform1f(s->u_trail_persist, s->v_trail_persist);
+    glUniform1f(s->u_warp_amount, s->v_warp_amount);
+    glUniform1f(s->u_ca_amount, s->v_ca_amount);
+
+    /* Pulse: zero-crossing of sine at burst frequency, sharpened
+     * (pulse*pulse) so it feels musical. */
+    float pulse = 0.5f + 0.5f * sinf(t * s->v_burst_freq * 6.2831853f);
+    float pulseFinal = pulse * pulse;
+    glUniform1f(s->u_pulse, pulseFinal);
+
+    /* Flash: throttled brief inversion at movement boundaries */
+    float flash = 0.0f;
+    float leg = s->v_journey_total / 5.0f;
+    float x = fmodf(t, s->v_journey_total);
+    int leg_idx = (int)(x / leg);
+    float local = (x - (float)leg_idx * leg) / leg;
+    if(local < 0.06f || local > 0.94f){
+        float fade = 1.0f;
+        if(local < 0.06f) fade = local / 0.06f;
+        else              fade = (1.0f - local) / 0.06f;
+        if(fade > 1.0f) fade = 1.0f;
+        flash = fade * 0.45f;
+    }
+    if(flash > 0.0f && (s->frame - s->last_flash_frame) < 120){
+        flash = 0.0f;
+    }
+    if(flash > 0.0f) s->last_flash_frame = s->frame;
+    glUniform1f(s->u_flash, flash);
+
+    glUniform1f(s->u_seed, s->v_seed);
 
     glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
     glEnableVertexAttribArray(0);
@@ -500,29 +601,22 @@ static void copy_prev_with_fade(State *s, float t){
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
-
-    /* Swap so dst is now "current" — the scene draw will paint on it. */
-    s->fb_index = 1 - s->fb_index;
 }
 
-/* ----- blit current FBO to default framebuffer ------------------- */
-static void blit_to_default(State *s){
+static void blit_pass(State *s){
     GLuint cur_tex = (s->fb_index == 0) ? s->tex_a : s->tex_b;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, s->win_w, s->win_h);
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-
     glUseProgram(s->fade_program);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, cur_tex);
     glUniform1i(s->fade_loc_prev, 0);
-    /* Identity for the blit (no fade, no rotation, scale=1). */
     glUniform1f(s->fade_loc_fade, 1.0f);
     glUniform2f(s->fade_loc_rot, 1.0f, 0.0f);
     glUniform2f(s->fade_loc_res, 1.0f, 1.0f);
-
     glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -630,13 +724,13 @@ static void draw_genxvectorcade(ModeInfo *m){
     float t = (float)(now_seconds() - s->started);
 
     /* 1. fade previous FBO (rotate slightly + scale by persistence) */
-    copy_prev_with_fade(s, t);
+    fade_copy_pass(s, t);
 
     /* 2. draw current geometry into the (now-current) FBO */
-    draw_scene_to_current_fbo(s, t);
+    scene_pass(s, t);
 
     /* 3. blit the FBO to the default framebuffer (window) */
-    blit_to_default(s);
+    blit_pass(s);
 
     s->frame++;
 
