@@ -220,3 +220,64 @@ Performed by the current agent session. Co-author trailer and Claude
 session URL are appended to commits per the operator's standing rule.
 The captures and this report are committed as evidence of the current
 failure mode, NOT as celebration of success.
+---
+
+# The remaining problem is OPTICS, not simulation (2026-09-26)
+
+Three rounds have now attacked magmasimplex's "looks like matte plastic" verdict from the
+motion side, and the verdict has survived all three:
+
+1. Kinematic metaballs -> flagged as plastic.
+2. Real 2D+3D fluid simulation with buoyancy, surface tension and a phase field
+   (`20478f9`) -> still flagged as plastic.
+3. Volumetric voxel tier -> the round's own evidence is titled *"honest evidence that
+   round-20 3D-voxel tier renders matte plastic on MEDUSA"*
+   (`docs/superpowers/rounds/2026-09-26-magmasimplex-fluid-evidence/REPORT.md`).
+
+**That is three different motion models producing the same material failure. The motion
+was never the problem.**
+
+## External input, filtered
+
+The operator relayed general voxel-fluid guidance. Most of it targets a problem this piece
+does not have, and is recorded here as explicitly NOT applicable so nobody re-raises it:
+
+- **Marching cubes, micro-voxels, layered depth slabs, particle hybrids over block
+  placements** — all fix VISIBLE BLOCKINESS. This piece raymarches a continuous phase
+  field; there are no cubes on screen. Not our failure.
+
+What does apply, and matches the standing hypothesis:
+
+- **Refraction / index of refraction (~1.1-1.33) — the biggest identified gap.** The
+  implementation has Beer-Lambert ABSORPTION (light dimming with path length) and no
+  REFRACTION. Real translucent material BENDS what is behind it. The eye reads bent
+  background as "transparent substance" and unbent background as "coloured solid". This is
+  very likely the strongest single reason the wax reads as plastic, and it has never been
+  implemented.
+- **Thickness-driven emission plus internal scattering.** Thin parts should be hot and
+  bright, thick cores deep and saturated. If that relationship is absent or inverted, no
+  amount of simulation fidelity rescues it. Verify which way round it currently is before
+  changing anything else.
+- **Bright rims at edges and contact points** ("foam at the crests", generalised): a
+  specular/edge highlight where the surface turns away from the viewer is much of what
+  makes a surface read as wet rather than matte.
+
+## Direction for the next round
+
+**Do not add another motion model.** Do not increase grid resolution. Do not replace the
+simulation. The fluid simulation landed and works; leave it alone.
+
+Change only how light enters, travels through and leaves the material:
+
+1. Add refraction — offset the background sample by the surface normal scaled by an IOR
+   term. Cheap, and probably the highest-value single change available.
+2. Audit the thickness -> emission and thickness -> absorption relationships and confirm
+   thin edges are hotter and thick cores deeper. Fix if inverted.
+3. Add an edge/rim term driven by the angle between the view ray and the surface normal.
+4. Only then revisit palette.
+
+Measure by comparison, not in isolation: same seed, same frame, before and after each
+change, so it is visible which optical term did the work.
+
+This entry exists because the piece has now absorbed three rounds of effort aimed at the
+wrong layer. A fourth motion round would be the fourth wrong answer.
