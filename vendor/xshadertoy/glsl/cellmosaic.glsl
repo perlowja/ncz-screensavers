@@ -89,16 +89,24 @@ Voronoi voronoi(vec2 p, float time, vec2 seed_dir) {
         for (int i = -1; i <= 1; i++) {
             vec2 g = vec2(float(i), float(j));
             vec2 cell = ip + g;
-            /* jitter offset: base + per-vertex drift */
+            /* jitter offset: base + per-vertex drift. Jitter is
+             * multiplied by 0.95 so the vertex can land anywhere
+             * within the unit cell including near the boundary;
+             * this is what makes the cells irregularly shaped
+             * rather than axis-aligned rectangles. */
             vec2 jitter = hash22(cell) - 0.5;
             /* slow drift so cells rearrange over a ~30s timescale */
             vec2 drift = 0.5 * vec2(
                 sin(time * (0.07 + 0.13 * hash21(cell))),
                 cos(time * (0.05 + 0.11 * hash21(cell + 7.3)))
             );
-            vec2 r = g + 0.5 + 0.55 * jitter + drift * seed_dir.x;
-            /* wrap so drifting vertices re-enter from the other side */
-            r = fract(r + 0.5) - 0.5;
+            /* vertex position in CELL-LOCAL coords (relative to
+             * cell centre at g + 0.5). NO fract wrap here -- the
+             * wrap was a bug, it made every cell identical to
+             * cell (0,0) and broke the Voronoi topology. The 3x3
+             * neighbour scan handles drift that exceeds the cell
+             * boundary automatically. */
+            vec2 r = g + 0.5 + 0.95 * jitter + drift * seed_dir.x - p;
             float d = dot(r, r);
             if (d < v.f1) {
                 v.f2 = v.f1;
@@ -127,10 +135,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     /* iSeed is four floats in [0,1); we use each channel for a
      * different axis of variation so two runs differ in palette AND
      * density AND drift AND warp. */
-    float density_lo = 6.0;       /* ~6 cells across the short axis */
-    float density_hi = 22.0;      /* dense pack at the high end      */
+    float density_lo = 5.0;       /* ~5 cells across the short axis at the sparse end */
+    float density_hi = 16.0;      /* dense pack at the high end      */
     float cells_per_unit = mix(density_lo, density_hi,
-                              mix(0.35, 0.75, iSeed.x));
+                              mix(0.30, 0.85, iSeed.x));
 
     /* palette base: spread hues across the wheel but cluster them
      * near the iSeed-driven base so the family is recognisable. */
@@ -140,12 +148,13 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float val        = mix(0.78, 0.98, fract(iSeed.x + iSeed.w));
 
     /* domain warp: a low-frequency sinusoidal distortion of the
-     * Voronoi input coords. Strength varies per run; per-cell phase
-     * is keyed off the cell identity so warping stays bounded. */
-    float warp_strength = mix(0.05, 0.35, fract(iSeed.y + 0.3));
+     * Voronoi input coords. Strength varies per run; the frequency
+     * is keyed off cells_per_unit so each cell still reads as a
+     * single Voronoi region but the boundaries curve. */
+    float warp_strength = mix(0.03, 0.15, fract(iSeed.y + 0.3));
     vec2 warp = warp_strength * vec2(
-        sin(uv.y * 3.1 + iSeed.x * 7.0),
-        cos(uv.x * 2.7 + iSeed.z * 5.0)
+        sin(uv.y * 4.5 + iSeed.x * 7.0),
+        cos(uv.x * 3.7 + iSeed.z * 5.0)
     );
 
     /* drift axis: scale per-vertex drift speed by a per-run factor */
@@ -154,7 +163,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     /* --- compute Voronoi at the warped, scaled coord --- */
     float t = iTime * 0.25;            /* slow master clock */
-    vec2 p = uv * cells_per_unit + warp;
+    /* Apply warp BEFORE scaling by cells_per_unit, so the warp
+     * magnitude is a fraction of the screen rather than a fraction
+     * of the lattice. This keeps the cell topology intact while
+     * still letting the cells stretch and curve. */
+    vec2 p = (uv + warp) * cells_per_unit;
     Voronoi v = voronoi(p, t, seed_dir);
 
     /* --- boundary: F2-F1 small means we are near a cell wall --- */
