@@ -402,3 +402,37 @@ quality matters more than their number.
 
 If upstream ships new `.glsl` shaders in a future release, revisit **that
 seam only**. Do not reopen the C-hack port.
+
+## CUT 2026-09-26 — `amigajuggler`
+
+Operator decision after watching it render on real hardware: *"it looks very
+vintage and not very impressive."*
+
+It was a faithful recreation of the 1986 Eric Graham raytracing demo - three
+chrome spheres over a checkerboard, deliberately period-accurate. Removed
+from the catalogue, its shader deleted and its meson entries dropped.
+
+**Why it fails the current bar.** Per the family doctrine, this catalogue is
+art and entertainment, and the stated purpose is that people can show off
+their systems with it. A faithful 1986 recreation is nostalgia without
+spectacle: it fills almost none of the frame, and it demonstrates nothing
+about the hardware running it. It is the small-object-on-black problem that
+the base-family curation already cut 55 targets for, arriving in 1986 form
+rather than 1998 form.
+
+**Worth noting for anyone tempted to restore it.** The original existed to
+PROVE a machine could raytrace in real time - it was a hardware showcase,
+which is exactly this catalogue's stated purpose. A modern equivalent
+(many spheres, path-traced reflections and soft shadows, physically-based
+materials, depth of field, a real environment, ACES tonemapping, randomised
+per launch, and sample/bounce counts that scale visibly with the quality
+ladder) would serve that goal properly and let the homage survive in the
+idea rather than the pixels. That is a NEW piece, not a restoration.
+
+**Separate open bug, unaffected by this cut.** Both `amigajuggler` and
+`neongravity-0` HUNG during evaluation - exit 137, frozen at frame 4 and
+frame 1080 respectively - and left zombie renderers running for hours
+afterwards. amigajuggler reported nonblack=2073600 at frame 4, a complete
+full-coverage frame, so it rendered correctly and then locked up; it was
+never "static" in the sense the classifier recorded. That hang is a real
+defect, likely shared between the two, and still needs root-causing.
