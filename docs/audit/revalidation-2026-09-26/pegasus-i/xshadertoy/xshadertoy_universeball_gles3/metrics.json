@@ -1,0 +1,46 @@
+{
+  "target": "xshadertoy_universeball_gles3",
+  "nframes": 4,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.5571039094650206,
+    "max_changed_pct": 0.5606163194444445,
+    "min_changed_pct": 0.5525733024691358
+  },
+  "coverage_mean": 0.9999927662037037,
+  "coverage_max": 0.9999956597222223,
+  "saturation_mean": 0.35217098283179016,
+  "saturation_max": 0.3681365740740741,
+  "intensity_mean": 65.18019771575928,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.9999956597222223,
+      "sat": 0.34749807098765434,
+      "vis_int": 65.94153594970703
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 0.9999927662037037,
+      "sat": 0.34042341820987654,
+      "vis_int": 63.92313766479492
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 0.9999898726851851,
+      "sat": 0.3681365740740741,
+      "vis_int": 66.12971496582031
+    },
+    {
+      "frame": "frame_000000b4.png",
+      "cov": 0.9999927662037037,
+      "sat": 0.35262586805555557,
+      "vis_int": 64.72640228271484
+    }
+  ],
+  "frame_ms_mean": 977.7777777777778,
+  "frame_ms_var": 987.6543209876567,
+  "n_frame_samples": 4
+}

@@ -1,0 +1,52 @@
+{
+  "target": "xshadertoy_topologica_gles3",
+  "nframes": 5,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.9351422646604939,
+    "max_changed_pct": 0.9403071952160493,
+    "min_changed_pct": 0.9227179783950618
+  },
+  "coverage_mean": 1.0,
+  "coverage_max": 1.0,
+  "saturation_mean": 0.8289925733024692,
+  "saturation_max": 0.8518050733024691,
+  "intensity_mean": 154.79573669433594,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 1.0,
+      "sat": 0.7886713927469136,
+      "vis_int": 173.0055389404297
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 1.0,
+      "sat": 0.8165335648148148,
+      "vis_int": 159.61102294921875
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 1.0,
+      "sat": 0.8457325424382716,
+      "vis_int": 145.6968994140625
+    },
+    {
+      "frame": "frame_000000b4.png",
+      "cov": 1.0,
+      "sat": 0.8422202932098766,
+      "vis_int": 149.20443725585938
+    },
+    {
+      "frame": "frame_000000f0.png",
+      "cov": 1.0,
+      "sat": 0.8518050733024691,
+      "vis_int": 146.46078491210938
+    }
+  ],
+  "frame_ms_mean": 983.3333333333334,
+  "frame_ms_var": 833.3333333333351,
+  "n_frame_samples": 5
+}
