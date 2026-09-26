@@ -457,8 +457,13 @@ static void push_line(State *st, V2 a, V2 b, float r, float g, float bl,
 /* ===================================================================== */
 
 static void draw_fade_quad(State *st) {
+    /* Fade the trail FBO multiplicatively. 0.82 means trails drop
+     * to 1% in ~24 frames (~0.4s at 60fps) — short, snappy trails
+     * that look like motion blur, not smear. Earlier values
+     * (0.93+) accumulated 60+ frames of rock outlines, turning the
+     * rocks into long tubes. */
     glUseProgram(st->trail_prog);
-    glUniform1f(st->u_trail_fade, 0.93f);
+    glUniform1f(st->u_trail_fade, 0.82f);
 
     glBindFramebuffer(GL_FRAMEBUFFER, st->trail_fbo);
     glViewport(0, 0, st->fb_w, st->fb_h);
@@ -543,7 +548,7 @@ static void draw_composite(State *st) {
     float action = (float)st->rocks_alive_this_wave / 12.f;
     if (action > 1.f) action = 1.f;
     glUniform1f(st->u_comp_chroma,
-                vlerp(0.0015f, 0.012f, action)
+                vlerp(0.0008f, 0.006f, action)
                 * (1.f + 0.4f * (float)st->wave / 10.f));
     glUniform1f(st->u_comp_bloom,
                 vlerp(0.6f, 1.1f, (float)st->wave / 12.f));
@@ -660,9 +665,9 @@ static void spawn_rock(State *st, V2 pos, V2 vel, RockTier tier) {
         r->shape[i] = rnd(&z, 0.65f, 1.05f);
     }
     switch (tier) {
-        case ROCK_LARGE:  r->radius = 0.18f; r->visual_radius = 0.22f; break;
-        case ROCK_MEDIUM: r->radius = 0.10f; r->visual_radius = 0.13f; break;
-        case ROCK_SMALL:  r->radius = 0.05f; r->visual_radius = 0.07f; break;
+        case ROCK_LARGE:  r->radius = 0.22f; r->visual_radius = 0.30f; break;
+        case ROCK_MEDIUM: r->radius = 0.13f; r->visual_radius = 0.18f; break;
+        case ROCK_SMALL:  r->radius = 0.06f; r->visual_radius = 0.09f; break;
     }
     r->trail_n = 0;
 }
@@ -1048,27 +1053,31 @@ static void push_ship_outline(State *st) {
 
     float h = s->heading;
     V3 ship_c = hsl_to_rgb(st->ship_hue, 1.f, 0.65f);
-    V2 nose  = { s->pos.x + cosf(h) * 0.04f,
-                 s->pos.y + sinf(h) * 0.04f };
-    V2 rL    = { s->pos.x + cosf(h + 2.5f) * 0.03f,
-                 s->pos.y + sinf(h + 2.5f) * 0.03f };
-    V2 rR    = { s->pos.x + cosf(h - 2.5f) * 0.03f,
-                 s->pos.y + sinf(h - 2.5f) * 0.03f };
-    V2 cock  = { s->pos.x + cosf(h) * 0.02f,
-                 s->pos.y + sinf(h) * 0.02f };
+    V3 ship_bright = hsl_to_rgb(st->ship_hue, 0.3f, 0.95f);
+    V2 nose  = { s->pos.x + cosf(h) * 0.06f,
+                 s->pos.y + sinf(h) * 0.06f };
+    V2 rL    = { s->pos.x + cosf(h + 2.5f) * 0.045f,
+                 s->pos.y + sinf(h + 2.5f) * 0.045f };
+    V2 rR    = { s->pos.x + cosf(h - 2.5f) * 0.045f,
+                 s->pos.y + sinf(h - 2.5f) * 0.045f };
+    V2 cock  = { s->pos.x + cosf(h) * 0.03f,
+                 s->pos.y + sinf(h) * 0.03f };
     float flicker = s->invuln > 0.f
         ? (0.5f + 0.5f * sinf(s->invuln * 30.f)) : 1.f;
 
     push_line(st, nose, rL, ship_c.x, ship_c.y, ship_c.z,
-              0.85f * flicker, 2.0f);
+              0.95f * flicker, 2.6f);
     push_line(st, rL, cock, ship_c.x, ship_c.y, ship_c.z,
-              0.85f * flicker, 2.0f);
+              0.95f * flicker, 2.6f);
     push_line(st, cock, rR, ship_c.x, ship_c.y, ship_c.z,
-              0.85f * flicker, 2.0f);
+              0.95f * flicker, 2.6f);
     push_line(st, rR, nose, ship_c.x, ship_c.y, ship_c.z,
-              0.85f * flicker, 2.0f);
-    push_line(st, cock, s->pos, ship_c.x, ship_c.y, ship_c.z,
-              0.55f * flicker, 1.2f);
+              0.95f * flicker, 2.6f);
+    /* Hot inner spine — bright white core along the heading. */
+    push_line(st, s->pos, nose, ship_bright.x, ship_bright.y, ship_bright.z,
+              0.85f * flicker, 1.4f);
+    push_line(st, cock, s->pos, ship_bright.x, ship_bright.y, ship_bright.z,
+              0.65f * flicker, 1.2f);
 
     if (s->thrust > 0.05f) {
         V3 plume_c = hsl_to_rgb(st->plume_hue, 1.f, 0.6f);
@@ -1095,8 +1104,8 @@ static void push_ship_outline(State *st) {
         if (fade < 0.05f) continue;
         V3 tc = hsl_to_rgb(st->ship_hue, 0.7f, 0.55f);
         push_line(st, s->trail[i - 1], s->trail[i],
-                  tc.x * 0.4f * fade, tc.y * 0.4f * fade, tc.z * 0.4f * fade,
-                  0.25f * fade, 1.0f);
+                  tc.x * 0.35f * fade, tc.y * 0.35f * fade, tc.z * 0.35f * fade,
+                  0.18f * fade, 0.8f);
     }
 }
 
@@ -1139,8 +1148,8 @@ static void push_rock_outline(State *st, int idx) {
         float fade = 1.f - (float)i / (float)TRAIL_LEN;
         if (fade < 0.1f) continue;
         push_line(st, r->trail[i - 1], r->trail[i],
-                  col.x * 0.5f * fade, col.y * 0.5f * fade, col.z * 0.5f * fade,
-                  0.25f * fade, 1.0f);
+                  col.x * 0.35f * fade, col.y * 0.35f * fade, col.z * 0.35f * fade,
+                  0.12f * fade, 0.8f);
     }
 }
 

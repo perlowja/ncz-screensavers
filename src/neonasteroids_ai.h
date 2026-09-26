@@ -42,9 +42,9 @@
 
 #define NEO_AI_BULLET_SPEED         0.85f   /* matches physics bullet speed */
 #define NEO_AI_BULLET_COOLDOWN      0.18f   /* matches physics */
-#define NEO_AI_MAX_TURN_RATE        5.5f    /* rad/s — how fast the AI spins */
+#define NEO_AI_MAX_TURN_RATE        6.5f    /* rad/s — how fast the AI spins */
 #define NEO_AI_SAFE_TTC             2.5f    /* seconds — beyond this, relax */
-#define NEO_AI_PANIC_TTC            0.9f    /* seconds — full evasive below */
+#define NEO_AI_PANIC_TTC            1.4f    /* seconds — full evasive below */
 #define NEO_AI_LEAD_HORIZON         1.2f    /* seconds — cap on lead time */
 #define NEO_AI_LOOK_AHEAD_DT        0.04f   /* seconds — TTC sample step */
 #define NEO_AI_LOOK_AHEAD_STEPS     60      /* samples — 60 * 0.04 = 2.4s */
