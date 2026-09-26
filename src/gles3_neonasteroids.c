@@ -589,7 +589,7 @@ static void reset_ship(Ship *s) {
     s->heading = 0.f;
     s->thrust = 0.f;
     s->alive = 1;
-    s->invuln = 2.5f;
+    s->invuln = 3.0f;
     s->shoot_cooldown = 0.f;
     s->turn_rate = 0.f;
     s->thrust_cmd = 0.f;
@@ -696,7 +696,7 @@ static void spawn_wave(State *st) {
         spawn_rock(st, pos, vel, ROCK_LARGE);
     }
     st->wave_started = now_monotonic();
-    st->wave_duration = 22.f + (float)st->wave * 1.5f;
+    st->wave_duration = 30.f + (float)st->wave * 2.0f;
     st->rocks_spawned_this_wave = n_large;
     st->rocks_alive_this_wave = n_large;
     fprintf(stderr, "[diag] neonasteroids wave=%d spawned=%d duration=%.1f\n",
@@ -877,7 +877,7 @@ static void fire_bullet(State *st) {
         Bullet *b = &st->bullets[i];
         b->alive = 1;
         b->pos = st->ship.pos;
-        float speed = 0.85f;
+        float speed = 1.0f;
         b->vel.x = cosf(st->ship.heading) * speed;
         b->vel.y = sinf(st->ship.heading) * speed;
         b->age = 0.f;
@@ -924,7 +924,7 @@ static void physics_step(State *st, float dt) {
             s->vel.x = 0.f; s->vel.y = 0.f;
             s->heading = 0.f;
             s->thrust = 0.f;
-            s->invuln = 2.5f;
+            s->invuln = 3.0f;
             s->want_to_shoot = 0;
             s->shoot_cooldown = 0.f;
             s->trail_n = 0;

@@ -40,7 +40,7 @@
 /* Tunables — AI personality                                               */
 /* ===================================================================== */
 
-#define NEO_AI_BULLET_SPEED         0.85f   /* matches physics bullet speed */
+#define NEO_AI_BULLET_SPEED         1.0f    /* matches physics bullet speed */
 #define NEO_AI_BULLET_COOLDOWN      0.18f   /* matches physics */
 #define NEO_AI_MAX_TURN_RATE        6.5f    /* rad/s — how fast the AI spins */
 #define NEO_AI_SAFE_TTC             2.5f    /* seconds — beyond this, relax */
