@@ -72,6 +72,16 @@ static void init_blackhole(ModeInfo*m){
  L(path_e_swing);L(path_e_freq);L(path_phase_jitter);
 #undef L
  uint32_t z=seed();
+ // Optional deterministic seed for capture runs (eval harness). When
+ // NCZ_BLACKHOLE_SEED is set in the environment, use it instead of
+ // /dev/urandom so a launch can be reproduced by seed value.
+ {
+  const char*env=getenv("NCZ_BLACKHOLE_SEED");
+  if(env&&*env){
+   unsigned long v=strtoul(env,NULL,0);
+   z=(uint32_t)v;
+  }
+ }
  s->v[0]=(float)z;
  s->v[1]=rnd(&z,.82,1.15);
  s->v[2]=rnd(&z,.45,1);
