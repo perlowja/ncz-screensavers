@@ -223,6 +223,28 @@ typedef struct {
     GLuint  bound_tex;
     bool    use_flat;
     float   point_size;
+    /* GL_COLOR_MATERIAL state. When `color_material_enabled` is true,
+     * the live `glColor*` is also routed into `material[]` and flips
+     * `has_material` true (so the shader's `u_has_material ? u_material_color
+     * : a_color` selection picks up the per-call color uniformly).
+     * `color_material_face` is GL_FRONT or GL_FRONT_AND_BACK; the mode is
+     * GL_AMBIENT_AND_DIFFUSE / GL_AMBIENT / GL_DIFFUSE / GL_SPECULAR /
+     * GL_EMISSION. We only honor the modes whose pname the existing
+     * `ncz_im_material` (line 887) knows how to apply; SPECULAR and
+     * EMISSION are stored but the underlying material pipeline ignores
+     * them — that's consistent with the existing behaviour of
+     * `ncz_im_material` which only acts on GL_AMBIENT_AND_DIFFUSE. */
+    bool    color_material_enabled;
+    GLenum  color_material_face;
+    GLenum  color_material_mode;
+    /* While recording, tracks whether ANY glColor call happened inside
+     * the current glBegin/glEnd batch. The replay path uses this to
+     * decide between "honour the recorded per-vertex color" (cubicgrid
+     * et al.) and "apply the live cur_color uniformly to all vertices"
+     * (cyclone/flocks/flux-sphere/solarwinds/flux-lights, which set
+     * glColor exactly once per glCallList and not inside the recorded
+     * begin/end). */
+    bool    rec_color_set_in_batch;
 } ncz_im_state;
 
 static ncz_im_state g_im = { 0 };
@@ -1116,6 +1138,7 @@ void ncz_im_begin(GLenum primitive) {
         /* Recording mode — start a new inline batch in rec_batch_verts.
          * The actual draw call into the DL happens on ncz_im_end. */
         g_im.rec_batch_count = 0;
+        g_im.rec_color_set_in_batch = false;
         g_im.primitive = primitive;
         g_im.vertex_count = 0;
         return;
@@ -1206,6 +1229,21 @@ void ncz_im_color4f(float r, float g, float b, float a) {
 
 void ncz_im_color4fv(const float *rgba) {
     memcpy(g_im.cur_color, rgba, sizeof g_im.cur_color);
+    if (g_im.recording) g_im.rec_color_set_in_batch = true;
+    /* GL_COLOR_MATERIAL: when the selector (face, mode) is enabled, route
+     * the live color into the matching material slot. ncz_im_material only
+     * acts on GL_AMBIENT_AND_DIFFUSE today; that's the mode every hack
+     * that calls glColorMaterial in this repo actually uses (cyclone,
+     * flocks, flux). For AMBIENT or DIFFUSE we'd need to split the slot,
+     * which the underlying shader doesn't yet support — those modes are
+     * still routed into the same AMBIENT_AND_DIFFUSE bucket, which is
+     * conservative (the diffuse contribution dominates a lit surface
+     * anyway and AMBIENT_AND_DIFFUSE is the GL1 spec's recommended
+     * setting for animated color over a lit mesh). */
+    if (g_im.color_material_enabled) {
+        memcpy(g_im.material, rgba, sizeof g_im.material);
+        g_im.has_material = true;
+    }
 }
 
 void ncz_im_tex_coord2f(float u, float v) {
@@ -1733,7 +1771,21 @@ int ncz_dl_draw_chain(nczDL *dl, const nczGLListChain *chain) {
 /* Record an inline immediate-mode batch. The caller has accumulated
  * `vcount` vertices (each in the standard 12-float pos+normal+color+uv
  * format) into a separate buffer and passes that buffer pointer here.
- * Replaces the older quad/triangle-specific entry points. */
+ * Replaces the older quad/triangle-specific entry points.
+ *
+ * We snapshot ONLY the geometry (verts, primitive, vcount) and a single
+ * flag indicating whether glColor was called inside the recorded
+ * begin/end. All the ambient state (lit / has_material / material
+ * color / cur_color / has_texture / bound_tex) is deliberately NOT
+ * snapshotted here — per GL1 spec, replay of a stored list executes the
+ * stored commands in order but otherwise takes the LIVE values of any
+ * state not stored in the list. Snapshotting at glEnd time produced
+ * the symptom where state set AFTER glEndList (e.g. cyclone's
+ * glEnable(GL_LIGHTING) + glEnable(GL_COLOR_MATERIAL)) failed to take
+ * effect at replay time — the recorded batch thought lighting was off
+ * even though the live state had it on. See `ncz_dl_call`'s
+ * NCZ_DL_OP_INLINE branch for the matching replay path that consumes
+ * the live state. */
 int ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
                        const float *verts, int vcount) {
     if (!dl || !verts || vcount <= 0) return -1;
@@ -1747,13 +1799,18 @@ int ncz_dl_draw_inline(nczDL *dl, GLenum primitive,
     r->chain = NULL;
     r->primitive = primitive;
     r->vcount = vcount;
+    r->color_set_in_batch = g_im.rec_color_set_in_batch;
     memcpy(r->verts, verts, (size_t)vcount * 12 * sizeof(float));
-    memcpy(r->color, g_im.cur_color, sizeof r->color);
-    memcpy(r->material_ambdiff, g_im.material, sizeof r->material_ambdiff);
-    r->has_material = g_im.has_material;
-    r->lit = g_im.lit;
-    r->has_texture = g_im.has_texture;
-    r->bound_tex = g_im.bound_tex;
+    /* Mark the ambient state as "use live values at replay time". The
+     * replay branch reads from g_im.* and never restores anything, so
+     * it doesn't matter what these slots hold — we zero them so a
+     * debugger dumping r doesn't mistake stale data for intent. */
+    memset(r->color, 0, sizeof r->color);
+    memset(r->material_ambdiff, 0, sizeof r->material_ambdiff);
+    r->has_material = false;
+    r->lit = false;
+    r->has_texture = false;
+    r->bound_tex = 0;
     return 0;
 }
 
@@ -1805,30 +1862,37 @@ void ncz_dl_call(const nczDL *dl) {
             break;
         case NCZ_DL_OP_INLINE:
             {
-                bool old_has_material = g_im.has_material;
-                bool old_lit = g_im.lit;
-                bool old_has_texture = g_im.has_texture;
-                GLuint old_bound_tex = g_im.bound_tex;
-                if (!g_dl_use_current_material) {
-                    memcpy(g_im.material, r->material_ambdiff, sizeof g_im.material);
-                    g_im.has_material = r->has_material;
-                }
-                g_im.lit = r->lit;
-                g_im.has_texture = r->has_texture;
-                g_im.bound_tex = r->bound_tex;
+                /* Replay geometry using the LIVE `g_im.*` state for
+                 * color/material/lighting/texture — the recorder
+                 * deliberately does not snapshot those into the op
+                 * (see ncz_dl_draw_inline). For per-vertex color:
+                 *
+                 *   - If the recording batch called glColor inside the
+                 *     recorded begin/end (cubicgrid's per-vertex
+                 *     gradient, future code), the recorded color slots
+                 *     in verts[] are honored.
+                 *   - Otherwise (the rss-sdl2 display-list callers —
+                 *     cyclone/flocks/flux-sphere/solarwinds/flux-lights
+                 *     — all set glColor exactly once per glCallList,
+                 *     never inside the recorded begin/end), we apply
+                 *     the live cur_color uniformly so the per-particle
+                 *     color the caller just set takes effect on the
+                 *     replayed geometry. */
+                bool use_recorded_color = r->color_set_in_batch;
                 ncz_im_begin(r->primitive ? r->primitive : GL_TRIANGLES);
+                if (!use_recorded_color) {
+                    ncz_im_color4fv(g_im.cur_color);
+                }
                 for (int v = 0; v < r->vcount; v++) {
                     const float *p = &r->verts[v*12];
+                    if (use_recorded_color) {
+                        ncz_im_color4f(p[6], p[7], p[8], p[9]);
+                    }
                     ncz_im_normal3f(p[3], p[4], p[5]);
-                    ncz_im_color4f (p[6], p[7], p[8], p[9]);
                     ncz_im_tex_coord2f(p[10], p[11]);
                     ncz_im_vertex3f(p[0], p[1], p[2]);
                 }
                 ncz_im_end();
-                g_im.has_material = old_has_material;
-                g_im.lit = old_lit;
-                g_im.has_texture = old_has_texture;
-                g_im.bound_tex = old_bound_tex;
             }
             break;
         }
@@ -2035,8 +2099,12 @@ void glEnable(GLenum cap) {
         g_im.lit = true;
         return;
     }
+    if (cap == GL_COLOR_MATERIAL) {
+        g_im.color_material_enabled = true;
+        return;
+    }
     if (cap == GL_NORMALIZE || cap == GL_LINE_SMOOTH ||
-        cap == GL_FOG || cap == GL_COLOR_MATERIAL)
+        cap == GL_FOG)
         return;
     if (real_glEnable)
         real_glEnable(cap);
@@ -2051,8 +2119,12 @@ void glDisable(GLenum cap) {
         g_im.lit = false;
         return;
     }
+    if (cap == GL_COLOR_MATERIAL) {
+        g_im.color_material_enabled = false;
+        return;
+    }
     if (cap == GL_LIGHT0 || cap == GL_NORMALIZE || cap == GL_LINE_SMOOTH ||
-        cap == GL_FOG || cap == GL_COLOR_MATERIAL)
+        cap == GL_FOG)
         return;
     if (real_glDisable)
         real_glDisable(cap);
@@ -2328,7 +2400,15 @@ void glEdgeFlag(GLboolean f)          { (void)f; }
  * bug and is exactly the trigger condition for the implementation
  * work above.
  */
-void glColorMaterial(GLenum face, GLenum mode) { (void)face; (void)mode; }
+void glColorMaterial(GLenum face, GLenum mode) {
+    /* Store the selector so subsequent glColor* calls can route into
+     * `material[]` when GL_COLOR_MATERIAL is enabled. We accept any face
+     * (FRONT / BACK / FRONT_AND_BACK) and any mode the GL spec defines;
+     * ncz_im_color4fv applies the mode only when ncz_im_material knows
+     * how to act on the corresponding pname. */
+    g_im.color_material_face = face;
+    g_im.color_material_mode = mode;
+}
 
 /* GL1 client-side vertex-array stubs. xscreensaver's sphere.c, tube.c
  * and a few other helpers use glVertexPointer / glNormalPointer /
