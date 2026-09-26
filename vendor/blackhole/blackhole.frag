@@ -153,54 +153,6 @@ vec3 stars(vec3 d){
  vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(cell+7.));
  return c*s*s*(.65+.35*sin(u_seed+n*40.))*1.8+nebula(d);
 }
-vec3 disk_color(vec3 p,vec3 diskN,float drama){
- // Rotate into the disk's local frame (z = disk normal at this instant).
- // Everything below runs in plane-polar (r, a) where a is the orbital
- // angle around the disk axis. The seam rule still applies: a is atan(...)
- // and discontinuous, so anything driven by it (bandHue here) MUST be
- // periodic in it.
- vec3 pL=toDiskLocal(p,diskN);
- float r=length(pL.xy),a=atan(pL.y,pL.x);
- float ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);
- float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));
- n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);
- float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));
- float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.);
- float dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8);
- float grav=sqrt(max(1.-1./max(r,1.001),.02));
- // Oil-slick iridescence: hue shifts with orbital angle and Doppler term so
- // a single frame carries several bands. Slow radius offset avoids the hue
- // fighting the temperature ramp.
- // NOTE: `a` is atan(p.y,p.x) and therefore JUMPS from +PI to -PI along one
- // radial line. Driving hue LINEARLY from it (previously (a/(2.*PI))*.18)
- // stepped bandHue by a full 0.18 across that seam, which rendered as a hard
- // straight colour boundary splitting the disk - observed live on MEDUSA as a
- // teal/gold edge down the middle. Use a periodic function of the angle
- // instead: sin/cos are continuous across the wrap and keep comparable
- // amplitude (+/-.09 here vs the old 0.18 peak-to-peak), so the disk gets the
- // same oil-slick banding with no discontinuity.
- float bandHue=.09*sin(a)+.045*sin(2.*a)+0.06*sin(ph*3.)+0.04*(dop-.35)/1.45;
- float radiusHue=(r-3.)*.012;
- float paletteT=clamp(heat*dop/grav,0.,1.)+bandHue+radiusHue;
- // A real disk-space hot sector also appears in the lensed disk images.
- float sector=max(cos(a-(.22*u_time+.00001*u_seed)),0.);
- sector*=sector;sector*=sector;
- float boost=1.+.65*drama*sector*(1.-smoothstep(4.,8.,r));
- return palette(paletteT)*edge*(.32+1.2*n)*u_density*dop*dop*boost;
-}
-// Jet picks up the palette so it tracks the rest of the scene instead of a
-// fixed blue. Sampled at a hot temperature so it sits at the bright stop.
-vec3 jet_color(float axis){
- Stop s0,s1,s2,s3;paletteStops(u_palette,s0,s1,s2,s3);
- Stop hot=stopAHue(s2,s3,.85);
- float active_h=u_palette_phase+u_time*u_palette_rate*1.5;
- hot.h=fract(hot.h+active_h);
- vec3 c=hsl2rgb(vec3(hot.h,hot.s,hot.l));
- return c*smoothstep(.975,.997,axis);
-}
-// Zero velocity and acceleration at each envelope endpoint.
-float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
-
 // ---- Disk axis tilt ----
 // Build the world-space disk normal at the current time. Two contributions:
 //   1. Per-launch spin axis drawn uniformly on the sphere (u_disk_axis.xyz).
@@ -251,6 +203,55 @@ vec3 toDiskLocal(vec3 p,vec3 n){
  if(length(axis)<1e-5)return p;        // n ~ +Z: identity
  return p*c + cross(axis,p)*s + axis*dot(axis,p)*(1.-c);
 }
+vec3 disk_color(vec3 p,vec3 diskN,float drama){
+ // Rotate into the disk's local frame (z = disk normal at this instant).
+ // Everything below runs in plane-polar (r, a) where a is the orbital
+ // angle around the disk axis. The seam rule still applies: a is atan(...)
+ // and discontinuous, so anything driven by it (bandHue here) MUST be
+ // periodic in it.
+ vec3 pL=toDiskLocal(p,diskN);
+ float r=length(pL.xy),a=atan(pL.y,pL.x);
+ float ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);
+ float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));
+ n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);
+ float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));
+ float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.);
+ float dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8);
+ float grav=sqrt(max(1.-1./max(r,1.001),.02));
+ // Oil-slick iridescence: hue shifts with orbital angle and Doppler term so
+ // a single frame carries several bands. Slow radius offset avoids the hue
+ // fighting the temperature ramp.
+ // NOTE: `a` is atan(p.y,p.x) and therefore JUMPS from +PI to -PI along one
+ // radial line. Driving hue LINEARLY from it (previously (a/(2.*PI))*.18)
+ // stepped bandHue by a full 0.18 across that seam, which rendered as a hard
+ // straight colour boundary splitting the disk - observed live on MEDUSA as a
+ // teal/gold edge down the middle. Use a periodic function of the angle
+ // instead: sin/cos are continuous across the wrap and keep comparable
+ // amplitude (+/-.09 here vs the old 0.18 peak-to-peak), so the disk gets the
+ // same oil-slick banding with no discontinuity.
+ float bandHue=.09*sin(a)+.045*sin(2.*a)+0.06*sin(ph*3.)+0.04*(dop-.35)/1.45;
+ float radiusHue=(r-3.)*.012;
+ float paletteT=clamp(heat*dop/grav,0.,1.)+bandHue+radiusHue;
+ // A real disk-space hot sector also appears in the lensed disk images.
+ float sector=max(cos(a-(.22*u_time+.00001*u_seed)),0.);
+ sector*=sector;sector*=sector;
+ float boost=1.+.65*drama*sector*(1.-smoothstep(4.,8.,r));
+ return palette(paletteT)*edge*(.32+1.2*n)*u_density*dop*dop*boost;
+}
+// Jet picks up the palette so it tracks the rest of the scene instead of a
+// fixed blue. Sampled at a hot temperature so it sits at the bright stop.
+vec3 jet_color(float axis){
+ Stop s0,s1,s2,s3;paletteStops(u_palette,s0,s1,s2,s3);
+ Stop hot=stopAHue(s2,s3,.85);
+ float active_h=u_palette_phase+u_time*u_palette_rate*1.5;
+ hot.h=fract(hot.h+active_h);
+ vec3 c=hsl2rgb(vec3(hot.h,hot.s,hot.l));
+ return c*smoothstep(.975,.997,axis);
+}
+// Zero velocity and acceleration at each envelope endpoint.
+float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
+
+
 void main(){
  vec2 p=(2.*gl_FragCoord.xy-u_resolution)/u_resolution.y/u_radius;
  // Per-launch flight-path parameters replace what used to be hardcoded
