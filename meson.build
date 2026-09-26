@@ -833,7 +833,7 @@ endforeach
 # -----------------------------------------------------------------------
 
 xshadertoy_shaders = [
-    'alienbeacon', 'amigajuggler', 'batteredplanet',
+    'alienbeacon', 'batteredplanet',
     'bestill0-0', 'bestill1-0', 'bestill2-0', 'bestill3-0',
     'bestill4-0', 'bestill5-0',
     'bubblecolors', 'darktransit', 'downfall', 'driftclouds',
@@ -1395,7 +1395,7 @@ foreach alias_name : [
     'implicitdemo_gles3', 'lattice_gles3', 'microcosm_gles3',
     'plasma_gles3', 'skyrocket_gles3', 'solarwinds_gles3',
     # Round 16 — xshadertoy shader ports (38).
-    'xshadertoy_alienbeacon_gles3', 'xshadertoy_amigajuggler_gles3',
+    'xshadertoy_alienbeacon_gles3',
     'xshadertoy_batteredplanet_gles3',
     'xshadertoy_bestill0-0_gles3', 'xshadertoy_bestill1-0_gles3',
     'xshadertoy_bestill2-0_gles3', 'xshadertoy_bestill3-0_gles3',

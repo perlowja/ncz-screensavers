@@ -42,7 +42,6 @@ header):
 | MIT (original) | 3 | hexplasma, prococean, starnest |
 | CC0 / public domain | 18 | alienbeacon, batteredplanet, bubblecolors, driftclouds, elementalring, fluxcore, gimbalharmonics, goldenapollian, logarithmiccircles, neongravity-0, neongravity-1, neontriangulator, protophore, selfreflect, skyline, stardome, stripeytorus, topologica, trainmandala, truchetzoom |
 | CC BY 3.0 | 1 | synthwavecity (original shader by Jan Mróz, jaszunio15, under CC BY 3.0; adapted by 3w36zj6 and shipped here under the same terms — attribution required, commercial use allowed) |
-| jwz's X-Consortium permission notice (in-source header) | 1 | amigajuggler (Brian J. Bernstein, June 2026 — explicitly relicensed by the author under the same X Consortium MIT-style notice xscreensaver itself uses) |
 | Drift (3w36zj6 / drift public release) | 2 | bubblecolors (CC0-equivalent public release, see source), driftclouds (drift: "anyone and everyone who wishes to use this shader I give my permission to use it in any way that you choose. Credit would be nice but I won't insist on it.") |
 
 > **Total**: 38 shaders. **None are CC BY-NC or CC BY-ND.** The brief's
@@ -52,7 +51,6 @@ The shell-text inventory above came from
 `grep -iE 'license|licence|copyright|relicensed|MIT|CC|BY-NC|public domain' vendor/xshadertoy/glsl/*.glsl`
 plus header-by-header reads of any file whose header text wasn't
 caught by that grep (notably `bubblecolors.glsl`, `driftclouds.glsl`,
-`amigajuggler.glsl` — all verified to be redistribution-permitting
 by the upstream xshadertoy.c file itself, which already enumerates
 the license of every shipped shader before re-releasing them in 6.16).
 
