@@ -374,3 +374,88 @@ unmistakably different members of one family.
 Before shipping, state in one sentence what this makes a viewer feel,
 without naming a technique. If that sentence could equally describe a
 sibling piece, it has not differentiated itself yet.
+## Presentation modes — supersedes the shot-weight table in section 11
+
+Operator: *"So spacewar has 2d tactical mode, 3d cinematic mode, and 3d
+pov bridge mode."* Correct. Build exactly these three.
+
+**One simulation underneath, three ways of looking at it.** The fight,
+the AI, the physics and the hazards are identical in every mode; only the
+camera and the presentation change. Nothing about the battle should
+depend on which mode is active, and switching modes mid-engagement must
+never disturb the simulation.
+
+### Mode 1 — 2D tactical
+
+**Orthographic top-down.** This is not merely a far-away camera; it is a
+genuinely different look and it is the classic one. Flat plane, no
+perspective convergence, the whole arena legible at once, ships as clean
+vector silhouettes.
+
+This is the **home mode** and should hold the majority of runtime. It is
+where the battle is most readable and where the "watching a fight you are
+not playing" feeling lives. When in doubt, be here.
+
+### Mode 2 — 3D cinematic
+
+**Perspective camera moving through the arena.** Slow orbits, dollies,
+close passes, dramatic low angles through the gravity well. Parallax and
+depth do the work. Shots are chosen and cut **on events** — a kill, a
+hyperspace entry, a pulsar sweep, an engagement resolving — never on a
+fixed timer.
+
+Legibility is the constraint: if a shot makes it impossible to tell what
+is happening, it is the wrong shot however pretty. Cut back toward wide
+or to tactical when the action peaks.
+
+### Mode 3 — 3D POV bridge
+
+**From inside a ship, looking out.** The strongest nostalgia trigger in
+the piece and therefore the most dangerous — it is the most recognisable
+image from one specific cabinet, and section 3's synthesis rule makes a
+faithful reproduction a defect.
+
+So take it and break it:
+- **No reticle, no crosshair, no HUD, no text or numbers.** Required by
+  the lock-screen rule, and it is also what stops the shot being a quote.
+- **Every race's bridge is different**, derived from its substrate axis —
+  insectile sees compound faceted panels, crystalline sees refracted
+  splits, a hive sees many small tiles, gaseous sees a soft diffused
+  smear, machine sees a hard geometric overlay. This is worldbuilding
+  where the source had one fixed viewpoint, and it is better than the
+  original.
+- **Rare and short.** Held too long it becomes a game the viewer cannot
+  play, which is frustrating rather than hypnotic.
+- Enter and leave with a real transition, not a hard cut.
+
+### Rough time budget
+
+Tactical ~55%, cinematic ~35%, POV bridge ~10%. Treat as a starting point
+to tune against real captures, not a rule.
+
+### Transitions matter as much as the modes
+
+The switch between modes is a visible, designed event, not a cut. A
+tactical-to-cinematic move should feel like the flat plane tilting into
+depth — the same geometry, rotating into perspective, with the vector
+lines carrying through. That continuity is what sells one world seen
+three ways rather than three separate screensavers.
+
+### Architecture
+
+**The camera is 3D; the simulation stays on a 2D plane** (or a thin slab
+with modest Z). This is the load-bearing decision — it buys perspective,
+parallax and cinematic framing while leaving the AI, collision, gravity
+and pathing in 2D where they already work. Full 3D combat would multiply
+the AI and physics cost for little visible gain. In tactical mode the
+same camera is simply orthographic and overhead.
+
+Keep mode selection in one small director module with an explicit state
+machine, so the cadence can be retuned without touching rendering.
+
+### Evidence
+
+Captures of all three modes, at least two different races' bridges in POV
+showing they genuinely differ, and one capture mid-transition showing
+geometry carrying through between modes. Report segment counts per mode —
+a close pass and an orthographic wide shot cost very differently.
