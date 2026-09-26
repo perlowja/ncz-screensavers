@@ -692,6 +692,49 @@ algorithm families. The WINNER in each family is named.
 
 **Cumulative KEEP after Batch 1: 49 − 9 = 40.**
 
-Batch 2 follows with the next cluster of redundancies (Group 4 mechanical,
-Group 5 small-object/misc, and the ant family call).
+Batch 2 follows with the next cluster of redundancies (surface-math
+WINNER tightening + articulated-figure WINNER call + a few borderline
+score-CUTs that the WINNER rule now catches).
+
+### Batch 2 — surface-math WINNER tightening + articulated-figure call (6 CUTs)
+
+The surface-math family has four 9-of-9 flagship targets:
+`klein_gles3`, `projectiveplane_gles3`, `romanboy_gles3`, and
+`etruscanvenus_gles3`. The earlier round kept all four on the grounds
+that they are "four distinct mathematical objects" (Klein bottle, Boy's
+surface, Roman/Steiner surface, Etruscan-Venus figure-eight immersion).
+That is true at the math level — they are not redundant as maths — but
+the WINNER-and-cut-the-rest rule is about *visual shippability*, not
+about mathematical taxonomy. `klein` is the most polished, deepest in
+frame, and the one the operator would point a viewer at first.
+`projectiveplane`, `romanboy`, `etruscanvenus` are all also-rans under
+the WINNER rule even though each carries a distinct math. They ship as
+algorithms in the rewrite shortlist; they do not need to ship legacy
+too.
+
+`sphereeversion` is the iconic 1980s topology demo (turning a sphere
+inside-out). It is a different *visual* class from the surface-immersion
+family — animation vs static immersion — so it KEEPs under the
+WINNER-and-cut-the-rest rule for the immersion family.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| `projectiveplane_gles3` | surf | 3 | 3 | 3 | 9 | **CUT** | rainbow Boy's-surface wireframe is flagship math but loses the WINNER call to `klein` in the surface-immersion family; rewrite-shortlist candidate, not a legacy ship |
+| `romanboy_gles3` | surf | 3 | 3 | 3 | 9 | **CUT** | red-and-green Roman/Steiner surface is flagship math but loses the WINNER call to `klein`; rewrite-shortlist candidate, not a legacy ship |
+| `etruscanvenus_gles3` | surf | 2 | 2 | 3 | 7 | **CUT** | blue-and-yellow striped figure-eight immersion is distinct math but loses the WINNER call to `klein`; total 7 pre-amendment would have KEEP'd on score, but WINNER rule overrides |
+| `handsy_gles3` | mach | 3 | 2 | 3 | 8 | **CUT** | articulated robot hands — loses the articulated-figure WINNER call to `juggler3d` (more iconic subject, more saturated rendering, no hyprsaver equivalent) |
+| `razzledazzle_gles3` | geom | 3 | 2 | 3 | 8 | **CUT** | M.C. Escher / WWI dazzle-camouflage pattern is interesting but a single-class subject with no other base hack doing the same thing — borderline WINNER in its own tiny family, but the visual is small/subtle enough that it loses the WINNER call to `gibson` (saturated blue translucent cube grid) in the small-object-on-black register |
+| `squirtorus_gles3` | geom | 3 | 2 | 3 | 8 | **CUT** | gold Saturn disc with gold-volcano fountain; loses the torus-family WINNER call to `hypertorus` (full 3D rainbow ribbon-strip torus — more visually rich) |
+
+**Batch 2 subtotal: 6 CUT, 0 KEEP.**
+
+**Batch 2 family WINNER calls:**
+
+- **Surface-immersion family — WINNER `klein`**. Most polished, deepest in-frame motion, the operator's first pointer. `projectiveplane`, `romanboy`, `etruscanvenus` lose the WINNER call; all three remain rewrite-shortlist candidates per the curation plan, they do not need to ship legacy too. `sphereeversion` KEEPs because it is a different *visual* class (animation vs static immersion).
+- **Articulated-figure family — WINNER `juggler3d`**. Wooden mannequin figure with proper detail, more saturated and more readable at 4K than the robot-hand wireframes of `handsy`. `handsy` loses the WINNER call.
+- **Dazzle-camouflage family — single member**. No second dazzle-camouflage hack exists. `razzledazzle` CUT on WINNER-call grounds: in the small-object-on-black register `gibson` is more saturated, more distinctive. The historical-IP value noted (M.C. Escher, dazzle-camouflage WWI) is not a rubric axis.
+- **Torus family — WINNER `hypertorus`**. Full 3D rainbow ribbon-strip torus with depth vs `squirtorus`'s flat-ish gold disc with a fountain spray; `hypertorus` is the more visually rich, more in-frame subject.
+
+**Cumulative KEEP after Batch 2: 40 − 6 = 34.**
+
 
