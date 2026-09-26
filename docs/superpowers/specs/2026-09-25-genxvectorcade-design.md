@@ -172,3 +172,141 @@ banding allows.
   recolonisation and history.
 - **Pixel art as the main motif** — *"pixel art says 'game asset'.
   Phosphor says 'arcade room'."*
+
+---
+
+# Astra's second opinion (consulted 2026-09-25)
+
+Complements GRAEAE rather than contradicting it. Its framing:
+**"an arcade whose light has acquired a history of its own."**
+
+## Technique additions
+
+**Sharp core plus halo without a blur pass** — cheaper than a bloom stage:
+```glsl
+float aa = max(fwidth(d), 1e-5);
+float core = 1.0 - smoothstep(width - aa, width + aa, d);
+float q = d / haloRadius;
+float halo = exp(-q * q);
+vec3 emission = core * coreColour + haloStrength * halo * haloColour;
+```
+Note this gives *strokes* a halo; it does not bloom arbitrary neighbouring
+imagery, which still needs extra sampling.
+
+**Max-based trail envelope**, so persistence cannot accumulate unbounded:
+```glsl
+vec3 decay = exp(-vec3(dt) / tauRGB);
+vec3 trail = max(currentEmission, previousTrail * decay);
+```
+Keep long expressive trails *separate* from the short afterglow that
+suggests phosphor — two different systems, not one.
+
+**Use integer ticks, not a forever-growing float time uniform.** Float
+precision degrades over a multi-day run. Persist ecological state,
+genomes, RNG state, simulation tick and director history in a versioned
+format.
+
+## SAFETY CORRECTION — important
+
+Our earlier framing (watch average frame brightness) is **insufficient**.
+Astra:
+
+> *"Local regions can flash while their contributions cancel globally;
+> saturated-red transitions warrant separate attention."*
+
+Validation must be **spatial as well as temporal**, run against captured
+output including worst-case dense states and moving fine patterns, with
+red transitions checked separately. Reference:
+<https://www.w3.org/WAI/WCAG21/Understanding/three-flashes-or-below-threshold>
+
+## Additions to the avoid list
+
+- **A brightness/entropy fitness score** — rewards visual noise,
+  saturation, or one dominant strategy.
+- **Unrestricted mutation** — destroys recognisable inheritance and
+  yields mostly nonviable organisms.
+- **Full-image feedback as the sole state** — smears and saturates, and
+  entangles presentation with biology.
+- **Permanent spectacle** — removes the contrast that makes spectacle
+  mean anything.
+- **Strict one-pass purity** — can *increase* total cost while obstructing
+  persistent causality. Multi-pass where it genuinely pays.
+
+## Build order: one vertical slice first
+
+**One evolutionary habitat, two display materials, one depth reveal, one
+complete dramatic phrase** — before expanding the repertoire. Then require
+evidence in four areas:
+
+- **Evolution** — births inherit traits; mutations alter behaviour; those
+  changes affect reproductive success.
+- **Ecology** — multi-hour runs across many seeds recording diversity,
+  extinction, stagnation and recovery.
+- **Presentation** — an unfamiliar viewer can recognise a lineage and
+  describe something that happened to it.
+- **Performance** — sustained baseline-hardware runs meeting the frame
+  budget, including dense states and thermal settling.
+
+---
+
+# Environmental input: the machine's own sensors
+
+Operator direction: drive the world's emotion from real environmental
+data — and, better, **from the local system's own sensors**.
+
+This is the literal reading of "Tron for real": the world inside the
+machine, driven by the actual state of the machine. It beats any network
+source on every axis — no privacy exposure, no offline failure mode, no
+latency, and the ecosystem becomes *this machine's* inner life rather
+than a generic feed.
+
+| Sensor | Source | Ecological meaning |
+|---|---|---|
+| CPU / GPU temperature | `/sys/class/hwmon`, `/sys/class/thermal` | climate; warmth drives metabolism and mutation rate |
+| Fan RPM | `hwmon` | wind — flow-field strength and direction |
+| CPU load, per-core | `/proc/stat` | population pressure, colony growth |
+| Memory pressure | `/proc/meminfo` | density, crowding |
+| Disk I/O | `/proc/diskstats` | seismic events, terrain disturbance |
+| Network throughput | `/proc/net/dev` | migration, arriving species |
+| Battery / charging | `/sys/class/power_supply` | available energy; on battery the world dims and conserves |
+| Ambient light | `/sys/bus/iio/devices` | the room's lighting, where present |
+| Uptime | `/proc/uptime` | the ecosystem's age |
+
+**Why thermal is the best one:** it serves the hardware-longevity thesis
+directly. An older machine running hot with fans up produces a more
+turbulent, dramatic world. The hardware's struggle becomes the weather —
+old hardware reads as *characterful* rather than degraded. It also gives
+a viewer discoverable causality: start a compile, and the world blooms.
+
+**Clock-derived inputs need no sensors at all** — local time, sun
+elevation and moon phase are pure computation, giving a genuine circadian
+rhythm and a slow lunar cycle for free.
+
+**Optional network layer, if ever wanted: space weather, not local
+weather.** NOAA SWPC publishes free, keyless, *global* feeds (Kp index,
+solar wind speed/density, X-ray flux). Being global, it carries no
+location-privacy problem, and it maps thematically — real electromagnetic
+weather driving the arcade's electromagnetic weather. A genuine
+geomagnetic storm becomes a rare bloom that actually corresponds to
+something happening, which is exactly the "rare events must feel earned"
+requirement.
+
+## Engineering requirements for any sensor input
+
+- **Every sensor is optional.** `hwmon` paths and labels vary widely;
+  many desktops expose no fan or battery; VMs expose almost nothing.
+  Each input needs graceful absence and a synthetic fallback.
+- **Zero network I/O in the hack.** Any network-derived value arrives via
+  a cache file written by a separate service, exactly as designed for the
+  stock visualisations. Stale or absent cache falls back to synthetic
+  drift. A screensaver must never look broken because wifi is down.
+- **Sensor reads must not be on the render path.** Poll on a slow timer;
+  the shader consumes smoothed uniforms.
+- **Smooth everything.** Raw load and temperature are spiky; the world
+  should feel weather-like, responding over tens of seconds, not
+  flickering per frame.
+- **Nothing readable.** Values drive visual qualities only. No numbers,
+  gauges or readouts — a screensaver runs on a locked screen.
+- **Platform abstraction applies** (see the platform-abstraction rule):
+  sensor access sits behind the platform interface, not in hack code.
+  Windows and macOS have entirely different sources.
