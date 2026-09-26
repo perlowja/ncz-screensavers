@@ -1,0 +1,28 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/skyline.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=2,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=181,175,167; 88,88,83; 156,159,148; 175,184,204
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=3f4821f3d94f7cfc gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1096895-i-xshadertoy_skyline_gles3
+[dump] wrote /tmp/cap-1096895-i-xshadertoy_skyline_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=72,76,77; 54,58,61; 41,45,51; 194,201,214
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=786ce18392d53fc5 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1096895-i-xshadertoy_skyline_gles3
+[dump] wrote /tmp/cap-1096895-i-xshadertoy_skyline_gles3/frame_0000003c.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1110735 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1096895-i-xshadertoy_skyline_gles3 timeout --kill-after=2 28 ./xshadertoy_skyline_gles3

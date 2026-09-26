@@ -1,0 +1,64 @@
+{
+  "target": "xshadertoy_prococean_gles3",
+  "nframes": 7,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.7548396508487655,
+    "max_changed_pct": 0.8926572145061729,
+    "min_changed_pct": 0.5251220100308642
+  },
+  "coverage_mean": 1.0,
+  "coverage_max": 1.0,
+  "saturation_mean": 0.6399609374999999,
+  "saturation_max": 0.7553038194444445,
+  "intensity_mean": 119.49003165108817,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 1.0,
+      "sat": 0.7475086805555555,
+      "vis_int": 123.32835388183594
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 1.0,
+      "sat": 0.7236492091049382,
+      "vis_int": 124.31014251708984
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 1.0,
+      "sat": 0.6308362268518518,
+      "vis_int": 120.71542358398438
+    },
+    {
+      "frame": "frame_000000b4.png",
+      "cov": 1.0,
+      "sat": 0.4388937114197531,
+      "vis_int": 106.21326446533203
+    },
+    {
+      "frame": "frame_000000f0.png",
+      "cov": 1.0,
+      "sat": 0.540465374228395,
+      "vis_int": 112.565185546875
+    },
+    {
+      "frame": "frame_0000012c.png",
+      "cov": 1.0,
+      "sat": 0.6430695408950617,
+      "vis_int": 123.76818084716797
+    },
+    {
+      "frame": "frame_00000168.png",
+      "cov": 1.0,
+      "sat": 0.7553038194444445,
+      "vis_int": 125.52967071533203
+    }
+  ],
+  "frame_ms_mean": 988.888888888889,
+  "frame_ms_var": 617.2839506172854,
+  "n_frame_samples": 7
+}

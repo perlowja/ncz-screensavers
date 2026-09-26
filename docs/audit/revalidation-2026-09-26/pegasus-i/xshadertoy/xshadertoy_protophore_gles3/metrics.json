@@ -1,0 +1,76 @@
+{
+  "target": "xshadertoy_protophore_gles3",
+  "nframes": 9,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.751775233892747,
+    "max_changed_pct": 0.8498775077160494,
+    "min_changed_pct": 0.5437485532407408
+  },
+  "coverage_mean": 1.0,
+  "coverage_max": 1.0,
+  "saturation_mean": 0.0026010588134430727,
+  "saturation_max": 0.005846836419753087,
+  "intensity_mean": 118.55137549506293,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 1.0,
+      "sat": 0.0027078510802469135,
+      "vis_int": 142.58111572265625
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 1.0,
+      "sat": 0.0019034529320987655,
+      "vis_int": 131.86102294921875
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 1.0,
+      "sat": 0.0011839313271604938,
+      "vis_int": 137.0258026123047
+    },
+    {
+      "frame": "frame_000000b4.png",
+      "cov": 1.0,
+      "sat": 0.002371720679012346,
+      "vis_int": 135.43028259277344
+    },
+    {
+      "frame": "frame_000000f0.png",
+      "cov": 1.0,
+      "sat": 0.0027483603395061728,
+      "vis_int": 123.92533111572266
+    },
+    {
+      "frame": "frame_0000012c.png",
+      "cov": 1.0,
+      "sat": 0.005846836419753087,
+      "vis_int": 116.42058563232422
+    },
+    {
+      "frame": "frame_00000168.png",
+      "cov": 1.0,
+      "sat": 0.0034572723765432098,
+      "vis_int": 98.17630767822266
+    },
+    {
+      "frame": "frame_000001a4.png",
+      "cov": 1.0,
+      "sat": 0.0017274305555555556,
+      "vis_int": 90.7612533569336
+    },
+    {
+      "frame": "frame_000001e0.png",
+      "cov": 1.0,
+      "sat": 0.0014626736111111112,
+      "vis_int": 90.78067779541016
+    }
+  ],
+  "frame_ms_mean": 991.6666666666667,
+  "frame_ms_var": 486.1111111111122,
+  "n_frame_samples": 9
+}

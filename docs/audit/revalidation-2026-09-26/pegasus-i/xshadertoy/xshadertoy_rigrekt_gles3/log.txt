@@ -1,0 +1,33 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/rigrekt.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=160,180,160; 146,159,146; 165,177,165; 0,0,0
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=1555200 hash=cd07d77923a15c08 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1095966-i-xshadertoy_rigrekt_gles3
+[dump] wrote /tmp/cap-1095966-i-xshadertoy_rigrekt_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=154,174,154; 147,160,147; 113,125,113; 0,0,0
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=1555200 hash=43b9b3186814df7b gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1095966-i-xshadertoy_rigrekt_gles3
+[dump] wrote /tmp/cap-1095966-i-xshadertoy_rigrekt_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=172,192,172; 151,164,151; 128,141,128; 0,0,0
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=1555200 hash=8c6848128a80b86f gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1095966-i-xshadertoy_rigrekt_gles3
+[dump] wrote /tmp/cap-1095966-i-xshadertoy_rigrekt_gles3/frame_00000078.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1109051 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1095966-i-xshadertoy_rigrekt_gles3 timeout --kill-after=2 28 ./xshadertoy_rigrekt_gles3

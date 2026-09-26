@@ -1,0 +1,53 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/starnest.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=2 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=39,29,24; 26,19,16; 36,26,23; 26,21,20
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=f47ae0e2814b32ca gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=33,27,27; 54,37,27; 27,21,19; 27,21,19
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=89e2edf865d2fcab gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=36,30,33; 33,24,22; 42,32,37; 36,27,25
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=8ddb915391ea7cd2 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_00000078.png (8294400 bytes)
+[diag] xshadertoy frame=180 gl_error=0x0 samples=72,67,89; 28,22,20; 47,35,32; 32,27,28
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=ad115f6038a3a127 gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_000000b4.png (8294400 bytes)
+[diag] xshadertoy frame=240 gl_error=0x0 samples=141,161,255; 41,25,21; 57,47,43; 55,46,45
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=84bf80bd6d578e6b gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_000000f0.png (8294400 bytes)
+[diag] xshadertoy frame=300 gl_error=0x0 samples=84,82,113; 47,40,42; 144,111,86; 47,41,43
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=1f9d135e18859c22 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_0000012c.png (8294400 bytes)
+[diag] xshadertoy frame=360 gl_error=0x0 samples=130,107,106; 56,48,50; 219,169,122; 64,54,54
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=07a138d862ea580c gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1097617-i-xshadertoy_starnest_gles3
+[dump] wrote /tmp/cap-1097617-i-xshadertoy_starnest_gles3/frame_00000168.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1112423 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1097617-i-xshadertoy_starnest_gles3 timeout --kill-after=2 28 ./xshadertoy_starnest_gles3
