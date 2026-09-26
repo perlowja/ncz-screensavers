@@ -109,3 +109,37 @@ a final count: how many of each family survive.
 
 State the honest total. If the catalogue drops from 104 working to 60,
 that is a better catalogue and should be reported as a win, not softened.
+
+---
+
+## AMENDMENT 2026-09-26 — uniqueness alone may not cut
+
+Operator: *"If the 12 redundancy survive on the first 2 criteria keep
+them."*
+
+**A low uniqueness score is no longer sufficient grounds for a CUT.** A
+target that scores non-zero on **performance** and non-zero on **visual
+impact** is KEEP, regardless of how redundant it is with a sibling.
+
+Revised decision rule:
+
+| Condition | Action |
+|---|---|
+| perf = 0 **or** visual = 0 | **CUT** (unchanged — any axis at 0 is automatic) |
+| perf > 0 **and** visual > 0 | **KEEP** |
+| uniqueness | informational only — no longer decides |
+
+Uniqueness stays in the scoring because it is genuinely useful: it names
+which member of a family leads, and that ordering feeds the rewrite
+shortlist for the new engine. But it **ranks**, it no longer **removes**.
+
+**Rationale.** A hack that runs well and looks good is worth shipping even
+if a sibling does something similar. The cost of keeping it is a line in a
+chooser; the cost of cutting it is losing work that already passes the two
+criteria that actually matter to a viewer. Nobody watching a screensaver
+is harmed by there being two good takes on cubes.
+
+Cuts made on grounds **outside** the three axes — subject matter, legal
+risk, trademark — are unaffected by this amendment and remain in force.
+They are editorial decisions, not rubric outcomes, and must be recorded
+with their actual reason rather than dressed as a low score.

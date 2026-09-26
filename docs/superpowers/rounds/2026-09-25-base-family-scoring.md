@@ -488,3 +488,64 @@ family (cube → cubetwist; surface-math → klein; gears → geodesicgears
 → covered by surface-math, crumbler adds nothing; molecular → molecule,
 covid19 CUT on topic). The final surviving count is **38 of 105 base
 legacy screensavers** for ship-as-is.
+
+---
+
+## REINSTATEMENT 2026-09-26 — 10 redundancy CUTs restored
+
+Per the rubric amendment (uniqueness alone may not cut), every target cut
+purely for redundancy that scores non-zero on performance **and** non-zero
+on visual impact is restored to KEEP.
+
+| target | perf | visual | uniq | prior reason for CUT |
+|---|---|---|---|---|
+| `cubestack_gles3` | 3 | 1 | 1 | redundant with cube family |
+| `cubestorm_gles3` | 2 | 1 | 1 | redundant with cube family |
+| `polyhedra-gl_gles3` | 3 | 1 | 1 | redundant with polyhedra family |
+| `topblock_gles3` | 3 | 1 | 1 | redundant with block family |
+| `tangram_gles3` | 3 | 1 | 1 | redundant with flat-geometry family |
+| `discoball_gles3` | 2 | 1 | 1 | redundant with reflective-sphere family |
+| `flyingtoasters_gles3` | 3 | 1 | 1 | redundant |
+| `crumbler_gles3` | 3 | 2 | 1 | redundant |
+| `antspotlight_gles3` | 3 | 1 | 2 | lost to `antinspect` in the ant family |
+| `blinkbox_gles3` | 3 | 1 | 1 | redundant |
+
+**Revised base-family count: 38 + 10 = 48 KEEP, 57 CUT, of 105.**
+Retention rises from 36% to **46%**.
+
+The family WINNER calls are unchanged and still stand — `antinspect` still
+leads the ant family, `klein` the surface-math family, `glknots` the knot
+family, `hilbert` the space-filling fractals, `stonerview` the receding
+grids. They now rank rather than remove, and continue to feed the
+new-engine rewrite shortlist.
+
+### Held for an operator decision — `covid19_gles3`
+
+Scores **perf=3, visual=3, unique=3 — total 9**, the highest in the base
+family, and was **not** cut on redundancy. It was cut on **topic**:
+
+> *"beautifully rendered SARS-CoV-2 model with green core and red spike
+> proteins — but the topic is pandemic imagery; CUT on topic: showing a
+> virus on a screensaver lock-screen is jarring."*
+
+That is an editorial call outside the three axes, so the amendment does not
+automatically restore it. Recorded here rather than decided, because a
+9/9 target being cut for subject matter is exactly the kind of decision
+that should be visible and attributable rather than buried in a table.
+
+### Correction to an earlier claim in this project
+
+An earlier status report stated the `rss-sdl2` family was "9 of 13
+working", taken from `2026-09-25-catalogue-curation-plan.md`. **That figure
+is stale.** The current full matrix shows nearly the whole family rendering
+black on both vendors — `cyclone`, `euphoria`, `flocks`, `flux`, `helios`,
+`hyperspace`, `implicitdemo`, `lattice`, `microcosm`, `plasma`,
+`skyrocket`, `solarwinds`.
+
+Two consequences. The scoring round's decision to sweep those targets into
+the both-FAIL cut list was **correct**, not the misattribution it first
+appeared to be. And the in-flight brief to "fix the 3 known rss blacks"
+(`cyclone`, `fieldlines`, `hyperspace`) is **scoped far too narrowly** —
+it is closer to twelve. A shared root cause across the whole family is now
+much more likely than three separate bugs, and should be the first
+hypothesis tested.
