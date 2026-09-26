@@ -333,14 +333,14 @@ fixes, no features and no new hacks.
   modulation on unlit geometry), razzledazzle's hull collapsing to the
   20% ambient floor.
 - Of 6 both-vendor failures root-caused, **5 are its own admitted stubs**:
-   inert,  and  stubbed,
-   returning -1 forever, 
+  `glTexGeni` inert, `glLogicOp` and `glTexImage1D` stubbed,
+  `textclient_getc` returning -1 forever, `texture_string_metrics`
   returning zero widths.
 - **Touching it is net-negative.** A careful, well-evidenced 61-line
-   wrapper () fixed  and silently broke
-  five working hacks — , , ,
-  ,  — three of them in the ship-as-is bucket. It
-  was reverted in  after before/after measurement on real
+  `glDrawElements` wrapper (`2629654`) fixed `glcells` and silently broke
+  five working hacks -- `romanboy`, `etruscanvenus`, `projectiveplane`,
+  `klein`, `sphereeversion` -- three of them in the ship-as-is bucket. It
+  was reverted in `27b7eb2` after before/after measurement on real
   hardware. **+1 archived-tier hack, -5 working hacks.**
 
 That last point is the decisive one. The shim is a 2,545-line
