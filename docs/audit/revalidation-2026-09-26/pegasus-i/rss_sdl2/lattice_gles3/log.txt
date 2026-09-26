@@ -1,0 +1,88 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=31138 hash=a557f9cb1792e6fb gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=16641 hash=17795fa632bfac57 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=7015 hash=b7f8146aadf1a2ef gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=5005 hash=7a245c676578c5cf gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=21849 hash=2ca93edfe49e6b17 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=187995 hash=2d76f9512b2d9878 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=17882 hash=40762b3386421773 gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=5157 hash=73368e61c305d92f gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000001a4.png (8294400 bytes)
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=5206 hash=9d0efcb275fdc32b gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000001e0.png (8294400 bytes)
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=214859 hash=f2cc9474fce5ea53 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_0000021c.png (8294400 bytes)
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=370033 hash=640c250d04dcb742 gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000258.png (8294400 bytes)
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=536031 hash=ca47c3ce8fc5d59f gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000294.png (8294400 bytes)
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=376141 hash=184324b0cc1b3836 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000002d0.png (8294400 bytes)
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=309719 hash=cb0517358a47af47 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_0000030c.png (8294400 bytes)
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=426105 hash=00539d8db9b7c4f5 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000348.png (8294400 bytes)
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=416125 hash=4cf2d38902eb946e gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_00000384.png (8294400 bytes)
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=275145 hash=02c3229671e85efb gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000003c0.png (8294400 bytes)
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=5172 hash=adc736eaef4a8c43 gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1103915-i-lattice_gles3
+[dump] wrote /tmp/cap-1103915-i-lattice_gles3/frame_000003fc.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1126091 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1103915-i-lattice_gles3 timeout --kill-after=2 28 ./lattice_gles3

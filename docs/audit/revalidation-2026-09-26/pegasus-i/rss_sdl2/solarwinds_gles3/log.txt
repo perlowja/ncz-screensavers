@@ -1,0 +1,115 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=172469 hash=90ca3888bfae6cf6 gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=567104 hash=0e0d4cbd89591463 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=832417 hash=87014150409e6f74 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=1253514 hash=707aabfe8e27ce80 gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=1504105 hash=83fcd54ebd5e7994 gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=1548169 hash=5affd04c44eddfbe gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=1549016 hash=d4a2f7aed405318e gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=1592018 hash=c25921c60724d0cc gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000001a4.png (8294400 bytes)
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=1699866 hash=aa948c8dede70633 gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000001e0.png (8294400 bytes)
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=1963596 hash=92e36ef2a8c4ff98 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_0000021c.png (8294400 bytes)
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=2001039 hash=85baf0e1e2036fdd gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000258.png (8294400 bytes)
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=2003476 hash=6dba91d672b2e026 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000294.png (8294400 bytes)
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=2038586 hash=4f64bf484f0f4524 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000002d0.png (8294400 bytes)
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=2069044 hash=8e181f1bea595154 gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_0000030c.png (8294400 bytes)
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=2069045 hash=fb84718da9828dd8 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000348.png (8294400 bytes)
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=2069045 hash=05ca3d055de14119 gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000384.png (8294400 bytes)
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=2069045 hash=fbb90fa6fc0629b6 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000003c0.png (8294400 bytes)
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=2069315 hash=259eea21bb4f1bc6 gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000003fc.png (8294400 bytes)
+[diag] frame #1080
+[diag] framebuffer frame=1080 pixels=2073600 nonblack=2069315 hash=8c781bdcba758edd gl_error=0x0
+[dump] writing frame_00000438 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000438.png (8294400 bytes)
+[diag] frame #1140
+[diag] framebuffer frame=1140 pixels=2073600 nonblack=2069315 hash=204ddf8e0fb10f54 gl_error=0x0
+[dump] writing frame_00000474 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000474.png (8294400 bytes)
+[diag] frame #1200
+[diag] framebuffer frame=1200 pixels=2073600 nonblack=2069315 hash=9287dd0bcfbf60b5 gl_error=0x0
+[dump] writing frame_000004b0 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000004b0.png (8294400 bytes)
+[diag] frame #1260
+[diag] framebuffer frame=1260 pixels=2073600 nonblack=2073600 hash=031a7b6b1791c70e gl_error=0x0
+[dump] writing frame_000004ec to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000004ec.png (8294400 bytes)
+[diag] frame #1320
+[diag] framebuffer frame=1320 pixels=2073600 nonblack=2073600 hash=f6c223da60f8ab39 gl_error=0x0
+[dump] writing frame_00000528 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000528.png (8294400 bytes)
+[diag] frame #1380
+[diag] framebuffer frame=1380 pixels=2073600 nonblack=2073600 hash=63fbff1fd08606f7 gl_error=0x0
+[dump] writing frame_00000564 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_00000564.png (8294400 bytes)
+[diag] frame #1440
+[diag] framebuffer frame=1440 pixels=2073600 nonblack=2073600 hash=6f955e8f440dd070 gl_error=0x0
+[dump] writing frame_000005a0 to /tmp/cap-1126213-i-solarwinds_gles3
+[dump] wrote /tmp/cap-1126213-i-solarwinds_gles3/frame_000005a0.png (8294400 bytes)
+EXITCODE=124
