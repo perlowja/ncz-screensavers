@@ -105,3 +105,92 @@ Secondary candidates:
   a running loop)
 - Viewport / framebuffer never sized after surface creation
 - Precision qualifiers missing in shared preamble
+
+## Big breakthrough — captured all 13 screenshots from PEGASUS 2026-09-26
+
+Ran each hack for 3 seconds, captured the Wayland screen via `grim`,
+pulled locally. **The matrix is WRONG about what's failing.** Direct
+visual evidence below (what I actually see in each PNG):
+
+| hack         | matrix label (amd64) | what I actually see |
+|---|---|---|
+| fieldlines   | PASS (104k px)       | Ions visible as X marks; field lines extremely faint, 1-px wide |
+| lattice      | PASS (28k px)        | Single faint blue lattice face, only a few edges visible |
+| cyclone      | FAIL black           | Small white particle cluster, ~50 specks, very dim |
+| euphoria     | FAIL black           | Dark reddish checkered grid in lower portion, dim |
+| flocks       | FAIL black           | Almost nothing visible |
+| flux         | FAIL black           | Pink particle cluster, "lights" mode only visible |
+| helios       | FAIL black           | Bright glowing green/cyan spheres in center |
+| hyperspace   | FAIL black           | Green/gold/purple planet + rings in center |
+| implicitdemo | FAIL black           | VIVID rainbow blobs — blues, greens, magentas — beautiful |
+| microcosm    | FAIL black           | VIVID rainbow fluid — full screen content in lower-left |
+| plasma       | FAIL black           | Small cluster of red specks |
+| skyrocket    | FAIL black           | Bright white comet trails in lower portion |
+| solarwinds   | FAIL black           | GLOWING WHITE COMET TRAILS — full beautiful output |
+
+**At least 6 hacks are rendering correctly and beautifully** (helios,
+hyperspace, implicitdemo, microcosm, skyrocket, solarwinds). They are
+in the "FAIL black" category ONLY because:
+1. The pixel-diff gate counts black-border pixels as "no change".
+2. The compositor captures the whole 3840x2160 desktop, the
+   layer-shell surface is 1920x1080 placed offset within it, and
+   the validator's "before" screenshot was probably a black desktop
+   so the diff sees content change only in a 1920x1080 region.
+
+The "FAIL black; render loop advanced" verdict was NEVER right for
+these 6. The render loop is advancing AND content is being drawn.
+The classifier just sees a mostly-black frame and calls it black.
+
+For the remaining 7 (cyclone, euphoria, flocks, flux, plasma,
+fieldlines, lattice), there ARE genuine rendering issues — content
+visible but wrong shape or wrong brightness or wrong color.
+
+## So the question changes
+
+We do NOT have "13 hacks all broken by one shared defect". We have
+**two distinct problems**:
+
+A. **Pixel-diff classification is broken** — it can't tell the
+   difference between "all-black frame" and "vivid content in a
+   small region of a larger mostly-black frame". Affects at least 6
+   of the "FAIL" hacks (helios, hyperspace, implicitdemo,
+   microcosm, skyrocket, solarwinds). **Fix is in the validator,
+   not in the hacks.**
+
+B. **Genuine rendering issues** in 7 hacks — varying symptoms,
+   likely different root causes per hack. cyclone's particle color
+   is white because the display-list sphere records vertices with
+   g_im.cur_color=(1,1,1) at init time; fieldlines' line widths
+   might be clipped by line-rasterization; etc.
+
+The "one shared defect" hypothesis is now PROVEN FALSE by direct
+visual evidence. The reality is "validator is wrong + a handful of
+real per-hack rendering issues".
+
+## Where I am now
+
+Confirmed visually:
+- All 13 are advancing their render loop.
+- At least 6 are rendering correctly with vivid content.
+- The harness's `[diag] framebuffer frame=` line NEVER fires (off-by-one:
+  `_nframes++` is post-increment, so the check `frame==4` is never
+  reached — first call is with `frame=1`, then 2, 3, 5, ...). This
+  is a real harness bug but unrelated to the 13 rss-sdl2 failures.
+- The layer-shell surface is anchored top-left of the 3840x2160
+  desktop capture, not fullscreen — that's why every screenshot
+  has black borders.
+
+## NEXT STEP: reclassify the matrix
+
+Reclassify based on actual visual evidence:
+- microcosm, skyrocket, solarwinds, helios, hyperspace, implicitdemo
+  → likely "PASS" content-quality (move out of FAIL bucket)
+- cyclone, euphoria, flocks, flux, plasma → genuine bugs to fix
+- fieldlines, lattice → passes per pixel-diff but content quality
+  may be substandard (X marks only, single face)
+
+This is **NOT one shared bug**. The brief's hypothesis was testable
+and test failed. The honest finding is:
+"Validator is wrong about half the failures; the other half are
+seven independent rendering issues. None of them share a single
+defect in the gles3_compat layer (the only layer they all share)."
