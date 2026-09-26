@@ -1352,7 +1352,12 @@ static void reshape_neonasteroids(ModeInfo *m, int w, int h) {
 
 static void draw_neonasteroids(ModeInfo *m) {
     State *st = m->data;
-    if (!st || !st->line_prog) return;
+    if (!st || !st->line_prog) {
+        fprintf(stderr, "[diag] neonasteroids draw skip: st=%p prog=%u\n",
+                (void*)st, st ? st->line_prog : 0);
+        fflush(stderr);
+        return;
+    }
 
     int w = m->xgwa.width, h = m->xgwa.height;
     if (w < 1) w = 1; if (h < 1) h = 1;
@@ -1415,6 +1420,7 @@ static void draw_neonasteroids(ModeInfo *m) {
             "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
             e, px[0], px[1], px[2], px[4], px[5], px[6], px[8], px[9], px[10],
             px[12], px[13], px[14]);
+        fflush(stderr);
 
         /* Also sample the trail FBO so we know whether the line
          * renderer actually got anything onto it. */
@@ -1430,6 +1436,9 @@ static void draw_neonasteroids(ModeInfo *m) {
             "ctr=%u,%u,%u; l=%u,%u,%u; r=%u,%u,%u; top=%u,%u,%u\n",
             tpx[0], tpx[1], tpx[2], tpx[4], tpx[5], tpx[6], tpx[8], tpx[9], tpx[10],
             tpx[12], tpx[13], tpx[14]);
+        fprintf(stderr, "[diag] neonasteroids line_n=%d fb=%dx%d trail_fbo=%u tex=%u\n",
+                st->line_n, st->fb_w, st->fb_h, st->trail_fbo, st->trail_tex);
+        fflush(stderr);
         once = 1;
     }
 }
