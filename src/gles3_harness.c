@@ -499,8 +499,9 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
 static void draw_and_swap(struct app *a, unsigned long frame) {
     ncz_harness_attach_frame_size(a->width, a->height);
     hack->draw_cb(&a->mi);
-    if (frame == 4 || (frame >= 60 && (frame % 60) == 0))
-        report_framebuffer(a, frame);
+    /* report_framebuffer is invoked from the main loop now (frame #N is
+     * 0-based there and we want frame 4 + every 60th). See the comment
+     * above the main loop for the off-by-one history. */
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",
                 (unsigned int)eglGetError());
@@ -783,9 +784,25 @@ shell_ready:
                 app.running = 0;
                 break;
             }
-            if (_nframes < 5 || (_nframes % 60) == 0)
-                fprintf(stderr, "[diag] frame #%lu\n", _nframes);
             _nframes++;
+            /* Print "frame #N" for the first 5 frames and every 60th.
+             * The "N" printed is the call number of the upcoming draw_and_swap
+             * (0-based), matching the convention the validator expects in its
+             * [diag] framebuffer frame=N grep. Also call report_framebuffer
+             * at frame 4 and every 60th frame so the validator sees the
+             * nonblack-pixel sample it needs to distinguish PASS from FAIL.
+             *
+             * Previously this used a post-increment pattern
+             * (`fprintf frame #N; _nframes++; draw_and_swap(N+1)`) which
+             * skipped frame 4 entirely — the validator's FIRST_FRAME=4
+             * grep never matched and every rss-sdl2 hack got labeled
+             * FAIL black despite rendering correctly. See
+             * docs/superpowers/rounds/2026-09-26-rss-sdl2-rootcause.md. */
+            unsigned long _report_idx = _nframes - 1;
+            if (_report_idx < 5 || (_report_idx > 0 && (_report_idx % 60) == 0))
+                fprintf(stderr, "[diag] frame #%lu\n", _report_idx);
+            if (_report_idx == 4 || (_report_idx >= 60 && (_report_idx % 60) == 0))
+                report_framebuffer(&app, _report_idx);
             draw_and_swap(&app, _nframes);
         }
     }
