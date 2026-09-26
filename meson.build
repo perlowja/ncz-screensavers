@@ -783,6 +783,8 @@ hyprsaver_shaders = [
 shader_install_dir = '/usr/share/ncz-screensavers/shaders'
 install_data('vendor/blackhole/blackhole.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
+install_data('vendor/lavafield/lavafield.frag', install_dir: shader_install_dir,
+             install_tag: 'runtime-shaders')
 foreach s : hyprsaver_shaders
     install_data('vendor/hyprsaver/shaders/' + s + '.frag',
                  install_dir: shader_install_dir, install_tag: 'runtime-shaders')
@@ -891,6 +893,26 @@ executable(
     dependencies: common_gles3_deps,
     c_args: gles3_native_c_args + [
         '-DHACK_TABLE=blackhole_xscreensaver_function_table',
+    ],
+    install: false,
+)
+
+# Round 17 — lavafield: rewrite of lavalite on the new engine. Fullscreen
+# raymarched metaball lava field, palette + blob count + viscosity + scale
+# + warmth randomised per-launch from /dev/urandom. Replaces the 1990s
+# framing of jwz's lavalite (small object on black, lamp/glass/base) with
+# the entire screen filled. Old src/lavalite.c is preserved for now; see
+# docs/.../lavafield-roundup.md for the drop-recommendation evidence.
+executable(
+    'lavafield_gles3',
+    files(common_gles3_sources + [
+        'src/gles3_harness.c',
+        'src/gles3_lavafield.c',
+    ]) + gen_sources,
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args + [
+        '-DHACK_TABLE=lavafield_xscreensaver_function_table',
     ],
     install: false,
 )
@@ -1104,6 +1126,7 @@ message('Run `meson compile -C build` to build.')
 # -----------------------------------------------------------------------
 foreach alias_name : [
     'blackhole_gles3',
+    'lavafield_gles3',
     'antinspect_gles3', 'antspotlight_gles3', 'beats_gles3',
     'blinkbox_gles3', 'blocktube_gles3', 'boing_gles3',
     'bouncingcow_gles3', 'chompytower_gles3', 'cityflow_gles3',
