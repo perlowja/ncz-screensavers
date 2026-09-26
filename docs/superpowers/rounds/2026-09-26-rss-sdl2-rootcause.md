@@ -311,29 +311,51 @@ the shared harness unblocks all of them.
 
 ## DELIVERABLE — measured on PEGASUS 2026-09-26
 
-With the off-by-one fixed, the matrix verdict flips:
+With the off-by-one fixed, the matrix verdict flips. **13/13 PASS.**
 
 ```
-cyclone:            FAIL black  →  PASS  (nonblack1=390,   nonblack2=1685)
-euphoria:           FAIL black  →  PASS  (nonblack1=1459929, nonblack2=1361354)
-fieldlines:         PASS        →  PASS  (nonblack1=365,   nonblack2=562)
-flocks:             FAIL black  →  PASS  (nonblack1=51,    nonblack2=513)
-flux:               FAIL black  →  PASS  (nonblack1=20349, nonblack2=38702)
-helios:             FAIL black  →  PASS  (nonblack1=22189, nonblack2=25971)
-hyperspace:         FAIL black  →  PASS  (nonblack1=1252,  nonblack2=1883)
+cyclone:            FAIL black  →  PASS  (nonblack1=570,   nonblack2=2405)
+euphoria:           FAIL black  →  PASS  (nonblack1=2073600, nonblack2=2073600)
+fieldlines:         PASS        →  PASS  (nonblack1=299,   nonblack2=588)
+flocks:             FAIL black  →  PASS  (nonblack1=51,    nonblack2=524)
+flux:               FAIL black  →  PASS  (nonblack1=20320, nonblack2=37946)
+helios:             FAIL black  →  PASS  (nonblack1=13596, nonblack2=26931)
+hyperspace:         FAIL black  →  PASS  (nonblack1=983,   nonblack2=1890)
 implicitdemo:       FAIL black  →  PASS  (nonblack1=34128, nonblack2=97471)
 lattice:            PASS        →  PASS  (nonblack1=31138, nonblack2=16641)
-microcosm:          FAIL black  →  PASS  (nonblack1=1123865, nonblack2=1055053)
+microcosm:          FAIL black  →  PASS  (nonblack1=1213621, nonblack2=1151722)
 plasma:             FAIL black  →  PASS  (nonblack1=422820, nonblack2=422820)
-skyrocket:          FAIL black  →  PASS  (nonblack1=0,      nonblack2=563)
-solarwinds:         FAIL black  →  PASS  (nonblack1=275510, nonblack2=999359)
+skyrocket:          FAIL black  →  PASS  (nonblack1=0,     nonblack2=424)
+solarwinds:         FAIL black  →  PASS  (nonblack1=106318, nonblack2=425974)
 ```
 
 **Recovered: 11/11 currently-FALSE amd64 cases.**
 **Net family result: 13 PASS / 13, was 2 PASS / 13.**
 
 The 2 originally-PASS hacks (fieldlines, lattice) stay PASS.
-The 11 originally-FAIL hacks all become PASS.
+The 11 originally-FAIL hacks all become PASS. Two validator runs
+in a row both came back 13/13 PASS, so the result is stable
+(the euphoria nonblack=0 in one early run was a startup race
+that went away once the harness's surface was fully configured).
+
+## Conclusion (TL;DR for the brief)
+
+The "one shared defect" hypothesis in the brief was wrong — and
+falsifiable. The 13 hacks are NOT broken by one shared bug in
+gles3_compat.c. The actual cause of the 11 "FAIL black" verdicts
+is a **validator bug**: the validator waits for a stderr line that
+the harness's post-increment off-by-one prevents from ever firing
+on frame 4 or 60. So the validator screenshots a black desktop,
+kills the hack, and labels it FAIL.
+
+Direct visual evidence from PEGASUS captures (grim screenshots)
+shows all 13 hacks rendering content. With the off-by-one fixed,
+the validator's `[diag] framebuffer frame=N` grep matches, the
+`glReadPixels` samples the back buffer correctly, and the verdict
+flips to PASS.
+
+**Net deliverable: 11/11 currently-FALSE cases recovered.
+Zero code changes to the rss-sdl2 family.**
 
 ## What about the Mali column?
 
