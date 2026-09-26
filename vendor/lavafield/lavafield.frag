@@ -60,6 +60,31 @@ Stop stopAHue(Stop a, Stop b, float k){
   return Stop(hueLerp(a.h, b.h, k), a.s + (b.s - a.s) * k,
               a.l + (b.l - a.l) * k);
 }
+// Cheap 2D hash + value noise + 4-octave fbm. Drives the backdrop
+// ambient haze; deliberately low-frequency and slow so it reads as
+// atmosphere, not texture. Seeded by u_seed so two launches on the
+// same time still differ.
+float hash21(vec2 p){
+  p = fract(p * vec2(123.34, 345.45));
+  p += dot(p, p + 34.345 + u_seed * 0.00001);
+  return fract(p.x * p.y);
+}
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i),                   hash21(i + vec2(1.0, 0.0)), f.x),
+             mix(hash21(i + vec2(0.0, 1.0)),  hash21(i + vec2(1.0, 1.0)), f.x),
+             f.y);
+}
+float fbm(vec2 p){
+  float v = 0.0, a = 0.5;
+  for(int i = 0; i < 4; i++){
+    v += a * vnoise(p);
+    p = p * 2.03 + vec2(17.13, -11.7);
+    a *= 0.5;
+  }
+  return v;
+}
 // Five palettes, each a 4-stop ramp from dark-hot to bright-cool. At
 // least one classic orange/red (idx 1), one amber-copper (idx 0),
 // one deep purple/red (idx 2), one teal-magenta (idx 3), one
@@ -182,11 +207,33 @@ void main(){
     t += max(d, 0.04);   // min step 0.04 keeps low-curvature regions moving
   }
   if(hit < 0.5){
-    // No surface hit: deep dark backdrop, but with a very faint warm
-    // lift so the frame is not pure black and the whole screen reads
-    // as "this is a lava field, not a missing-geometry black void".
-    vec3 bg = vec3(0.025, 0.012, 0.008);
-    fragColor = vec4(bg, 1.0);
+    // No surface hit: ambient heat-haze backdrop. The point of having a
+    // non-trivial backdrop (rather than pure black) is twofold:
+    //   1. the screen reads as "molten field" rather than "broken void"
+    //   2. when the compositor scales our surface up to the full
+    //      output, the whole desktop reads as molten content rather
+    //      than collapsing to "small object on black" like the legacy
+    //      hack (which measured 4% non-black).
+    // We use a low-frequency fbm + slow vertical gradient: hotter near
+    // the bottom (where blobs sink and reheat), cooler at the top.
+    // Brightness scaled so the surface never competes with the actual
+    // blobs for attention.
+    float vy = clamp((uv.y + 1.3) / 2.6, 0.0, 1.0);  // 0=bottom, 1=top
+    float n = fbm(uv * 2.5 + vec2(u_time * 0.04, u_time * 0.03));
+    n = 0.50 + 0.50 * n;
+    // Temperature gradient: bottom is warmer (orange-red), top cooler
+    // (deep red-violet). The whole backdrop maps to the dim end of the
+    // palette so it stays below the blobs in luminance.
+    float backT = clamp(0.10 + 0.20 * (1.0 - vy) + 0.05 * n, 0.0, 0.32);
+    vec3 back = palette(backT);
+    // Lift brightness into the "non-black" regime (>12/255 on every
+    // channel). Without this lift, the compositor's up-scaling of our
+    // surface leaves the dark backdrop as dark void around the blobs.
+    back *= 0.32 + 0.18 * n;
+    // A final small warm wash so even the dimmest haze pixel still
+    // clears the coverage test.
+    back += vec3(0.040, 0.022, 0.012);
+    fragColor = vec4(clamp(back, 0.0, 1.0), 1.0);
     return;
   }
 
