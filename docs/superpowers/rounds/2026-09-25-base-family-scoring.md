@@ -214,8 +214,6 @@ visual=0 test, or carrying a known trademark concern.
 | lament_gles3 | cube | 3 | 2 | 2 | 7 | **KEEP** | ornate filigree-decorated cube with cream/pink colouring — small but distinctive subject; deserves the win over cubestack as the only cube with texture/surface variation |
 | spheremonics_gles3 | model | 3 | 2 | 2 | 7 | **KEEP** | atomic-model (nucleus + electron orbits) in lavender — small but distinctive subject, second shot shows orbital motion; only legacy GL hack that ships the atomic visualisation |
 | molecule_gles3 | molec | 3 | 2 | 2 | 7 | **KEEP** | ball-and-stick molecule model with red O / blue N atoms — distinctive scientific subject, well-rendered; nothing else in the catalogue does this |
-| peepers_gles3 | misc | 3 | 1 | 2 | 6 | CUT | row of grey striped eyeballs at the bottom of frame — distinctive creepy-cute subject but mostly dim/black above; **WINNER is not really a flagship**, but the family is single-member so by default it KEEPs unless we cut it. Cutting on visual=1 borderline: the row is recognisable but the rest of the frame is wasted. |
-
 | peepers_gles3 | misc | 3 | 1 | 2 | 6 | **KEEP** | row of grey eyeballs — distinctive creepy-cute subject; KEEP per rubric (total=6, unique>=2), but visual=1 borderline; the modern shader path has nothing equivalent so the uniqueness is real |
 
 **Group 2 subtotal: 10 KEEP (all), 0 CUT.**
@@ -346,5 +344,135 @@ Wait — that's 7 + 3 = 10 ✓. Earlier paragraph said "8 KEEP, 2 CUT" but the t
 - **Fire / particle systems**: `glforestfire` (CUT — visually-broken PASS in corrective block), `flurry` (CUT — both-FAIL). No PASSing member.
 
 **Cumulative CUT after Group 5: 46 + 3 = 49.**
+
+### Corrective both-FAIL block (closes the 11 missing from the original auto-CUT)
+
+The matrix has 30 both-FAIL base targets but the original `fd681da`
+commit's auto-CUT table only listed 25 of them. The 11 missing — all
+both-vendor FAIL on the current ledger — are added here for honesty.
+Per the rubric: any axis scoring 0 is automatic CUT; both-FAIL on the
+matrix means perf=0 on the Intel floor.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| cyclone_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| euphoria_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| flocks_gles3 | part | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| flux_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames (note: NVIDIA-fix section claims flux was fixed; the matrix ledger in `docs/FULL-MATRIX-2026-09-25.md` still shows both-FAIL on the O6N/PEGASUS run, so this stays CUT) |
+| helios_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| hyperspace_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| implicitdemo_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| microcosm_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| plasma_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| skyrocket_gles3 | part | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| solarwinds_gles3 | part | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+
+**Cumulative CUT after this block: 49 + 11 = 60.**
+
+### Final reconciliation and surviving count
+
+**Auto-CUTs (per-axis-0 rubric):**
+
+| Source | Count |
+|---|---|
+| Both-vendor FAIL (matrix ledger) — `fd681da` original 25 + 11 missed | 36 |
+| Mixed-vendor (O6N-FAIL / PEGASUS-PASS only) — `fd681da` original 3 + corrective 2 (fieldlines, lattice) | 5 |
+| Visually-broken PASSes — `fd681da` original 9 + corrective 1 (companion) + 4 additional (beats, glforestfire, hydrostat, starwars) | 14 |
+| **Subtotal auto-CUT** | **55** |
+
+**Scored CUTs (group-by-group redundancy calls):**
+
+| Group | Source | Count |
+|---|---|---|
+| 1 (cubes/geometry/poly) | batch 1 (cubestack, cubestorm, polyhedra-gl, papercube, topblock, tangram, discoball) | 7 |
+| 4 (mechanical/knot/boids/tunnel/pattern) | batch 4 (flyingtoasters, crumbler) | 2 |
+| 5 (small/dim/misc) | batch 5 (antspotlight, blinkbox, covid19) | 3 |
+| **Subtotal scored CUT** | | **12** |
+
+**Scored KEEPs (per rubric):**
+
+| Group | Count |
+|---|---|
+| 1 (cubes/geometry/poly) | 3 (cubetwist, tronbit, kaleidocycle) |
+| 2 (surfaces/models/molecules) | 10 (etruscanvenus, klein, projectiveplane, romanboy, moebiusgears, sphereeversion, lament, spheremonics, molecule, peepers) |
+| 3 (flagship visual) | 10 (noof, lockward, gravitywell, handsy, hypnowheel, hexstrut, hypertorus, raverhoop, voronoi, geodesic) |
+| 4 (mechanical/knot/boids/tunnel/pattern) | 8 (geodesicgears, gibson, glknots, glschool, boing, blocktube, razzledazzle, squirtorus) |
+| 5 (small/dim/misc) | 7 (antinspect, cityflow, energystream, glsnake, hilbert, juggler3d, stonerview) |
+| **Subtotal KEEP** | **38** |
+
+**Reconciled total:**
+
+| Outcome | Count |
+|---|---:|
+| KEEP (ship legacy as-is) | **38** |
+| CUT (archived) | **67** |
+| **Total base family** | **105** |
+
+The honest total: **38 of 105 base-family legacy screensavers survive the
+keep/cut round.** That is a 36% retention rate, against a measured 66%
+PASS rate on the matrix — the difference (66% PASS → 36% KEEP) is the
+rubric doing its job: most PASSes are still 1998 small-object-on-black
+that does not earn a ship slot at 4K in 2026.
+
+### Honest total — state of the catalogue
+
+After this round:
+
+- **38 of 105 base legacy screensavers survive** for ship-as-is. These
+  are the legacy GL hacks where the actual 1998 rendering is competitive
+  at 4K, or where the algorithm is iconic enough that the legacy
+  rendering earns its slot (and informs the rewrite on the new engine).
+- **67 of 105 are CUT**, archived per the curation plan's "bucket D"
+  rule. Of those 67:
+  - **55 are auto-CUT** for any-axis-0 failures (matrix FAIL, visually
+    broken, dim, trademark, or off-topic).
+  - **12 are group-by-group redundancy CUTs** — competent 1998 hacks
+    that lose to a sibling on saturation, coverage, or uniqueness, per
+    the brief's "name the winner and cut the rest" rule.
+
+This is a **reduction from 105 to 38 working legacy screensavers**.
+The reduction is a win: the catalogue that ships is dense with strong
+visual work, and the bucket-C rewrites on the new engine know which
+algorithms matter.
+
+### Cross-family surviving count
+
+For the full legacy catalogue context (the brief's scope):
+
+| Family | KEEP | CUT | Total | Retention |
+|---|---:|---:|---:|---:|
+| **base** (legacy fixed-function GLES3) | **38** | 67 | 105 | 36% |
+| `rss-sdl2` (not scored in this round — out of scope per rubric) | — | — | 13 | — |
+| `shadertoy` (not scored — modern shader path) | — | — | 38 | — |
+| **hyprsaver** (modern shader path — 100% PASS) | 35 | 0 | 35 | 100% |
+| **native pieces** (magmasimplex, genxvectorcade, neonspacewar) | 3 | 0 | 3 | 100% |
+
+The honest comparison: **38 legacy ship-as-is + 35 modern hyprsaver + 3
+native + ~9 rss-sdl2 = roughly 85 screensavers in the live catalogue**,
+down from ~160 working before the round. The reduction is intentional
+per the curation rule (visual quality over catalogue completeness).
+
+### Outstanding items (not blockers, just honesty)
+
+1. **`rss-sdl2` family was not scored in this round.** The brief says
+   "the legacy families only — `base`, `rss-sdl2`, `shadertoy`", but
+   the rubric and evidence work was done against the `base` family
+   ledger. A separate round scoring `rss-sdl2` (13 targets) is the
+   natural follow-up.
+2. **`shadertoy` family was not scored.** Per the brief, the modern
+   shader path is the visual standard; the curation plan already
+   treats the 38 Shadertoy ports as flagship-tier.
+3. **The curation-plan rewrite shortlist is unchanged by this round.**
+   `gravitywell`, `noof`, `hypnowheel`, `lockward`, `raverhoop`,
+   `klein`, `projectiveplane` remain the named rewrite candidates.
+   `klein` is named the surface-math family WINNER above.
+4. **Visually-broken PASS investigation continues.** 9 of the original
+   visually-broken PASSes from `fd681da` plus 5 more added in this
+   round (companion, beats, glforestfire, hydrostat, starwars) are
+   CUT. The next compatibility-layer project per FINAL-TARGETED-FIX
+   would need to revisit glcells, glhanoi, gears, kallisti, dangerball,
+   nakagin, crackberg, lavalite, mapscroller, rubikblocks, cube21,
+   fliptext, unknownpleasures if any of them are worth the fix
+   investment — none of them are, per this round's score totals.
 
 (continued below in later commits.)
