@@ -496,12 +496,22 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
     free(pixels);
 }
 
-static void draw_and_swap(struct app *a, unsigned long frame) {
+static void draw_and_swap(struct app *a, unsigned long frame, unsigned long report_idx) {
     ncz_harness_attach_frame_size(a->width, a->height);
     hack->draw_cb(&a->mi);
-    /* report_framebuffer is invoked from the main loop now (frame #N is
-     * 0-based there and we want frame 4 + every 60th). See the comment
-     * above the main loop for the off-by-one history. */
+    /* Sample the back buffer AFTER draw_cb wrote to it but BEFORE eglSwapBuffers
+     * hands it to the compositor — that's the only moment we can read what
+     * this frame actually rendered. We check `report_idx` (0-based frame
+     * index, since _nframes was pre-incremented in the main loop) rather
+     * than the 1-based `frame` so the boundary frame 4 + every 60th line up
+     * with the validator's FIRST_FRAME=4 / SECOND_FRAME=60 grep.
+     *
+     * History: the original code had this check inside draw_and_swap with a
+     * post-increment frame counter in the main loop, which meant frame 4
+     * was never passed in — see the comment above the main loop for the
+     * off-by-one history. */
+    if (report_idx == 4 || (report_idx >= 60 && (report_idx % 60) == 0))
+        report_framebuffer(a, report_idx);
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",
                 (unsigned int)eglGetError());
@@ -801,9 +811,7 @@ shell_ready:
             unsigned long _report_idx = _nframes - 1;
             if (_report_idx < 5 || (_report_idx > 0 && (_report_idx % 60) == 0))
                 fprintf(stderr, "[diag] frame #%lu\n", _report_idx);
-            if (_report_idx == 4 || (_report_idx >= 60 && (_report_idx % 60) == 0))
-                report_framebuffer(&app, _report_idx);
-            draw_and_swap(&app, _nframes);
+            draw_and_swap(&app, _nframes, _report_idx);
         }
     }
     if (app.display) wl_display_roundtrip(app.display);
