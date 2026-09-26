@@ -1,0 +1,88 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=14283 hash=9045cb934987df8b gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=14645 hash=218870a059bd2c8c gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=45195 hash=3a263cbdbeb89381 gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=46037 hash=80cd0d7a9a1ada5d gl_error=0x0
+[dump] writing frame_000000b4 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=50074 hash=ed5a4203a2a351eb gl_error=0x0
+[dump] writing frame_000000f0 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=67124 hash=2ae52216c71cc400 gl_error=0x0
+[dump] writing frame_0000012c to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=69393 hash=55ff7837d2ea61be gl_error=0x0
+[dump] writing frame_00000168 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=77696 hash=078402b463e81d70 gl_error=0x0
+[dump] writing frame_000001a4 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000001a4.png (8294400 bytes)
+[diag] frame #480
+[diag] framebuffer frame=480 pixels=2073600 nonblack=90029 hash=1c9ff0c4887bd74b gl_error=0x0
+[dump] writing frame_000001e0 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000001e0.png (8294400 bytes)
+[diag] frame #540
+[diag] framebuffer frame=540 pixels=2073600 nonblack=93882 hash=159602694b00f4b0 gl_error=0x0
+[dump] writing frame_0000021c to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_0000021c.png (8294400 bytes)
+[diag] frame #600
+[diag] framebuffer frame=600 pixels=2073600 nonblack=107708 hash=e023d50a091d2efb gl_error=0x0
+[dump] writing frame_00000258 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000258.png (8294400 bytes)
+[diag] frame #660
+[diag] framebuffer frame=660 pixels=2073600 nonblack=117115 hash=ad9b380d8c3c7524 gl_error=0x0
+[dump] writing frame_00000294 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000294.png (8294400 bytes)
+[diag] frame #720
+[diag] framebuffer frame=720 pixels=2073600 nonblack=121268 hash=6150f6b8f8512373 gl_error=0x0
+[dump] writing frame_000002d0 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000002d0.png (8294400 bytes)
+[diag] frame #780
+[diag] framebuffer frame=780 pixels=2073600 nonblack=123349 hash=dd7de006724f0f5e gl_error=0x0
+[dump] writing frame_0000030c to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_0000030c.png (8294400 bytes)
+[diag] frame #840
+[diag] framebuffer frame=840 pixels=2073600 nonblack=125492 hash=0c46eece2eb891e9 gl_error=0x0
+[dump] writing frame_00000348 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000348.png (8294400 bytes)
+[diag] frame #900
+[diag] framebuffer frame=900 pixels=2073600 nonblack=126652 hash=a97d5d83277b807d gl_error=0x0
+[dump] writing frame_00000384 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_00000384.png (8294400 bytes)
+[diag] frame #960
+[diag] framebuffer frame=960 pixels=2073600 nonblack=130352 hash=40f246c6d3d98e43 gl_error=0x0
+[dump] writing frame_000003c0 to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000003c0.png (8294400 bytes)
+[diag] frame #1020
+[diag] framebuffer frame=1020 pixels=2073600 nonblack=140591 hash=f6635b3762e9ce01 gl_error=0x0
+[dump] writing frame_000003fc to /tmp/cap-1102485-i-helios_gles3
+[dump] wrote /tmp/cap-1102485-i-helios_gles3/frame_000003fc.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1123458 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1102485-i-helios_gles3 timeout --kill-after=2 28 ./helios_gles3
