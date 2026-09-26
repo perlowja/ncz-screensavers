@@ -1,4 +1,4 @@
-# Neon space battle (working name: neonasteroids) — design
+# neonspacewar — design
 
 **Date:** 2026-09-25
 **Status:** operator-directed. Phase 1 (self-playing vector rock shooter)
@@ -11,7 +11,7 @@ stroke model, quality ladder), `2026-09-25-platform-abstraction-rule.md`.
 
 ---
 
-# neonasteroids phase 2 — turn it into a self-playing space battle
+# neonspacewar phase 2 — turn it into a self-playing space battle
 
 Repo `~/Projects/ncz-screensavers` on this host. `git pull origin master`.
 Phase 1 (the self-playing rock shooter you just built) is the foundation —
