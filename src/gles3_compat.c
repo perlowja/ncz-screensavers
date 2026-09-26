@@ -2462,6 +2462,67 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     g_im.has_material = saved_has_material;
 }
 
+/* glDrawElements — paired with glDrawArrays for the legacy vertex-array
+ * pathway used by glcells, etruscanvenus, hypertorus, klein,
+ * projectiveplane, romanboy, and the two sphereeversion sources. The
+ * shim's g_client_vao pointers (set by glVertexPointer + glNormalPointer +
+ * glTexCoordPointer) only live in the shim's private state — they are
+ * invisible to libGLESv2's real glDrawElements, which would draw with
+ * zero client arrays enabled and produce a black frame. We resolve the
+ * indices here and route them through the same ncz_im_* vertex-walk
+ * glDrawArrays uses. Only GL_UNSIGNED_INT and GL_UNSIGNED_SHORT indices
+ * are exercised by the ported hacks; anything else is a no-op. */
+void glDrawElements(GLenum mode, GLsizei count, GLenum type,
+                    const GLvoid *indices) {
+    if (count <= 0) return;
+    if (!g_client_vao.enabled[0] || !g_client_vao.vertex_ptr) {
+        /* No client arrays bound — nothing to draw. */
+        return;
+    }
+    if (type != GL_UNSIGNED_INT && type != GL_UNSIGNED_SHORT &&
+        type != GL_UNSIGNED_BYTE) {
+        /* The ported hacks only use GL_UNSIGNED_INT; silently drop
+         * other index types rather than risk a wrong draw. */
+        return;
+    }
+
+    int vs = g_client_vao.vertex_size;
+    int ts = g_client_vao.texcoord_size;
+    int vstep = g_client_vao.vertex_stride / sizeof(GLfloat);
+    int nstep = g_client_vao.normal_stride / sizeof(GLfloat);
+    int tstep = g_client_vao.texcoord_stride / sizeof(GLfloat);
+    int cstep = g_client_vao.color_stride / sizeof(GLfloat);
+    const bool normal_on   = g_client_vao.enabled[1];
+    const bool texcoord_on = g_client_vao.enabled[2];
+    const bool color_on    = g_client_vao.enabled[3];
+    bool saved_has_material = g_im.has_material;
+
+    ncz_im_begin(mode);
+    for (int i = 0; i < count; i++) {
+        GLsizei idx;
+        if (type == GL_UNSIGNED_INT) idx = (GLsizei)((const GLuint *)indices)[i];
+        else if (type == GL_UNSIGNED_SHORT) idx = (GLsizei)((const GLushort *)indices)[i];
+        else idx = (GLsizei)((const GLubyte *)indices)[i];
+
+        const GLfloat *vp = g_client_vao.vertex_ptr + idx * vstep;
+        const GLfloat *np = (g_client_vao.normal_ptr && normal_on)
+            ? g_client_vao.normal_ptr + idx * nstep : NULL;
+        const GLfloat *tp = (g_client_vao.texcoord_ptr && texcoord_on)
+            ? g_client_vao.texcoord_ptr + idx * tstep : NULL;
+        const GLfloat *cp = (g_client_vao.color_ptr && color_on)
+            ? g_client_vao.color_ptr + idx * cstep : NULL;
+        if (cp) g_im.has_material = false;
+
+        if (np) ncz_im_normal3f(np[0], np[1], np[2]);
+        if (tp) ncz_im_tex_coord2f(tp[0], (ts >= 2) ? tp[1] : 0.0f);
+        if (cp) ncz_im_color4f(cp[0], cp[1], cp[2],
+                                (g_client_vao.color_size >= 4) ? cp[3] : 1.0f);
+        ncz_im_vertex3f(vp[0], (vs >= 2) ? vp[1] : 0.0f, (vs >= 3) ? vp[2] : 0.0f);
+    }
+    ncz_im_end();
+    g_im.has_material = saved_has_material;
+}
+
 /* glInterleavedArrays — GL1 convenience for setting up V/N/C/T
  * pointers all from one packed stride. NOT in GLES3 core. We handle
  * the two formats xscreensaver actually uses (GL_C3F_V3F,
