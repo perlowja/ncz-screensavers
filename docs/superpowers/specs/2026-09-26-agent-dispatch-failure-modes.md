@@ -106,3 +106,57 @@ agents mostly did what they were told; the instructions were stale, the
 loop could not notice, or the dispatch mechanics were broken. When
 supervising concurrent agents, the failure to look for first is in the
 supervision, not the worker.
+
+---
+
+## Test-host policy — MEDUSA is the display, PEGASUS is the lab
+
+Operator, 2026-09-26: *"we only want one test at once"* and *"if PEGASUS is available, use
+it for separate tests."*
+
+### MEDUSA (192.168.207.84) — the VISIBLE display. ONE test at a time.
+
+This is the screen a human actually watches. Concurrent renderers split the GPU, make any
+frame-rate judgement meaningless, and have repeatedly been left running for hours after
+the job that launched them finished. Three separate leaks were cleared on 2026-09-26
+alone, including a `blackhole` that ran 22 minutes alongside a shadertoy rotation the
+operator was evaluating.
+
+**Never launch a renderer on MEDUSA directly.** Use the lock helper:
+
+    ncz-display-run [-t SECONDS] <binary> [args...]   # take the display
+    ncz-display-run --stop                            # clear it
+    ncz-display-run --who                             # who holds it
+
+It takes an exclusive `flock`, kills any existing renderer first, records the holder in
+`/tmp/ncz-display.owner`, and cleans up on exit even if the caller is killed. If the
+display is busy it REFUSES and names the holder rather than stacking a second renderer.
+
+It kills with `-9` deliberately: several of these binaries do not honour SIGTERM
+(confirmed on `neongravity-0` and `amigajuggler`, which hang at exit and leave zombies).
+
+The visible session belongs to **uid 1001 `jasonperlow`**, socket
+`/run/user/1001/wayland-0` — NOT uid 1000 `medusa`. Launching on medusa's socket renders
+into a compositor nobody is looking at. The helper handles this; do not hand-roll it.
+
+### PEGASUS (192.168.207.85) — the automated lab. Parallel work goes here.
+
+Headless capture, sweeps, matrices, per-target evidence. Multiple agents may use it
+concurrently, and it is where anything that does not need a human watching belongs.
+
+**Default to PEGASUS.** Only take MEDUSA's display when a human is going to LOOK at the
+result in real time.
+
+Two standing hazards there:
+- `mapscroller_gles3` wedges and never exits (observed at 2h18m and at 4min). Exclude it
+  from sweeps or enforce a hard per-target timeout.
+- `/tmp` is tmpfs and has filled, after which `fwrite` reports success while files land
+  0-byte — silent data loss that reads as "black frames". Use `~/build-tmp/` and check
+  headroom before a large sweep.
+
+### Every brief that renders anything must say
+
+1. Which host, and why that host.
+2. That MEDUSA is taken via `ncz-display-run` or not at all.
+3. **Clean up before reporting** — verify nothing you started is still running. An agent
+   that leaves a renderer alive has not finished, whatever its report says.
