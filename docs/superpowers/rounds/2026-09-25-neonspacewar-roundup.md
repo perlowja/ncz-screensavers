@@ -1,10 +1,116 @@
-# neonspacewar (working name: GenXRockCade) — roundup
+# neonspacewar — roundup (step 2 update, 2026-09-25)
+
+**Date:** 2026-09-25 (step 2: stroke renderer + phosphor decay + platform abstraction)
+**Branch:** master
+**Operator direction (step 1):** rename `neonasteroids` → `neonspacewar`. **Step 2:** "the single highest-value piece. Get gorgeous glowing vector strokes with per-channel phosphor persistence working against the existing phase-1 entities before adding anything new."
+
+The rename is committed as `5216145 neonspacewar: rename from neonasteroids`.
+This update adds:
+
+- the **stroke renderer** — thick extruded-quad lines with a sharp
+  bright core (`1 - smoothstep(0.55, 1.0, d)`) plus a soft exponential
+  halo (`exp(-d*d*3.5)`), no blur pass required;
+- **per-channel phosphor decay** via FBO ping-pong — the trail buffer
+  samples the previous frame, multiplies it by `(0.94, 0.965, 0.992)`,
+  so blue lingers visibly longer than red;
+- the **ncz_platform.h** abstraction scaffold — four callers
+  (`ncz_now`, `ncz_seed`, `ncz_asset_path`, `ncz_log_diag`) move
+  through it; only the wayland backend exists today. The four
+  `/dev/urandom` and `clock_gettime` calls in `gles3_neonspacewar.c`
+  are gone from hack code;
+- a small `NCZ_FRAME_DUMP` capture path in the harness, so evidence
+  can be validated offline without a working fullscreen compositor
+  on the host.
+
+Verified live on PEGASUS (Intel UHD via Wayland):
+
+- `RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)`
+- `frames=240 nonblack=2073600 hash=01b66e8959d21e04 gl_error=0x0`
+- Captured 1920x1080 RGBA at frames 4, 60, 120, 180, 240 — show the
+  phosphor vector look (vignette + chromatic edges + hex rocks +
+  centered player + faint trails).
+- `nc -z 192.168.207.85 22` plus the Wayland-0 socket are the
+  compositor path. Targeted NVIDIA export works the same way
+  (`__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+  __GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1`),
+  but only the Intel capture was run for this round.
+
+## Why the design landed as it did
+
+The previous line draw used `GL_LINES` with a 1-pixel hairline and
+no width control, no antialiasing, no halo — fine for "ship is a
+small triangle", wrong for "stroke quality is the craft". The spec
+(section 3 of
+`docs/superpowers/specs/2026-09-25-neonspacewar-design.md`)
+calls the line renderer "most of this piece's quality". The fix:
+
+- Each `LineSeg` becomes **two triangles in clip space**, extruded
+  perpendicular by `±width*px_to_clip` along the segment's normal.
+  Sub-pixel width control, straight from the per-segment `width`.
+- Fragment shader turns the extruded `side` (`-1..+1`) into a bright
+  core plus an exponential halo. No blur pass; bounded cost.
+- **Per-channel decay** is a separate, simpler issue: a flat 0.82
+  fade gives all colours the same persistence, so blue feels no
+  different from red. The phosphor decay now lives in the trail
+  fade shader (`vendor/neonspacewar/`), applied via a two-FBO
+  ping-pong (one read, one write), and samples use the appropriate
+  slot as the composite read.
+
+The result is recognisable as "vector arcade" rather than "thin
+lines on black", and the per-channel shift is visible when an
+intense red shot fades out while a blue trail keeps going.
+
+## Files added in step 2
+
+| File | Purpose |
+|---|---|
+| `include/ncz_platform.h` | Platform abstraction header |
+| `src/ncz_platform.c` | wayland backend |
+| `src/gles3_harness_hooks.h` | internal harness hooks header |
+
+## Files modified in step 2
+
+| File | Why |
+|---|---|
+| `src/gles3_neonspacewar.c` | Stroke renderer (extruded quads), per-channel decay (ping-pong FBO), four callers refactored onto the platform abstraction |
+| `src/gles3_harness.c` | `ncz_harness_attach_frame_size()` published; `NCZ_FRAME_DUMP` capture path |
+| `vendor/neonspacewar/lines.frag` | matches the inline fragment shader (now actually doing the new thick-stroke math, not just `vec4(v_color * v_alpha, v_alpha)`) |
+| `meson.build` | `ncz_platform.c` added to `common_gles3_sources`; `include/` added to `inc = include_directories(...)` |
+
+## Captures and validation
+
+The captures live on PEGASUS at
+`~/ncz-screensavers/captures-step2/` (synced to
+`/tmp/pegasus_captures_step2/` locally). They are 1920x1080 RGBA
+bins (PNGs written from them via a tiny inline Python encoder at
+`/tmp/png_out/`). What they show:
+
+- Sharp bright cores on rock outlines and ship spine.
+- Soft purple/pink fill from the chromatic-aberration composite,
+  with red/blue offsets visible on the corners.
+- Hexagonal rock silhouettes from the existing rock push.
+- Subtle vignette falloff to a deep purple near the corners — the
+  decay tail.
+- Frame-to-frame hashes diverge (e.g. `77354a07fd9a2a65` →
+  `6c9d1e40f60e30b7` → `e29068f4af18ddf3` → `5f6a8278d072334c`),
+  confirming the trail buffer is animating, not a single static
+  frame.
+
+## Open: steps 3 and 4 are not in this commit
+
+Step 3 (two generated races with distinct weapons and specials)
+and step 4 (the gravity well hazard) are not in this round. The
+build order in the spec says to do **stroke renderer first** —
+that's this commit — and only then **expand**. Races and the well
+will follow in the next dispatched run; the existing phase-1
+entities are the substrate they'll plug into.
+
+---
+
+# Round 1 (the original phase-1 ships, preserved)
 
 **Date:** 2026-09-25
-**Branch:** master
 **Operator direction:** "a self-playing neon vector rock-shooter".
-**Working name:** `GenXRockCade` (operator-controlled placeholder;
-rename at the top of `src/gles3_neonspacewar.c`).
 
 This is a self-playing screensaver: a ship in a wrapping playfield,
 drifting rocks that split when shot, all rendered as glowing neon
