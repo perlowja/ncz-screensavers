@@ -238,3 +238,82 @@ surface-math family and **one** space-filling fractal.
 Start order: `lavalite`/metaballs (in flight), then `flame` and
 `glschool` — both famous, both clean, both dramatically better with
 modern rendering than 1997 could show.
+
+---
+
+# CONSOLIDATED SCOPE (operator direction, 2026-09-25)
+
+**"Sideline the classic 2D ones. Consolidate on what works WELL now and
+what new stuff we want to build."**
+
+## SIDELINED — explicitly not doing
+
+- **All 142 upstream 2D X11 hacks.** Including the ~40 "low-hanging" ones
+  (1-4 drawing primitives, no text/image deps).
+- **The thin GLES3 Xlib primitive shim** that would have run them
+  unmodified. Sound idea, no longer in scope.
+- **jwxyz / jwzgles adoption.** Already rejected: targets deprecated
+  fixed-function GLES 1.1, unverified on Mali, missing a Linux font
+  backend.
+- **The 46 remaining upstream GL hacks**, except the few named in the
+  rewrite shortlist.
+- **The 32 both-vendor failures.** Archived, not a backlog. The running
+  root-cause investigation may reclaim a couple cheaply; anything it does
+  not, stays archived.
+
+No further effort goes into the legacy fixed-function path.
+
+## SHIPS WELL TODAY (~90 targets)
+
+| Set | Count | State |
+|---|---|---|
+| Shadertoy ports via `xshadertoy` | 38 | landed `e0c890d`, fixes in `123eb3c`; needs visual verification |
+| hyprsaver shader hacks | 35 | **35/35 pass**, the healthiest set we own |
+| `blackhole` | 1 | flagship; cinematic camera + lensed nebula + palette drift |
+| rss-sdl2 family | 9 of 13 | passing |
+| Legacy GL, visually strong (bucket A) | ~15 | `crackberg`, `energystream`, `etruscanvenus`, `geodesic`, `glforestfire`, `hextrail`, `hypnowheel`, `lockward`, `noof`, `projectiveplane`, `raverhoop`, `razzledazzle`, `romanboy`, `spheremonics`, `squirtorus` |
+
+## NEEDS ONE MORE PASS (known, specific)
+
+- **`lavafield`** (`977501d`) — metaball algorithm and shading are good;
+  palette drift verified (yellow at 4s, teal at 24s); `gl_error=0x0`. But
+  measured frame coverage is **5%**, against the old `lavalite`'s 4%. The
+  lamp is gone, the composition problem is not. Needs much larger and more
+  numerous blobs so the field genuinely fills the frame.
+- **`blackhole`** — Intel UHD frame time **50-67 ms** (~15-20 fps),
+  regression isolated to the banked-slingshot camera, not the palette
+  work. Also still one hue per frame: the time drift works, the in-frame
+  banding does not read. Both in flight.
+- **`squirtorus` / `razzledazzle`** — fixed and verified today
+  (12,092 exact-gold pixels; 482/500 high-chroma colours). Done.
+
+## BUILD NEW
+
+**Algorithm rewrites on the new engine**, in order:
+1. `flame` — fractal flame / IFS. Best single candidate: built for
+   additive blending and HDR, visibly constrained by 1997 hardware.
+2. `glschool` — boids / flocking.
+3. `galaxy` — n-body gravity; thematic sibling to the black hole.
+
+**Original work:**
+- **Stock visualisations** — volatility field, candlestick terrain, sector
+  heat-field, price ribbons. Rendered as *shapes*, no tickers or numbers.
+  Architecture: a service writes a small cache; the screensaver does zero
+  network I/O and falls back to synthetic data offline. **Market-wide data
+  only** — `/opt/marketwatch/portfolios/` holds real holdings and a
+  screensaver runs on a locked screen.
+- **Black hole viewport/HUD** — the bridge-window framing, still wanted.
+- **More Shadertoy-class originals** — where the "wow" demonstrably lives.
+
+## The evidence behind consolidating
+
+| Path | Targets | Pass rate |
+|---|---|---|
+| hyprsaver (modern shaders) | 35 | **100%** |
+| rss-sdl2 | 13 | 69% |
+| legacy fixed-function | 92 | **65%** |
+
+And on visual review of all 60 passing legacy hacks, most are a single
+small object centred on black — competent in 1998, unremarkable at 4K.
+The modern shader path is both more reliable and better looking. That is
+where the effort goes.
