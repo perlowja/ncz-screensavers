@@ -431,19 +431,29 @@ KEEP) is the rubric doing its job: most PASSes are still 1998
 small-object-on-black, and any-axis-0 visually-broken PASSes are
 removed.
 
-**Reconciled total — combined base + rss-sdl2 (the 105 the matrix
-shows):**
+**Cross-family accounting — what does NOT add up to 105:**
 
-| Outcome | Count |
-|---|---:|
-| KEEP (base family) | **49** |
-| KEEP (rss-sdl2) | **0** |
-| CUT (base family) | **43** |
-| CUT (rss-sdl2) | **13** |
-| **Total** | **105** |
+| Family | KEEP | CUT | Total | Retention |
+|---|---:|---:|---:|---:|
+| **base** (legacy fixed-function GLES3, post-amendment) | **49** | 43 | **92** | **53%** |
+| `rss-sdl2` (held for separate round) | 0 | 13 | 13 | 0% |
+| _combined base + rss-sdl2_ | _49_ | _56_ | _105_ | _47%_ |
 
-The 105 number conflates base (92) and rss-sdl2 (13). All 13 rss-sdl2
-targets are CUT; the 49 KEEPs all come from the base family.
+The "105" total appears in the ledger because the matrix sweep
+included both families, not because the rubric scores them together.
+The rubric keeps each family with its own denominator (rubric scope
+line 11 — `base` (92), `rss-sdl2` (13), `shadertoy` (38)). The
+reportable retention figure for the base family is **53% of 92**, not
+47% of 105. The cross-family surviving count section below is the
+canonical reading.
+
+The legacy rss-sdl2 family has its own meson block
+(`rss_sdl2_gles2_hacks`, around the rss_sdl2_gles2_hacks line in the
+meson include) and its own port lineage (Round 15,
+vendor/rss-sdl2-gles2-src/, Apache-2.0). All 13 rss-sdl2 are CUT on
+shared both-FAIL — held for a separate scoring round after the shared
+root-cause hypothesis is tested (see the "Correction to an earlier
+claim" section below).
 
 The reduction from 92 working base legacy PASSes to **49 ship-as-is**
 is a win: the catalogue that ships is dense with strong visual work,
@@ -487,10 +497,13 @@ For the full legacy catalogue context (the brief's scope):
 | **hyprsaver** (modern shader path — 100% PASS) | 35 | 0 | 35 | 100% |
 | **native pieces** (magmasimplex, genxvectorcade, neonspacewar) | 3 | 0 | 3 | 100% |
 
-The honest comparison: **38 legacy ship-as-is + 35 modern hyprsaver + 3
-native + ~9 rss-sdl2 = roughly 85 screensavers in the live catalogue**,
+The honest comparison: **49 base + 35 modern hyprsaver + 3 native +
+~0 rss-sdl2 (held) = roughly 87 screensavers in the live catalogue**,
 down from ~160 working before the round. The reduction is intentional
 per the curation rule (visual quality over catalogue completeness).
+(Note: a previous draft of this paragraph said "38 legacy ship-as-is"
+— that was the pre-amendment pre-covid19-reinstatement figure and is
+superseded by the 49-of-92 base count above.)
 
 ### Outstanding items (not blockers, just honesty)
 
@@ -625,8 +638,28 @@ on visual impact is restored to KEEP.
 | `antspotlight_gles3` | 3 | 1 | 2 | lost to `antinspect` in the ant family |
 | `blinkbox_gles3` | 3 | 1 | 1 | redundant |
 
-**Revised base-family count: 38 + 10 = 48 KEEP, 57 CUT, of 105.**
-Retention rises from 36% to **46%**.
+**Revised base-family count (mid-morning 2026-09-26, with rss-sdl2 split
+out as a separate family per the rubric scope).** The 10 redundancy
+restorations in this table bring the base family from 38 to 48 KEEP.
+The base-family denominator is 92, not 105: the rss-sdl2 13 are a
+separate family (see rubric scope line 11 — `base` (92), `rss-sdl2`
+(13), `shadertoy` (38)) with their own meson block
+(`rss_sdl2_gles2_hacks`) and their own port lineage (Round 15,
+vendor/rss-sdl2-gles2-src/, Apache-2.0). They are tracked separately
+and the 13 both-FAIL rss-sdl2 targets are reported in the cross-family
+table below, not folded into the base count.
+
+| family | KEEP | CUT | total | retention |
+|---|---:|---:|---:|---:|
+| **base** (this rubric scope) | **48** | 44 | 92 | 52% |
+| rss-sdl2 (held for separate round) | 0 | 13 | 13 | 0% |
+| **combined base + rss-sdl2** | **48** | 57 | 105 | 46% |
+
+The earlier line "48 KEEP, 57 CUT, of 105" — and the matching
+"49 KEEP of 105, retention 47%" below — were conflating the two
+families. That was wrong: the rubric reports base and rss-sdl2 with
+their own denominators, never together. The base-family figures should
+be read against 92; the rss-sdl2 figures against 13.
 
 The family WINNER calls are unchanged and still stand — `antinspect` still
 leads the ant family, `klein` the surface-math family, `glknots` the knot
@@ -669,7 +702,15 @@ hypothesis tested.
 
 Operator, 2026-09-26: *"Keep it."*
 
-Restored. **Base family: 49 KEEP of 105, retention 47%.**
+Restored. **Base family: 49 KEEP of 92 (53% retention).** The
+combined base + rss-sdl2 figure is 49 KEEP of 105 (47% retention),
+but the reportable retention number for the base family is **53% of
+92**, not 47% of 105 — the rubric scope (`base` (92), `rss-sdl2` (13))
+keeps the two families with their own denominators, and the covid19
+edit belongs to the base family only. The matching `47%` figure on
+the previous line was wrong on two counts: denominator (105 should
+have been 92) and reduction framing (rss-sdl2 is a separate held
+family, not a sub-bucket of base).
 
 It scores perf=3, visual=3, unique=3 — 9 of 9, the highest in the family.
 The topic cut is overruled.
