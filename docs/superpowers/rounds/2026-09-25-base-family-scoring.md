@@ -220,7 +220,7 @@ visual=0 test, or carrying a known trademark concern.
 | lament_gles3 | cube | 3 | 2 | 2 | 7 | **KEEP** | ornate filigree-decorated cube with cream/pink colouring — small but distinctive subject; deserves the win over cubestack as the only cube with texture/surface variation |
 | spheremonics_gles3 | model | 3 | 2 | 2 | 7 | **KEEP** | atomic-model (nucleus + electron orbits) in lavender — small but distinctive subject, second shot shows orbital motion; only legacy GL hack that ships the atomic visualisation |
 | molecule_gles3 | molec | 3 | 2 | 2 | 7 | **KEEP** | ball-and-stick molecule model with red O / blue N atoms — distinctive scientific subject, well-rendered; nothing else in the catalogue does this |
-| peepers_gles3 | misc | 3 | 1 | 2 | 6 | **KEEP** | row of grey eyeballs — distinctive creepy-cute subject; KEEP per rubric (total=6, unique>=2), but visual=1 borderline; the modern shader path has nothing equivalent so the uniqueness is real |
+| peepers_gles3 | misc | 3 | 1 | 2 | 6 | **KEEP** | row of grey eyeballs — distinctive creepy-cute subject; KEEP per the 2026-09-26 amendment (perf>0 AND visual>0 ships, uniqueness ranks only); visual=1 borderline; the modern shader path has nothing equivalent so the uniqueness is real |
 
 **Group 2 subtotal: 10 KEEP (all), 0 CUT.**
 
