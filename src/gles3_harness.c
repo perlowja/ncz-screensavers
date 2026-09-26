@@ -430,19 +430,80 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
     glReadPixels(0, 0, a->width, a->height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     GLenum error = glGetError();
     size_t nonblack = 0;
+    /* Histogram of the darkest region. Bucket each RGB sample into one
+     * of 16 bins (0..15, 16..31, ..., 240..255) — coarse enough to be
+     * readable, fine enough to discriminate a "dither floor" (1..2)
+     * from an "sRGB-encoded floor" (10..30). */
+    size_t hist[16] = {0};
+    /* Per-channel minimums over the darkest quarter of the frame
+     * (lower-left quadrant of the readback — origin (0,0) bottom-left
+     * in GL, so visually top-left after the dump's flip). The event
+     * horizon (the wash that's bright on NVIDIA, true black on AMD)
+     * typically lands in the upper-left of the rendered blackhole, so
+     * sample that quadrant specifically. */
+    unsigned int min_dark_r = 255, min_dark_g = 255, min_dark_b = 255;
+    unsigned int dark_count = 0;
+    /* p1 / p5 percentiles over the whole frame, sorted via histogram. */
     uint64_t hash = UINT64_C(1469598103934665603);
     for (size_t i = 0; i < npixels; i++) {
         const unsigned char *p = pixels + i * 4;
         if (p[0] || p[1] || p[2]) nonblack++;
         for (int c = 0; c < 3; c++) {
+            unsigned int v = (unsigned int)p[c];
+            if (v < 256) {
+                size_t b = (v >> 4) & 0xF;
+                hist[b]++;
+            }
             hash ^= p[c];
             hash *= UINT64_C(1099511628211);
         }
+        /* Sample the darkest quarter: pick pixels whose geometric
+         * position is the upper-left quadrant (top of the rendered
+         * image; since glReadPixels returns rows bottom-to-top, this
+         * corresponds to the upper half of `pixels`). */
+        size_t y = i / (size_t)a->width;
+        if (y < (size_t)a->height / 2 && (i % (size_t)a->width) < (size_t)a->width / 2) {
+            dark_count++;
+            if (p[0] < min_dark_r) min_dark_r = p[0];
+            if (p[1] < min_dark_g) min_dark_g = p[1];
+            if (p[2] < min_dark_b) min_dark_b = p[2];
+        }
     }
+
+    /* Compute p1 and p5 percentiles of the whole-frame distribution
+     * from the histogram: the rank we want is npixels/100 and
+     * 5*npixels/100. */
+    size_t target_p1 = npixels / 100;
+    size_t target_p5 = (npixels * 5) / 100;
+    size_t acc = 0;
+    unsigned int p1 = 255, p5 = 255;
+    for (int b = 0; b < 16; b++) {
+        acc += hist[b];
+        if (acc >= target_p1 && p1 == 255) p1 = (unsigned int)(b * 16);
+        if (acc >= target_p5 && p5 == 255) p5 = (unsigned int)(b * 16);
+    }
+
+    /* sRGB write state on the bound context. GL_FRAMEBUFFER_SRGB is a
+     * core GLES3 token (no extension needed for the toggle itself;
+     * GLES3 inherits the GL_ARB_framebuffer_sRGB behavior). But the
+     * default per spec is DISABLED in GLES — so any driver that
+     * reports it enabled here has done something beyond spec. Print
+     * the live state so we can see who defaulted it. */
+    GLboolean srgb_enabled = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+
     fprintf(stderr,
             "[diag] framebuffer frame=%lu pixels=%zu nonblack=%zu "
-            "hash=%016" PRIx64 " gl_error=0x%x\n",
-            frame, npixels, nonblack, hash, (unsigned int)error);
+            "hash=%016" PRIx64 " gl_error=0x%x "
+            "srgb=%s min_dark=(R%u,G%u,B%u) p1=%u p5=%u "
+            "hist[0..15]=%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n",
+            frame, npixels, nonblack, hash, (unsigned int)error,
+            (srgb_enabled ? "ON" : "off"),
+            min_dark_r, min_dark_g, min_dark_b,
+            p1, p5,
+            hist[0], hist[1], hist[2], hist[3],
+            hist[4], hist[5], hist[6], hist[7],
+            hist[8], hist[9], hist[10], hist[11],
+            hist[12], hist[13], hist[14], hist[15]);
 
     /* Optional PNG dump -- driven by NCZ_FRAME_DUMP. Format:
      *   NCZ_FRAME_DUMP=/abs/path  -- every captured frame written as
@@ -551,11 +612,71 @@ static void init_egl(struct app *a) {
                 (unsigned int)eglGetError());
         ncz_harness_die(1);
     }
+
+    /* Probe whether EGL_KHR_gl_colorspace is exposed. The default
+     * colorspace for an eglCreateWindowSurface call is up to the driver
+     * when this extension is absent, which has historically been the
+     * source of vendor-vs-vendor black-floor differences. Print the
+     * extension presence to stderr so it's recorded in every run. */
+    const char *ext_client = eglQueryString(a->egl_display, EGL_EXTENSIONS);
+    if (!ext_client) ext_client = "";
+    bool has_gl_colorspace =
+        strstr(ext_client, "EGL_KHR_gl_colorspace") != NULL;
+    fprintf(stderr,
+            "[diag] colorspace_ext=EGL_KHR_gl_colorspace=%s client_ext='%s'\n",
+            has_gl_colorspace ? "yes" : "no", ext_client);
+
     a->egl_config = ncz_gles3_choose_config(a->egl_display);
     if (!a->egl_config) {
         fprintf(stderr, "gles3_harness: no GLES3 EGL configs\n");
         ncz_harness_die(1);
     }
+
+    /* After choosing, READ BACK the config attributes the driver
+     * actually granted. ncz_gles3_choose_config only requests
+     * RGBA8+depth16; it does NOT request EGL_GL_COLORSPACE. Whichever
+     * color encoding the driver defaults to is what we'll get, and on
+     * some drivers that means sRGB writes via the GL_FRAMEBUFFER_SRGB
+     * pipeline even though we never asked. Print what we got. */
+    EGLint cfg_red=0, cfg_green=0, cfg_blue=0, cfg_alpha=0;
+    EGLint cfg_depth=0, cfg_stencil=0, cfg_rtype=0;
+    EGLint cfg_colorspace=EGL_NONE;  /* not always queryable on all drivers */
+    EGLint cfg_buffer_type=EGL_NONE;
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_RED_SIZE,   &cfg_red);
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_GREEN_SIZE, &cfg_green);
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_BLUE_SIZE,  &cfg_blue);
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_ALPHA_SIZE, &cfg_alpha);
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_DEPTH_SIZE, &cfg_depth);
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_STENCIL_SIZE, &cfg_stencil);
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_RENDERABLE_TYPE, &cfg_rtype);
+    /* EGL_GL_COLORSPACE is only valid when EGL_KHR_gl_colorspace is
+     * exposed; on Mesa/AMD drivers it's usually supported but NVIDIA
+     * historically only honors it on specific configs. Query with a
+     * fallback so we don't crash. */
+    if (has_gl_colorspace) {
+        EGLint cs = EGL_NONE;
+        if (eglGetConfigAttrib(a->egl_display, a->egl_config,
+                               EGL_GL_COLORSPACE,
+                               &cs) == EGL_TRUE) cfg_colorspace = cs;
+    }
+    eglGetConfigAttrib(a->egl_display, a->egl_config,
+                       EGL_COLOR_BUFFER_TYPE, &cfg_buffer_type);
+    fprintf(stderr,
+            "[diag] eglconfig RGBA=%d/%d/%d/%d depth=%d stencil=%d "
+            "rtype=0x%x colorspace=0x%x buf_type=0x%x\n",
+            cfg_red, cfg_green, cfg_blue, cfg_alpha,
+            cfg_depth, cfg_stencil,
+            (unsigned int)cfg_rtype,
+            (unsigned int)cfg_colorspace,
+            (unsigned int)cfg_buffer_type);
+
     /* GLES 3.2 context — same client version as the runtime requires. */
     EGLint ctx_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
     a->egl_context = eglCreateContext(a->egl_display, a->egl_config,
@@ -696,6 +817,19 @@ int main(void) {
         fprintf(stderr, "gles3_harness: GLES3 runtime init failed\n");
         ncz_harness_die(1);
     }
+
+    /* Explicitly disable GL_FRAMEBUFFER_SRGB. The GLES3.2 spec
+     * default for this toggle is DISABLED — we're not opting into
+     * sRGB writes — but Mesa and NVIDIA both report
+     * `glIsEnabled(GL_FRAMEBUFFER_SRGB) = ON` here even though we
+     * never called glEnable, because their tokens track the surface
+     * tag rather than the glEnable state. Pinning this explicitly to
+     * off removes one avenue for vendor drift and makes the harness
+     * spec-conformant. After this call, report_framebuffer's
+     * `srgb=ON|off` log will read `off` on every box. See
+     * docs/audit/blackhole-black-floor-evidence/ROOTCAUSE.md §11. */
+    glDisable(GL_FRAMEBUFFER_SRGB);
+
     /* Log GL strings now. */
     fprintf(stderr, "[diag] GL_VERSION=%s\nRENDERER=%s\nVENDOR=%s\nGLSL=%s\n",
             (const char*)glGetString(GL_VERSION),

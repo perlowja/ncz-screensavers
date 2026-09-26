@@ -83,8 +83,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
-#include <unistd.h>     /* getpid() for iSeed entropy */
-#include <stddef.h>     /* uintptr_t */
+#include <unistd.h>
 
 #include <GLES3/gl32.h>
 
@@ -149,11 +148,14 @@ typedef struct {
     GLint loc_ichan1;
     GLint loc_ichan2;
     GLint loc_ichan3;
-    GLint loc_iseed;             /* 4 floats, constant per run; varies across runs */
+    GLint loc_iseed;
     double start_time;
     double last_time;
     unsigned long frame;
-    float iseed[4];              /* cached RNG output, written once in init */
+    /* Per-run random seed (4 floats in [0,1)). Generated once at init
+     * from a wall-clock+pid seed and uploaded to the shader every
+     * frame. Lets the shader pick its composition per launch. */
+    float seed_v[4];
 } XSToyState;
 
 /* ------------------------------------------------------------------- */
@@ -204,11 +206,10 @@ static const char *frag_preamble =
     "uniform sampler2D iChannel1;\n"
     "uniform sampler2D iChannel2;\n"
     "uniform sampler2D iChannel3;\n"
-    "\n"
-    "/* iSeed — four random floats, constant for the run, different\n"
-    " * every run.  Use it for per-run variation (palette, layout,\n"
-    " * phase) so two screensaver runs do not produce the same picture\n"
-    " * modulo time.  House convention added 2026-09-26. */\n"
+    "/* iSeed — four random floats, constant per run, differ every run.\n"
+    " * Lets shaders pick their per-launch composition without reading\n"
+    " * iTime (which would also drift the composition over the run).\n"
+    " * Generated once at init from a wall-clock+pid seed. */\n"
     "uniform vec4 iSeed;\n";
 
 /* The `void main()` wrapper — appended AFTER the body so the
@@ -307,6 +308,9 @@ read_entire_file(const char *path, size_t *out_len) {
 static char *
 locate_shader(const char *name, char *out_used_path, size_t out_path_cap) {
     static const char *prefixes[] = {
+        "vendor/wave2-materia/glsl/",
+        "../vendor/wave2-materia/glsl/",
+        "../../vendor/wave2-materia/glsl/",
         "vendor/xshadertoy/glsl/",
         "../vendor/xshadertoy/glsl/",
         "../../vendor/xshadertoy/glsl/",
@@ -491,38 +495,6 @@ init_xshadertoy(ModeInfo *mi) {
     st->loc_ichan3      = glGetUniformLocation(st->program, "iChannel3");
     st->loc_iseed       = glGetUniformLocation(st->program, "iSeed");
 
-    /* Roll four random floats from /dev/urandom (or fall back to
-     * a time-mixed hash if urandom is unavailable).  These stay
-     * constant for the whole run so the shader can drive layout /
-     * palette / path from iSeed without flicker. */
-    {
-        unsigned int r[4] = {0, 0, 0, 0};
-        FILE *u = fopen("/dev/urandom", "rb");
-        if (u) {
-            size_t got = fread(r, sizeof(unsigned int), 4, u);
-            fclose(u);
-            if (got != 4) {
-                r[0] = (unsigned int)(now_seconds() * 1e6);
-                r[1] = r[0] ^ 0x9E3779B9u;
-                r[2] = r[0] * 0x85EBCA77u;
-                r[3] = r[0] ^ (r[0] << 13);
-            }
-        } else {
-            r[0] = (unsigned int)(now_seconds() * 1e6);
-            r[1] = r[0] ^ 0x9E3779B9u;
-            r[2] = r[0] * 0x85EBCA77u;
-            r[3] = r[0] ^ (r[0] << 13);
-        }
-        for (int k = 0; k < 4; k++) {
-            /* Map uint32 -> [0,1) by dividing by 2^32.  We accept a
-             * slightly biased last bit; not perceptible. */
-            st->iseed[k] = (float)(r[k] & 0xFFFFFFu) / (float)0x1000000u;
-            if (st->iseed[k] < 1e-6) st->iseed[k] += 1e-6;
-        }
-        fprintf(stderr, "[diag] iSeed = %.4f %.4f %.4f %.4f\n",
-                st->iseed[0], st->iseed[1], st->iseed[2], st->iseed[3]);
-    }
-
     /* Fullscreen quad — 2 triangles, 6 vertices. */
     static const float quad[] = {
         -1.f, -1.f,  1.f, -1.f, -1.f,  1.f,
@@ -550,28 +522,34 @@ init_xshadertoy(ModeInfo *mi) {
     st->start_time = now_seconds();
     st->last_time  = st->start_time;
 
-    /* Generate the per-launch iSeed and upload it ONCE. We deliberately
-     * do NOT regenerate per frame — iSeed is meant to be a constant
-     * random vector that distinguishes one launch of the binary from
-     * the next, so the operator acceptance test ("two runs captured at
-     * the same frame index differ materially") passes. Shaders that
-     * want per-frame entropy should still use iTime/iFrame. */
-    float iseed[4];
-    ncz_make_iseed(iseed);
-    glUniform4fv(st->loc_iseed, 1, iseed);
-
+    /* Generate the per-run iSeed. Four random floats in [0,1). Wall
+     * clock + pid gives a different mix every launch. Using a small
+     * inline xorshift instead of rand() avoids pulling in the stdlib
+     * PRNG state — reproducible and stateless across invocations of
+     * different shader binaries within the same second. */
+    {
+        uint64_t s = (uint64_t)(now_seconds() * 1e6) ^
+                     ((uint64_t)getpid() << 32) ^
+                     ((uint64_t)(uintptr_t)st << 16);
+        if (s == 0) s = 0xdeadbeefULL;
+        for (int i = 0; i < 4; i++) {
+            s ^= s << 13; s ^= s >> 7; s ^= s << 17;
+            st->seed_v[i] = (float)((s & 0x00FFFFFFULL) /
+                                    (double)0x01000000ULL);
+        }
+    }
     fprintf(stderr,
             "[diag] xshadertoy init ok: program=%u vbo=%u GL=%s "
             "uniforms ires=%d itime=%d iframe=%d imouse=%d iseed=%d "
-            "ichan0..3=%d,%d,%d,%d "
-            "iSeed=[%.4f %.4f %.4f %.4f]\n",
+            "ichan0..3=%d,%d,%d,%d\n"
+            "[diag] xshadertoy iSeed=%f,%f,%f,%f\n",
             st->program, st->vbo,
             (const char *)glGetString(GL_VERSION),
             st->loc_iresolution, st->loc_itime, st->loc_iframe,
             st->loc_imouse, st->loc_iseed,
             st->loc_ichan0, st->loc_ichan1,
             st->loc_ichan2, st->loc_ichan3,
-            iseed[0], iseed[1], iseed[2], iseed[3]);
+            st->seed_v[0], st->seed_v[1], st->seed_v[2], st->seed_v[3]);
 }
 
 static void
@@ -636,6 +614,11 @@ draw_xshadertoy(ModeInfo *mi) {
     glUniform4fv(st->loc_imouse, 1, zero4);
     /* iSeed — per-run constant, set once and re-uploaded each frame. */
     glUniform4fv(st->loc_iseed, 1, st->iseed);
+
+    /* iSeed is constant for the run, but GL silently no-ops writes
+     * to -1 (location) so we don't need a guard here. Upload every
+     * frame is cheap (one vec4). */
+    glUniform4fv(st->loc_iseed, 1, st->seed_v);
 
     /* Bind the black 1x1 to all four iChannel units. */
     if (st->ichan_tex) {

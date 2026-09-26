@@ -836,7 +836,7 @@ xshadertoy_shaders = [
     'alienbeacon', 'batteredplanet',
     'bestill0-0', 'bestill1-0', 'bestill2-0', 'bestill3-0',
     'bestill4-0', 'bestill5-0',
-    'bubblecolors', 'cellmosaic', 'darktransit', 'downfall', 'driftclouds',
+    'bubblecolors', 'caustictidepool', 'darktransit', 'downfall', 'driftclouds',
     'elementalring', 'fluxcore', 'gimbalharmonics', 'goldenapollian',
     'hexlattice', 'hexplasma', 'logarithmiccircles',
     'neongravity-0', 'neongravity-1', 'neontriangulator',
@@ -844,7 +844,14 @@ xshadertoy_shaders = [
     'rigrekt', 'selfreflect', 'skyline', 'stardome', 'starnest',
     'stripeytorus', 'synthwavecity', 'topologica', 'trainmandala',
     'trizm', 'truchetzoom', 'universeball',
-    'ridgeline', 'wellcurve',
+    'leviathan',
+    'physarum',
+    'attractor',
+    'caustics',
+    'aurora',
+    'marble',
+    'ridgeline',
+    'wellcurve',
 ]
 
 foreach s : xshadertoy_shaders
@@ -1462,8 +1469,6 @@ foreach alias_name : [
     'xshadertoy_caustics_gles3',
     'xshadertoy_aurora_gles3',
     'xshadertoy_marble_gles3',
-    'xshadertoy_ridgeline_gles3',
-    'xshadertoy_wellcurve_gles3',
 ]
     run_target(
         alias_name + '_alias',
