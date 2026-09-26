@@ -181,3 +181,51 @@ fork branch `feat/screensaver-preferences` on
 constraints: libsingularity widgets only (no libadwaita), no NCZ-specific
 names or paths in the generic layer, and the per-hack schema data kept
 downstream. Nothing from jwxyz belongs in that UI.
+
+## X dependencies after adoption: none linked — but we owe a font backend
+
+Measured, not assumed.
+
+**Current runtime linkage** (`ldd` on a real built `squirtorus_gles3`,
+MEDUSA/AMD): `libEGL.so.1`, `libGLESv2.so.2`, `libGLdispatch.so.0`,
+`libwayland-client.so.0`, `libwayland-egl.so.1`, `libc`, `libm`, `libffi`.
+**Zero `libX11`, zero `libxcb`.** Adopting jwxyz/jwzgles adds no libraries:
+they are vendored C drawing through the GLES context our harness creates.
+`utils/xft.h` is vendored upstream too, not system Xft.
+
+### The real gap: no Linux/GL font backend exists upstream
+
+`jwxyz_render_text` is declared in `jwxyz/jwxyzI.h` and is
+**backend-specific**. Upstream implements it in exactly two places:
+- `jwxyz/jwxyz-cocoa.m` (CoreText)
+- `jwxyz/jwxyz-android.c` (Java)
+
+There is **no GL/Linux implementation**, because upstream's Linux build
+uses real X11 natively and never routes through jwxyz there. So this is
+work we own, not work we inherit.
+
+- Scope: ~46 of the 144 2D hacks call `XDrawString`; the other ~98 draw no
+  text and are unaffected.
+- Implementation: FreeType/fontconfig, which brings no X dependency.
+- Reuse: our tree already renders text for GL hacks (`gltext_gles3`,
+  `fliptext_gles3` build today) — check `texfont`-equivalent paths before
+  writing anything new.
+
+**This is a phase 2 deliverable.** It was not in the original phasing and
+is the most likely place for that phase to overrun.
+
+### The six X11-including files, and what we do about them
+
+`grep -l '#include <X11/' hacks/*.c` returns 6 of 144:
+
+| File | What it is | Action |
+|---|---|---|
+| `screenhack.c` | the X11 *backend* of the hack framework | replaced by our Wayland harness |
+| `xscreensaver-getimage.c` | image-grab utility | not ported |
+| `ffmpeg-out.c` | video output helper | not ported |
+| `analogtv-cli.c` | CLI tool | not ported |
+| `distort.c` | a real hack, but X screen-grab by nature | skip |
+| `xsublim.c` | X-specific subliminal-message hack | skip |
+
+So 142 of 144 are reachable with no X dependency; 2 are deliberately out
+of scope.
