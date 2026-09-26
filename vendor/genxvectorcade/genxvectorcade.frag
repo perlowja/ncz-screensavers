@@ -335,28 +335,32 @@ float latticeCanyon(vec2 uv, out vec3 baseCol){
     // tunnel-ish z for "threading through"
     float speed = u_shape_speed.y;
     float z = 1.5 + 3.5 * fract(u_time * 0.10 * speed);
-    // accumulate 5 octaves of rotated, scaled, warped copies
+    // accumulate 4 octaves of rotated, scaled, warped copies. Each
+    // octave's contribution is gated by a per-octave fade so the
+    // centre doesn't accumulate brightness from every layer.
     float scale = 1.0;
     vec2 q = wp * (1.0 + z*0.3);
     float rot = u_time * u_seg_rot.y * 0.08 + u_seed;
     vec3 accumCol = vec3(0.0);
-    for(int i = 0; i < 5; i++){
+    float falloff = 1.0;
+    for(int i = 0; i < 4; i++){
         q = rot2(q, rot);
         q += vec2(0.42, 0.31);
-        scale *= 0.78;
-        // distance to nearest gridline in this octave
+        scale *= 0.74;
+        falloff *= 0.7;       /* each octave contributes less */
         vec2 fq = fract(q * 1.6) - 0.5;
         float d = min(abs(fq.x), abs(fq.y));
-        float line = exp(-pow(d * 40.0 / scale, 2.0)) * scale;
-        float t = float(i)/5.0;
+        float line = exp(-pow(d * 40.0 / scale, 2.0)) * scale * falloff;
+        float t = float(i)/4.0;
         vec3 c = palette(0.20 + 0.55*t + 0.10*sin(u_time*0.3 + float(i)));
         accumCol += c * line;
-        intensity += line * 0.6;
+        intensity += line * 0.55;
     }
-    baseCol = accumCol * 1.2;
-    // central vanishing-point glow
+    baseCol = accumCol;
+    // central vanishing-point glow (kept subtle so it doesn't blow
+    // out under the persistent trail)
     float r = length(p);
-    baseCol += vec3(1.0, 0.9, 1.0) * exp(-pow(r*4.0, 2.0)) * 1.2;
+    baseCol += vec3(1.0, 0.9, 1.0) * exp(-pow(r*5.0, 2.0)) * 0.55;
     return intensity;
 }
 
@@ -399,17 +403,16 @@ void main(){
     iTmp = kaleidoBloom(uvWarp, cTmp);    col += cTmp * iTmp * pK;        intensity += iTmp * pK;
     iTmp = latticeCanyon(uvWarp, cTmp);   col += cTmp * iTmp * pL;        intensity += iTmp * pL;
 
-    // tone: nonlinear contrast toe. Designed to be subtle so the
-    // persistent feedback trail doesn't blow the entire screen to
-    // white. The "deliberate overexposure" applies to HOT CORES (the
-    // tunnel vanishing point, the sun disc), not to the average
-    // background.
-    col *= 1.15;
+    // tone: darken the average so the hot cores pop and the
+    // background stays dark. Trail accumulates via screen blend, so
+    // we MUST keep `col` well below 1.0 in the typical case or
+    // repeated additions will drive the buffer to white within a few
+    // dozen frames.
+    col *= 0.7;
     col = pow(col, vec3(1.0 / u_pal_contrast));
-    // soft Reinhard knee so the hot cores clip but the background
-    // stays in range
-    col = col / (1.0 + col * 0.65);
-    col *= 1.8;
+    // Soft saturation curve — hot cores clip to white, dark
+    // backgrounds stay dark.
+    col = col / (1.0 + col * 0.5);
 
     // feedback mix: the previous frame, chromatically split, blended
     // back at the trail persistence level. The host has already faded

@@ -305,8 +305,8 @@ static void randomise(State *s){
     s->v_pal_contrast= rnd(&z, 0.92f, 1.35f);
     s->v_sym_base    = rnd(&z, 4.0f, 16.0f);
     s->v_burst_freq  = rnd(&z, 0.30f, 1.20f);
-    s->v_trail_persist = rnd(&z, 0.86f, 0.97f);
-    s->v_warp_amount = rnd(&z, 0.45f, 1.35f);
+    s->v_trail_persist = rnd(&z, 0.78f, 0.92f);
+    s->v_warp_amount = rnd(&z, 0.30f, 1.10f);
     s->v_ca_amount   = rnd(&z, 0.0f, 0.012f);
     /* Total cycle length: 4 phases of ~30..55s each + ~12s intermission */
     s->v_journey_total = 4.0f * rnd(&z, 30.0f, 55.0f) + 12.0f;
@@ -363,9 +363,10 @@ static void compute_phases(State *s, float t, float phases[5]){
     /* Tiny "ghost" weight on the lattice so even a "pure" tunnel leg
      * still has a hint of the recursive structure in the background —
      * this is what gives the journey its continuous, never-settling
-     * quality. */
-    for(int i = 0; i < n_legs; i++) phases[i] = 0.04f;
-    phases[cur]  = w_in + 0.04f;
+     * quality. Keep this small so background geometry doesn't drown
+     * the foreground movement. */
+    for(int i = 0; i < n_legs; i++) phases[i] = 0.015f;
+    phases[cur]  = w_in + 0.015f;
     phases[prev] += w_out;
     /* renormalise */
     float sum = 0.0f;
