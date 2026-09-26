@@ -338,7 +338,28 @@ void main(){
  // to gate the 2.8..13 band. The radial dist is taken in world XY because
  // the disk normal can be non-+Z; in disk_color the point is rotated into
  // the disk-local frame and the actual polar coords (r,a) live there.
- for(int i=0;i<260;i++){float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));du+=.5*(-u+1.5*u*u)*step;u+=du*step;du+=.5*(-u+1.5*u*u)*step;phi+=step;if(u>=1.||u<=.0005)break;old=pos;pos=(cos(phi)*normal+sin(phi)*tangent)/u;float od=dot(old,diskN),pd=dot(pos,diskN);if(od*pd<0.&&od!=pd){float t_=-od/(pd-od);vec3 x=mix(old,pos,t_);x=x-diskN*dot(x,diskN);float rd=length(x);if(rd>2.8&&rd<13.){color+=trans*disk_color(x,diskN,closeFX);trans*=.72;}}}}
+ for(int i=0;i<260;i++){
+   float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));
+   du+=.5*(-u+1.5*u*u)*step;
+   u+=du*step;
+   du+=.5*(-u+1.5*u*u)*step;
+   phi+=step;
+   if(u>=1.||u<=.0005)break;
+   old=pos;
+   pos=(cos(phi)*normal+sin(phi)*tangent)/u;
+   float od=dot(old,diskN);
+   float pd=dot(pos,diskN);
+   if(od*pd<0.&&od!=pd){
+    float t_=-od/(pd-od);
+    vec3 x=mix(old,pos,t_);
+    x=x-diskN*dot(x,diskN);
+    float rd=length(x);
+    if(rd>2.8&&rd<13.){
+     color+=trans*disk_color(x,diskN,closeFX);
+     trans*=.72;
+    }
+   }
+  }
  if(!captured){vec3 d=length(pos-old)>1e-5?normalize(pos-old):ray;color+=trans*(stars(d)+vec3(.002,.003,.007));}
  if(u_jet>0.){float axis=abs(dot(ray,diskN));color+=u_jet*jet_color(axis)*(.45+.55*noise(p*45.+u_time*.2));}
  // Reinhard tonemap -> 1/2.2 gamma -> contrast toe + black point.

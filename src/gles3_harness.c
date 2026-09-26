@@ -75,6 +75,7 @@
 #include "xscreensaver_compat.h"
 #include "ncz_platform.h"
 #include "gles3_harness_hooks.h"
+#include "gles3_harness_png.h"
 
 /* xscreensaver_compat.h transitively includes gl4es_include/GL/gl.h,
  * which redefines the same GL_FALSE/GL_TRUE/etc. values. Same fix as
@@ -464,34 +465,40 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
     if (dump_enabled) {
         fprintf(stderr, "[dump] writing frame_%08lx to %s\n",
                 (unsigned long)frame, dump_dir);
-        /* Convert GL_RGBA (origin bottom-left) to a top-down PNG layout. */
+        /* Convert GL_RGBA (origin bottom-left) to a top-down RGBA layout. */
         unsigned char *flipped = malloc(npixels * 4);
-        if (flipped) {
-            for (size_t y = 0; y < (size_t)a->height; y++) {
-                memcpy(flipped + y * (size_t)a->width * 4,
-                       pixels + ((size_t)a->height - 1 - y) * (size_t)a->width * 4,
-                       (size_t)a->width * 4);
-            }
-            char path[1024];
-            snprintf(path, sizeof path, "%s/frame_%08lx.png",
-                     dump_dir, (unsigned long)frame);
-            FILE *f = fopen(path, "wb");
-            if (f) {
-                fwrite(flipped, 1, npixels * 4, f);
-                fclose(f);
-                fprintf(stderr, "[dump] wrote %s (%zu bytes)\n",
-                        path, npixels * 4);
-                char raw[1024];
-                snprintf(raw, sizeof raw, "%s/frame_%08lx.rgba",
-                         dump_dir, (unsigned long)frame);
-                FILE *r = fopen(raw, "wb");
-                if (r) { fwrite(flipped, 1, npixels * 4, r); fclose(r); }
-            } else {
-                fprintf(stderr, "[dump] could not open %s: %s\n",
-                        path, strerror(errno));
-            }
-            free(flipped);
+        if (!flipped) {
+            fprintf(stderr, "[dump] malloc for flipped RGBA failed\n");
+            free(pixels);
+            return;
         }
+        for (size_t y = 0; y < (size_t)a->height; y++) {
+            memcpy(flipped + y * (size_t)a->width * 4,
+                   pixels + ((size_t)a->height - 1 - y) * (size_t)a->width * 4,
+                   (size_t)a->width * 4);
+        }
+        char path[1024];
+        snprintf(path, sizeof path, "%s/frame_%08lx.png",
+                 dump_dir, (unsigned long)frame);
+        /* Real PNG via libpng (dep_png). Previously we wrote raw RGBA
+         * bytes with a .png suffix, which produced files nobody could
+         * open. The PNG is now genuinely decodable. */
+        if (ncz_write_png_rgba(path, flipped,
+                               (unsigned int)a->width,
+                               (unsigned int)a->height) == 0) {
+            fprintf(stderr, "[dump] wrote %s (%zux%zu RGBA)\n",
+                    path, (size_t)a->width, (size_t)a->height);
+        } else {
+            fprintf(stderr, "[dump] failed to write %s\n", path);
+        }
+        /* Also write the raw RGBA for downstream tools (pixel-diff etc.)
+         * under a .rgba extension so callers don't confuse it with PNG. */
+        char raw[1024];
+        snprintf(raw, sizeof raw, "%s/frame_%08lx.rgba",
+                 dump_dir, (unsigned long)frame);
+        FILE *r = fopen(raw, "wb");
+        if (r) { fwrite(flipped, 1, npixels * 4, r); fclose(r); }
+        free(flipped);
     }
     free(pixels);
 }
