@@ -836,7 +836,7 @@ xshadertoy_shaders = [
     'alienbeacon', 'amigajuggler', 'batteredplanet',
     'bestill0-0', 'bestill1-0', 'bestill2-0', 'bestill3-0',
     'bestill4-0', 'bestill5-0',
-    'bubblecolors', 'darktransit', 'downfall', 'driftclouds',
+    'bubblecolors', 'caustictidepool', 'darktransit', 'downfall', 'driftclouds',
     'elementalring', 'fluxcore', 'gimbalharmonics', 'goldenapollian',
     'hexplasma', 'logarithmiccircles',
     'neongravity-0', 'neongravity-1', 'neontriangulator',
