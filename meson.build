@@ -900,6 +900,7 @@ wave2_materia_shaders = [
     'caustics-on-stone',
     'satin-wind',
     'foliage-plaster',
+    'frosted-glass',
 ]
 
 foreach s : wave2_materia_shaders
