@@ -1,0 +1,33 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=../vendor/xshadertoy/glsl/batteredplanet.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 ichan0..3=-1,-1,-1,-1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=144,131,115; 30,49,44; 175,150,115; 194,184,206
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=e88c4b72f4f9b51b gl_error=0x0
+[dump] writing frame_00000004 to /tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3
+[dump] wrote /tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3/frame_00000004.png (8294400 bytes)
+[diag] xshadertoy frame=60 gl_error=0x0 samples=80,87,83; 172,149,120; 59,63,52; 194,184,206
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073592 hash=8041fc6b63fe2057 gl_error=0x0
+[dump] writing frame_0000003c to /tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3
+[dump] wrote /tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3/frame_0000003c.png (8294400 bytes)
+[diag] xshadertoy frame=120 gl_error=0x0 samples=157,139,117; 47,56,48; 84,80,67; 194,184,206
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=19fb0229a5f8edcb gl_error=0x0
+[dump] writing frame_00000078 to /tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3
+[dump] wrote /tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3/frame_00000078.png (8294400 bytes)
+EXITCODE=137
+bash: line 1: 1089027 Killed                     NCZ_FRAME_DUMP=/tmp/cap-1086479-i-xshadertoy_batteredplanet_gles3 timeout --kill-after=2 28 ./xshadertoy_batteredplanet_gles3

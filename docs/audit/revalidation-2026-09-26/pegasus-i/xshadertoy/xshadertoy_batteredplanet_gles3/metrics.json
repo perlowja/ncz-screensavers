@@ -1,0 +1,40 @@
+{
+  "target": "xshadertoy_batteredplanet_gles3",
+  "nframes": 3,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.5172089602623458,
+    "max_changed_pct": 0.5172545331790124,
+    "min_changed_pct": 0.517163387345679
+  },
+  "coverage_mean": 0.9994876864711935,
+  "coverage_max": 0.9999416473765432,
+  "saturation_mean": 0.49309735082304523,
+  "saturation_max": 0.5057209683641976,
+  "intensity_mean": 129.6075185139974,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.9999416473765432,
+      "sat": 0.5057209683641976,
+      "vis_int": 131.0620880126953
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 0.9986279899691358,
+      "sat": 0.49008487654320987,
+      "vis_int": 128.84390258789062
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 0.9998934220679012,
+      "sat": 0.4834862075617284,
+      "vis_int": 128.91656494140625
+    }
+  ],
+  "frame_ms_mean": 966.6666666666667,
+  "frame_ms_var": 1111.1111111111136,
+  "n_frame_samples": 3
+}

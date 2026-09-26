@@ -1,0 +1,34 @@
+{
+  "target": "xshadertoy_bestill2-0_gles3",
+  "nframes": 2,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.7982711226851852,
+    "max_changed_pct": 0.7982711226851852,
+    "min_changed_pct": 0.7982711226851852
+  },
+  "coverage_mean": 0.9246115451388889,
+  "coverage_max": 0.9553539737654321,
+  "saturation_mean": 0.7500327932098765,
+  "saturation_max": 0.7663233024691358,
+  "intensity_mean": 56.88635063171387,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.9553539737654321,
+      "sat": 0.7663233024691358,
+      "vis_int": 56.95034408569336
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 0.8938691165123457,
+      "sat": 0.7337422839506172,
+      "vis_int": 56.822357177734375
+    }
+  ],
+  "frame_ms_mean": 933.3333333333334,
+  "frame_ms_var": 0.0,
+  "n_frame_samples": 2
+}

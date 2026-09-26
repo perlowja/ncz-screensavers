@@ -1,0 +1,27 @@
+{
+  "target": "xshadertoy_amigajuggler_gles3",
+  "nframes": 1,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.0,
+    "max_changed_pct": 0.0,
+    "min_changed_pct": 0.0
+  },
+  "coverage_mean": 0.9999209104938271,
+  "coverage_max": 0.9999209104938271,
+  "saturation_mean": 0.9782841435185186,
+  "saturation_max": 0.9782841435185186,
+  "intensity_mean": 156.8478240966797,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.9999209104938271,
+      "sat": 0.9782841435185186,
+      "vis_int": 156.8478240966797
+    }
+  ],
+  "frame_ms_mean": null,
+  "frame_ms_var": null
+}

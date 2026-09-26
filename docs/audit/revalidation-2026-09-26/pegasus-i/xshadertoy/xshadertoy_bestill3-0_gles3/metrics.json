@@ -1,0 +1,40 @@
+{
+  "target": "xshadertoy_bestill3-0_gles3",
+  "nframes": 3,
+  "width": 1440,
+  "height": 1440,
+  "frames": [],
+  "motion": {
+    "mean_changed_pct": 0.7734307484567902,
+    "max_changed_pct": 0.7842838541666667,
+    "min_changed_pct": 0.7625776427469135
+  },
+  "coverage_mean": 0.7511310442386833,
+  "coverage_max": 0.8,
+  "saturation_mean": 0.6459746334876543,
+  "saturation_max": 0.7365060763888889,
+  "intensity_mean": 95.94843037923177,
+  "per_frame": [
+    {
+      "frame": "frame_00000004.png",
+      "cov": 0.7045939429012346,
+      "sat": 0.5758921682098765,
+      "vis_int": 77.8194351196289
+    },
+    {
+      "frame": "frame_0000003c.png",
+      "cov": 0.8,
+      "sat": 0.7365060763888889,
+      "vis_int": 116.7408447265625
+    },
+    {
+      "frame": "frame_00000078.png",
+      "cov": 0.7487991898148149,
+      "sat": 0.6255256558641975,
+      "vis_int": 93.2850112915039
+    }
+  ],
+  "frame_ms_mean": 966.6666666666667,
+  "frame_ms_var": 1111.1111111111136,
+  "n_frame_samples": 3
+}
