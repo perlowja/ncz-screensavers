@@ -86,3 +86,45 @@ genuinely unbuilt elsewhere.
 
 **Incorporate:** hyprsaver's fractional-scale approach (MIT, compatible).
 **Do not write:** another layer-shell shader runner.
+
+---
+
+# CORRECTION 2026-09-26 — the blocker is 2 shaders, not 11
+
+The count above is WRONG and is retracted. The original scan grepped only for
+lines containing the word "license", so every shader declaring `CC0:` inside
+its description line was miscounted as undeclared.
+
+Correct scan (matching CC0 / MIT / CC BY anywhere in the first 20 lines):
+
+| licence | count |
+|---|---|
+| MIT | 17 |
+| CC0 | 17 |
+| CC BY 3.0 | 1 (`synthwavecity`) |
+| **genuinely undeclared** | **2** — `driftclouds`, `bubblecolors` |
+
+**35 of 37 are cleanly shippable.** MIT and CC0 both permit commercial
+redistribution. `synthwavecity` is CC BY 3.0 and needs only an attribution
+line.
+
+Remaining work is therefore small:
+1. `driftclouds` and `bubblecolors` — drop, clear with their authors, or
+   clean-room replace.
+2. Add an attribution entry for `synthwavecity`.
+3. Add `vendor/xshadertoy/LICENSE` summarising the per-shader position, since
+   that directory still has no licence file.
+
+**The lesson worth keeping:** a licence audit that greps for the word
+"license" will systematically miss CC0 and SPDX-style declarations. Match the
+licence *identifiers*, not the word.
+
+## Asking is not about jwz
+
+Shadertoy shaders are by individual Shadertoy authors, unrelated to
+xscreensaver. Nothing here involves asking jwz.
+
+And for the xscreensaver-derived work we ask nobody: clean-room
+reimplementation from published mathematics requires no permission. Four such
+pieces landed on 2026-09-26 (`cellmosaic`, `hexlattice`, `ridgeline`,
+`wellcurve`) without any original source being opened.
