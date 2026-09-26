@@ -33,6 +33,11 @@ typedef struct {
  // Camera trajectory family selector: 0 = zoom-whirl (bound), 1 =
  // hyperbolic flyby (unbound). Drawn per-launch from the seeded RNG.
  GLint camera_family;
+ // Real trajectory family parameters. orbit_q is the zoom-whirl
+ // ratio (angular/rev radial); orbit_e is eccentricity (zoom-whirl
+ // draws [0.15,0.7], flyby draws [1.05,3.0]); orbit_omega is the
+ // argument of periapse in radians.
+ GLint orbit_q,orbit_e,orbit_omega;
  double started;
  // 0:seed 1:radius 2:temp 3:density 4:rotation 5:inclination 6:orbit_rate
  // 7:jet 8:star_density 9:camera_mode 10:palette 11:approach 12:periapsis
@@ -43,8 +48,11 @@ typedef struct {
  // 32:path_e_swing 33:path_e_freq 34:path_phase_jitter
  // 35:disk_axis.xyz + wobble (xyz=spin axis unit vec, w=half-angle tilt)
  // 36..42:disk_precess.xyz + rate (xyz=precession axis, w=rate rad/s)
- // 43:camera_family (0 or 1)
- float v[44];
+ // 43:camera_family (0 zoom-whirl, 1 hyperbolic flyby)
+ // 44:orbit_q (zoom-whirl ratio; ~1 for flyby family)
+ // 45:orbit_e (eccentricity; 0.15..0.7 zoom-whirl, 1.05..3.0 flyby)
+ // 46:orbit_omega (periapse direction, radians)
+ float v[47];
 } State;
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec*1e-9;}
 static uint32_t seed(void){uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}struct timespec t;clock_gettime(CLOCK_REALTIME,&t);return t.tv_nsec^t.tv_sec^getpid();}
@@ -82,6 +90,7 @@ static void init_blackhole(ModeInfo*m){
  L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
  L(path_e_swing);L(path_e_freq);L(path_phase_jitter);
  L(disk_axis);L(disk_precess);L(camera_family);
+ L(orbit_q);L(orbit_e);L(orbit_omega);
 #undef L
  uint32_t z=seed();
  // Optional deterministic seed for capture runs (eval harness). When
@@ -224,7 +233,49 @@ static void init_blackhole(ModeInfo*m){
   // unhurried motion (60s * 0.05 rad/s = 3 rad ~ 172 deg).
   s->v[42]=rnd(&z,0.02,0.08);
   // Camera trajectory family: 50/50 between the two real families.
+  // Bound = zoom-whirl, unbound = hyperbolic flyby. Both families
+  // must be reachable; this is the family selector.
   s->v[43]=(rnd(&z,0,1)<.5)?0.f:1.f;
+ }
+ // ---------------------------------------------------------------------
+ // Real trajectory family parameters (v[44..46]).
+ // zoom-whirl ratio q is the angular/rev-frequency ratio per radial
+ // cycle. Rational -> closed rosette, irrational -> aperiodic. Drawn
+ // in [1.4, 5.5]: sub-1.5 looks like a circle and is boring; above 5.5
+ // the whirls blur. The interval is mostly irrational so most launches
+ // trace a path that never repeats.
+ //   v[44]: orbit_q (zoom-whirl ratio, drawn if family=0; otherwise 1)
+ // orbit_e is eccentricity. Family=0 draws [0.15, 0.7] for the bound
+ // zoom-whirl; family=1 draws (1.05, 3.0] for the hyperbolic flyby.
+ // orbit_omega is the argument of periapse: drawn [0, 2pi].
+ // ---------------------------------------------------------------------
+ {
+  int family=(int)s->v[43];
+  if(family==0){
+   // Zoom-whirl. q in [1.4, 5.5] mostly avoids rational coincidences;
+   // the spread covers loose 3-leaf clovers through tight precessing
+   // rosettes. Combined with eccentricity this draws a different
+   // rosette essentially every launch.
+   s->v[44]=rnd(&z,1.4,5.5);
+   // Eccentricity: 0.15 keeps the orbit nearly circular (mild zoom);
+   // 0.7 is strongly elongated (deep periapsis dips). Both visible.
+   s->v[45]=rnd(&z,0.15,0.7);
+  }else{
+   // Hyperbolic flyby. q does not apply (only one traversal). We
+   // still set it so the shader has a defined value; the shader
+   // ignores it in the flyby branch.
+   s->v[44]=1.f;
+   // Eccentricity > 1 for a hyperbola. deflection = 2*asin(1/e):
+   // e=1.05 -> deflection ~ 144 deg (extreme slingshot);
+   // e=3.0 -> deflection ~ 39 deg (gentle drift-by). 1.05..3.0 spans
+   // the full useful range from "violent whip-around" to
+   // "barely-bent drift past".
+   s->v[45]=rnd(&z,1.05,3.0);
+  }
+  // Argument of periapse: 0..2pi draws the periapse direction in the
+  // orbital plane uniformly. Combined with the disk's own tilt this
+  // gives the family a different sweep orientation every launch.
+  s->v[46]=rnd(&z,0,6.2831853);
  }
  // ---------------------------------------------------------------------
  // Audit (revalidation-2026-09-26): every uniform's draw, range, and the
@@ -314,10 +365,10 @@ static void init_blackhole(ModeInfo*m){
  fprintf(stderr,"[diag] blackhole nebula_hue=%.9g nebula_scale=%.9g nebula_coverage=%.9g nebula_yaw=%.9g nebula_tilt=%.9g nebula_offset=%.9g nebula_scheme=%d\n",
   s->v[13],s->v[14],s->v[15],s->v[16],s->v[17],s->v[18],(int)s->v[22]);
  s->started=now();
- fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f path_d_base=%.3f path_d_swing=%.3f path_d_harm_amp=%.3f path_d_harm_freq=%.3f path_o_rate=%.3f path_o_harm_amp=%.3f path_o_harm_freq=%.3f path_o_count=%.2f path_sign=%.0f path_e_swing=%.3f path_e_freq=%.3f path_phase_jitter=%.4f disk_axis=(%.3f,%.3f,%.3f,wobble=%.3f) precess_rate=%.4f camera_family=%d GL=%s\n",
+ fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f path_d_base=%.3f path_d_swing=%.3f path_d_harm_amp=%.3f path_d_harm_freq=%.3f path_o_rate=%.3f path_o_harm_amp=%.3f path_o_harm_freq=%.3f path_o_count=%.2f path_sign=%.0f path_e_swing=%.3f path_e_freq=%.3f path_phase_jitter=%.4f disk_axis=(%.3f,%.3f,%.3f,wobble=%.3f) precess_rate=%.4f camera_family=%d orbit_q=%.4f orbit_e=%.4f orbit_omega=%.3f GL=%s\n",
   s->v[0],s->v[1],s->v[2],s->v[3],s->v[4],s->v[5],(int)s->v[9],s->v[6],(int)s->v[10],s->v[11],s->v[12],s->v[7],s->v[8],s->v[19],s->v[20],s->v[21],
   s->v[23],s->v[24],s->v[25],s->v[26],s->v[27],s->v[28],s->v[29],s->v[30],s->v[31],s->v[32],s->v[33],s->v[34],
-  s->v[35],s->v[36],s->v[37],s->v[38],s->v[42],(int)s->v[43],glGetString(GL_VERSION));
+  s->v[35],s->v[36],s->v[37],s->v[38],s->v[42],(int)s->v[43],s->v[44],s->v[45],s->v[46],glGetString(GL_VERSION));
 }
 static void draw_blackhole(ModeInfo*m){
  State*s=m->data;
@@ -368,6 +419,12 @@ static void draw_blackhole(ModeInfo*m){
  glUniform4fv(s->disk_axis,1,s->v+35);
  glUniform4fv(s->disk_precess,1,s->v+39);
  glUniform1f(s->camera_family,s->v[43]);
+ // Real trajectory family params (zoom-whirl ratio, eccentricity,
+ // periapse direction). Draws are conditional on the family in
+ // init_blackhole; the shader uses whatever values are present.
+ glUniform1f(s->orbit_q,s->v[44]);
+ glUniform1f(s->orbit_e,s->v[45]);
+ glUniform1f(s->orbit_omega,s->v[46]);
  glBindBuffer(GL_ARRAY_BUFFER,s->vbo);
  glEnableVertexAttribArray(0);
  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,0);

@@ -50,6 +50,16 @@ uniform vec4 u_disk_precess;
 // Per-launch trajectory family: 0 = zoom-whirl (bound), 1 = hyperbolic
 // flyby (unbound). Drawn 50/50 so both families actually appear.
 uniform float u_camera_family;
+// Zoom-whirl ratio of angular to radial frequency per radial cycle.
+// Rational q -> exactly periodic closed rosette. Irrational q ->
+// precesses and NEVER retraces. Drawn per-launch; defaults to a
+// value just above 1 for the flyby family (where it is unused).
+uniform float u_orbit_q;
+// Orbital eccentricity (zoom-whirl: 0.15..0.7; flyby: > 1).
+uniform float u_orbit_e;
+// Argument of periapse (radians). The orbit's periapse direction;
+// rotates the swept arc around the focus. Drawn [0, 2pi] per launch.
+uniform float u_orbit_omega;
 #define PI 3.14159265358979323846
 float hash21(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345+u_seed*.00001);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+1.),f.x),f.y);}
@@ -255,65 +265,111 @@ float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t
 void main(){
  vec2 p=(2.*gl_FragCoord.xy-u_resolution)/u_resolution.y/u_radius;
  // Per-launch flight-path parameters replace what used to be hardcoded
- // curve coefficients. The four modes are still distinct *characters*;
- // the magnitudes / harmonics are randomised within each so the specific
- // path varies per launch.
- float phase=u_time*u_orbit_rate*u_path_o_count+u_seed*.000001+u_path_phase_jitter;
+ // curve coefficients. The four modes are gone; replaced by two REAL
+ // trajectory families from orbital mechanics (zoom-whirl for bound,
+ // hyperbolic flyby for unbound). One equation per family gives
+ // unlimited distinct paths from a single per-launch `q` (zoom-whirl)
+ // or eccentricity (both) draw.
+ //
+ // u_camera_family (scalar): 0 = zoom-whirl, 1 = hyperbolic flyby.
+ // u_orbit_q (scalar): zoom-whirl ratio of angular to radial frequency.
+ //   q rational -> closed periodic rosette. q irrational -> aperiodic,
+ //   never repeats. Default 1 (unused for the flyby family).
+ // u_orbit_e (scalar): eccentricity. Zoom-whirl draws [0.15, 0.7];
+ //   flyby draws > 1 in [1.05, 3.0].
+ // Use a SINGLE pass for the unbound flyby (don't multiply phase by
+ // u_path_o_count; that would loop the flyby into back-to-back
+ // identical passes). For bound zoom-whirl, u_path_o_count controls
+ // how many radial cycles the camera traces before wraparound.
+ float phase;
  float orbit,elev,dist,roll=0.,closeFX=0.,arrivalFX=0.;
- if(u_camera_mode<.5){
-  // Diving arc: approach from above, skim the disk, then climb away.
-  // Was: dist=10.5+(3.7+.4*abs(u_approach))*cos(phase);
-  //      orbit=u_approach*(phase*1.18+.28*sin(phase*2.));
-  //      elev=u_inclination+.58*sin(phase*.83);
-  // All four coefficients now come from uniforms; u_approach still scales
-  // the radial swing amplitude.
-  dist=u_path_d_base+(u_path_d_swing+.4*abs(u_approach))*cos(phase)
-      +u_path_d_harm_amp*sin(phase*u_path_d_harm_freq);
-  orbit=u_path_sign*u_approach*(phase*u_path_o_rate
-      +u_path_o_harm_amp*sin(phase*u_path_o_harm_freq));
-  elev=u_inclination+u_path_e_swing*sin(phase*u_path_e_freq);
- }else if(u_camera_mode<1.5){
-  // Banking slingshot: asymmetric radius and a faster sweep at periapsis.
-  // Was: dist=9.8+(3.3+.4*abs(u_approach))*sin(phase)+1.15*sin(phase*2.);
-  //      orbit=u_approach*(phase*1.35-.34*cos(phase));
-  //      elev=u_inclination+.48*cos(phase*1.17);
-  dist=u_path_d_base+(u_path_d_swing+.4*abs(u_approach))*sin(phase)
-      +u_path_d_harm_amp*sin(phase*u_path_d_harm_freq);
-  orbit=u_path_sign*u_approach*(phase*u_path_o_rate
-      -u_path_o_harm_amp*cos(phase*u_path_o_harm_freq));
-  elev=u_inclination+u_path_e_swing*cos(phase*u_path_e_freq);
- }else if(u_camera_mode<2.5){
-  // Polar pass: crosses from one face of the disk to the other.
-  // Was: dist=10.8+(4.+.4*abs(u_approach))*cos(phase*.91);
-  //      orbit=u_approach*(phase+.55*sin(phase*.72));
-  //      elev=u_inclination+.78*sin(phase*.69);
-  // No secondary dist harmonic in the original for this mode; the
-  // amplitude / freq uniforms are still drawn (and will be near zero
-  // when d_harm_amp is small) but the formula deliberately omits a
-  // sin(2*phase) term so the polar-pass character survives.
-  dist=u_path_d_base+(u_path_d_swing+.4*abs(u_approach))*cos(phase*u_path_o_rate);
-  orbit=u_path_sign*u_approach*(phase*u_path_o_rate
-      +u_path_o_harm_amp*sin(phase*u_path_o_harm_freq));
-  elev=u_inclination+u_path_e_swing*sin(phase*u_path_e_freq);
+ if(u_camera_family<.5){
+  // ZOOM-WHIRL: phase is radians of true anomaly, advancing at
+  // orbit_rate*o_count so o_count controls how many radial cycles
+  // fit in the screensaver. Three orbits at q=3 = nine-leaf rosette.
+  phase=u_time*u_orbit_rate*u_path_o_count+u_seed*.000001+u_path_phase_jitter;
+  // ---- ZOOM-WHIRL (bound) ----
+  //
+  // Real relativistic phenomenon with no Newtonian analogue. The
+  // camera zooms out to apoapsis and back, then whirls through
+  // several revolutions at periapsis. q = ratio of angular to radial
+  // frequency per radial cycle. ONE equation gives unlimited distinct
+  // paths; q rational -> closed rosette, q irrational -> aperiodic,
+  // never repeats.
+  //
+  // Parameterise by phase angle u (radians, monotonic with time).
+  //   Radial:        r(u)   = p / (1 + e cos(u - omega))
+  //   Orbital angle: psi(u) = q * (u - omega) + omega
+  // so the camera makes q revolutions per radial cycle, with the
+  // fastest sweep at periapsis.
+  //
+  // p derived from the periapse radius r_p: r_p = p/(1 + e), so
+  // p = r_p (1 + e). u_periapsis is the closest approach in M.
+  float u_=phase;
+  float p_=u_periapsis*(1.+u_orbit_e);
+  float cu=cos(u_-u_orbit_omega);
+  float r_=p_/(1.+u_orbit_e*cu);
+  r_=max(r_,5.5);   // stay outside event horizon
+  float psi=u_orbit_q*(u_-u_orbit_omega)+u_orbit_omega;
+  orbit=u_path_sign*psi;
+  dist=r_;
+  // Elevation oscillation: same parameterisation as before so
+  // per-launch e_swing / e_freq still produce visible variety.
+  elev=u_inclination+u_path_e_swing*sin(u_*u_path_e_freq);
+  // closeFX / arrivalFX used by the integrator for peripheral
+  // distortion; for bound orbits they ride the periapse passages.
+  // closeFX peaks when r is near periapsis.
+  float closeness=1.-clamp((r_-u_periapsis)/(u_periapsis*4.),0.,1.);
+  closeFX=closeness*closeness;
+  arrivalFX=4.*closeFX*(1.-closeFX);
  }else{
-  // Fast arrival, held banked sweep, slower release. Only the envelopes
-  // wrap: accumulated azimuth stays continuous and never backtracks.
-  // tau scales by u_path_o_count so a longer orbit budget produces more
-  // cycles per launch.
-  float tau=u_time*u_orbit_rate*u_path_o_count,cycles=tau/(2.*PI),lap=floor(cycles),q=fract(cycles);
-  float arrival=ease5(.08,.40,q),departure=ease5(.60,.97,q);
-  closeFX=arrival*(1.-departure);
-  arrivalFX=4.*arrival*(1.-arrival);
-  dist=mix(u_path_d_base,u_periapsis,closeFX);
-  // Elevation: u_path_e_swing replaces the hardcoded .57 amplitude; a tiny
-  // per-cycle wobble persists via the path_e_freq multiplier on q.
-  elev=.635-u_path_e_swing*closeFX+.025*closeFX*sin(2.*PI*q*u_path_e_freq);
-  // Orbit: u_path_o_rate replaces the .35 rate; u_path_o_harm_amp replaces
-  // the 2.7 cycle-accumulator gain; sign flips direction.
-  orbit=u_seed*.000001+u_path_sign*u_approach*(u_path_o_rate*tau
-      +u_path_o_harm_amp*(lap+ease5(.27,.73,q)));
-  float bank=ease5(.16,.40,q)*(1.-ease5(.65,.96,q));
-  roll=u_path_sign*2.25*bank;
+  // HYPERBOLIC FLYBY: ONE pass from one asymptote to the other.
+  // u_path_o_count scales how often the sweep repeats (each cycle
+  // is one asymptote-to-asymptote pass). phase = sine of time so
+  // the camera oscillates between asymptotes smoothly without
+  // edge discontinuities; combined with the radial discontinuity
+  // avoidance by clamping `fu` to the asymptote range, this gives
+  // a "bouncing through" flyby that doesn't tear at the wrap.
+  float t=u_time*u_orbit_rate*u_path_o_count;
+  phase=sin(t)+u_seed*.000001+u_path_phase_jitter;
+  // ---- HYPERBOLIC FLYBY (unbound) ----
+  //
+  // Voyager-gravity-assist geometry. Incoming asymptote, periapse,
+  // outgoing asymptote - same speed in and out, deflected through an
+  // angle that depends on eccentricity: deflection = 2*asin(1/e).
+  // Closer periapsis -> greater deflection. One pass, no wrap; the
+  // camera arrives, slings past, and departs. The relative of the
+  // zoom-whirl's infinite whirl count.
+  //
+  // Parameterise by true anomaly f in [-pi, +pi]. r(f) = p/(1+e cos f),
+  // but here e > 1 so r diverges at f = arccos(-1/e) and the
+  // asymptotes are at f = +/- (pi - arcsin(1/e)).
+  //
+  // Map u_ linearly onto [-(pi-d/2), +(pi-d/2)] so we see the full
+  // sweep including a few samples on each asymptote but stay finite.
+  float u_=phase;
+  float deflect=2.*asin(min(1.,1./u_orbit_e));
+  float half_sweep=(PI-deflect*.5)*.95;  // small margin from asymptotes
+  // Wrap u_ to [-half_sweep, +half_sweep] for the camera angle around
+  // the focus (orbital angle psi). The pattern repeats every time
+  // u_ crosses +/- half_sweep, but the path *position* at the same
+  // u_ is always the same, so it looks like the camera flies past
+  // repeatedly with different "phases" of the asymptotic approach.
+  float fu=clamp(u_,-half_sweep,half_sweep);
+  float p_=u_periapsis*(1.+u_orbit_e);
+  float cu=cos(fu-u_orbit_omega);
+  float r_=p_/(1.+u_orbit_e*cu);
+  r_=max(r_,5.5);
+  // For flyby the orbital angle is just fu itself (the focus sees
+  // the camera sweep from one asymptote to the other). Add a small
+  // u_approach offset so two launches of the same e and periapsis
+  // don't sit at the same psi.
+  orbit=u_path_sign*(fu+u_orbit_omega+u_approach*.1);
+  dist=r_;
+  elev=u_inclination+u_path_e_swing*sin(u_*u_path_e_freq);
+  // closeFX = (1+r_p/r) so peak at periapse; arrivalFX rides it.
+  closeFX=1.-clamp(r_/(u_periapsis*8.),0.,1.);
+  arrivalFX=4.*closeFX*(1.-closeFX);
  }
  dist=max(dist,5.4);
  vec3 cam=dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),baseRight=normalize(cross(forward,vec3(0,0,1))),baseUp=cross(baseRight,forward),right=cos(roll)*baseRight+sin(roll)*baseUp,up=-sin(roll)*baseRight+cos(roll)*baseUp;
