@@ -116,3 +116,78 @@ against.
 Stop growing the legacy fixed-function path. No jwxyz/jwzgles migration
 (see `2026-09-25-jwxyz-adoption-design.md` and the GRAEAE consult that
 followed it). New content goes to the new engine or to shader hacks.
+
+## Catalogue metadata schema — era and visual appeal
+
+Operator direction: categorise by **era** and **visual appeal**, surfaced
+in both the engine and the chooser UX.
+
+`hacks.tsv` (downstream, NCZ-owned) extends from 4 columns to 7:
+
+```
+binary | label | family | theme | era | appeal | verified
+```
+
+- **family** (existing): `base` | `hyprsaver` | `rss` | `shadertoy` | `native`
+  — the rendering path.
+- **theme** (existing): Geometry & Fractals, Machines & Objects, Nature &
+  Organic, Space & Sci-Fi, Particles & Physics, Abstract & Psychedelic,
+  Text & Data.
+- **era** (new): `1990s` | `2000s` | `2010s` | `2020s` | `shader`.
+  Sourced from real data — the first copyright year in each hack's
+  upstream source header, not guessed. Extracted across all 319 upstream
+  hacks.
+- **appeal** (new): `showcase` | `standard` | `rewrite` | `archive`,
+  mapping to buckets A / (passing but plain) / C / D above.
+- **verified** (new, per the gate section): `pass` | `needs-work` |
+  `untested`. Only `pass` rows are eligible for the shipped catalogue.
+
+### Measured era distribution
+
+All 319 upstream hacks: 1990s 122, 2000s 121, 2010s 41, 2020s 35.
+
+Our 92 legacy hacks, with pass rate:
+
+| Era | Ours | Pass | Rate |
+|---|---|---|---|
+| 1990s | 7 | 5 | 71% |
+| 2000s | 39 | 26 | 66% |
+| 2010s | 26 | 17 | 65% |
+| 2020s | 13 | 9 | 69% |
+| (no year detected) | 7 | — | — |
+
+**Age does not predict brokenness** — the pass rate is flat across eras.
+That is a useful negative result: the failures are not decay or
+obsolescence, which supports the hypothesis that they are shim defects or
+per-hack porting bugs. Era is therefore a *browsing* dimension, not a
+quality signal, and must not be used to rank or filter by quality.
+
+**The "classics" era is currently near-empty for us.** We ship only 7
+hacks originating in the 1990s (`jigsaw`, `juggler3d`, `lament`,
+`starwars`, `stonerview` passing). The bulk of the 1990s catalogue — 122
+upstream hacks — is the 2D X11 set we never ported and have now decided
+not to chase wholesale. If a browsable "Classics" era is wanted as a
+product feature, it needs deliberate curation of a handful of 2D hacks
+reimplemented on the new engine, not a mass port.
+
+### Chooser UX consequences
+
+This extends the 4-way mode in
+`2026-09-25-screensaver-preferences-design.md` (off / random-all /
+random-category / specific). With era and appeal available:
+
+- **Showcase mode** — random from `appeal=showcase` only. This should be
+  the DEFAULT for a new install: it is the honest answer to "make it look
+  good out of the box", and avoids a first-run impression formed by a
+  small grey object on black.
+- **Browse by era** — a legitimate nostalgia axis ("Classics", "Modern"),
+  presented as a filter, never as a quality ranking.
+- **Browse by theme** — existing axis, unchanged.
+- The picker should show `appeal` as a visual grouping so a user scanning
+  140 entries sees the strong ones first rather than alphabetically.
+- `archive` entries stay out of the shipped catalogue entirely; they are
+  not hidden-but-present, they are absent.
+
+Both new columns are NCZ-owned data. Per the repo boundary recorded in
+the jwxyz design doc, the generic chooser widgets go upstream to
+Singularity while this metadata stays downstream.
