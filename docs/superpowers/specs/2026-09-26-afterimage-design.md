@@ -118,3 +118,55 @@ Astra co-designs the pieces; this document is the brief. Division: Astra
 takes the visual and mathematical design of each piece, Claude takes engine
 integration, the randomisation harness, capture/validation and the acceptance
 gate. Neither ships a piece the operator has not seen run.
+
+---
+
+# Operator curation calls — live session, 2026-09-26
+
+Recorded as made. Measured columns from this session's own capture analysis
+(Hasler-Susstrunk colourfulness C, mean saturation, 24-bin hue entropy,
+coverage; box-counting fractal dimension, Sobel edge density, inter-sample
+motion). `-` means not in our catalogue and never scored.
+
+## KEEP AS-IS — no reimplementation
+
+| target | measured | why |
+|---|---|---|
+| all `hyprsaver` (35) | - | whole family kept, operator directive |
+| all `xshadertoy` (44) | - | whole family kept; includes `synthwavecity` |
+| `cityflow` | C=107.0 sat=0.94 hue=0.83 cov=1.00 | vivid monochrome. Low hue entropy is a narrower hue distribution, NOT a defect -- operator and Astra independently made this correction |
+| other edgy high-colour/low-hue | `geodesic` C=72.4 hue=1.01; `atlantis` C=58.0 hue=0.54; `hexstrut` C=64.8 hue=0.22; `gibson` C=67.2 hue=0.00 | same category: graphic, saturated, deliberately narrow palette |
+
+## REIMPLEMENT AS SHADERS
+
+| target | measured | the upgrade |
+|---|---|---|
+| `cubestorm` | shape=32.3 (highest in catalogue) fracD=1.81 edge=399 C=0.0 | most structurally complex target we have, and literally colourless. Pure form; shading and depth are the whole opportunity |
+| `crackberg` | C=78.7 sat=0.42 hue=2.09 cov=1.00 | procedural fractal terrain, already fills the frame. Raymarched fBm with atmospheric scattering |
+| `crumbler` | - | Voronoi fracture. GPU cell decomposition with real fragment dynamics |
+| `covid19` | C=37.5 hue=1.99 fracD=1.56 motion=18.3 cov=0.13 | spiked virion; only 13% coverage. Raymarched with subsurface scattering. NOTE: must be renamed -- a dated, loaded reference, and our own-names rule applies. Generalise to a radiolarian/spiked-microorganism form |
+| `skyrocket` (rss, cut) | recovered then judged good | fireworks: HDR bloom, per-spark chroma, randomised shell types |
+| `cyclone` (rss, cut) | cov=0.0015 | volumetric vortex; Rankine profile + curl-noise advection |
+
+## NEW — not in our catalogue, never ported
+
+| concept | status | note |
+|---|---|---|
+| Celtic knotwork | strongest third-family candidate | plane-filling by construction, so it answers the coverage problem natively; passes a grayscale test by definition since structure IS the content; published construction (Mercat) so clean-room is straightforward. Risk: inert line art -- needs a real temporal contract |
+| molecules + periodic table | operator request | see below; splits into two pieces |
+| `cwaves` | probe, must earn admission | strict sinusoid superposition -- hard banding and beat nodes. Distinct in MECHANISM from our noise-based cohort (aurora, caustics, clouds, gridwave, marble, plasma, driftclouds, hexplasma) though adjacent in palette. Cut it if grayscale reveals only another soft gradient |
+
+### Molecules and the periodic table — two pieces, not one
+
+- **Molecules.** Ball-and-stick / space-filling from published coordinates.
+  CPK colours and covalent radii are factual data, not copyrightable.
+- **Elements.** A lone atom is a sphere and visually inert. The beautiful
+  object is the ORBITAL -- hydrogenic wavefunctions are spherical harmonics
+  times a radial term, giving the s/p/d/f lobe geometry. Real physics,
+  genuinely mathematical, and directly adjacent to the surface-math family
+  that measured strongest. This is the better periodic table piece.
+
+Open question for the lock-screen rule: element symbols and atomic numbers are
+text. The standing rule bars hostname/username/IP/numbers -- aimed at PRIVATE
+information. Element labels disclose nothing, but the rule needs an explicit
+carve-out rather than a silent exception.
