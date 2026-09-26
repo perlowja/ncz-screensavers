@@ -874,6 +874,94 @@ foreach s : xshadertoy_shaders
 endforeach
 
 # -----------------------------------------------------------------------
+# Round 19 — gl-transitions shader port (vendor/gl-transitions/,
+# 123 MIT / 1 BSD-3-Clause / 1 BSD-2-Clause; per-file Author +
+# License headers preserved; see vendor/gl-transitions-PORTED.md).
+#
+# 125 transition shaders vendored from gl-transitions/gl-transitions
+# upstream commit 902218a (2026-09-25). One generic driver
+# (`src/gles3_transitions.c`) is reused for all 125 via -D flags —
+# the same shape as the xshadertoy driver above. Each transition
+# compiles to one executable `gles3_transition_<name>_gles3`.
+# Shaders install to /usr/share/ncz-screensavers/shaders/ alongside
+# the other shader resources; the driver resolves them by searching
+# build tree, then that absolute path. The "from /" launch path is
+# exercised in evidence capture.
+#
+# Note: a transition is *not* a screensaver — see
+# docs/superpowers/specs/2026-09-25-screensaver-family-doctrine.md
+# for why. The driver binary is built and shipped as a transition
+# infrastructure layer; it is exercised via NCZ_FRAME_DUMP-driven
+# evidence captures and integrated with the chooser rotation /
+# neonspacewar mode-switch path (separate commits).
+# -----------------------------------------------------------------------
+
+gles3_transitions_list = [
+    'AdvancedMosaic', 'angular', 'BlockDissolve', 'BookFlip', 'Bounce',
+    'BowTieHorizontal', 'BowTieVertical', 'BowTieWithParameter', 'Box',
+    'burn', 'burn0', 'ButterflyWaveScrawler', 'cannabisleaf',
+    'chessboard', 'circle', 'CircleCrop', 'circleopen', 'colorphase',
+    'ColourDistance', 'coord-from-in', 'CrazyParametricFun',
+    'crosshatch', 'crosswarp', 'CrossZoom', 'cube', 'DefocusBlur',
+    'Directional', 'directional-easing', 'DirectionalScaled',
+    'directionalwarp', 'directionalwipe', 'displacement', 'dissolve',
+    'DoomScreenTransition', 'doorway', 'Dreamy', 'DreamyZoom',
+    'Drop_Zone_Flicker', 'EdgeTransition', 'fade', 'fadecolor',
+    'fadegrayscale', 'FilmBurn', 'flyeye', 'Fold', 'fragment',
+    'GlitchDisplace', 'GlitchMemories', 'GridFlip', 'heart',
+    'hexagonalize', 'HorizontalClose', 'HorizontalOpen', 'HSVfade',
+    'InvertedPageCurl', 'kaleidoscope', 'LeftRight', 'LinearBlur',
+    'luma', 'luminance_melt', 'morph', 'Mosaic', 'mosaic_transition',
+    'multiply_blend', 'old_tv_lost_signal', 'Overexposure',
+    'parametric_glitch', 'perlin', 'pinwheel', 'pixelize',
+    'polar_function', 'PolkaDotsCurtain', 'powerKaleido', 'PuzzleRight',
+    'Radial', 'randomNoisex', 'randomsquares', 'Rectangle',
+    'RectangleCrop', 'Revolve_Left', 'ripple', 'Rolls',
+    'rotate_scale_fade', 'RotateScaleVanish', 'rotateTransition',
+    'scale-in', 'SimpleFlip', 'SimpleZoom', 'SimpleZoomOut', 'Slides',
+    'splitSlideInHorizontal', 'splitSlideInOutHorizontal',
+    'splitSlideInOutVertical', 'splitSlideInVertical',
+    'splitSlideOutHorizontal', 'splitSlideOutVertical', 'squareswire',
+    'squeeze', 'StarWipe', 'StaticFade', 'static_wipe', 'StereoViewer',
+    'StripDatamoshGlitch', 'swap', 'Swirl', 'tangentMotionBlur',
+    'TilesWave', 'TopBottom', 'TVStatic', 'undulatingBurnOut',
+    'VerticalClose', 'VerticalOpen', 'WaterDrop', 'wind',
+    'windowblinds', 'windowslice', 'wipeDown', 'wipeLeft', 'wipeRight',
+    'wipeUp', 'x_axis_translation', 'ZoomInCircles', 'zoomInOut',
+    'ZoomLeftWipe', 'ZoomRigthWipe',
+]
+assert(gles3_transitions_list.length() == 125,
+       'gles3_transitions_list must contain exactly 125 transitions')
+
+foreach t : gles3_transitions_list
+    install_data('vendor/gl-transitions/transitions/' + t + '.glsl',
+                 install_dir: shader_install_dir,
+                 install_tag: 'runtime-shaders')
+    # Hyphens in upstream basenames (`coord-from-in`,
+    # `directional-easing`, `scale-in`) break C identifiers — the
+    # driver .c uses HACK_PREFIX for the display name and
+    # HACK_PREFIX_ID for the C-symbol stem. Same substitution pattern
+    # as the xshadertoy foreach above for `bestill0-0` etc.
+    t_id = t.replace('-', '_')
+    executable(
+        'gles3_transition_' + t + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_transitions.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DTRANSITION_FILE="@0@.glsl"'.format(t),
+            '-DHACK_PREFIX=gles3_transition_@0@'.format(t),
+            '-DHACK_PREFIX_ID=gles3_transition_@0@'.format(t_id),
+            '-DHACK_TABLE=gles3_transition_@0@_xscreensaver_function_table'.format(t_id),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
 # Round 15 — RSS-SDL2-GLES2 port (vendor/rss-sdl2-gles2-src/, Apache-2.0
 # wrapper/port layer; per-saver .cpp files keep their original GPL-2.0
 # Terence Welsh "Really Slick" headers — see PORTED.md §14).
