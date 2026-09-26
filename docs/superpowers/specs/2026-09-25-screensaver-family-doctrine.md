@@ -99,3 +99,34 @@ Report per tier, naming the GPU: mean frame time, frame-time variance or
 1% low, and the parameters behind each number (grid resolution, segment
 count, march steps, entity counts). State plainly which tier you consider
 the reference and whether it holds up.
+
+### Correction: the reference target is 2016-era discrete, not 2019
+
+Operator, same day: *"2016 GPUs can handle this."* Correct, and the
+reference target moves down accordingly.
+
+| Role | Hardware | Expectation |
+|---|---|---|
+| **Reference target** | **2016-era discrete — NVIDIA Pascal (GTX 1060 and up), AMD Polaris (RX 480 and up)** | The piece runs in full. Design here. |
+| Also in scope | CIX Sky1 Mali-G720 (the NCZ-OS arm64 boards) | Must run well; verify rather than assume, it is a different architecture with different bottlenecks |
+| Headroom | 2019+ discrete and newer | Room to push. Never the baseline. |
+| **Floor** | Intel UHD CML GT2 and contemporaries | Must run, reduced tier permitted |
+
+A GTX 1060 is roughly 4.4 TFLOPS FP32 with full GL 4.5 and Vulkan. A 64³
+fluid simulation with a volumetric raymarch is not close to its limit.
+**Do not design defensively against hardware of this class** — it is not
+the constraint, and treating it as one produces timid work.
+
+The practical consequence: choose the ambitious technique. A volumetric
+voxel simulation, a dense line budget, expensive optics — a Pascal or
+Polaris part handles all of it. Reserve tier reductions for the Intel
+floor, and stop trimming the design to protect hardware that does not
+need protecting.
+
+**Note on the arm64 boards.** NCZ-OS ships on CIX Sky1 with Mali-G720,
+which is the primary platform for this distribution rather than an
+afterthought. It is a capable part but a different architecture —
+tile-based deferred rendering, different bandwidth and different
+behaviour under heavy fragment work. Do not extrapolate its performance
+from the x86 numbers in either direction. Measure it when the hardware is
+available, and say so explicitly if it was not.
