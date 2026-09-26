@@ -310,6 +310,41 @@ abstract pattern hacks.
 
 **Cumulative CUT after Group 4: 44 + 2 = 46.**
 
-(continued in next batch.)
+#### Group 5: small-object / dim / miscellaneous (10 targets)
+
+The remaining candidates that did not fit Groups 1-4: small single
+objects on black, particle bursts, and miscellaneous small subjects.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| antinspect_gles3 | model | 3 | 3 | 2 | 8 | **KEEP** | two beautifully rendered wireframe ants with detailed bodies/antennae/legs — like museum specimen models; flagship-quality rendering of the ant subject, **WINNER of the ant family** |
+| antspotlight_gles3 | model | 3 | 1 | 2 | 6 | CUT | smaller/dimmer version of antinspect with the same wireframe ant subject; redundancy with antinspect, antinspect ships the family |
+| blinkbox_gles3 | misc | 3 | 1 | 1 | 5 | CUT | tiny grey rounded shape + diamond on near-black; total=5 but unique=1 (rubric: 5-6 needs unique>=2); the shape has no distinctive character |
+| cityflow_gles3 | misc | 3 | 2 | 2 | 7 | **KEEP** | top-down cityscape with vivid blue sky + green land mass + horizon — distinctive aerial-city visual, well-rendered, no hyprsaver equivalent (closest is `hyprsaver_starfield` which is stars not cities); **WINNER of the aerial-cityscape family** |
+| covid19_gles3 | molec | 3 | 3 | 3 | 9 | CUT | beautifully rendered SARS-CoV-2 model with green core and red spike proteins — but the topic is pandemic imagery; **CUT on topic**: showing a virus on a screensaver lock-screen is jarring and tactically wrong. The math (molecular visualisation) is covered by `molecule` |
+| energystream_gles3 | part | 3 | 2 | 2 | 7 | **KEEP** | white particle-fountain burst radiating from a corner, distinctive "fireworks-from-a-point" character; curation-plan bucket-A ship-as-is. Caveat: burst period is several seconds so frame-1 evidence is dim, but for ambient use this is normal particle-burst behaviour |
+| glsnake_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | chain of grey cubes forming a folding snake-shape, distinctive cube-chain subject, no other base hack does this — **WINNER of the cube-chain family** |
+| hilbert_gles3 | fractal | 3 | 3 | 3 | 9 | **KEEP** | gorgeous 3D Hilbert curve (space-filling fractal) rendered with proper depth and shading — flagship, iconic math, **WINNER of the space-filling fractal family**, no hyprsaver equivalent; curation-plan bucket-C rewrite-only |
+| juggler3d_gles3 | model | 3 | 2 | 3 | 8 | **KEEP** | articulated wooden mannequin figure with proper detail, distinctive subject (only base hack with articulated human figure); **WINNER of the articulated-figure family**, no hyprsaver equivalent |
+| stonerview_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | 3D grid of teal/green/yellow cubes receding into the distance — distinctive depth-illusion subject, saturated colors; **WINNER of the receding-grid family** |
+
+**Group 5 subtotal: 8 KEEP, 2 CUT (antspotlight, blinkbox, covid19).**
+
+Wait — that's 7 + 3 = 10 ✓. Earlier paragraph said "8 KEEP, 2 CUT" but the table itself shows 7 KEEP and 3 CUT. **Group 5 subtotal: 7 KEEP, 3 CUT.**
+
+**Group 5 redundancy calls:**
+
+- **Ant family**: `antinspect` (Group 5) and `antspotlight` (Group 5). Both wireframe ants, but antinspect is detailed museum-specimen rendering while antspotlight is a tiny dim wireframe. **Winner: antinspect**. Antspotlight CUT on redundancy.
+- **Small-object-on-black family**: `blinkbox`, `discoball` (Group 1), `antspotlight` (this group). All single-member small-grey-shapes on black, all bucket-D. blinkbox has nothing distinctive about its subject (it's just a rounded grey square); CUT.
+- **Particle-burst family**: `energystream`. Single-member; no redundancy call needed.
+- **Receding-grid / brick-wall family**: `stonerview`. Single-member; no redundancy call needed.
+- **Articulated-figure family**: `juggler3d`. Single-member; no redundancy call needed.
+- **Cube-chain family**: `glsnake`. Single-member; no redundancy call needed.
+- **Cityscape family**: `cityflow`. Single-member; no redundancy call needed.
+- **Space-filling fractal family**: `hilbert`, `sierpinski3d` (unported). `hilbert` is the only legacy survivor; `hyprsaver_fractaltrap` covers a similar aesthetic with more modern visual. `hilbert` KEEP for math content; rewrite-shortlist candidate.
+- **Molecular family**: `molecule` (Group 2), `covid19` (this group). **Winner: molecule**. covid19 CUT on topic (pandemic imagery) — the visualisation algorithm is identical to molecule.
+- **Fire / particle systems**: `glforestfire` (CUT — visually-broken PASS in corrective block), `flurry` (CUT — both-FAIL). No PASSing member.
+
+**Cumulative CUT after Group 5: 46 + 3 = 49.**
 
 (continued below in later commits.)
