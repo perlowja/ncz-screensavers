@@ -432,7 +432,7 @@ static void fade_copy_pass(State *s, float t){
     glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
@@ -456,6 +456,12 @@ static void scene_pass(State *s, float t){
     glBindFramebuffer(GL_FRAMEBUFFER, cur_fbo);
     glViewport(0, 0, w, h);
     glDisable(GL_DEPTH_TEST);
+    /* Clear the FBO to opaque black so we don't read the faded trail
+     * (which on the first frame is undefined/zero) and try to mix it
+     * with new geometry in a way that produces darkness. The trail
+     * builds up from frame 2 onwards. */
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(s->program);
 
     glUniform1f(s->u_time, t);
@@ -511,7 +517,7 @@ static void scene_pass(State *s, float t){
     glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
@@ -534,7 +540,7 @@ static void blit_pass(State *s){
     glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
