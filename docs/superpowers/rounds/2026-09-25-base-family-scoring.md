@@ -279,6 +279,37 @@ asked "what does the legacy path still do well?".
 
 **Cumulative CUT after Group 3: 44 (no additional CUTs).**
 
+#### Group 4: mechanical / knot / boids / tunnel / abstract pattern (10 targets)
+
+A mixed group of ten that did not fit Groups 1-3: mechanical subjects
+(gears, cubes), math (knots), life-simulation (boids), tunnels, and
+abstract pattern hacks.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| geodesicgears_gles3 | mach | 3 | 3 | 3 | 9 | **KEEP** | intricate interlocking gears arranged on a geodesic sphere surface, rendered in saturated maroon/red — flagship, distinctive mechanical+geodesic subject, **WINNER of the gears+geodesic family** (alongside `geodesic` and `moebiusgears`); no hyprsaver equivalent |
+| gibson_gles3 | geom | 3 | 2 | 2 | 7 | **KEEP** | grid of small blue translucent cubes floating in the lower-right area, saturated blue, distinctive; the bottom-half-only composition is unusual — wins over cubestack/cubestorm/papercube on saturation |
+| glknots_gles3 | geom | 3 | 3 | 3 | 9 | **KEEP** | gorgeous white torus-knot, centered, full 3D depth — flagship, iconic math, **WINNER of the knot family**, no hyprsaver equivalent; curation-plan bucket-C rewrite-only |
+| glschool_gles3 | part | 3 | 2 | 3 | 8 | **KEEP** | flock of small white/grey fish silhouettes swimming together in the right half — beautiful boids motion, the iconic flocking algorithm; **WINNER of the boids family**, curation-plan bucket-B rewrite (modern upside: trails + bloom) |
+| boing_gles3 | mach | 3 | 2 | 2 | 7 | **KEEP** | red-and-white checker-pattern sphere bouncing in a purple-walled room, Bounce/Tron-aesthetic — charming, distinctive, **WINNER of the bouncing-ball family**, no other base hack does this |
+| blocktube_gles3 | tunnel | 3 | 3 | 2 | 8 | **KEEP** | GORGEOUS complex blocky tunnel receding into infinity, full-frame, strong motion signature — flagship-class tunnel, **WINNER of the tunnel family** alongside `hyprsaver_tunnel`; distinct from the shader tunnel in character (blocky industrial vs. smooth vortex) |
+| razzledazzle_gles3 | geom | 3 | 2 | 3 | 8 | **KEEP** | M.C. Escher-style overlapping geometric shapes / WWI dazzle-camouflage pattern, distinctive and historically interesting; curation-plan bucket-A ship-as-is |
+| squirtorus_gles3 | geom | 3 | 2 | 3 | 8 | **KEEP** | gold Saturn-like disc with gold-volcano fountain spraying upward (after the 2026-09-25 colour fix); distinctive, second shot shows the spray evolving; curation-plan bucket-A ship-as-is |
+| flyingtoasters_gles3 | mach | 3 | 1 | 1 | 5 | CUT | iconic 1989 After Dark classic, but the GL port renders tiny grey toasters occupying only the right 30% of the frame; visual=1, bucket-D, the historic IP alone does not earn a ship slot when modern hyprsaver covers the energy |
+| crumbler_gles3 | geom | 3 | 2 | 1 | 6 | CUT | single faceted grey polygon mesh — recognizable but the math offers nothing that klein/romanboy/projectiveplane/sphereeversion don't already show in more detail and with more saturation; curation plan flags it as bucket-D candidate |
+
+**Group 4 subtotal: 8 KEEP, 2 CUT.**
+
+**Group 4 redundancy call:**
+
+- **Gears family**: `geodesicgears`, `moebiusgears` (Group 2), `gears` (CUT — visually-broken PASS). Both winners are mechanically distinct (gear cluster on geodesic sphere vs. Möbius-strip twist) — no redundancy, both KEEP.
+- **Tunnel family**: `blocktube`, `timetunnel` (CUT — both-FAIL). `blocktube` is the only legacy tunnel that PASSes; `hyprsaver_tunnel` is the modern equivalent but the blocky-industrial character is distinct from the smooth shader tunnel. KEEP.
+- **Cube family already called in Group 1**.
+- **Polyhedron / mesh family**: `crumbler`, `gears` (CUT), `kallisti` (CUT — visually-broken PASS), `nakagin` (CUT — visually-broken PASS), `dangerball` (CUT — visually-broken PASS). Of the surviving polyhedra/meshes (`polyhedra-gl` from Group 1, `lament` from Group 2, `kaleidocycle` from Group 1), the math is already covered by the surface-math family. `crumbler` adds nothing new.
+- **Boids family**: only `glschool`. KEEP.
+
+**Cumulative CUT after Group 4: 44 + 2 = 46.**
+
 (continued in next batch.)
 
 (continued below in later commits.)
