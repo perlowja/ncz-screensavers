@@ -1,277 +1,376 @@
 # neonspacewar — design
 
 **Date:** 2026-09-25
-**Status:** operator-directed. Phase 1 (self-playing vector rock shooter)
-built and validating; this document specifies the phase-2 redirect into a
-self-playing multi-faction space battle, plus the astrophysical hazard
-arena and the race-design/visual-language direction that followed.
-
-Sibling documents: `2026-09-25-genxvectorcade-design.md` (shared optics,
-stroke model, quality ladder), `2026-09-25-platform-abstraction-rule.md`.
+**Status:** operator-directed, consolidated. Supersedes the layered addenda
+that accumulated during dispatch; this is the single coherent spec the
+phase-2 agent works from.
 
 ---
 
-# neonspacewar phase 2 — turn it into a self-playing space battle
+# neonspacewar — self-playing vector space battle
 
-Repo `~/Projects/ncz-screensavers` on this host. `git pull origin master`.
-Phase 1 (the self-playing rock shooter you just built) is the foundation —
-keep the vector rendering, the trail/bloom optics, the autonomous pilot AI
-and the RNG-seeding work. This phase changes what the pilot is doing.
+Repo `~/Projects/ncz-screensavers` on this host. `git fetch origin && git
+rebase origin/master` FIRST and work from whatever landed, including files
+phase 1 created after this was written.
 
 **Never use /tmp** -- use `~/build-tmp/`. Git identity: Jason Perlow
 <jperlow@gmail.com>. Push origin, gitlab-ncz, argonas. Other agents are
-active in this repo: `git fetch && git rebase origin/master` immediately
-before EVERY push, check `git branch --show-current` before committing,
-never force-push. Every commit ends:
+active in this repo: rebase immediately before EVERY push, check `git
+branch --show-current` before committing, never force-push. Every commit
+ends:
 ```
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PtHg952vKo7Y6ceAonNRXU
 ```
 
-## The change in direction
+Companion docs in the repo, read them:
+`docs/superpowers/specs/2026-09-25-neonspacewar-design.md`,
+`2026-09-25-genxvectorcade-design.md` (shared stroke model, phosphor
+decay, quality ladder), `2026-09-25-platform-abstraction-rule.md`.
 
-Operator: *"Neon asteroids should be a space battle type environment,
-randomized engagements between alien races. Give them different weapons.
-I'm envisioning the old 'Star Trek' arcade game. Or 'Spacewar'. But more
-colorful and modern shader effects. Minterized."*
+---
 
-So: **not a lone ship shooting rocks. A randomized multi-party space
-battle that plays itself**, in the lineage of the 1962 PDP-1 two-ship
-duel and the vector-graphics space combat cabinets that followed it —
-rendered with modern shader work and psychedelic colour.
+## BUILD ORDER — read this before planning
 
-**Naming/trademark rule, strict:** no third-party trademarks, brand,
-product-line, franchise or manufacturer names anywhere — not in code,
-comments, docs, diagnostic strings, asset names, or commit messages. The
-references above describe the *feel* we want; they must not appear in the
-artifact. Invent original faction names. "Minterized" describes an
-aesthetic — extreme saturation, layered feedback, gleeful excess,
-animal-and-geometry iconography, colour cycling that borders on too much
-— implement the aesthetic, never the name.
+This is a large spec. A previous dispatch on a large spec spent 89
+minutes and 115 tool calls exploring and made zero edits. Do not do that.
 
-## What to build
+**Make your first file edit within 15 tool calls.** If you cannot, stop
+and report what is blocking you.
 
-### Factions — randomized per launch
-3 to 5 factions per engagement, generated from a seed rather than
-hardcoded. Each gets its own:
-- **Hull language.** Distinct vector silhouette grammar — angular wedges,
-  radial/mandala symmetry, organic curves, segmented crystalline forms,
-  insectile. Procedurally generated from faction parameters so no two
-  runs field identical designs.
-- **Palette.** A faction reads instantly by colour before shape resolves.
-- **Weapon.** This is the operator's explicit ask and the main source of
-  visual variety. Give each a genuinely different projectile with
-  different tactical behaviour AND different optics:
-  - straight-line bolts with hard cores and long halos
-  - homing swarms that arc and jostle
-  - beams that persist and sweep, carving trails
-  - spreads/shotguns
-  - mines and delayed area bursts
-  - chain/arc lightning jumping between nearby targets
-  - slow heavy plasma with strong bloom and knockback
-  Randomize which faction has which, and randomize weapon parameters
-  within a type. Weapon variety must be visible at a glance.
-- **Flight behaviour.** Aggressive brawler, cautious sniper, swarming
-  skirmisher, ponderous capital ship. Behaviour should be readable from
-  motion alone.
+Work in this order, committing and pushing each step as it completes:
 
-### The engagement
-- A **gravity well** at or near field centre, in the original duel's
-  spirit: it curves trajectories, pulls in wreckage and slow projectiles,
-  and gives the field a focal point. Ships use it — slingshots, orbits.
-  Make it visually gorgeous (lensing, accretion glow) since we already
-  have blackhole shader work in this repo to borrow technique from.
-- **Hyperspace jumps** as an escape/re-entry mechanic, with a real visual
-  event on both ends.
-- Randomized engagement setup per launch: faction count, numbers per
-  side, alliances (two factions may gang up on a third), arena
-  parameters. The operator's standing direction for this whole family is
-  *different every time it runs*.
-- **Engagements resolve and restart.** When a side wins, run a short
-  aftermath (drifting wreckage, cooling debris, the victor's formation
-  reforming), then seed a fresh engagement with new factions. It should
-  never dead-end into an empty field.
+1. **Rename** (below) — its own commit, first, nothing else in it.
+2. **Stroke renderer** — the single highest-value piece. Get gorgeous
+   glowing vector strokes with per-channel phosphor persistence working
+   against the existing phase-1 entities before adding anything new.
+3. **One race pair fighting** — two generated races, two distinct
+   weapons, one special ability each, in the existing arena.
+4. **One hazard** — the gravity well, since the arena already needs it.
+5. **Then** expand: more races, more hazards, engagement lifecycle.
 
-### Pacing — a screensaver, not a game
-No player, no score, no HUD, no text of any kind. The AI drives both
-sides and should be tuned for *watchability*: sustained readable action,
-varied tempo, near-misses, moments where the field thins and then
-re-escalates. Your phase-1 pacing work (preferring kills that keep the
-field interesting) applies directly — extend the same thinking to
-avoiding both stalemate and instant wipeout.
+Do not build the full roster and hazard set before anything is on screen.
 
-### Optics — where "Minterized" lives
-- Heavy additive layering, feedback trails, chromatic separation.
-- Per-channel phosphor decay so colour lingers differently by channel.
-- Explosions as real events: flash, shockwave ring, radial debris, a
-  lingering glow pool.
-- Palette cycling and hue drift over the course of an engagement.
-- Push saturation hard. Restraint is the failure mode for this piece.
+---
 
-## Safety — non-negotiable
-No sustained full-field luminance flashing in the ~3-30 Hz band. This
-piece is full of explosions, so this is a real constraint, not a
-formality: **average frame brightness is not a sufficient test** — local
-regions can flash while cancelling globally, and saturated-red
-transitions need separate attention. Clamp the rate and extent of
-full-field flashes, validate captured output spatially as well as
-temporally under worst-case dense combat, and report how you bounded it.
+## 1. FIRST COMMIT: rename to `neonspacewar`
 
-## Platform abstraction
-Per `docs/superpowers/specs/2026-09-25-platform-abstraction-rule.md`:
-pure C + GLSL ES 3.00, no platform headers, no POSIX-only calls in hack
-code. Time/seed/asset-path go through the platform interface.
+Phase 1 shipped as `neonasteroids`, a placeholder from when this was a
+rock shooter. It is now a space battle and the name is wrong.
 
-## Performance
-Target under 33 ms on Intel UHD. Scale projectile counts, ship counts and
-post-processing by a quality level rather than shipping a stutter. Report
-frame times on Intel UHD, NVIDIA RTX 2060 and AMD Navi14 (hosts and PRIME
-env vars as in your phase-1 brief — confirm the `RENDERER=` line, a full
-sweep was once wasted by silently running on the wrong GPU).
+`git mv src/gles3_neonasteroids.c src/gles3_neonspacewar.c`, rename any
+`vendor/neonasteroids/` directory and shaders, update the meson target,
+installed binary name, installed shader path and `install_data` rules.
+Then `grep -rn neonasteroids .` across the whole tree and fix every hit —
+source, meson, docs, `PORTED.md`, validation lists, curation docs, diag
+strings, capture filenames referenced in prose. Update phase 1's roundup
+doc prose; do not rewrite history or force-push.
 
-## Evidence required
+---
+
+## 2. What this is
+
+A **self-playing multi-faction space battle**, in the lineage of the 1962
+PDP-1 two-ship duel and the vector space-combat cabinets that followed.
+No player, no score, no HUD, no text of any kind, ever. The AI drives
+every side and is tuned for watchability.
+
+Keep from phase 1: the vector rendering, trail and bloom optics, the
+autonomous pilot AI, RNG seeding and `[diag]` logging, the asteroid
+field.
+
+---
+
+## 3. THE LOOK — this is a vector piece, and the vector work is the point
+
+**Vector line art is the language.** Gratuitous, luxuriant linework is
+the goal — period hardware had a hard budget in line segments per frame;
+we do not. Spend what it could only dream of, and make the spending
+visible.
+
+- **Dense structured hulls** — not outline silhouettes. Internal ribs,
+  spars, lattices, engineering detail. A ship rewards looking closely.
+- **Stroke quality is the craft.** Sharp bright core, soft exponential
+  halo (`exp(-q*q)`, avoids a blur pass), properly antialiased at every
+  scale, width and intensity varying with depth, velocity and damage.
+  A great stroke renderer is most of this piece's quality.
+- **Transparency and overlap as aesthetic.** Wireframes are see-through;
+  overlapping geometry gives interference and moiré. Compose for it —
+  ships should look best passing through each other's structure.
+- **Long luxurious persistence**, per-channel phosphor decay so tails
+  shift hue as they fade (blue lingers).
+- **Everything is lines** — hulls, projectiles, hazard structure, debris,
+  gravity-well field lines, wormhole rims, an arena lattice. Even nebulae
+  read as accumulated stroke density where you can manage it.
+- **Depth through line behaviour**, not shading. Near: bright, thick,
+  saturated. Far: thin, dim. No shaded solids.
+- **Explosions are structural disassembly** — a hull comes apart into its
+  actual segments, which tumble, fade and get pulled by gravity. Do not
+  substitute a particle puff; the disassembly is the money shot.
+- **Peak density should be near-overwhelming**, then breathe back down.
+
+**Raster-era accents, sparingly, on arena furniture only:** pinball-style
+chasing lamp arrays and bumper geometry rimming a hazard, occasional
+filled shapes where the effect demands light rather than surface. These
+must never compete with the linework.
+
+**No scanlines.** Vector tubes have none and we are not simulating a
+specific display.
+
+**Colour:** hard saturated primaries on black as the base register — pure
+reds, cyans, magentas, yellows against void — with aggressive palette
+cycling and hue drift moving away from it over an engagement. Maximal
+colour, disciplined form. Restraint in colour is the failure mode.
+
+### Synthesis, not pastiche — the hardest requirement here
+
+**No single source may be identifiable.** If a viewer can point at the
+screen and name a specific game, that is a defect. The target is:
+
+> Someone who spent their childhood in arcades in the early 1980s looks
+> at this and **smiles before they can say why.** It feels like a place
+> they have been. They cannot name it, because it never existed.
+
+Recognition is failure; recollection is the goal. Aim at the room — the
+hum and glow of a dark hall full of cabinets, attract-mode reverie, the
+feeling of watching rather than playing — not at any one cabinet's
+screen.
+
+So: blend techniques *within a single frame*, never sequence them as
+set-pieces. Break every borrowed technique deliberately — take a receding
+tube perspective but let it drift or invert; take a dense swarm but give
+it behaviour no period hardware could run. A technique used exactly as
+its source used it reads as a quote; pushed past its original limits it
+reads as a memory. Avoid any signature gesture reproduced whole; if an
+element only works because it is recognisable, cut it.
+
+Let the generated content dominate. The period vocabulary is the medium,
+not the subject. If the style is the most interesting thing on screen,
+the balance is wrong.
+
+**Trademark rule, absolute:** no game title, franchise, species,
+character, developer, publisher or manufacturer name anywhere in the
+artifact — code, comments, docs, diag strings, asset or capture
+filenames, commit messages. No near-miss spellings. This is an artistic
+requirement as much as a legal one: a namable reference breaks the spell.
+
+---
+
+## 4. The races
+
+Generate a **pool of 8-12 races per launch**, field 3-5 in the
+engagement. Persist nothing between runs — a new universe each launch.
+
+Generate along **independent axes** and let combinations produce the
+weirdness:
+
+- **Substrate** (drives silhouette): crystalline/mineral, gaseous,
+  insectile/chitinous, plant or fungal, aquatic, uplifted animal,
+  synthetic/machine, hive or colony organism, energy being, something
+  incomprehensible.
+- **Social posture** (drives flight behaviour and targeting): zealot,
+  merchant, coward, predator, parasite, jester, hedonist, ascetic,
+  enslaved, enslaver, isolationist, dying remnant, expansionist swarm.
+- **Technological idiom** (drives hull and weapon grammar): grown organic
+  hulls, welded scrap, elegant minimal geometry, baroque ornament, brute
+  mass, crystalline lattice, swarm of identical small units, one enormous
+  slow thing.
+- **Combat role**: glass cannon, tank, swarm, sniper, denier,
+  area-control, hit-and-run.
+
+Draw one per axis, reject incoherent combinations, name from an invented
+phonology.
+
+**Each race gets a primary weapon AND a distinct special ability.** The
+special is what gives it character — a different *verb*, not a damage
+modifier, describable without numbers. Invent your own; examples of the
+kind: teleport to a random point; split into autonomous sub-craft; deploy
+a persistent turret or minefield; brief invulnerability but cannot fire;
+drag a tethered mass to swing into enemies; reverse gravity locally; fire
+backwards so it fights while fleeing; consume debris to repair; emit a
+cone that reflects incoming fire.
+
+Weapons must be visually distinct at a glance: hard-cored bolts, homing
+swarms that arc and jostle, persistent sweeping beams that carve trails,
+spreads, delayed area bursts, chain lightning jumping between targets,
+slow heavy plasma with knockback.
+
+**Deliberately unbalanced in interesting ways.** Glass cannons, swarms,
+tanks, cowards. Watchability comes from mismatched matchups, not
+fairness. At least one race per engagement should be **structurally
+ridiculous** — absurdly large, absurdly fragile, fighting backwards, made
+of something that should not fly. Comedy is part of this.
+
+**Personality in behaviour** — a coward keeps range and flees at low
+health, a zealot charges, a hoarder farms debris. Behaviour is
+characterisation.
+
+Silhouettes must be distinguishable **as line art at small scale** —
+harder than distinguishing sprites. A capture at 25% scale should still
+separate the races.
+
+The director should prefer matchups whose axes contrast over mirror
+matches.
+
+---
+
+## 5. The arena
+
+Keep the asteroid field — terrain the battle is fought through. Ships
+dodge rocks, rocks shatter under fire, debris becomes new hazards.
+
+Add **1-3 astrophysical hazards** per engagement, randomly chosen, each a
+real tactical element with real optics:
+
+- **Black hole** — lensing, accretion glow, an event horizon that
+  destroys what crosses it. Borrow technique from the existing
+  `blackhole` shader work in this repo rather than reinventing it.
+  Slingshot-able.
+- **Neutron star** — small, blinding, extreme local gravity, with a
+  rotating pulsar beam that sweeps the field and damages what it crosses.
+- **Quasar** — relativistic jets as a traversal hazard; its light washes
+  and tints the whole field.
+- **Nebula / ion cloud** — occludes, scatters weapon light, degrades
+  homing.
+- **Magnetar or plasma storm** — periodic field-wide discharge arcing
+  between ships and rocks.
+- **Wormhole pair** — entities crossing one emerge from the other.
+
+**A gravity well at or near field centre** in the original duel's spirit:
+curves trajectories, pulls in wreckage and slow projectiles, gives the
+field a focal point. Gravity from every massive body composes onto ships,
+projectiles and debris alike.
+
+**Hazards must be tactically real.** The AI knows about them, uses them
+(slingshots, luring enemies into a pulsar sweep, hiding in a nebula) and
+does not die to them stupidly.
+
+Consider staging some engagements down a **receding tube/well
+perspective** rather than flat — it pairs naturally with the gravity well
+and is a strong source of period character.
+
+**Hyperspace jumps** as escape/re-entry, with a real visual event at both
+ends.
+
+Randomize per launch: race count, numbers per side, alliances (two
+factions may gang up on a third), arena parameters, hazard selection and
+placement. A launch's arena should feel like a specific place.
+
+**Engagements resolve and restart.** On a win, run a short aftermath —
+drifting wreckage, cooling debris, the victor reforming — then seed a
+fresh engagement with new races. Never dead-end into an empty field.
+
+Pacing: sustained readable action, varied tempo, near-misses, the field
+thinning then re-escalating. Avoid both stalemate and instant wipeout.
+Phase 1's pacing work applies directly.
+
+---
+
+## 6. Platform abstraction
+
+Per the committed rule: pure C + GLSL ES 3.00 in hack code. No platform
+headers, no POSIX-only calls, no direct sensor or network access. Time,
+seed and asset paths go through the platform interface (`ncz_now()`,
+`ncz_seed()`, `ncz_asset_path()`, ...). Create it if it does not exist
+yet.
+
+Shaders install to `/usr/share/ncz-screensavers/shaders/` via meson
+`install_data` and must resolve from that absolute path; cwd-relative is
+a dev fallback only. A cwd-relative-only path was a real ship-blocker
+that killed the flagship blackhole hack while it still passed the gate.
+
+---
+
+## 7. Safety — non-negotiable
+
+Full-field colour flashes synchronized to events are part of this style
+and are exactly the hazard. **No sustained full-field luminance flashing
+in the ~3-30 Hz band.**
+
+**Average frame brightness is not a sufficient test.** Local regions can
+flash while cancelling globally, and saturated-red transitions need
+separate attention. Validate captured output **spatially as well as
+temporally**, against **worst-case peak-density combat**, not a quiet
+frame. Report the bound you enforced and how you measured it.
+
+Nothing readable on screen — no text, numbers, hostnames, labels. A
+radar/overview motif is permitted only as abstract blips, or omit it.
+
+---
+
+## 8. Performance
+
+Line count is the primary scaling axis and the main cost. Build the
+quality ladder around it explicitly: hull detail tiers, trail length,
+debris segment budget, field-line density, projectile counts.
+
+Target **under 33 ms on Intel UHD** with simplified hulls; strong
+hardware gets the full lattice. Scale back rather than ship a stutter and
+say what you traded.
+
+Measure on Intel UHD, NVIDIA RTX 2060 and AMD Navi14:
+- **PEGASUS** `sshpass -p pegasus ssh ... pegasus@192.168.207.85` —
+  defaults to its **Intel iGPU** (your Intel test). For NVIDIA export
+  `__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json`,
+  `__GLX_VENDOR_LIBRARY_NAME=nvidia`, `__NV_PRIME_RENDER_OFFLOAD=1` and
+  **confirm the `RENDERER=` line** — a full 141-target sweep was once
+  wasted by silently running on the wrong GPU.
+- **MEDUSA** (AMD Navi14): `sshpass -p medusa ssh -o
+  PubkeyAuthentication=no -o IdentityAgent=none -o IdentitiesOnly=yes -o
+  PreferredAuthentications=password -o StrictHostKeyChecking=no
+  medusamedusa@192.168.207.84`, repo `~/ncz-screensavers`.
+
+Report **rendered segment counts per quality tier** alongside frame
+times. "It looked fine" is not a measurement.
+
+---
+
+## 9. Evidence required
+
 1. Captures across a full engagement arc — opening, peak, resolution,
    aftermath, next engagement seeded.
-2. Captures proving **weapon variety is visually distinct** — ideally one
-   frame per weapon type.
-3. Two launches side by side proving factions, weapons and setup differ.
-4. Frame times on all three GPUs.
-5. Runs from `/` resolving the installed shader path.
-6. Non-black frame coverage percentage.
+2. **Roster set**: each race in one frame, identifiable by silhouette and
+   palette, with its four axis values stated alongside, so it is obvious
+   no two collapsed onto the same design. Plus a capture at 25% scale
+   showing they remain distinguishable.
+3. **Each special ability** actually firing. If one cannot be recognised
+   in a still, say so and describe what a viewer sees in motion.
+4. **Each weapon type** in its own frame, proving visual distinctness.
+5. **Each hazard** present and actually affecting the fight — a
+   trajectory bent by gravity, a ship lost to a pulsar sweep, fire
+   scattered in a nebula.
+6. Two launches side by side proving roster, weapons, hazards and setup
+   differ.
+7. Frame times + segment counts on all three GPUs.
+8. Runs from `/` resolving the installed shader path.
+9. Non-black frame coverage percentage.
+10. **The pastiche check**: look at a spread of your captures and ask
+    honestly whether you can name a specific game from any single frame.
+    Report what it caused you to change. A report claiming the check
+    passed with zero changes will be treated as not having been done.
 
 Do not trust the pixel-diff validation gate — it passed `mapscroller` on
 both vendors while that hack rendered nothing at all. Look at the images.
 
 ---
 
-# ADDENDUM — the arena is a hazardous place, not empty space
+## 10. The feeling this piece targets
 
-Operator: *"Still want rocks and other obstacles including black holes,
-quasars, neutron stars, etc."*
+Family doctrine:
+`docs/superpowers/specs/2026-09-25-screensaver-family-doctrine.md`.
+Each piece in this catalogue commits to **one emotional register**.
 
-Keep the asteroid field from phase 1. It is not replaced by the battle —
-it is terrain the battle is fought through. Ships must dodge rocks,
-rocks shatter under fire, debris becomes new hazards, and a pilot that
-flies into one pays for it.
+**This piece: nostalgia and spectacle.** An arcade hall the viewer
+remembers but never visited. The pleasure of watching a fight you are not
+playing. Smiling before you know why.
 
-Beyond rocks, populate the arena with randomly chosen **astrophysical
-hazards**, 1-3 per engagement, each a real gameplay element with real
-optics, not a backdrop:
+The sibling `genxvectorcade` is deliberately unrestricted — every
+technique, mixed freely, aimed at wonder and hallucination. **This piece
+is the opposite discipline**: a strict vector idiom, and its beauty comes
+from depth within that constraint rather than from range. Do not import
+that piece's anything-goes licence here; the two are meant to be
+unmistakably different members of one family.
 
-- **Black hole** — lensing, accretion disc, an event horizon that
-  destroys anything crossing it. Borrow technique from our existing
-  `blackhole` shader work in this repo rather than reinventing it.
-  Strong gravity; slingshot-able by a skilled pilot.
-- **Neutron star** — small, blindingly bright, extreme local gravity.
-  Give it a rotating pulsar beam that sweeps the field and damages what
-  it crosses, which doubles as a spectacular recurring visual event.
-- **Quasar** — a distant, violent light source with relativistic jets.
-  Its jets should be a traversal hazard and its light should visibly
-  wash and tint the whole field.
-- **Nebula / ion cloud** — soft volumetric region that occludes,
-  scatters weapon light, and degrades homing.
-- **Magnetar or plasma storm** — periodic field-wide electrical
-  discharge that arcs between ships and rocks.
-- **Wormhole pair** — entities crossing one emerge from the other, which
-  the AI should occasionally exploit.
-
-Requirements:
-- Randomize which hazards appear, where, and their parameters. A given
-  launch's arena should feel like a specific place.
-- **Hazards must be tactically real.** The AI knows about them, uses
-  them (slingshots, luring enemies into a pulsar sweep, hiding in a
-  nebula) and avoids dying to them stupidly. Gravity from every massive
-  body composes onto projectiles, debris and ships alike.
-- Hazards are also the main source of visual grandeur here — a
-  quasar-lit battle in front of an accreting black hole is the shot we
-  want. Spend the shader budget accordingly.
-- This adds real cost. Fold hazard fidelity into the quality ladder so
-  Intel UHD still holds 30 fps, and say what you scaled.
-
-Evidence: add captures showing each hazard type actually present and
-actually affecting the fight — a trajectory bent by gravity, a ship lost
-to a pulsar sweep, weapon fire scattered in a nebula.
-
----
-
-# ADDENDUM 2 — race design philosophy, and the 1980s look
-
-Operator: *"Space battle we can take a page from Star Control, with weird
-races, but the look should be 1980s."*
-
-Two separate instructions. Take the **design philosophy** from the
-early-90s asymmetric-roster space-melee genre; take the **visual
-language** from 1980s vector arcade hardware. Do not take that genre's
-own 90s pixel-art look.
-
-**Trademark rule, unchanged and strict:** no third-party franchise,
-company, product or character names anywhere — code, comments, docs,
-diag strings, asset names, commit messages. Invent every race name. The
-reference above describes a design approach; it must not appear in the
-artifact.
-
-## What to take from that genre
-
-Its real innovation was that **every ship is a different design problem,
-not a stat variation.** Apply that:
-
-- **Each race gets a primary weapon AND a distinct special ability**, and
-  the special is what gives it character. Not a damage modifier — a
-  different verb. Examples of the *kind* of thing (invent your own, do
-  not copy a roster):
-  - teleports to a random point in the arena
-  - splits into several smaller autonomous craft
-  - deploys a stationary turret or minefield that persists
-  - becomes briefly invulnerable but cannot fire
-  - drags a tethered mass it can swing into enemies
-  - reverses or nullifies gravity locally
-  - fires backwards, so it fights while fleeing
-  - consumes nearby debris to repair itself
-  - emits a cone that reflects incoming fire
-- **Deliberately unbalanced, in interesting ways.** A race may be
-  enormous, slow and devastating; another tiny, fragile and absurdly
-  fast. Glass cannons, swarms, tanks, cowards. Asymmetry is the point —
-  watchability comes from mismatched matchups, not fairness.
-- **Weird, not generic.** The silhouettes should be strange: asymmetric,
-  lopsided, organic, insectile, crystalline, or plainly ridiculous. A
-  viewer should be able to tell races apart in one frame at a glance.
-- **Personality in behaviour.** Each race's AI should fly in character —
-  a coward keeps range and flees at low health; a zealot charges; a
-  hoarder farms debris. Behaviour is characterisation.
-- Fold this into the existing randomized-engagement structure: pick 3-5
-  races per launch from a procedurally generated pool, so matchups and
-  even the roster differ every run.
-
-## The look: 1980s vector arcade, not 1990s sprites
-
-This is the constraint that keeps it coherent with the rest of the
-GenXVectorCade family.
-
-- **Everything is line art.** Stroked vector geometry, no textured
-  sprites, no pixel art, no raster bitmaps for ships or hazards.
-- **Glowing phosphor strokes** — sharp bright core with a soft halo, as
-  in the stroke model already specified in
-  `docs/superpowers/specs/2026-09-25-genxvectorcade-design.md`. Reuse it.
-- **Per-channel phosphor decay and persistence trails**, the way a real
-  vector tube smears. Blue lingers.
-- Colour comes from **saturated stroke colour and overexposed cores**,
-  not from filled shading. Vector hardware of that era could not fill;
-  lean into that and let it define the style.
-- **Filled polygons are allowed only where the effect demands it** —
-  nebula volumes, accretion glow, shockwaves — and should read as light,
-  never as a textured surface.
-- Subtle CRT character: slight bloom, faint geometric distortion,
-  scanline-free (vector tubes have no scanlines — do not add them). Keep
-  it as medium, not subject.
-
-The 1980s reference is about *technique and restraint in form*, not about
-colour restraint. The palette stays maximal and psychedelic per the
-earlier direction — think what those machines would have done with
-unlimited colour guns. Excess in colour, discipline in form.
-
-## Evidence addition
-
-Add a capture set showing **the roster**: each race in one frame,
-identifiable by silhouette and palette, plus a capture of each special
-ability actually firing. If a race's special cannot be recognised in a
-still, say so and describe what a viewer sees in motion.
+Before shipping, state in one sentence what this makes a viewer feel,
+without naming a technique. If that sentence could equally describe a
+sibling piece, it has not differentiated itself yet.
