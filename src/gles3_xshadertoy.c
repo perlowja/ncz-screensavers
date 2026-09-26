@@ -167,6 +167,13 @@ static const char *vert_src =
 /* Fragment shader preamble — Shadertoy-API uniform set + GLSL 1.2      */
 /* compatibility shims. Adapted from upstream xshadertoy.c lines        */
 /* 264-408.                                                             */
+/*                                                                     */
+/* IMPORTANT ORDERING: the preamble declares uniforms and any helper   */
+/* functions the vendored shaders might call, but does NOT define     */
+/* `void main()`. The vendored .glsl body defines `mainImage()` and    */
+/* we append a `void main()` wrapper AFTER the body. This way the     */
+/* `mainImage` call site (in our wrapper) appears AFTER its            */
+/* definition (in the body), so GLSL single-pass name resolution works. */
 /* ------------------------------------------------------------------- */
 
 static const char *frag_preamble =
@@ -190,9 +197,13 @@ static const char *frag_preamble =
     "uniform sampler2D iChannel0;\n"
     "uniform sampler2D iChannel1;\n"
     "uniform sampler2D iChannel2;\n"
-    "uniform sampler2D iChannel3;\n"
-    "\n"
-    "void main() {\n"
+    "uniform sampler2D iChannel3;\n";
+
+/* The `void main()` wrapper — appended AFTER the body so the
+ * `mainImage` call resolves forward to the body. The body declares
+ * `void mainImage(out vec4 fragColor, in vec2 fragCoord)`. */
+static const char *frag_tail =
+    "\nvoid main() {\n"
     "  vec4 col = vec4(0.0, 0.0, 0.0, 1.0);\n"
     "  mainImage(col, gl_FragCoord.xy);\n"
     "  frag_color = col;\n"
@@ -327,19 +338,23 @@ skip_leading_directives(const char *src) {
 }
 
 /* Build the final fragment shader source = preamble + (stripped)
- * .glsl body. Both pieces are concatenated as C strings — no
- * tokenizing, no re-injection of `#line` directives. */
+ * .glsl body + tail wrapper. The body defines `mainImage()`; the
+ * tail's `void main()` wrapper calls it. GLSL is single-pass, so
+ * mainImage must be defined BEFORE the call site — hence the
+ * preamble→body→tail order (not preamble→tail→body). */
 static char *
 build_frag_src(const char *body) {
     size_t preamble_len = strlen(frag_preamble);
     const char *body_start = skip_leading_directives(body);
     size_t body_len = strlen(body_start);
-    /* +2 for the separating newline and trailing NUL. */
-    char *out = (char *)malloc(preamble_len + body_len + 8);
+    size_t tail_len = strlen(frag_tail);
+    /* +2 for separating newlines. */
+    char *out = (char *)malloc(preamble_len + body_len + tail_len + 4);
     if (!out) return NULL;
     memcpy(out, frag_preamble, preamble_len);
     out[preamble_len] = '\n';
-    memcpy(out + preamble_len + 1, body_start, body_len + 1);
+    memcpy(out + preamble_len + 1, body_start, body_len);
+    memcpy(out + preamble_len + 1 + body_len, frag_tail, tail_len + 1);
     return out;
 }
 

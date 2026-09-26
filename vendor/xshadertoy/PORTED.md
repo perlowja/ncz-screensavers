@@ -116,3 +116,37 @@ notice as xscreensaver itself (preserved at the top of
 - **iKeyboard** (Shadertoy's per-key bitmask-as-texture channel) —
   not shipped by any of the 38; the upstream xshadertoy.c itself
   documents it as not implemented.
+
+## Per-shader caveats (iChannel sampling)
+
+Upstream xshadertoy.c documents that `iChannel0..3` are only fed
+from the output of a previous pass. With multi-pass disabled,
+single-pass shaders that sample `iChannelN` get our 1x1 RGBA8
+dummy black texture, not a previous-pass output. Of the 38
+vendored shaders, 4 reference `iChannel0`:
+`gimbalharmonics`, `neongravity-0`, `protophore`, `skyline`.
+
+Per-shader observed behavior on NVIDIA RTX 2060:
+
+| Shader | iChannel use | Observed rendering | Notes |
+|---|---|---|---|
+| `gimbalharmonics` | `texture(iChannel0, rayDir)` for env map | Renders normally (uses iChannel0 sparingly, plus procedural cube map) | Functional with the 1x1 dummy |
+| `protophore` | Same as gimbalharmonics | Renders normally | Functional |
+| `skyline` | `texture(iChannel0, ref.xy)` for window reflections | Renders normally (the sky color path dominates; window reflections are a small fraction) | Functional |
+| `neongravity-0` | `fxaa(iChannel0, ...)` post-process | **Renders all-black** | The FXAA helper computes a gradient on the input texture; with a 1x1 zero input the gradient is identically zero, so the output is uniform black |
+
+`neongravity-0` is the only shader in the inventory whose
+rendering depends on the input texture being non-trivial. We
+**ship the binary** (it compiles, links, and runs without GL
+errors at gl_error=0x0), but the on-screen output is the
+uniform-black fallback. This is the same degradation any
+single-pass Shadertoy host would have without a multi-pass
+backbuffer; documenting it explicitly so a future port with
+multi-pass support can pick it up. **This is not an excluded
+shader** — it links and runs cleanly per the project's
+"ported-only-if-LINKS" rule (see PORTED.md header).
+
+Upstream's comment about the 1x1 limitation also explains why
+the other 3 shaders (gimbalharmonics/protophore/skyline) render
+correctly: their iChannel sampling is a small fraction of the
+final pixel color, dominated by procedural geometry.
