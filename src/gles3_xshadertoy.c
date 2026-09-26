@@ -149,9 +149,11 @@ typedef struct {
     GLint loc_ichan1;
     GLint loc_ichan2;
     GLint loc_ichan3;
+    GLint loc_iseed;             /* 4 floats, constant per run; varies across runs */
     double start_time;
     double last_time;
     unsigned long frame;
+    float iseed[4];              /* cached RNG output, written once in init */
 } XSToyState;
 
 /* ------------------------------------------------------------------- */
@@ -201,7 +203,13 @@ static const char *frag_preamble =
     "uniform sampler2D iChannel0;\n"
     "uniform sampler2D iChannel1;\n"
     "uniform sampler2D iChannel2;\n"
-    "uniform sampler2D iChannel3;\n";
+    "uniform sampler2D iChannel3;\n"
+    "\n"
+    "/* iSeed — four random floats, constant for the run, different\n"
+    " * every run.  Use it for per-run variation (palette, layout,\n"
+    " * phase) so two screensaver runs do not produce the same picture\n"
+    " * modulo time.  House convention added 2026-09-26. */\n"
+    "uniform vec4 iSeed;\n";
 
 /* The `void main()` wrapper — appended AFTER the body so the
  * `mainImage` call resolves forward to the body. The body declares
@@ -481,6 +489,39 @@ init_xshadertoy(ModeInfo *mi) {
     st->loc_ichan1      = glGetUniformLocation(st->program, "iChannel1");
     st->loc_ichan2      = glGetUniformLocation(st->program, "iChannel2");
     st->loc_ichan3      = glGetUniformLocation(st->program, "iChannel3");
+    st->loc_iseed       = glGetUniformLocation(st->program, "iSeed");
+
+    /* Roll four random floats from /dev/urandom (or fall back to
+     * a time-mixed hash if urandom is unavailable).  These stay
+     * constant for the whole run so the shader can drive layout /
+     * palette / path from iSeed without flicker. */
+    {
+        unsigned int r[4] = {0, 0, 0, 0};
+        FILE *u = fopen("/dev/urandom", "rb");
+        if (u) {
+            size_t got = fread(r, sizeof(unsigned int), 4, u);
+            fclose(u);
+            if (got != 4) {
+                r[0] = (unsigned int)(now_seconds() * 1e6);
+                r[1] = r[0] ^ 0x9E3779B9u;
+                r[2] = r[0] * 0x85EBCA77u;
+                r[3] = r[0] ^ (r[0] << 13);
+            }
+        } else {
+            r[0] = (unsigned int)(now_seconds() * 1e6);
+            r[1] = r[0] ^ 0x9E3779B9u;
+            r[2] = r[0] * 0x85EBCA77u;
+            r[3] = r[0] ^ (r[0] << 13);
+        }
+        for (int k = 0; k < 4; k++) {
+            /* Map uint32 -> [0,1) by dividing by 2^32.  We accept a
+             * slightly biased last bit; not perceptible. */
+            st->iseed[k] = (float)(r[k] & 0xFFFFFFu) / (float)0x1000000u;
+            if (st->iseed[k] < 1e-6) st->iseed[k] += 1e-6;
+        }
+        fprintf(stderr, "[diag] iSeed = %.4f %.4f %.4f %.4f\n",
+                st->iseed[0], st->iseed[1], st->iseed[2], st->iseed[3]);
+    }
 
     /* Fullscreen quad — 2 triangles, 6 vertices. */
     static const float quad[] = {
@@ -593,6 +634,8 @@ draw_xshadertoy(ModeInfo *mi) {
     }
     glUniform4fv(st->loc_idate, 1, date_v);
     glUniform4fv(st->loc_imouse, 1, zero4);
+    /* iSeed — per-run constant, set once and re-uploaded each frame. */
+    glUniform4fv(st->loc_iseed, 1, st->iseed);
 
     /* Bind the black 1x1 to all four iChannel units. */
     if (st->ichan_tex) {
