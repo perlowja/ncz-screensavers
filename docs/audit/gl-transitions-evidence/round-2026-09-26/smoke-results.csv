@@ -1,0 +1,185 @@
+name,compile,link,render,fail
+AdvancedMosaic,1,1,1,
+angular,0,0,0,FS: 0(16) : error C1503: undefined variable "PI"
+0(18) : error C1503: undefined variable "PI"
+0(18) : error C1503: undefined variable "PI"
+
+BlockDissolve,1,1,1,
+BookFlip,1,1,1,
+Bounce,1,1,0,rendered all-black
+BowTieHorizontal,1,1,1,
+BowTieVertical,1,1,1,
+BowTieWithParameter,1,1,1,
+Box,1,1,1,
+burn0,1,1,1,
+burn,1,1,1,
+ButterflyWaveScrawler,1,1,1,
+cannabisleaf,1,1,1,
+chessboard,1,1,1,
+CircleCrop,0,0,0,FS: 0(14) : error C1503: undefined variable "ratio"
+0(14) : error C1059: non constant expression in initialization
+0(15) : error C1059: non constant expression in initialization
+
+circle,1,1,0,rendered all-black
+circleopen,1,1,1,
+colorphase,1,1,1,
+ColourDistance,1,1,1,
+coord-from-in,1,1,1,
+CrazyParametricFun,1,1,1,
+crosshatch,1,1,1,
+crosswarp,1,1,1,
+CrossZoom,1,1,1,
+cube,1,1,1,
+DefocusBlur,1,1,1,
+directional-easing,1,1,1,
+Directional,1,1,1,
+DirectionalScaled,0,0,0,FS: 0(16) : error C1503: undefined variable "PI"
+0(21) : error C1503: undefined variable "PI"
+
+directionalwarp,1,1,1,
+directionalwipe,1,1,1,
+displacement,1,1,1,
+dissolve,1,1,1,
+DoomScreenTransition,1,1,1,
+doorway,1,1,1,
+Dreamy,1,1,1,
+DreamyZoom,0,0,0,FS: 0(23) : error C1503: undefined variable "DEG2RAD"
+0(23) : error C1503: undefined variable "DEG2RAD"
+0(30) : error C1503: undefined variable "ratio"
+0(35) : error C1503: undefined variable "ratio"
+
+Drop_Zone_Flicker,1,1,1,
+EdgeTransition,1,1,0,rendered all-black
+fadecolor,1,1,1,
+fade,1,1,1,
+fadegrayscale,1,1,1,
+FilmBurn,1,1,1,
+flyeye,1,1,1,
+Fold,1,1,1,
+fragment,0,0,0,FS: 0(27) : error C1503: undefined variable "POINTS"
+0(27) : error C1307: non constant expression for array size
+0(28) : error C1503: undefined variable "POINTS"
+0(34) : error C1503: undefined variable "POINTS"
+0(44) : error C1503: undefin
+GlitchDisplace,1,1,1,
+GlitchMemories,1,1,1,
+GridFlip,1,1,0,rendered all-black
+heart,1,1,1,
+hexagonalize,0,0,0,FS: 0(51) : error C1503: undefined variable "ratio"
+0(67) : error C1503: undefined variable "ratio"
+
+HorizontalClose,1,1,1,
+HorizontalOpen,1,1,1,
+HSVfade,1,1,1,
+InvertedPageCurl,1,1,1,
+kaleidoscope,1,1,1,
+LeftRight,1,1,1,
+LinearBlur,1,1,1,
+luma,1,1,1,
+luminance_melt,0,0,0,FS: 0(104) : error C1059: non constant expression in initialization
+
+morph,1,1,1,
+Mosaic,0,0,0,FS: 0(24) : error C1503: undefined variable "PI"
+0(33) : error C1503: undefined variable "POW2"
+0(38) : error C1503: undefined variable "PI"
+
+mosaic_transition,1,1,1,
+multiply_blend,1,1,1,
+old_tv_lost_signal,1,1,1,
+Overexposure,1,1,1,
+parametric_glitch,1,1,1,
+perlin,1,1,1,
+pinwheel,1,1,1,
+pixelize,0,0,0,FS: 0(16) : error C1059: non constant expression in initialization
+0(17) : error C1059: non constant expression in initialization
+0(18) : error C1059: non constant expression in initialization
+
+polar_function,0,0,0,FS: 0(16) : error C1503: undefined variable "PI"
+0(17) : error C1503: undefined variable "PI"
+0(17) : error C1503: undefined variable "PI"
+
+PolkaDotsCurtain,1,1,1,
+powerKaleido,0,0,0,FS: 0(13) : error C1503: undefined variable "PI"
+0(16) : error C1059: non constant expression in initialization
+0(34) : error C1503: undefined variable "ratio"
+0(38) : error C1503: undefined variable "PI"
+0(40) : error C1503: undefined var
+PuzzleRight,1,1,0,rendered all-black
+Radial,1,1,1,
+randomNoisex,1,1,1,
+randomsquares,1,1,1,
+RectangleCrop,1,1,0,rendered all-black
+Rectangle,0,0,0,FS: 0(14) : error C1059: non constant expression in initialization
+
+Revolve_Left,0,0,0,FS: 0(48) : error C1503: undefined variable "ratio"
+0(63) : error C1503: undefined variable "ratio"
+0(96) : error C1503: undefined variable "ratio"
+
+ripple,1,1,1,
+Rolls,0,0,0,FS: 0(22) : error C1503: undefined variable "ratio"
+
+rotate_scale_fade,0,0,0,FS: 0(23) : error C1503: undefined variable "PI"
+
+RotateScaleVanish,0,0,0,FS: 0(21) : error C1503: undefined variable "ratio"
+
+rotateTransition,0,0,0,FS: 0(18) : error C1503: undefined variable "PI"
+
+scale-in,1,1,1,
+SimpleFlip,1,1,0,rendered all-black
+SimpleZoom,0,0,0,FS: 0(13) : error C1059: non constant expression in initialization
+
+SimpleZoomOut,0,0,0,FS: 0(14) : error C1059: non constant expression in initialization
+
+Slides,1,1,1,
+splitSlideInHorizontal,1,1,1,
+splitSlideInOutHorizontal,1,1,1,
+splitSlideInOutVertical,1,1,1,
+splitSlideInVertical,1,1,1,
+splitSlideOutHorizontal,1,1,1,
+splitSlideOutVertical,1,1,1,
+squareswire,1,1,1,
+squeeze,1,1,1,
+StarWipe,0,0,0,FS: 0(29) : error C1503: undefined variable "STAR_ANGLE"
+0(30) : error C1503: undefined variable "PI"
+0(32) : error C1503: undefined variable "STAR_ANGLE"
+0(32) : error C1503: undefined variable "STAR_ANGLE"
+
+StaticFade,1,1,0,rendered all-black
+static_wipe,0,0,0,FS: 0(24) : error C1503: undefined variable "PI"
+
+StereoViewer,0,0,0,FS: 0(194) : error C1503: undefined variable "ratio"
+0(206) : error C1503: undefined variable "ratio"
+0(210) : error C1503: undefined variable "ratio"
+
+StripDatamoshGlitch,0,0,0,FS: 0(180) : error C1503: undefined variable "ratio"
+
+swap,1,1,1,
+Swirl,1,1,1,
+tangentMotionBlur,0,0,0,FS: 0(117) : error C1503: undefined variable "ratio"
+0(119) : error C1503: undefined variable "ratio"
+0(131) : error C1503: undefined variable "ratio"
+0(133) : error C1503: undefined variable "ratio"
+
+TilesWave,1,1,1,
+TopBottom,1,1,1,
+TVStatic,1,1,1,
+undulatingBurnOut,1,1,1,
+VerticalClose,1,1,1,
+VerticalOpen,1,1,1,
+WaterDrop,1,1,1,
+wind,1,1,1,
+windowblinds,1,1,1,
+windowslice,1,1,1,
+wipeDown,1,1,1,
+wipeLeft,1,1,1,
+wipeRight,1,1,1,
+wipeUp,1,1,1,
+x_axis_translation,1,1,1,
+ZoomInCircles,0,0,0,FS: 0(16) : error C1503: undefined variable "ratio"
+0(16) : error C1059: non constant expression in initialization
+
+zoomInOut,1,1,1,
+ZoomLeftWipe,0,0,0,FS: 0(13) : error C1059: non constant expression in initialization
+
+ZoomRigthWipe,0,0,0,FS: 0(13) : error C1059: non constant expression in initialization
+

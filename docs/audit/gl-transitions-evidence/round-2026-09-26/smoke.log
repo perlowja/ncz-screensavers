@@ -1,0 +1,191 @@
+[diag] EGL 1.5 vendor=NVIDIA
+[diag] GL_VERSION=OpenGL ES 3.2 NVIDIA 595.58.03
+[diag] GL_RENDERER=NVIDIA RTX 4500 Ada Generation/PCIe/SSE2
+[diag] GL_VENDOR=NVIDIA Corporation
+[diag] GLSL_VERSION=OpenGL ES GLSL ES 3.20
+[diag] 125 shaders in list
+[smoke] AdvancedMosaic OK
+[smoke] angular FS: 0(16) : error C1503: undefined variable "PI"
+0(18) : error C1503: undefined variable "PI"
+0(18) : error C1503: undefined variable "PI"
+
+[smoke] BlockDissolve OK
+[smoke] BookFlip OK
+[smoke] Bounce rendered all-black
+[smoke] BowTieHorizontal OK
+[smoke] BowTieVertical OK
+[smoke] BowTieWithParameter OK
+[smoke] Box OK
+[smoke] burn0 OK
+[smoke] burn OK
+[smoke] ButterflyWaveScrawler OK
+[smoke] cannabisleaf OK
+[smoke] chessboard OK
+[smoke] CircleCrop FS: 0(14) : error C1503: undefined variable "ratio"
+0(14) : error C1059: non constant expression in initialization
+0(15) : error C1059: non constant expression in initialization
+
+[smoke] circle rendered all-black
+[smoke] circleopen OK
+[smoke] colorphase OK
+[smoke] ColourDistance OK
+[smoke] coord-from-in OK
+[smoke] CrazyParametricFun OK
+[smoke] crosshatch OK
+[smoke] crosswarp OK
+[smoke] CrossZoom OK
+[smoke] cube OK
+[smoke] DefocusBlur OK
+[smoke] directional-easing OK
+[smoke] Directional OK
+[smoke] DirectionalScaled FS: 0(16) : error C1503: undefined variable "PI"
+0(21) : error C1503: undefined variable "PI"
+
+[smoke] directionalwarp OK
+[smoke] directionalwipe OK
+[smoke] displacement OK
+[smoke] dissolve OK
+[smoke] DoomScreenTransition OK
+[smoke] doorway OK
+[smoke] Dreamy OK
+[smoke] DreamyZoom FS: 0(23) : error C1503: undefined variable "DEG2RAD"
+0(23) : error C1503: undefined variable "DEG2RAD"
+0(30) : error C1503: undefined variable "ratio"
+0(35) : error C1503: undefined variable "ratio"
+
+[smoke] Drop_Zone_Flicker OK
+[smoke] EdgeTransition rendered all-black
+[smoke] fadecolor OK
+[smoke] fade OK
+[smoke] fadegrayscale OK
+[smoke] FilmBurn OK
+[smoke] flyeye OK
+[smoke] Fold OK
+[smoke] fragment FS: 0(27) : error C1503: undefined variable "POINTS"
+0(27) : error C1307: non constant expression for array size
+0(28) : error C1503: undefined variable "POINTS"
+0(34) : error C1503: undefined variable "POINTS"
+0(44) : error C1503: undefin
+[smoke] GlitchDisplace OK
+[smoke] GlitchMemories OK
+[smoke] GridFlip rendered all-black
+[smoke] heart OK
+[smoke] hexagonalize FS: 0(51) : error C1503: undefined variable "ratio"
+0(67) : error C1503: undefined variable "ratio"
+
+[smoke] HorizontalClose OK
+[smoke] HorizontalOpen OK
+[smoke] HSVfade OK
+[smoke] InvertedPageCurl OK
+[smoke] kaleidoscope OK
+[smoke] LeftRight OK
+[smoke] LinearBlur OK
+[smoke] luma OK
+[smoke] luminance_melt FS: 0(104) : error C1059: non constant expression in initialization
+
+[smoke] morph OK
+[smoke] Mosaic FS: 0(24) : error C1503: undefined variable "PI"
+0(33) : error C1503: undefined variable "POW2"
+0(38) : error C1503: undefined variable "PI"
+
+[smoke] mosaic_transition OK
+[smoke] multiply_blend OK
+[smoke] old_tv_lost_signal OK
+[smoke] Overexposure OK
+[smoke] parametric_glitch OK
+[smoke] perlin OK
+[smoke] pinwheel OK
+[smoke] pixelize FS: 0(16) : error C1059: non constant expression in initialization
+0(17) : error C1059: non constant expression in initialization
+0(18) : error C1059: non constant expression in initialization
+
+[smoke] polar_function FS: 0(16) : error C1503: undefined variable "PI"
+0(17) : error C1503: undefined variable "PI"
+0(17) : error C1503: undefined variable "PI"
+
+[smoke] PolkaDotsCurtain OK
+[smoke] powerKaleido FS: 0(13) : error C1503: undefined variable "PI"
+0(16) : error C1059: non constant expression in initialization
+0(34) : error C1503: undefined variable "ratio"
+0(38) : error C1503: undefined variable "PI"
+0(40) : error C1503: undefined var
+[smoke] PuzzleRight rendered all-black
+[smoke] Radial OK
+[smoke] randomNoisex OK
+[smoke] randomsquares OK
+[smoke] RectangleCrop rendered all-black
+[smoke] Rectangle FS: 0(14) : error C1059: non constant expression in initialization
+
+[smoke] Revolve_Left FS: 0(48) : error C1503: undefined variable "ratio"
+0(63) : error C1503: undefined variable "ratio"
+0(96) : error C1503: undefined variable "ratio"
+
+[smoke] ripple OK
+[smoke] Rolls FS: 0(22) : error C1503: undefined variable "ratio"
+
+[smoke] rotate_scale_fade FS: 0(23) : error C1503: undefined variable "PI"
+
+[smoke] RotateScaleVanish FS: 0(21) : error C1503: undefined variable "ratio"
+
+[smoke] rotateTransition FS: 0(18) : error C1503: undefined variable "PI"
+
+[smoke] scale-in OK
+[smoke] SimpleFlip rendered all-black
+[smoke] SimpleZoom FS: 0(13) : error C1059: non constant expression in initialization
+
+[smoke] SimpleZoomOut FS: 0(14) : error C1059: non constant expression in initialization
+
+[smoke] Slides OK
+[smoke] splitSlideInHorizontal OK
+[smoke] splitSlideInOutHorizontal OK
+[smoke] splitSlideInOutVertical OK
+[smoke] splitSlideInVertical OK
+[smoke] splitSlideOutHorizontal OK
+[smoke] splitSlideOutVertical OK
+[smoke] squareswire OK
+[smoke] squeeze OK
+[smoke] StarWipe FS: 0(29) : error C1503: undefined variable "STAR_ANGLE"
+0(30) : error C1503: undefined variable "PI"
+0(32) : error C1503: undefined variable "STAR_ANGLE"
+0(32) : error C1503: undefined variable "STAR_ANGLE"
+
+[smoke] StaticFade rendered all-black
+[smoke] static_wipe FS: 0(24) : error C1503: undefined variable "PI"
+
+[smoke] StereoViewer FS: 0(194) : error C1503: undefined variable "ratio"
+0(206) : error C1503: undefined variable "ratio"
+0(210) : error C1503: undefined variable "ratio"
+
+[smoke] StripDatamoshGlitch FS: 0(180) : error C1503: undefined variable "ratio"
+
+[smoke] swap OK
+[smoke] Swirl OK
+[smoke] tangentMotionBlur FS: 0(117) : error C1503: undefined variable "ratio"
+0(119) : error C1503: undefined variable "ratio"
+0(131) : error C1503: undefined variable "ratio"
+0(133) : error C1503: undefined variable "ratio"
+
+[smoke] TilesWave OK
+[smoke] TopBottom OK
+[smoke] TVStatic OK
+[smoke] undulatingBurnOut OK
+[smoke] VerticalClose OK
+[smoke] VerticalOpen OK
+[smoke] WaterDrop OK
+[smoke] wind OK
+[smoke] windowblinds OK
+[smoke] windowslice OK
+[smoke] wipeDown OK
+[smoke] wipeLeft OK
+[smoke] wipeRight OK
+[smoke] wipeUp OK
+[smoke] x_axis_translation OK
+[smoke] ZoomInCircles FS: 0(16) : error C1503: undefined variable "ratio"
+0(16) : error C1059: non constant expression in initialization
+
+[smoke] zoomInOut OK
+[smoke] ZoomLeftWipe FS: 0(13) : error C1059: non constant expression in initialization
+
+[smoke] ZoomRigthWipe FS: 0(13) : error C1059: non constant expression in initialization
+
+[diag] total=125 compile=98 link=98 render=90
