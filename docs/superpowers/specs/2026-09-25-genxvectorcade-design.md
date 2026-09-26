@@ -384,3 +384,100 @@ related weather on the same night.
 
 That pairing is the whole idea in miniature: intensely local, quietly
 shared, and neither one requiring anyone to give up anything private.
+
+---
+
+# Environmental architecture, FINAL: real data as SEED SCHEMA, not direct mapping
+
+Operator direction: *"We can generate artificial randomized weather using
+these data sources as seed schema."*
+
+This supersedes the direct-mapping approach described above, and is
+better for three concrete reasons.
+
+## Why not map directly
+
+Real inputs are mostly boring. Kp sits at 2 for weeks at a time; solar
+wind hovers near 400 km/s; an idle laptop's CPU sits at 40 C. Mapping
+those straight to visuals gives a world that is flat most of the time and
+occasionally interesting — exactly backwards for something meant to be
+watched for hours.
+
+## The model
+
+```
+real inputs  ->  seed vector + tendency bias  ->  procedural weather
+                                                  simulation
+                                                       |
+                                                  the ecosystem
+```
+
+Real data does two jobs and no more:
+
+1. **Seed** — local sensors, space weather, uptime, wall-clock and
+   persisted lineage combine into the RNG seed for the weather generator.
+   This is what makes every machine, and every session, different.
+2. **Tendency bias** — real values nudge the generator's *statistics*, not
+   its instantaneous output. High Kp raises the probability and severity
+   of storms over the coming hours. A hot, loaded CPU biases toward
+   turbulence. Low battery biases toward a dim, conserving world.
+
+The weather model then runs its own dynamics — fronts, pressure systems,
+calms, seasons — with its own internal causality, on its own timescales.
+It is always doing something.
+
+## What this buys
+
+- **Always interesting, still honest.** The world has weather at 3am on a
+  geomagnetically dead night, but a real storm genuinely changes its
+  character over the following hours.
+- **Offline is not a special case.** Missing feeds mean less seed entropy
+  and neutral bias — the same code path, not a fallback branch. A laptop
+  in a field works identically to a desktop on fibre.
+- **Absent sensors degrade smoothly.** No fan, no battery, a VM with no
+  thermal zone — each just removes one term from the seed. Nothing
+  branches.
+- **Never repeats.** Seeded generation plus persisted lineage means no
+  two machines and no two sessions produce the same weather.
+- **Causality survives.** Start a compile and the bias shifts; the world
+  responds over the next minute. A real solar flare shifts it for hours.
+  The connection to reality is real without being literal.
+
+## Seed composition
+
+| Term | Source | Contributes |
+|---|---|---|
+| machine identity | stable local salt (not a hostname; never displayed) | per-machine lineage |
+| session entropy | `ncz_seed()` | per-run variation |
+| wall clock / date | platform interface | circadian and seasonal phase |
+| uptime | `/proc/uptime` | ecosystem age |
+| thermal, load, fan, memory, battery | local sensors, each optional | turbulence, metabolism, energy |
+| Kp, solar wind, flare class, R/S/G | space weather cache, optional | storm probability, era character |
+| persisted lineage | prior sessions on disk | long-term inheritance |
+
+Any term may be absent. The seed is simply built from what exists.
+
+## European / international sources — verified live 2026-09-26
+
+Kp is a **planetary** index by definition, derived from a global
+magnetometer network. It is identical for a user in Tokyo, Lagos or São
+Paulo, so there is no US-centric bias to correct. The authoritative
+producer is in fact European — GFZ Potsdam — and NOAA redistributes it.
+
+| Source | Endpoint | Status | Sample |
+|---|---|---|---|
+| **GFZ Potsdam** (authoritative, 3-hourly) | `https://kp.gfz-potsdam.de/app/json/?start=...&end=...&index=Kp` | **200** | `{"Kp":[4.0,3.667,4.0,4.0,3.333,2.667,...]}` |
+| GFZ short host | `https://kp.gfz.de/app/json/?...` | **200** | identical |
+| **NOAA SWPC** (1-minute nowcast) | `https://services.swpc.noaa.gov/json/planetary_k_index_1m.json` | **200** | `kp_index: 2` |
+
+Use **NOAA for responsiveness** and **GFZ as ground truth and fallback** —
+the value of having both is redundancy and resolution, not geography. If
+one service is down, rate-limits, or changes terms, the other carries it;
+if both vanish, the generator runs on neutral bias and nobody notices
+anything except that the sky stopped having weather.
+
+Dead paths, recorded so they are not re-derived:
+`www-app3.gfz-potsdam.de/kp_index/nowcast/...` (404), and the three
+NOAA `products/solar-wind/plasma-*.json` / `mag-1-day.json` paths (404).
+The working solar wind endpoint is
+`products/summary/solar-wind-speed.json`.
