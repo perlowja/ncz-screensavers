@@ -144,9 +144,11 @@ vec2 warp(vec2 p, float amt){
 float tunnel(vec2 uv, out vec3 baseCol){
     baseCol = vec3(0.0);
     float intensity = 0.0;
-    // aspect-corrected uv centered on vanishing point
+    // aspect-corrected uv centered on vanishing point. Use a wider
+    // FOV so the tunnel fills the screen rather than leaving big
+    // margins of black.
     float aspect = u_resolution.x / max(u_resolution.y, 1.0);
-    vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
+    vec2 p = (uv - 0.5) * vec2(aspect * 1.6, 1.0 * 1.6);
     // tunnel depth progresses with time
     float speed = u_shape_speed.y;
     float z = 1.5 + 4.0 * fract(u_time * 0.07 * speed);
@@ -156,43 +158,38 @@ float tunnel(vec2 uv, out vec3 baseCol){
     vec2 wp = warp(p * 0.7, u_warp_amount * 0.35);
     a += 0.6 * sin(z*1.3 + u_time*0.5) + 0.25 * (wp.x - 0.5);
     // cross-section shape: signed distance to a regular n-gon
-    int shape = int(u_shape_speed.x);
-    float sides = 3.0 + float(shape);  // 3,4,5,6,7,8 -> tri..oct
-    if(shape >= 5){ sides = 64.0; }     // 5 = circle (smooth); 5 maps to circle, 6 to star
-    // tweak: index 0..5 means tri, square, pent, hex, circle, star
+    float sides = 3.0;
     if(u_shape_speed.x < 0.5)       sides = 3.0;
     else if(u_shape_speed.x < 1.5)  sides = 4.0;
     else if(u_shape_speed.x < 2.5)  sides = 5.0;
     else if(u_shape_speed.x < 3.5)  sides = 6.0;
-    else if(u_shape_speed.x < 4.5)  sides = 64.0;
-    else                            sides = 5.0; // star uses 5-gon with inner radius factor below
+    else if(u_shape_speed.x < 4.5)  sides = 32.0;  /* circle */
+    else                            sides = 5.0;   /* star: 5-gon with inner radius factor */
     float starInner = (u_shape_speed.x >= 5.5) ? 0.55 : 1.0;
-    // signed distance approximation for a regular polygon
     float ang = a + u_time * u_seg_rot.y * 0.15;
     float ca = cos(ang/sides), sa = sin(ang/sides);
     vec2 q = vec2(ca*p.x + sa*p.y, -sa*p.x + ca*p.y);
-    float polyR = abs(q.y); // distance to nearest face of polygon at unit radius
-    // segment count: rings spaced exponentially in depth
+    float polyR = abs(q.y);
     float segCount = floor(u_seg_rot.x);
-    // log-spaced rings -> equal-feel depth
     float ringT = log(1.0 + z * 2.0) * 1.5;
     float ringF = fract(ringT);
-    float ringDist = abs(ringF - 0.5); // distance to nearest ring center
+    float ringDist = abs(ringF - 0.5);
     float ringLine = exp(-pow(ringDist * 32.0, 2.0));
-    // longitudinal lines along the polygon
-    float longLine = exp(-pow(polyR * (u_resolution.x/max(u_resolution.y,1.0)*12.0), 2.0));
+    // longitudinal lines along the polygon — wider so they fill the
+    // screen at the near end
+    float longLine = exp(-pow(polyR * 7.0, 2.0));
     // radial streaks along tunnel axis
-    float radial = exp(-pow(r * 24.0, 2.0)) * 0.6;
-    // depth fade: near (small r) = bright, far = darker but still glowing
-    float depthFade = exp(-r * 1.6);
-    float core = exp(-pow(r * 80.0, 2.0)) * 1.6;
+    float radial = exp(-pow(r * 18.0, 2.0)) * 0.5;
+    // depth fade: weaker so the edges stay visible
+    float depthFade = exp(-r * 0.9);
+    float core = exp(-pow(r * 60.0, 2.0)) * 1.4;
     intensity = (longLine * 0.9 + ringLine * 0.7 + radial * 0.4 + core) * depthFade;
     // colour: hue varies with depth and segment
     float t = clamp(0.10 + 0.55 * ringT - 0.20 * ringF, 0.0, 1.0);
     baseCol = palette(t);
     // overexposure: hot core near vanishing point
-    float near = exp(-pow(r * 24.0, 2.0));
-    baseCol += vec3(1.0, 0.95, 0.85) * near * 1.8;
+    float near = exp(-pow(r * 18.0, 2.0));
+    baseCol += vec3(1.0, 0.95, 0.85) * near * 1.4;
     return intensity;
 }
 
@@ -253,7 +250,7 @@ float gridHorizon(vec2 uv, out vec3 baseCol){
 float starfieldWarp(vec2 uv, out vec3 baseCol){
     baseCol = vec3(0.0);
     float intensity = 0.0;
-    vec2 p = (uv - 0.5);
+    vec2 p = (uv - 0.5) * 2.0;   /* wider FOV */
     // radial streak field: lines stretch toward vanishing point
     float r = length(p);
     float a = atan(p.y, p.x);
@@ -264,22 +261,20 @@ float starfieldWarp(vec2 uv, out vec3 baseCol){
     // ring the stars along expanding shells
     float ringR = 0.05 + 0.6 * z * 0.16;
     float dRing = abs(r - ringR);
-    float ringLine = exp(-pow(dRing * 90.0, 2.0)) * (1.0 / (z*0.7));
+    float ringLine = exp(-pow(dRing * 60.0, 2.0)) * (1.0 / (z*0.7));
     // streaks along radial direction: each "star" is a line from r=ringR outward
-    float streakLen = 0.04 + 0.08 * (1.0 / z);
+    float streakLen = 0.06 + 0.10 * (1.0 / z);
     float streak = exp(-pow((r - ringR + streakLen*0.5) / max(streakLen, 1e-4), 2.0));
     streak *= smoothstep(ringR, ringR + streakLen, r);
-    // perturb angle slightly
     float aJitter = 0.18 * sin(a * 31.0 + u_time * 0.4 + u_seed);
-    // gather
-    intensity = (ringLine * 0.9 + streak * 0.7) * (1.0 + 0.4 * sin(a*5.0 + aJitter));
+    intensity = (ringLine * 1.0 + streak * 0.9) * (1.0 + 0.4 * sin(a*5.0 + aJitter));
     // dust nebula
     vec2 q = warp(kp * 1.3, u_warp_amount * 0.55);
     float dust = fbm2(q * 2.2 + vec2(u_time*0.10, -u_time*0.07));
-    intensity += pow(dust, 3.0) * 0.6;
+    intensity += pow(dust, 2.5) * 0.8;
     // colour: hot star core, complementary fringe
     float t = clamp(0.30 + 0.45 * z * 0.10, 0.0, 1.0);
-    baseCol = palette(t) * 1.4 + vec3(1.0) * exp(-pow(r * 4.0, 2.0)) * 0.5;
+    baseCol = palette(t) * 1.3 + vec3(1.0) * exp(-pow(r * 3.0, 2.0)) * 0.5;
     return intensity;
 }
 
@@ -288,14 +283,15 @@ float kaleidoBloom(vec2 uv, out vec3 baseCol){
     baseCol = vec3(0.0);
     float intensity = 0.0;
     vec2 p = (uv - 0.5);
+    // wider FOV so the arms fill the screen
+    p *= 2.4;
     // kaleidoscope order climbs with the pulse
     float order = max(u_sym_burst.x * (0.7 + 0.6 * u_pulse), 3.0);
-    vec2 kp = kaleido(p * (1.8 + 0.6 * sin(u_time*0.4)), order);
+    vec2 kp = kaleido(p * (1.4 + 0.5 * sin(u_time*0.4)), order);
     // warped, recursive
-    kp = warp(kp * 1.5, u_warp_amount * 0.8);
+    kp = warp(kp * 1.4, u_warp_amount * 0.8);
     kp = kaleido(kp, order * 0.5);
     // distance to a moving "rune" shape: glowing polygon outline
-    int shape = int(u_shape_speed.x);
     float sides = 5.0;
     if(u_shape_speed.x < 1.5) sides = 4.0;
     else if(u_shape_speed.x < 3.5) sides = 6.0;
@@ -307,18 +303,18 @@ float kaleidoBloom(vec2 uv, out vec3 baseCol){
     vec2 q = vec2(ca*kp.x + sa*kp.y, -sa*kp.x + ca*kp.y);
     float polyR = abs(q.y);
     // pulsing radius
-    float pulseR = 0.45 + 0.18 * sin(u_time*1.2) * (0.6 + 0.4 * u_pulse);
+    float pulseR = 0.55 + 0.20 * sin(u_time*1.2) * (0.6 + 0.4 * u_pulse);
     float d = abs(rr - pulseR);
-    float ringLine = exp(-pow(d * 60.0, 2.0)) * 1.4;
-    float polyLine = exp(-pow(polyR * 12.0, 2.0)) * 0.6;
+    float ringLine = exp(-pow(d * 40.0, 2.0)) * 1.3;
+    float polyLine = exp(-pow(polyR * 8.0, 2.0)) * 0.7;
     intensity = ringLine + polyLine;
     // chromatic rings: stack 3 phases
     vec3 col1 = palette(0.10 + 0.35 * sin(u_time*0.5));
     vec3 col2 = palette(0.55 + 0.30 * cos(u_time*0.4));
     vec3 col3 = palette(0.85 + 0.20 * sin(u_time*0.3 + 1.7));
-    baseCol = col1*ringLine + col2*polyLine + col3*0.25*(ringLine+polyLine);
+    baseCol = col1*ringLine + col2*polyLine + col3*0.20*(ringLine+polyLine);
     // hot core
-    baseCol += vec3(1.0) * exp(-pow(rr * 8.0, 2.0)) * 1.0;
+    baseCol += vec3(1.0) * exp(-pow(rr * 6.0, 2.0)) * 0.9;
     return intensity;
 }
 
@@ -327,17 +323,15 @@ float kaleidoBloom(vec2 uv, out vec3 baseCol){
 float latticeCanyon(vec2 uv, out vec3 baseCol){
     baseCol = vec3(0.0);
     float intensity = 0.0;
-    vec2 p = (uv - 0.5);
+    vec2 p = (uv - 0.5) * 2.4;   /* wider FOV */
     float aspect = u_resolution.x / max(u_resolution.y, 1.0);
     p.x *= aspect;
     // domain warp
-    vec2 wp = warp(p * 1.2, u_warp_amount * 0.6);
+    vec2 wp = warp(p * 1.0, u_warp_amount * 0.5);
     // tunnel-ish z for "threading through"
     float speed = u_shape_speed.y;
     float z = 1.5 + 3.5 * fract(u_time * 0.10 * speed);
-    // accumulate 4 octaves of rotated, scaled, warped copies. Each
-    // octave's contribution is gated by a per-octave fade so the
-    // centre doesn't accumulate brightness from every layer.
+    // accumulate 4 octaves of rotated, scaled, warped copies
     float scale = 1.0;
     vec2 q = wp * (1.0 + z*0.3);
     float rot = u_time * u_seg_rot.y * 0.08 + u_seed;
@@ -346,21 +340,20 @@ float latticeCanyon(vec2 uv, out vec3 baseCol){
     for(int i = 0; i < 4; i++){
         q = rot2(q, rot);
         q += vec2(0.42, 0.31);
-        scale *= 0.74;
-        falloff *= 0.7;       /* each octave contributes less */
-        vec2 fq = fract(q * 1.6) - 0.5;
+        scale *= 0.72;
+        falloff *= 0.75;
+        vec2 fq = fract(q * 1.4) - 0.5;
         float d = min(abs(fq.x), abs(fq.y));
-        float line = exp(-pow(d * 40.0 / scale, 2.0)) * scale * falloff;
+        float line = exp(-pow(d * 32.0 / scale, 2.0)) * scale * falloff;
         float t = float(i)/4.0;
         vec3 c = palette(0.20 + 0.55*t + 0.10*sin(u_time*0.3 + float(i)));
         accumCol += c * line;
-        intensity += line * 0.55;
+        intensity += line * 0.6;
     }
     baseCol = accumCol;
-    // central vanishing-point glow (kept subtle so it doesn't blow
-    // out under the persistent trail)
+    // central vanishing-point glow
     float r = length(p);
-    baseCol += vec3(1.0, 0.9, 1.0) * exp(-pow(r*5.0, 2.0)) * 0.55;
+    baseCol += vec3(1.0, 0.9, 1.0) * exp(-pow(r*4.5, 2.0)) * 0.5;
     return intensity;
 }
 
