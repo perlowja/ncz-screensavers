@@ -589,7 +589,7 @@ static void reset_ship(Ship *s) {
     s->heading = 0.f;
     s->thrust = 0.f;
     s->alive = 1;
-    s->invuln = 3.0f;
+    s->invuln = 4.0f;
     s->shoot_cooldown = 0.f;
     s->turn_rate = 0.f;
     s->thrust_cmd = 0.f;
@@ -927,10 +927,26 @@ static void physics_step(State *st, float dt) {
             s->vel.x = 0.f; s->vel.y = 0.f;
             s->heading = 0.f;
             s->thrust = 0.f;
-            s->invuln = 3.0f;
+            s->invuln = 4.0f;
             s->want_to_shoot = 0;
             s->shoot_cooldown = 0.f;
             s->trail_n = 0;
+            /* Nuke any rocks within 0.45 units of the respawn
+             * point so the ship gets a brief safe zone. */
+            uint32_t rz = seed_rng();
+            for (int i = 0; i < MAX_ROCKS; i++) {
+                Rock *r = &st->rocks[i];
+                if (!r->alive) continue;
+                float dx = r->pos.x - 0.f;
+                float dy = r->pos.y - 0.f;
+                if (dx*dx + dy*dy < 0.20f) {
+                    emit_shockwave(st, r->pos, 0.4f);
+                    V2 imp = { rnd(&rz, -0.3f, 0.3f), rnd(&rz, -0.3f, 0.3f) };
+                    emit_debris(st, r->pos, imp, 8, 0.0f);
+                    r->alive = 0;
+                    st->rocks_killed++;
+                }
+            }
         }
     }
 
