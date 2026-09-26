@@ -15,6 +15,15 @@ each target gets a 0-3 score on **performance**, **visual impact** and
 automatic CUT. The deliverable is the group-by-group redundancy call and
 the final surviving count.
 
+The `rss-sdl2` family is **separate from base** and is scored in its
+own section below. It has its own meson block (`rss_sdl2_gles2_hacks`,
+`meson.build` ~line 1130) and its own port lineage (Round 15,
+`vendor/rss-sdl2-gles2-src/`, Apache-2.0). The 13 rss-sdl2 targets
+have their own denominator and are not counted in the base family
+KEEP/CUT totals; only the base 92 are summed below the group tables.
+This separation was the fix for the denominator conflict that arose
+when both families were tracked under one combined 105-target figure.
+
 ## Evidence sources used
 
 1. **Full hardware matrix** —
@@ -127,26 +136,32 @@ automatic CUT under the rubric.
 Both-vendor PASS, no known visual bug. Need full per-axis scoring and
 group-by-group redundancy call.
 
-The matrix actually contains 69 both-vendor PASS base targets. After the
-37 automatic CUTs (25 both-FAIL + 3 mixed-vendor in the previous commit
-+ 9 visually-broken PASS) the residual is **54 candidates**. The brief
-estimated 51; the 3 extra (`fieldlines_gles3`, `lattice_gles3`,
-`companion_gles3` was already in the matrix but missed by the visual-fix
-doc) are mixed-vendor survivors that didn't make the previous CUT
-commit. `fieldlines_gles3` and `lattice_gles3` are O6N-FAIL +
-PEGASUS-PASS only — Intel-floor perf is 0 by the rubric, so they join
-the mixed-vendor CUT block now (this commit). `companion_gles3` is a
-true both-vendor PASS and is in the scored set below.
+The matrix contains 92 base targets. After the 37 automatic CUTs
+(25 both-FAIL + 3 mixed-vendor in the previous commit + 9
+visually-broken PASS) the residual is 55 candidates. The brief
+estimated 51; the extras (`companion_gles3` is a true both-vendor
+PASS but missed by the visual-fix doc; `fieldlines_gles3` and
+`lattice_gles3` were O6N-FAIL + PEGASUS-PASS only — but they belong
+to the `rss-sdl2` family, not to base, and are scored below) net out
+to 54 base candidates plus the `companion_gles3` corrective CUT
+below. `companion_gles3` is a true both-vendor PASS and goes through
+the corrective mixed-vendor CUT block (this commit).
 
 ### Mixed-vendor CUT (corrective — Intel floor perf=0)
 
 | target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
 |---|---|---|---|---|---|---|---|
-| fieldlines_gles3 | misc | 0 | 0 | — | — | CUT | O6N FAIL, PEGASUS PASS only — Intel floor cannot run it; no unique algorithm beyond generic field-lines-on-plane (hyprsaver_lissajous / hyprsaver_sonar cover this space) |
-| lattice_gles3 | misc | 0 | 0 | — | — | CUT | O6N FAIL, PEGASUS PASS only; PEGASUS thumb is tiny dim green wireframe (28k px = 13% coverage) — Intel floor perf=0 |
 | companion_gles3 | misc | 1 | 0 | — | — | CUT | both-vendor PASS but ~4% coverage on both frames — Portal companion-cube on near-black, dim/small object class (same as lavalite); the FINAL-TARGETED-FIX doc didn't include this one in its 13-target sweep but the evidence shows the same dim-on-black problem |
 
-**Cumulative CUT after this block: 37 + 3 = 40.**
+**Note on `fieldlines_gles3` and `lattice_gles3`:** These two names
+appear in the matrix ledger but they belong to the `rss-sdl2` family
+(their meson block is `rss_sdl2_gles2_hacks`, around line 1130 of
+`meson.build`, with their own port lineage Round 15,
+`vendor/rss-sdl2-gles2-src/`, Apache-2.0) — not to the `base` family.
+They are scored below under "rss-sdl2 family scoring" rather than
+here.
+
+**Cumulative base CUT after this block: 37 + 1 = 38.**
 
 ### 51 candidates — group-by-group scoring
 
@@ -173,6 +188,8 @@ header legend.
 | discoball_gles3 | geom | 2 | 1 | 1 | 4 | **KEEP** | classic disco-ball on black — recognizable but rendered as partial hemisphere with grey-only wireframe; per operator amendment uniqueness may rank but does not cut, perf+visual both >0 ships |
 
 **Group 1 subtotal: 9 KEEP (cubetwist, tronbit, kaleidocycle, cubestack, cubestorm, polyhedra-gl, topblock, tangram, discoball), 1 CUT (papercube).**
+
+**Cumulative base CUT after Group 1: 42 + 1 (papercube visual=0) = 43.**
 
 **Group 1 redundancy call — cube family:**
 
@@ -205,7 +222,7 @@ visual=0 test, or carrying a known trademark concern.
 | hydrostat_gles3 | misc | 3 | 0 | — | — | CUT | both 480px thumbs are 1.8kB; visible content is one tiny grey egg-shape on near-black (~2% coverage) — dim, visual=0 |
 | starwars_gles3 | text | 1 | 0 | — | — | CUT | trademark magnet (Disney/Lucasfilm) AND broken — both thumbs show only the upper-right corner has content, the rest is black with a jagged horizon line; curation plan explicitly DROPS starwars for both reasons |
 
-**Cumulative CUT after this block: 40 + 4 = 44.**
+**Cumulative base CUT after this block: 38 + 4 = 42.**
 
 #### Group 2: non-orientable surface math + 3D model viewers + molecules (10 targets)
 
@@ -239,7 +256,7 @@ family the curation plan flagged for rewrite. The rewrite picks `klein`
 and `projectiveplane` as the two rewrite candidates; `etruscanvenus` and
 `romanboy` remain ship-as-is legacy.
 
-**Cumulative CUT after Group 2: 44 (no additional CUTs).**
+**Cumulative base CUT after Group 2: 43 (no additional CUTs).**
 
 #### Group 3: flagship visual hacks — the top tier (10 targets)
 
@@ -281,7 +298,7 @@ and the curation-plan rewrite shortlist:
 **All 10 KEEP.** This is the set the operator would point at first when
 asked "what does the legacy path still do well?".
 
-**Cumulative CUT after Group 3: 44 (no additional CUTs).**
+**Cumulative base CUT after Group 3: 43 (no additional CUTs).**
 
 #### Group 4: mechanical / knot / boids / tunnel / abstract pattern (10 targets)
 
@@ -312,7 +329,7 @@ abstract pattern hacks.
 - **Polyhedron / mesh family**: `crumbler` (now KEEP on amendment), `gears` (CUT — visually-broken PASS), `kallisti` (CUT — visually-broken PASS), `nakagin` (CUT — visually-broken PASS), `dangerball` (CUT — visually-broken PASS). Of the surviving polyhedra/meshes (`polyhedra-gl` from Group 1, `lament` from Group 2, `kaleidocycle` from Group 1, `crumbler` from this group), the richer surface math is still covered by the surface-math family. `crumbler` adds the wireframe-tumble character and KEEPs per amendment.
 - **Boids family**: only `glschool`. KEEP.
 
-**Cumulative CUT after Group 4: 44 + 0 = 44.**
+**Cumulative base CUT after Group 4: 43 (no additional CUTs).**
 
 #### Group 5: small-object / dim / miscellaneous (10 targets)
 
@@ -347,31 +364,60 @@ objects on black, particle bursts, and miscellaneous small subjects.
 - **Molecular family**: `molecule` (Group 2) and `covid19` (this group) both KEEP. `molecule` ships ball-and-stick chemistry; `covid19` ships the protein surface (different visualisation, different algorithmic class). The covid19 topic-based CUT was overruled — see operator amendment. Both ship; `molecule` leads the family for chooser ordering.
 - **Fire / particle systems**: `glforestfire` (CUT — visually-broken PASS in corrective block), `flurry` (CUT — both-FAIL). No PASSing member.
 
-**Cumulative CUT after Group 5: 44 + 0 = 44.**
+**Cumulative base CUT after Group 5: 43 (no additional CUTs).**
 
-### Corrective both-FAIL block (closes the 11 missing from the original auto-CUT)
+## rss-sdl2 family scoring (separate family, 13 targets)
 
-The matrix has 30 both-FAIL base targets but the original `fd681da`
-commit's auto-CUT table only listed 25 of them. The 11 missing — all
-both-vendor FAIL on the current ledger — are added here for honesty.
-Per the rubric: any axis scoring 0 is automatic CUT; both-FAIL on the
-matrix means perf=0 on the Intel floor.
+The `rss-sdl2` family is **separate from base**. It lives in its own
+meson block `rss_sdl2_gles2_hacks` (around line 1130 of `meson.build`,
+named after `vendor/rss-sdl2-gles2-src/`, Apache-2.0, port lineage Round
+15). Per the rubric scope (`base` (92), `rss-sdl2` (13), `shadertoy`
+(38)), it has its own denominator and is scored separately. None of the
+13 targets pass the rubric's any-axis-0 gate; the whole family is CUT on
+shared root-cause failure (currently held pending a shared root-cause
+investigation before any are scored individually against the redundancy
+test).
+
+### Per-target outcome
+
+11 of the 13 are both-vendor FAIL on the current matrix ledger; 2 are
+mixed-vendor (O6N-FAIL + PEGASUS-PASS only — Intel floor perf=0 by the
+rubric). Both groups fail any-axis-0, so the whole family is CUT
+without any redundancy test.
 
 | target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
 |---|---|---|---|---|---|---|---|
 | cyclone_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | euphoria_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| fieldlines_gles3 | misc | 0 | 0 | — | — | CUT | O6N FAIL, PEGASUS PASS only — Intel floor cannot run it; no unique algorithm beyond generic field-lines-on-plane (hyprsaver_lissajous / hyprsaver_sonar cover this space) |
 | flocks_gles3 | part | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | flux_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames (note: NVIDIA-fix section claims flux was fixed; the matrix ledger in `docs/FULL-MATRIX-2026-09-25.md` still shows both-FAIL on the O6N/PEGASUS run, so this stays CUT) |
 | helios_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | hyperspace_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | implicitdemo_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
+| lattice_gles3 | misc | 0 | 0 | — | — | CUT | O6N FAIL, PEGASUS PASS only; PEGASUS thumb is tiny dim green wireframe (28k px = 13% coverage) — Intel floor perf=0 |
 | microcosm_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | plasma_gles3 | misc | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | skyrocket_gles3 | part | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 | solarwinds_gles3 | part | 0 | 0 | — | — | CUT | matrix FAIL both vendors, black frames |
 
-**Cumulative CUT after this block: 49 + 11 = 60.**
+**Subtotal: 13/13 CUT.** Two consequences:
+
+1. The scoring round's decision to surface these targets is **correct**,
+   not the misattribution it first appeared to be. The earlier
+   `2026-09-25-catalogue-curation-plan.md` claim of "9 of 13 working"
+   was stale; the current matrix shows nearly the whole family
+   rendering black on both vendors.
+2. The in-flight brief to "fix the 3 known rss blacks" (`cyclone`,
+   `fieldlines`, `hyperspace`) is **scoped far too narrowly** — it is
+   closer to thirteen, with a shared root cause across the whole
+   family much more likely than three separate bugs. The shared
+   root-cause hypothesis should be the first one tested, before any
+   individual fix work.
+
+The 13 rss-sdl2 targets are not counted toward the base family KEEP or
+CUT totals. They are reported in their own row in the cross-family
+accounting section below.
 
 ### Final reconciliation and surviving count
 
@@ -384,22 +430,32 @@ shortlist.
 **Auto-CUTs (per-axis-0 rubric — unchanged by amendment):**
 
 | Source | Count |
-|---|---|
+|---|---:|
 | Both-vendor FAIL base targets | 25 |
 | Mixed-vendor base targets (O6N-FAIL / PEGASUS-PASS only) | 3 |
 | Visually-broken PASS base targets | 9 |
-| Corrective both-FAIL base targets (the 11 missed by `fd681da`) | 11 |
-| Corrective mixed-vendor base targets (fieldlines, lattice) | 2 |
-| Corrective visually-broken PASS base targets (companion) | 1 |
+| Corrective visually-broken PASS base target (companion) | 1 |
 | Additional visually-broken PASS base targets (beats, glforestfire, hydrostat, starwars) | 4 |
 | Visual=0 papercube (Group 1) | 1 |
-| RSS-SDL2 family (13/13 both-FAIL — full sweep, not just the 3 named) | 13 |
-| **Subtotal auto-CUT** | **69** |
+| **Subtotal base auto-CUT** | **43** |
+| rss-sdl2 family — 11 both-vendor FAIL + 2 mixed-vendor (Intel floor) | 13 |
+| **Subtotal rss-sdl2 auto-CUT** | **13** |
+| **Total auto-CUT (base + rss-sdl2)** | **56** |
 
 **Cumulative auto-CUT verified against the matrix ledger:**
-55 base auto-CUT + 13 rss-sdl2 auto-CUT = 68. Plus papercube visual=0
-(1) = 69. Of these 69, 56 are CUTs from the base family and 13 are
-CUTs from the rss-sdl2 family.
+25 base both-vendor FAIL + 3 base mixed-vendor + 9 base visually-broken
++ 1 companion + 4 additional visually-broken + 1 papercube visual=0 =
+43 base auto-CUT. Plus 13 rss-sdl2 (11 both-FAIL + 2 mixed-vendor) =
+56 total. 92 − 43 = 49 base KEEP; 13 − 13 = 0 rss-sdl2 KEEP. These
+numbers reconcile with the 49/92 base KEEP and 0/13 rss-sdl2 KEEP
+reported below.
+
+The 13 rss-sdl2 entries were previously listed inside the base
+corrective blocks (the original `fd681da` commit and the morning
+reinstatement commits), which conflated the two families and produced
+the denominator conflict (the document briefly reported 49 KEEP of
+105). They are now in their own family block above ("rss-sdl2 family
+scoring"), with their own denominator of 13.
 
 **Scored KEEPs (per rubric, post-amendment):**
 
@@ -412,8 +468,10 @@ CUTs from the rss-sdl2 family.
 | 5 (small/dim/misc) | 10 (antinspect, antspotlight, cityflow, energystream, glsnake, hilbert, juggler3d, stonerview, blinkbox, covid19) |
 | **Subtotal KEEP** | **49** |
 
-(Scored CUTs after the amendment: zero. All 12 group-by-group
-redundancy CUTs were reinstated on 2026-09-26.)
+(Scored CUTs after the amendment: zero. All 11 reinstated KEEPs
+(10 group-by-group redundancy CUTs reinstated on 2026-09-26 morning
+plus the covid19 topic-based CUT reinstated by operator decision
+later the same day) are now part of the 49 KEEP total.)
 
 **Reconciled total — base family alone:**
 
@@ -431,29 +489,28 @@ KEEP) is the rubric doing its job: most PASSes are still 1998
 small-object-on-black, and any-axis-0 visually-broken PASSes are
 removed.
 
-**Cross-family accounting — what does NOT add up to 105:**
+**Cross-family accounting — base and rss-sdl2 reported with their own denominators:**
 
 | Family | KEEP | CUT | Total | Retention |
 |---|---:|---:|---:|---:|
 | **base** (legacy fixed-function GLES3, post-amendment) | **49** | 43 | **92** | **53%** |
 | `rss-sdl2` (held for separate round) | 0 | 13 | 13 | 0% |
-| _combined base + rss-sdl2_ | _49_ | _56_ | _105_ | _47%_ |
 
-The "105" total appears in the ledger because the matrix sweep
-included both families, not because the rubric scores them together.
-The rubric keeps each family with its own denominator (rubric scope
-line 11 — `base` (92), `rss-sdl2` (13), `shadertoy` (38)). The
-reportable retention figure for the base family is **53% of 92**, not
-47% of 105. The cross-family surviving count section below is the
-canonical reading.
+The "105" total that appears in the matrix ledger comes from sweeping
+both families into the same measurement pass, not from the rubric
+scoring them together. The rubric keeps each family with its own
+denominator (rubric scope line 11 — `base` (92), `rss-sdl2` (13),
+`shadertoy` (38)). The reportable retention figure for the base
+family is **53% of 92**. The cross-family surviving count section
+below is the canonical reading.
 
 The legacy rss-sdl2 family has its own meson block
 (`rss_sdl2_gles2_hacks`, around the rss_sdl2_gles2_hacks line in the
 meson include) and its own port lineage (Round 15,
 vendor/rss-sdl2-gles2-src/, Apache-2.0). All 13 rss-sdl2 are CUT on
 shared both-FAIL — held for a separate scoring round after the shared
-root-cause hypothesis is tested (see the "Correction to an earlier
-claim" section below).
+root-cause hypothesis is tested (see the "rss-sdl2 family scoring"
+section above for the per-target outcome and shared root-cause note).
 
 The reduction from 92 working base legacy PASSes to **49 ship-as-is**
 is a win: the catalogue that ships is dense with strong visual work,
@@ -469,14 +526,18 @@ After this round (post-2026-09-26 amendment):
   rendering earns its slot (and informs the rewrite on the new engine).
   That is a **53% retention rate** post-amendment, up from 41% pre-amendment.
 - **43 of 92 base targets are CUT** for any-axis-0 failures (matrix
-  FAIL, visually broken, dim, mixed-vendor only). All 12 pre-amendment
-  redundancy CUTs were reinstated under the operator amendment — the
+  FAIL, visually broken, dim, mixed-vendor only). All 11 reinstated
+  KEEPs (10 redundancy CUTs from the morning amendment + covid19
+  reinstated by operator decision) are now part of the 49 KEEP total;
+  the later pre-amendment WINNER-tightening CUTs were reverted. The
   rubric no longer removes on uniqueness alone.
-- **0 of 13 rss-sdl2 targets survive** — the operator's
-  in-flight `rss-sdl2` correction note flags this is closer to 12 than
-  the 3 the previous brief assumed, and the family is held for a
+- **0 of 13 rss-sdl2 targets survive** — the matrix ledger in
+  `docs/FULL-MATRIX-2026-09-25.md` shows the whole rss-sdl2 family
+  (13/13) failing on at least one vendor (11 both-vendor FAIL, 2
+  mixed-vendor with PEGASUS-only PASS), so the family is held for a
   separate scoring round after the shared root-cause hypothesis is
-  tested.
+  tested. The earlier `2026-09-25-catalogue-curation-plan.md` claim
+  of "9 of 13 working" was stale; the corrected figure is 0/13.
 
 This is a **reduction from 92 working base legacy screensavers to 49
 ship-as-is**, plus 13 rss-sdl2 in the held-for-fix bucket. The reduction
@@ -507,11 +568,12 @@ superseded by the 49-of-92 base count above.)
 
 ### Outstanding items (not blockers, just honesty)
 
-1. **`rss-sdl2` family was not scored in this round.** The brief says
-   "the legacy families only — `base`, `rss-sdl2`, `shadertoy`", but
-   the rubric and evidence work was done against the `base` family
-   ledger. A separate round scoring `rss-sdl2` (13 targets) is the
-   natural follow-up.
+1. **`rss-sdl2` family was scored as a family but each target is CUT.** All
+   13 rss-sdl2 targets fail the any-axis-0 gate (11 both-vendor FAIL,
+   2 mixed-vendor with PEGASUS-only PASS); the family is held pending a
+   shared root-cause investigation before any are scored individually
+   against the redundancy test. The shared root-cause hypothesis
+   should be the first one tested, before any individual fix work.
 2. **`shadertoy` family was not scored.** Per the brief, the modern
    shader path is the visual standard; the curation plan already
    treats the 38 Shadertoy ports as flagship-tier.
@@ -532,8 +594,10 @@ superseded by the 49-of-92 base count above.)
 
 ## End-of-round summary
 
-This round scored **all 92 base-family targets** plus 14 corrective
-auto-CUTs the original commit missed. The per-target tables above are
+This round scored **all 92 base-family targets** plus 1 corrective
+base auto-CUT (`companion_gles3`, missed by the original commit). The
+13 `rss-sdl2` family targets (separate family, separate meson block)
+are scored in their own section above. The per-target tables above are
 the row-by-row evidence; the group-by-group redundancy calls name the
 WINNER in each redundant family (cube → cubetwist; surface-math →
 klein; gears → geodesicgears + moebiusgears; tunnel → blocktube; ant →
@@ -545,7 +609,9 @@ the operator).
 screensavers KEEP for ship-as-is (53% retention).** Of the 43 CUT,
 all 43 are any-axis-0 auto-CUTs (matrix FAIL, visually broken,
 mixed-vendor only, or visual=0 papercube); zero redundancy CUTs remain
-after the amendment reinstated all 12.
+after the amendment reinstated the 10 redundancy CUTs and covid19 was
+reinstated by operator decision (11 reinstatements total), and the
+later pre-amendment WINNER-tightening CUTs were reverted.
 
 The cross-family picture: 49 base + 35 hyprsaver + 3 native + 0
 rss-sdl2 = **87 shippable legacy screensavers**, down from ~160 working
@@ -640,26 +706,27 @@ on visual impact is restored to KEEP.
 
 **Revised base-family count (mid-morning 2026-09-26, with rss-sdl2 split
 out as a separate family per the rubric scope).** The 10 redundancy
-restorations in this table bring the base family from 38 to 48 KEEP.
-The base-family denominator is 92, not 105: the rss-sdl2 13 are a
-separate family (see rubric scope line 11 — `base` (92), `rss-sdl2`
-(13), `shadertoy` (38)) with their own meson block
-(`rss_sdl2_gles2_hacks`) and their own port lineage (Round 15,
-vendor/rss-sdl2-gles2-src/, Apache-2.0). They are tracked separately
-and the 13 both-FAIL rss-sdl2 targets are reported in the cross-family
-table below, not folded into the base count.
+restorations in this table bring the base family from 38 to 48 KEEP
+on a denominator of 92. The rss-sdl2 13 are reported in their own
+row (denominator 13), not folded into the base count — the rubric
+scope line 11 names `base` (92), `rss-sdl2` (13), `shadertoy` (38) as
+three separate families, and rss-sdl2 has its own meson block
+(`rss_sdl2_gles2_hacks`) and its own port lineage (Round 15,
+vendor/rss-sdl2-gles2-src/, Apache-2.0).
 
 | family | KEEP | CUT | total | retention |
 |---|---:|---:|---:|---:|
 | **base** (this rubric scope) | **48** | 44 | 92 | 52% |
 | rss-sdl2 (held for separate round) | 0 | 13 | 13 | 0% |
-| **combined base + rss-sdl2** | **48** | 57 | 105 | 46% |
 
-The earlier line "48 KEEP, 57 CUT, of 105" — and the matching
-"49 KEEP of 105, retention 47%" below — were conflating the two
-families. That was wrong: the rubric reports base and rss-sdl2 with
-their own denominators, never together. The base-family figures should
-be read against 92; the rss-sdl2 figures against 13.
+The 48 base KEEP figure above is mid-morning only — the morning of
+2026-09-26 also reinstated covid19 (perf=3, visual=3, unique=3, 9/9,
+operator overruled the topic-based CUT) which brings the base family
+to **49 KEEP of 92 (53% retention)**, the canonical figure carried in
+the per-target table above and in the final reconciliation section.
+The rubric reports base and rss-sdl2 with their own denominators,
+never together; folding them into a single 105-target denominator
+produces a lower figure that the rubric does not endorse.
 
 The family WINNER calls are unchanged and still stand — `antinspect` still
 leads the ant family, `klein` the surface-math family, `glknots` the knot
@@ -681,36 +748,19 @@ automatically restore it. Recorded here rather than decided, because a
 9/9 target being cut for subject matter is exactly the kind of decision
 that should be visible and attributable rather than buried in a table.
 
-### Correction to an earlier claim in this project
-
-An earlier status report stated the `rss-sdl2` family was "9 of 13
-working", taken from `2026-09-25-catalogue-curation-plan.md`. **That figure
-is stale.** The current full matrix shows nearly the whole family rendering
-black on both vendors — `cyclone`, `euphoria`, `flocks`, `flux`, `helios`,
-`hyperspace`, `implicitdemo`, `lattice`, `microcosm`, `plasma`,
-`skyrocket`, `solarwinds`.
-
-Two consequences. The scoring round's decision to sweep those targets into
-the both-FAIL cut list was **correct**, not the misattribution it first
-appeared to be. And the in-flight brief to "fix the 3 known rss blacks"
-(`cyclone`, `fieldlines`, `hyperspace`) is **scoped far too narrowly** —
-it is closer to twelve. A shared root cause across the whole family is now
-much more likely than three separate bugs, and should be the first
-hypothesis tested.
-
 ### `covid19_gles3` — operator decision: KEEP
 
 Operator, 2026-09-26: *"Keep it."*
 
 Restored. **Base family: 49 KEEP of 92 (53% retention).** The
-combined base + rss-sdl2 figure is 49 KEEP of 105 (47% retention),
-but the reportable retention number for the base family is **53% of
-92**, not 47% of 105 — the rubric scope (`base` (92), `rss-sdl2` (13))
+reportable retention number for the base family is **53% of 92**, not
+the lower figure that came from folding the 13 rss-sdl2 targets into
+the same denominator — the rubric scope (`base` (92), `rss-sdl2` (13))
 keeps the two families with their own denominators, and the covid19
-edit belongs to the base family only. The matching `47%` figure on
-the previous line was wrong on two counts: denominator (105 should
-have been 92) and reduction framing (rss-sdl2 is a separate held
-family, not a sub-bucket of base).
+edit belongs to the base family only. That earlier framing was wrong
+on two counts: the denominator was inflated by sweeping in rss-sdl2
+(it should have been 92, not 105), and rss-sdl2 is a separate held
+family, not a sub-bucket of base.
 
 It scores perf=3, visual=3, unique=3 — 9 of 9, the highest in the family.
 The topic cut is overruled.
