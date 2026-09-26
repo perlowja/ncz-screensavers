@@ -350,3 +350,55 @@ investment cannot be made safely at a cost proportional to its value.
 
 **The rule:** anything the frozen shim cannot render correctly is either
 archived or rewritten on the new engine. It is never patched.
+
+## DECISION 2026-09-25: the upstream port is CLOSED
+
+Operator: *"If nothing newer is left to port from jwz then stop at what we
+have."*
+
+Measured against upstream 6.16 (`b99f621`) the same day:
+
+| | count |
+|---|---|
+| Upstream `.glsl` shaders | 38 |
+| **Ours** | **38 — all of them** |
+| Upstream GL hacks | 170 |
+| Our `_gles3` targets | 172 |
+| Upstream GL hacks not in our build | 86 |
+| …of which shader-backed (we already have the `.glsl`) | 31 |
+| **Genuinely unported GL C hacks** | **55** |
+| Upstream 2D X11 hacks | 144 (none ported) |
+
+**The shader seam is fully mined — there is nothing left to take.** That
+was the high-value path and it is complete.
+
+**The remaining 55 GL C hacks are OUT OF SCOPE, permanently.** Not a
+backlog, not a someday list. Filtered through the curation rule (nice
+colours and visually attractive, or out of scope) the bulk of them are
+bucket C/D: small pale objects on black (`polyhedra`, `polytopes`,
+`sierpinski3d`, `superquadrics`, `morph3d`, `moebius`, `maze3d`,
+`stairs`, `rubik`), text/data hacks already ruled out (`gltext`,
+`glslideshow`, `dnalogo`, `graphstat`), or board games (`endgame`,
+`klondike`, `queens`).
+
+**The 144 2D X11 hacks stay unreachable by design.** They draw with Xlib
+primitives and require jwxyz, which was rejected because it targets
+deprecated GLES 1.1 (see `2026-09-25-jwxyz-adoption-design.md` and the
+GRAEAE consult that followed).
+
+### Why closing is the right call, not a concession
+
+The measured success rates decided it: **100% on the modern shader path,
+65% on the legacy fixed-function path.** Every additional C hack carries
+shim-compatibility tax on a layer we have already decided not to replace,
+and adds 1998-era objects-on-black to a catalogue whose quality bar is
+now set by original work.
+
+**Effort goes to original pieces on the new engine** — `neonspacewar`,
+`genxvectorcade`, `magmasimplex` — and to making the 38 shaders and the
+existing targets genuinely good. A verification pass on those 38 was
+already running when this decision was made, precisely because their
+quality matters more than their number.
+
+If upstream ships new `.glsl` shaders in a future release, revisit **that
+seam only**. Do not reopen the C-hack port.
