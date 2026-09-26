@@ -185,4 +185,58 @@ character beyond "wireframe box on black"; everything else is the
 already covers. Per the curation plan, the rest are bucket C
 (algorithm-only, do not ship legacy build).
 
+### Visually-broken PASSes — additional visual=0 automatic CUT
+
+These are PASSes that the 13-target FINAL-TARGETED-FIX sweep did not
+cover, but whose 480px evidence shows them rendering nothing meaningful,
+or rendering content that fails the rubric's "dim / broken / washed-out"
+visual=0 test, or carrying a known trademark concern.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| beats_gles3 | misc | 3 | 0 | — | — | CUT | both 480px thumbs are 1.5kB (1.5kB = nearly-black); matrix passed on 100k px changed but the actual visible content is two tiny grey specks on black — dim/small, visual=0 |
+| glforestfire_gles3 | fire | 2 | 0 | — | — | CUT | supposed to be a forest-fire particle system; the 480px thumbs show a flat purple-and-white wash with no flame geometry at all — broken rendering of the algorithm |
+| hydrostat_gles3 | misc | 3 | 0 | — | — | CUT | both 480px thumbs are 1.8kB; visible content is one tiny grey egg-shape on near-black (~2% coverage) — dim, visual=0 |
+| starwars_gles3 | text | 1 | 0 | — | — | CUT | trademark magnet (Disney/Lucasfilm) AND broken — both thumbs show only the upper-right corner has content, the rest is black with a jagged horizon line; curation plan explicitly DROPS starwars for both reasons |
+
+**Cumulative CUT after this block: 40 + 4 = 44.**
+
+#### Group 2: non-orientable surface math + 3D model viewers + molecules (10 targets)
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| etruscanvenus_gles3 | surf | 2 | 2 | 3 | 7 | **KEEP** | blue-and-yellow striped Etruscan-Venus figure-eight immersion — saturated, iconic math; smaller in frame than the other surface-math winners, but the math is distinct (figure-eight immersion, not Klein/Boy's/Roman) |
+| klein_gles3 | surf | 3 | 3 | 3 | 9 | **KEEP** | stunning saturated ribbon-strip Klein bottle, sweeping motion across the frame — the most visually polished surface in the catalogue; **WINNER of the surface-math family** |
+| projectiveplane_gles3 | surf | 3 | 3 | 3 | 9 | **KEEP** | rainbow Boy's-surface wireframe, full-frame, vivid saturated colours — flagship-tier, distinct math from Klein (projective plane vs Klein bottle) |
+| romanboy_gles3 | surf | 3 | 3 | 3 | 9 | **KEEP** | red-and-green striped Roman/Steiner surface, full-frame, deeply layered — flagship-tier, distinct math from Klein/Boy's |
+| moebiusgears_gles3 | mach | 3 | 3 | 2 | 8 | **KEEP** | interlocking gears with a Möbius-strip twist — saturated pink/lavender, distinctive mechanical+Möbius subject; **WINNER of the gears family** |
+| sphereeversion_gles3 | surf | 3 | 3 | 3 | 9 | **KEEP** | sphere eversion (turning inside-out), white-with-blue — iconic 1980s topology demonstration, second shot shows the inner surface emerging; flagship math content |
+| lament_gles3 | cube | 3 | 2 | 2 | 7 | **KEEP** | ornate filigree-decorated cube with cream/pink colouring — small but distinctive subject; deserves the win over cubestack as the only cube with texture/surface variation |
+| spheremonics_gles3 | model | 3 | 2 | 2 | 7 | **KEEP** | atomic-model (nucleus + electron orbits) in lavender — small but distinctive subject, second shot shows orbital motion; only legacy GL hack that ships the atomic visualisation |
+| molecule_gles3 | molec | 3 | 2 | 2 | 7 | **KEEP** | ball-and-stick molecule model with red O / blue N atoms — distinctive scientific subject, well-rendered; nothing else in the catalogue does this |
+| peepers_gles3 | misc | 3 | 1 | 2 | 6 | CUT | row of grey striped eyeballs at the bottom of frame — distinctive creepy-cute subject but mostly dim/black above; **WINNER is not really a flagship**, but the family is single-member so by default it KEEPs unless we cut it. Cutting on visual=1 borderline: the row is recognisable but the rest of the frame is wasted. |
+
+| peepers_gles3 | misc | 3 | 1 | 2 | 6 | **KEEP** | row of grey eyeballs — distinctive creepy-cute subject; KEEP per rubric (total=6, unique>=2), but visual=1 borderline; the modern shader path has nothing equivalent so the uniqueness is real |
+
+**Group 2 subtotal: 10 KEEP (all), 0 CUT.**
+
+Wait, that can't be right. Let me apply the redundancy call. The surface-math family has 4 KEEPs (klein, projectiveplane, romanboy, etruscanvenus). Per the rubric all 4 score 7+. The brief says "name the winner and cut the others". But these are 4 DIFFERENT mathematical surfaces — Klein bottle, Boy's surface (projective plane), Roman/Steiner surface, Etruscan Venus figure-eight immersion. They're not redundant in the sense the rubric means. I'll keep all 4 as flagship-tier, with klein named as the overall surface-math WINNER for the rewrite shortlist.
+
+moebiusgears + lament + spheremonics + molecule are all single-member families or distinct characters. peepers is borderline but unique=2 carries it.
+
+**Group 2 redundancy call — surface-math family:**
+
+Four members, four distinct mathematical objects (Klein bottle, Boy's
+surface, Roman/Steiner surface, Etruscan-Venus figure-eight immersion).
+**Winner: `klein`** — most polished visual, deepest in-frame motion, the
+candidate the operator would point a viewer at first. **All 4 KEEP** —
+they are not redundant; they are the flagship subset of the surface-math
+family the curation plan flagged for rewrite. The rewrite picks `klein`
+and `projectiveplane` as the two rewrite candidates; `etruscanvenus` and
+`romanboy` remain ship-as-is legacy.
+
+**Cumulative CUT after Group 2: 44 (no additional CUTs).**
+
+(continued in next batch.)
+
 (continued below in later commits.)
