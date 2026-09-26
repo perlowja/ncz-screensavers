@@ -68,10 +68,11 @@ typedef enum {
 typedef struct {
     ncz_tier_e tier;          /* current tier */
     float      scalar;        /* normalised: 0.0 low, 0.33 medium, 0.66 high, 1.0 ultra */
+    /* tier_name is one of the static strings below; do not free. */
     const char *name;         /* "low" | "medium" | "high" | "ultra" */
     int        forced;        /* 1 if user override (NCZ_GPU_TIER) is active */
     int        downgraded;    /* 1 if a runtime measurement dropped the tier below the static prior */
-    const char *reason;       /* one-line description of why we are at this tier */
+    char       reason[160];   /* one-line description of why we are at this tier (buffer is owned) */
     /* For evidence / [diag] log lines: */
     double     median_ms;     /* rolling median frame time in ms (0 if not yet sampled) */
     int        sample_count;  /* frames observed since init (post-warmup) */

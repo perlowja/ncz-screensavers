@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
 
 #include <GLES3/gl32.h>
@@ -120,7 +121,7 @@ static void set_scalar_and_name(ncz_gpu_tier_t *t) {
 
 /* Render a one-line description into current.reason. We keep it short
  * — the engine appends this to its own [diag] line. */
-static void refresh_reason(void) {
+static void refresh_reason_with_prev(ncz_tier_e prev) {
     const char *base = g_state.prior_reason;
     if (g_state.forced) {
         snprintf(g_state.current.reason, sizeof(g_state.current.reason),
@@ -128,13 +129,16 @@ static void refresh_reason(void) {
         return;
     }
     if (g_state.current.downgraded) {
+        const char *prev_name =
+            (prev == NCZ_TIER_LOW)    ? "low"    :
+            (prev == NCZ_TIER_MEDIUM) ? "medium" :
+            (prev == NCZ_TIER_HIGH)   ? "high"   : "ultra";
         snprintf(g_state.current.reason, sizeof(g_state.current.reason),
-                 "downgraded from prior (prior=%s, %.1fms median)",
-                 g_state.current.name, g_state.current.median_ms);
+                 "downgraded from %s (%.1fms median)", prev_name, g_state.current.median_ms);
         return;
     }
     snprintf(g_state.current.reason, sizeof(g_state.current.reason),
-             "static prior (%s)", base);
+             "static prior (%s)", base ? base : "default");
 }
 
 /* ---- Static prior from GL strings ----
@@ -208,10 +212,15 @@ static void query_static_prior(void) {
 /* ---- Tier change logic ---- */
 
 static void apply_tier(ncz_tier_e t, int downgraded_flag) {
+    /* Track the prior so refresh_reason can describe the change. */
+    ncz_tier_e prev = g_state.current.tier;
     g_state.current.tier       = t;
     g_state.current.downgraded = downgraded_flag;
+    /* Stash the prev so refresh_reason can reference it; refreshed after
+     * set_scalar_and_name mutates name. */
+    g_state.current.reason[0] = 0;
     set_scalar_and_name(&g_state.current);
-    refresh_reason();
+    refresh_reason_with_prev(prev);
     g_state.last_change_s = mono_now();
 }
 
@@ -287,7 +296,7 @@ void ncz_gpu_tier_init(void) {
     /* Reset all state. Safe to call repeatedly — useful for tests. */
     memset(&g_state, 0, sizeof(g_state));
     g_state.session_started = mono_now();
-    g_state.last_change_s   = mono_now();
+    g_state.last_change_s   = mono_now() - RATE_LIMIT_S;  /* first change is not rate-limited */
     g_state.warmup_remaining = WARMUP_FRAMES;
 
     /* Default current tier is medium; the override or prior will set it. */
