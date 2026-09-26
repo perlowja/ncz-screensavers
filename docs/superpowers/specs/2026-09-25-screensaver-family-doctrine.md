@@ -130,3 +130,86 @@ tile-based deferred rendering, different bandwidth and different
 behaviour under heavy fragment work. Do not extrapolate its performance
 from the x86 numbers in either direction. Measure it when the hardware is
 available, and say so explicitly if it was not.
+
+---
+
+# The catalogue's purpose — art and entertainment, never repeating
+
+Operator, 2026-09-26:
+
+> *"I happen to like visualizations that have an aspect of randomization in them, these
+> should be art creations that are entertainment. We want NCZ to be the linux distribution
+> that even takes its screensavers seriously."*
+
+This is the north star for the whole catalogue and it settles a real tension in the
+design advice we have been given.
+
+## Randomisation is a REQUIREMENT, not a feature
+
+**Every piece must be different every time it runs.** A screensaver the viewer has
+already seen is a screensaver they stop looking at. This is not decoration on top of a
+fixed design — it is part of what the piece IS.
+
+What that means concretely, and what it rules out:
+
+- Per-launch randomisation of the things that determine CHARACTER, not just surface: the
+  palette, the structure, the composition, the behaviour. Randomising only a hue and
+  calling it varied is the failure mode.
+- Where the piece has a generator — a trajectory, a genome, a roster, a weather system —
+  **draw its parameters, do not script it.** Four hardcoded choreographies with three
+  scalars varying is not randomisation; it is four shots at different scales. This exact
+  defect was found and fixed in `blackhole`.
+- Prefer parameterisations where one drawn number produces genuinely different results
+  over ones where it produces the same result louder. The zoom-whirl `q` is the model:
+  rational gives a closed rosette, irrational gives a path that never repeats.
+- Log the draw. Every piece prints a `[diag]` line with its parameters so a striking run
+  can be reproduced and a dull one diagnosed.
+
+## Entertainment, not wallpaper
+
+A consultation (Astra, 2026-09-26) argued the catalogue's missing category is **quiet
+materiality** — things that receive light rather than emit it — and recommended judging
+each piece by whether it "remains pleasant beside ordinary desk work". Its craft advice is
+excellent and stands. **Its register does not.**
+
+Optimising for *pleasant beside desk work* produces tasteful wallpaper. The stated goal is
+**art creations that are entertainment** — pieces worth actually watching, which is a
+higher and riskier bar than not being annoying.
+
+So the catalogue needs BOTH, and should not pretend one is the other:
+
+| register | purpose | examples |
+|---|---|---|
+| **showpiece** | rewards attention; makes someone stop and watch | `leviathan`, `genxvectorcade`, `blackhole`, `neonspacewar` |
+| **quiet material** | rewards peripheral vision; ambient | caustics, satin, foliage shadows, frosted glass, thin film |
+
+Astra's refuse-list includes "endless tunnels, hyperspace travel" and "prefer a stable
+camera" — which would rule out `leviathan` entirely. That advice is correct FOR THE QUIET
+REGISTER and wrong for the showpieces. A catalogue that is all showpieces is exhausting; a
+catalogue with none is forgettable. **Judge each piece against its own register**, exactly
+as the family doctrine already requires.
+
+## What survives from the craft advice regardless of register
+
+These are quality, not style, and apply to everything:
+
+- **Tonemap the output.** Untonemapped linear colour is the commonest reason a
+  technically-correct shader looks amateur. But tonemapping is the END of a discipline,
+  not a rescue: decide where highlights fall and what stays subdued first.
+- **Separate motion scales** — small movements over seconds, regional change over tens of
+  seconds, broad change over minutes, asynchronously. One global sine controlling
+  everything reads as a metronome.
+- **Keep quiet regions.** Filling the frame does not mean filling every pixel with detail.
+- **Filter for motion.** Detail that looks excellent in a still can crawl and sparkle.
+  Tonemapping does not fix aliasing.
+- **Refuse rainbow-as-default-mapping** of every scalar, kaleidoscopic symmetry used to
+  manufacture complexity, noise added to hide weak large-scale composition, and arbitrary
+  chromatic aberration / scanlines / film grain.
+- **Cost is real:** 4K is about 8.3 million fragments per frame. "Only another thirty
+  iterations" is consequential.
+
+## The standard
+
+The distribution's claim is that it takes screensavers seriously. That is measured by
+whether a stranger who knows nothing about any of this keeps one switched on — and, for
+the showpieces, whether they watch it twice and notice it was different the second time.
