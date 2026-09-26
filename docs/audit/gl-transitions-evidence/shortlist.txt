@@ -1,15 +1,39 @@
-crosswarp          
-directionalwarp    
-morph              
-LinearBlur         
-ripple             
-burn               
-burn0              
-undulatingBurnOut  
-GlitchDisplace     
-GlitchMemories     
-parametric_glitch  
-old_tv_lost_signal 
-dissolve           
-Drop_Zone_Flicker  
-flyeye             
+# gl-transitions SHORTLIST (v2, with wrapper-bug corrections)
+# Curated under docs/superpowers/specs/2026-09-25-screensaver-family-doctrine.md
+# Favour warp / burn / glitch / dissolve / displacement.
+# Defer geometric wipes (bars / doors / page-curl) as "corporate slideshow".
+#
+# 18 transitions in priority order. Tier 1 = core rotation,
+# tier 2 = variety rotation, tier 3 = texture / texture-noise rotation.
+# Maintained alongside STEP3-SHORTLIST.md (curated rationale).
+#
+# Updated 2026-09-26 by the cerberus / NVIDIA 595.58.03 round;
+# removed 3 entries (burn0, dissolve, parametric_glitch) that the
+# prior MEDUSA / Mesa round listed but that the wrapper-uniform-
+# shadowing bug renders broken until the wrapper is fixed.
+# See docs/audit/gl-transitions-evidence/round-2026-09-26/STEP2-CAPTURES.md
+# for the bug write-up.
+
+# Tier 1 - core rotation (8)
+crosswarp
+undulatingBurnOut
+GlitchMemories
+randomNoisex
+displacement
+ripple
+LinearBlur
+flyeye
+
+# Tier 2 - variety rotation (6)
+directionalwarp
+burn
+GlitchDisplace
+crosshatch
+DefocusBlur
+morph
+
+# Tier 3 - texture / texture-noise (4)
+old_tv_lost_signal
+Drop_Zone_Flicker
+Swirl
+TilesWave
