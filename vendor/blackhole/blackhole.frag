@@ -34,6 +34,22 @@ uniform vec4 u_nebula;
 uniform vec2 u_nebula_axis;
 // Which decorrelation scheme the nebula was given this run (0..2).
 uniform float u_nebula_scheme;
+// Per-launch disk-axis orientation. xyz is a unit vector along the BH's
+// spin axis, drawn uniformly on the sphere (not via naive lat/long, which
+// clusters at the poles). w is a half-angle wobble term in [-1,1]: the
+// disk normal is the spin axis plus a small in-cone tilt. The disk stays
+// near-perpendicular to the spin axis at w=0; |w|=1 lets the disk tilt up
+// to ~90° away from the axis. This is what makes edge-on views reachable
+// independently of where the camera is.
+uniform vec4 u_disk_axis;
+// Slow disk precession (Lense-Thirring frame dragging). The disk normal
+// swings around u_disk_precess.xyz at rate u_disk_precess.w rad/s. Typical
+// launches run 0.02..0.08 rad/s so a minute of capture shows visible but
+// unhurried change. The precession axis and rate are both drawn per launch.
+uniform vec4 u_disk_precess;
+// Per-launch trajectory family: 0 = zoom-whirl (bound), 1 = hyperbolic
+// flyby (unbound). Drawn 50/50 so both families actually appear.
+uniform float u_camera_family;
 #define PI 3.14159265358979323846
 float hash21(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345+u_seed*.00001);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+1.),f.x),f.y);}
@@ -137,8 +153,14 @@ vec3 stars(vec3 d){
  vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(cell+7.));
  return c*s*s*(.65+.35*sin(u_seed+n*40.))*1.8+nebula(d);
 }
-vec3 disk_color(vec3 p,float drama){
- float r=length(p.xy),a=atan(p.y,p.x);
+vec3 disk_color(vec3 p,vec3 diskN,float drama){
+ // Rotate into the disk's local frame (z = disk normal at this instant).
+ // Everything below runs in plane-polar (r, a) where a is the orbital
+ // angle around the disk axis. The seam rule still applies: a is atan(...)
+ // and discontinuous, so anything driven by it (bandHue here) MUST be
+ // periodic in it.
+ vec3 pL=toDiskLocal(p,diskN);
+ float r=length(pL.xy),a=atan(pL.y,pL.x);
  float ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);
  float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));
  n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);
@@ -178,6 +200,57 @@ vec3 jet_color(float axis){
 }
 // Zero velocity and acceleration at each envelope endpoint.
 float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
+
+// ---- Disk axis tilt ----
+// Build the world-space disk normal at the current time. Two contributions:
+//   1. Per-launch spin axis drawn uniformly on the sphere (u_disk_axis.xyz).
+//      w is a half-angle wobble term in [-1,1] which tilts the disk up to
+//      ~90° away from the axis at |w|=1.
+//   2. Slow precession about u_disk_precess.xyz at rate u_disk_precess.w.
+// Both motions are physically motivated: a BH's spin axis is fixed on a
+// human time scale; the DISK misaligns with the spin axis and precesses
+// via Lense-Thirring frame dragging. Keeping the precession slow means a
+// viewer notices it over a minute, not as a tumble.
+vec3 diskNormalAtTime(float t){
+ // Spin-axis-relative wobble: rotate u_disk_axis.xyz by an angle w*pi/2
+ // about an axis perpendicular to it. Pick a "perp" axis robustly via
+ // cross with world +Z first; fall back to +X if the spin axis is ~+Z.
+ // Returning (0,0,0) here from a degenerate input is fine: normalize(0)
+ // returns (0,0,0) which we then project from in the integrator check,
+ // and disk_color handles the n~+Z case identically (identity rotation).
+ vec3 spin=u_disk_axis.xyz;
+ vec3 ref=abs(spin.z)>.97?vec3(1.,0.,0.):vec3(0.,0.,1.);
+ vec3 perp=cross(spin,ref);
+ float pl=length(perp);
+ vec3 perpN=pl>1e-4?perp/pl:vec3(1.,0.,0.);
+ float wobble=u_disk_axis.w*1.5707963;   // up to pi/2 radian tilt
+ float cw=cos(wobble),sw=sin(wobble);
+ vec3 tilted=cw*spin+sw*perpN;
+ // Precession: swing tilted about u_disk_precess.xyz. Rodrigues rotation.
+ vec3 pAxis=u_disk_precess.xyz;
+ float pa=length(pAxis);
+ // If pAxis is degenerate (essentially zero), skip the precession and
+ // return the tilted vector. The probability of this from a uniform draw
+ // is exactly zero; the guard is here for safety only.
+ if(pa<1e-4)return normalize(tilted+vec3(0.,0.,1e-4));
+ vec3 pN=pAxis/pa;
+ float ang=t*u_disk_precess.w;
+ float c=cos(ang),sang=sin(ang);
+ float dotN=dot(pN,tilted);
+ vec3 swung=tilted*c+cross(pN,tilted)*sang+pN*(dotN*(1.-c));
+ return normalize(swung);
+}
+// Rotate a world-space point into the frame where the disk sits in the XY
+// plane (normal +Z). Equivalent to applying the inverse of the rotation
+// that maps +Z to diskNormal. Implemented as Rodrigues' rotation about the
+// axis (diskNormal x +Z).
+vec3 toDiskLocal(vec3 p,vec3 n){
+ vec3 axis=normalize(cross(n,vec3(0.,0.,1.)));
+ float ang=acos(clamp(n.z,-1.,1.));    // angle from world +Z
+ float c=cos(ang),s=sin(ang);
+ if(length(axis)<1e-5)return p;        // n ~ +Z: identity
+ return p*c + cross(axis,p)*s + axis*dot(axis,p)*(1.-c);
+}
 void main(){
  vec2 p=(2.*gl_FragCoord.xy-u_resolution)/u_resolution.y/u_radius;
  // Per-launch flight-path parameters replace what used to be hardcoded
@@ -243,6 +316,13 @@ void main(){
  }
  dist=max(dist,5.4);
  vec3 cam=dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),baseRight=normalize(cross(forward,vec3(0,0,1))),baseUp=cross(baseRight,forward),right=cos(roll)*baseRight+sin(roll)*baseUp,up=-sin(roll)*baseRight+cos(roll)*baseUp;
+ // Disk normal at this frame. Used for the plane-crossing detection in
+ // the integrator (line 318) and the jet axis check (line 320). Computing
+ // it once per frame avoids recomputing the Rodrigues rotation in inner
+ // loops. Falls back to +Z if the draw produced a near-degenerate axis
+ // (probability zero from a uniform-on-sphere draw, but it's cheap).
+ vec3 diskN=diskNormalAtTime(u_time);
+ if(length(diskN)<.5)diskN=vec3(0.,0.,1.);
  // One ray, with subtle arrival-only peripheral distortion and framing drift.
  float r2=dot(p,p),shot=fract(u_time*u_orbit_rate/(2.*PI));
  vec2 lensP=p*(1.+.035*arrivalFX*r2/(1.+r2));
@@ -250,9 +330,17 @@ void main(){
  vec3 ray=normalize(forward+lensP.x*right+lensP.y*up);
  float impact=length(cross(cam,ray));bool captured=impact<2.598076;
  float u=1./length(cam),phi=0.;vec3 normal=normalize(cam),perp=cross(cross(normal,ray),normal);float plen=length(perp);vec3 tangent=plen>1e-6?perp/plen:right;float tang=dot(ray,tangent),du=abs(tang)>1e-6?-dot(ray,normal)/tang*u:200.*u;vec3 old=cam,pos=cam,color=vec3(0);float trans=1.;
- for(int i=0;i<260;i++){float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));du+=.5*(-u+1.5*u*u)*step;u+=du*step;du+=.5*(-u+1.5*u*u)*step;phi+=step;if(u>=1.||u<=.0005)break;old=pos;pos=(cos(phi)*normal+sin(phi)*tangent)/u;if(old.z*pos.z<0.){vec3 x=mix(old,pos,-old.z/(pos.z-old.z));float r=length(x.xy);if(r>2.8&&r<13.){color+=trans*disk_color(x,closeFX);trans*=.72;}}}
+ // Disk-plane crossing test against diskN (the plane through the origin
+ // with normal diskN). When old and pos are on opposite sides, their dot
+ // products with diskN differ in sign and the segment crosses the disk.
+ // The intersection point x lands in the disk plane up to fp precision;
+ // we project it onto diskN=0 just to be sure, then take its radial dist
+ // to gate the 2.8..13 band. The radial dist is taken in world XY because
+ // the disk normal can be non-+Z; in disk_color the point is rotated into
+ // the disk-local frame and the actual polar coords (r,a) live there.
+ for(int i=0;i<260;i++){float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));du+=.5*(-u+1.5*u*u)*step;u+=du*step;du+=.5*(-u+1.5*u*u)*step;phi+=step;if(u>=1.||u<=.0005)break;old=pos;pos=(cos(phi)*normal+sin(phi)*tangent)/u;float od=dot(old,diskN),pd=dot(pos,diskN);if(od*pd<0.&&od!=pd){float t_=-od/(pd-od);vec3 x=mix(old,pos,t_);x=x-diskN*dot(x,diskN);float rd=length(x);if(rd>2.8&&rd<13.){color+=trans*disk_color(x,diskN,closeFX);trans*=.72;}}}}
  if(!captured){vec3 d=length(pos-old)>1e-5?normalize(pos-old):ray;color+=trans*(stars(d)+vec3(.002,.003,.007));}
- if(u_jet>0.){float axis=abs(dot(ray,vec3(0,0,1)));color+=u_jet*jet_color(axis)*(.45+.55*noise(p*45.+u_time*.2));}
+ if(u_jet>0.){float axis=abs(dot(ray,diskN));color+=u_jet*jet_color(axis)*(.45+.55*noise(p*45.+u_time*.2));}
  // Reinhard tonemap -> 1/2.2 gamma -> contrast toe + black point.
  // u_palette_contrast ~1.0 (gentle S-curve restoring Reinhard-flattened
  // contrast). 0.95-1.25 randomised per-launch.
