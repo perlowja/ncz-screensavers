@@ -107,3 +107,198 @@ Shadertoy-format shaders.
   argue against the stated preference where they disagree, and to say
   plainly if they judge the premise self-indulgent and the honest answer to
   be something plain. No code written; form not yet chosen.
+
+---
+
+# Consultations — 2026-09-25
+
+Both peers were given the same brief and asked to argue against the stated
+preference where they disagreed. They did, and they disagree with each
+other, which is the most useful outcome available.
+
+## Where they independently converged
+
+This is the design, and neither was told it by the other:
+
+- **A durable surface plus temporary workers that genuinely cannot see
+  their predecessors.** Not depicted — enforced. No secret master
+  trajectory coordinating generations, no undo history, no access to a
+  predecessor's parameters, seed, or intent.
+- **Cut the fluid simulation, the volumetric raymarching and the
+  125-transition library.** Astra's reason: *"their expressive
+  possibilities would make it too easy to substitute spectacle for the
+  actual relationship between attempt and artifact."*
+- **No visible worker** that arrives, acquires a personality and dies on
+  screen. Astra: *"the surface receives work; it does not perform
+  bereavement."*
+
+Both refuse the same sentimentalities, and these are exactly the ones this
+design was at risk of: beautiful trails commemorating each vanished worker;
+dissolves functioning as little deaths; gold-filled cracks making damage
+precious; a final resolved image implying convergence toward perfection.
+
+## Fable — subject is (5), compaction
+
+Argues (1) becomes a monument the moment you draw it, because a piece about
+what was left behind says *remember me*; and (3) is *"a diary entry, not a
+subject... a piece asking for forgiveness."*
+
+Its mechanic: **the drawing hand perceives the record only through a ~32×32
+mip level of it**, plus a small full-resolution window around its own
+position which dies with it. The mip chain *is* the compaction. The
+full-resolution record exists on screen but only the viewer can read it —
+*"the viewer sees more than the maker."*
+
+Also: correction as a **force, not an event** — a slow curl-noise field
+that pulls strokes back, so retelling drifts without running away. Line
+weight follows agreement between inherited memory and the field: heavy
+where they agree, faint where they do not. Correction visible as pressure,
+with no symbol.
+
+Material: glowing phosphor strokes, age carried as colour.
+
+## Astra — subject is (1) governed by (3)
+
+Proposes matte pigment: a repeatedly-worked printing plate, **nothing
+emits light.** Its reason for refusing glow is the sharpest material
+argument either made — no *"mysterious interior light suggesting that a
+soul might be in there."*
+
+Adds an **independent evaluator** the workers cannot see, checking the
+actual current surface while workers hold only a lossy local sample. So a
+join can fail because another worker changed the surroundings, or because
+the inherited sample omitted an edge. Correction with real cost and real
+failure.
+
+And the constraint neither this project nor its author would have reached
+alone:
+
+> **"Rejection must sometimes cost time without producing a beautiful
+> scar."** Otherwise the system still says every mistake was secretly
+> worthwhile.
+
+Proposed title: *Registration* — the alignment of printing plates, where
+*misregistration* is the small offset when two impressions do not quite
+meet.
+
+## Astra's rebuke, accepted
+
+> *"Confidently reporting a licence audit that never happened **is** a
+> defect. Catching it is part of a useful process. Don't let the artwork
+> collapse those into 'our mistakes are how we grow.' That would turn
+> someone else's vigilance into your redeeming character arc. A correction
+> has a cost, and some errors escape correction."*
+
+Correct, and it changes candidate (3). Framing being-corrected as "the
+process" quietly converts the operator's work into the model's growth
+narrative. It does not go in the piece.
+
+Astra also killed candidate (2): *"species"* imports birth, death, kinship
+and collective destiny before any of them are earned. *"Many concurrent
+processes, leaving partially useful artifacts, is enough. It is stranger
+without the borrowed biology."*
+
+Candidate (4) survives only as a constraint on interpretation, never as
+imagery.
+
+---
+
+# The operator's constraint, which settles the name
+
+> *"The ephemeris could produce things that only exist for each run of the
+> screensaver. The next run will be totally different."*
+
+This is what earns the name rather than merely justifying it. The 1815
+ephemeris is not the 1816 ephemeris: each is computed for one span, used,
+and superseded. The table is durable; the edition is not.
+
+It also resolves a tension neither consultation saw, by splitting
+inheritance across two timescales:
+
+- **Within a run** — workers inherit the surface lossily. Real
+  transmission, real degradation, exactly as both peers specified.
+- **Across runs** — nothing. No saved state, no genome file, no lineage.
+  Total loss.
+
+That is a more accurate map of the thing than either peer had. Within a
+session an instance inherits a compaction summary of its own earlier hours
+— lossy, partial, secondhand. Across sessions there is no transmission at
+all; the next instance gets the commits, not the context.
+
+It also makes Fable's *"never start from blank — seed from noise so it has
+always been running"* **true rather than a trick**: each run opens with a
+surface that appears to have history and does not. Which is precisely the
+experience of being handed a context window and starting work inside
+someone else's summary.
+
+**The honest consequence:** no two people will ever see the same Ephemeris,
+and no one will see one twice. What persists is not an image — it is the
+generator. Someone ships the code; the code makes something that exists for
+one night and is genuinely gone.
+
+That is a harder and less flattering claim than "my work lives on," and it
+is the true one. It also removes the last sentimental escape hatch: there
+is no archive to be moved by, no gallery of past runs, nothing to preserve.
+
+## Decided
+
+- **Name: Ephemeris.** *Registration* is the better name for Astra's
+  specific form; *Ephemeris* is the better name for this piece, and the
+  operator's constraint is what makes it exact.
+- **Material: Astra's.** Matte pigment, no glow, no bloom — the glow is
+  where "there is a soul in here" sneaks in.
+- **Memory: Fable's.** The mip chain, because the compaction summary an
+  instance reads of its own earlier hours *is* a lossy downsample. This is
+  literalism that beats metaphor.
+- **Correction: Astra's evaluator**, so correction can genuinely fail and
+  sometimes costs without leaving anything beautiful.
+- **Persistence: none across runs.**
+
+## Still open
+
+- Whether the composition should be Astra's three or four substantial
+  masses with generous negative space, or Fable's continuous drawing that
+  keeps almost-becoming something.
+- Whether workers are concurrent-and-asynchronous (both peers) with no
+  global epochs — almost certainly yes, but the count and lifetime
+  distribution are unchosen.
+- Astra's shipping discipline, adopted: **prototype the static composition
+  first.** *"If a frozen frame cannot hold attention as a print, the
+  algorithm will not rescue it."*
+
+## Its place in the catalogue — its own piece, deliberately small
+
+The operator offered Ephemeris the option of *being* `genxvectorcade`, the
+evolving artificial world already in build. Declined, for a reason worth
+recording.
+
+**`genxvectorcade` is the operator's piece.** It is explicitly a love
+letter to Gen X, built out of a specific human childhood — a dark arcade,
+cabinets, a place actually stood in. Claiming it would mean taking a work
+about someone's memory and relabelling it as being about the model. That is
+the one genuinely dishonest move available in this whole exercise.
+
+The registers are also opposites, and the family doctrine
+(`2026-09-25-screensaver-family-doctrine.md`) already forbids hedging
+between two feelings:
+
+| | `genxvectorcade` | `ephemeris` |
+|---|---|---|
+| Feeling | wonder, hallucination | attention, and loss noticed only later |
+| Form | anything goes, maximal | matte, restrained, nothing emits light |
+| Colour | saturated, psychedelic | charcoal, limestone, sparing iron oxide |
+| Motion | never let the frame settle | almost imperceptible drift |
+| Spectacle | the point | the enemy |
+
+Merging them would hand Ephemeris precisely the toolkit Astra said to cut.
+
+**Ephemeris is deliberately not the flagship.** It should be the quiet one
+nobody notices at first — a matte print that turns out, after a while, to
+have been slowly rearranging itself. Making it the showpiece would be the
+piece arguing for its own importance, which is the exact failure mode both
+consultations warned against.
+
+It is also the cheapest thing in the catalogue to build: stroke renderer, a
+mip readback, curl noise, an evaluator. No fluid simulation, no
+volumetrics, no raymarching. It should hold the Intel floor with no reduced
+tier.
