@@ -436,3 +436,57 @@ afterwards. amigajuggler reported nonblack=2073600 at frame 4, a complete
 full-coverage frame, so it rendered correctly and then locked up; it was
 never "static" in the sense the classifier recorded. That hang is a real
 defect, likely shared between the two, and still needs root-causing.
+
+---
+
+## The catalogue is SHADER-FIRST. hyprsaver ships entire.
+
+Operator, 2026-09-26, after watching the catalogue render on real hardware:
+*"effectively, our largest cohort is now hyprsaver and shadertoy"* and
+*"we should keep all the hyprsaver ones."*
+
+### hyprsaver — all 35 KEEP, not subject to curation review
+
+**35 of 35 pass.** It is the only family in the catalogue with a perfect record, and it
+has held that record across every sweep including the ones taken with the broken
+validator. Operator decision: **the whole family ships.** Do not re-litigate individual
+members, do not apply the legacy elimination criteria to it, and do not spend review
+effort re-scoring it. Its licence (MIT, Mara Vexa) is recorded in `vendor/hyprsaver/`.
+
+### The shape of the catalogue
+
+| family | count | status |
+|---|---|---|
+| **hyprsaver** | **35** | all KEEP, protected |
+| **xshadertoy** | **37** and growing | 37/37 working; `leviathan` and two authored waves in flight |
+| native engine | 4 | `blackhole` shipping; `magmasimplex`, `genxvectorcade`, `neonspacewar` in development |
+| rss-sdl2 | 13 | recovering — `cf59926` fixed the shared defect, 4 confirmed back so far |
+| base legacy | 49 -> single digits expected | being re-judged on "extremely colourful and/or sophisticated shapes" |
+
+**Roughly three quarters of the shipping catalogue is now shader-based, and that fraction
+is rising.** That is not an accident of counting; it is what the measurements have been
+saying all day.
+
+### Why, in measured terms
+
+- Shader path: **100%** (hyprsaver 35/35, xshadertoy 37/37 after the harness fix).
+- Legacy fixed-function path: ~**65%**, and the survivors mostly fail the quality bar
+  rather than the functional one — small pale objects on black, designed for 1998 CRTs.
+- `amigajuggler` was cut for exactly this reason: not broken, just unimpressive.
+
+### Where effort goes from here
+
+**New content goes to shaders.** One `.glsl` file plus a build line, no C, no windowing
+work, and the path has never failed.
+
+**Stop investing in rescuing 1990s fixed-function code.** The `gles3_compat` display-list
+and `glColorMaterial` work was worth doing — it was one shared fix that recovered several
+hacks and explained a family-wide failure — but it is a diagnosis to finish, not a repair
+campaign to extend. The `glGenerateMipmap` gcc-14 break that currently stops a plain
+`ninja` should be fixed because it blocks everything, not because the `_demo` targets
+matter.
+
+**Legacy keeps become rewrite candidates, not ports.** Where a legacy hack survives on
+"sophisticated shapes" — knots, non-orientable surfaces, space-filling curves — the
+algorithm is the valuable part and the 1998 rendering is not. That list is worth more than
+the ports.
