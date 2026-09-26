@@ -237,6 +237,48 @@ and `projectiveplane` as the two rewrite candidates; `etruscanvenus` and
 
 **Cumulative CUT after Group 2: 44 (no additional CUTs).**
 
+#### Group 3: flagship visual hacks — the top tier (10 targets)
+
+These are the legacy hacks where the actual rendering is competitive with
+the modern shader path, or where the algorithm is iconic enough that the
+1998 rendering is genuinely good. All ten PASS both vendors and rate
+visual=2-3. The redundancy question is whether the modern shader path
+already covers the same feeling — answered below per target.
+
+| target | family | perf | visual | unique | total | KEEP/CUT | one-line reason |
+|---|---|---|---|---|---|---|---|
+| noof_gles3 | geom | 3 | 3 | 3 | 9 | **KEEP** | gorgeous intricate spirograph/harmonograph, the most beautiful example in the catalogue; **WINNER for spirograph**, no hyprsaver equivalent; curation-plan bucket-B rewrite candidate (trails+bloom) |
+| lockward_gles3 | geom | 3 | 3 | 2 | 8 | **KEEP** | rotating kaleidoscopic rings (saturated purple/cyan/green); distinct from hyprsaver_kaleidoscope which is mirror-reflection — the rotating-radial-segments character is unique; curation-plan bucket-A ship-as-is |
+| gravitywell_gles3 | geom | 3 | 3 | 3 | 9 | **KEEP** | green wireframe spacetime grid being warped by red gravity wells — flagship, iconic, no hyprsaver equivalent; **WINNER of the deformation family**, pairs thematically with the black hole (curation-plan bucket-B rewrite for real lensing/glow) |
+| handsy_gles3 | mach | 3 | 2 | 3 | 8 | **KEEP** | articulated robot hands — distinctive subject matter (no hyprsaver equivalent, no other base hack does articulated figures); second shot shows a single hand mid-motion |
+| hypnowheel_gles3 | geom | 3 | 3 | 2 | 8 | **KEEP** | rotating concentric phase-band kaleidoscope, green-yellow-cyan, full-frame — the most visually striking legacy hack in the catalogue; **WINNER of the rotating-phase family**; related to but distinct from hyprsaver_kaleidoscope |
+| hexstrut_gles3 | geom | 3 | 3 | 3 | 9 | **KEEP** | beautiful purple/lavender hexagonal lattice filling the frame — saturated, modern-friendly, no hyprsaver equivalent; **WINNER of the geometric-lattice family**; curation-plan bucket-B rewrite |
+| hypertorus_gles3 | geom | 3 | 3 | 2 | 8 | **KEEP** | rainbow ribbon-strip torus in the upper-left, full 3D depth — flagship visual; related to but more 3D-dimensional than hyprsaver_donut; curation-plan bucket-C rewrite-only |
+| raverhoop_gles3 | part | 3 | 3 | 3 | 9 | **KEEP** | persistent-trail hula-hoop, purple/pink/cyan trails — flagship, exactly the algorithm the curation plan called out ("proper trails + bloom is the whole point"); **WINNER of the light-trail family** |
+| voronoi_gles3 | geom | 3 | 3 | 2 | 8 | **KEEP** | vivid radiating-sector coloured wedges (NOT the standard cell-based Voronoi) — visually distinct from hyprsaver_voronoi which does cells; the radial-divergent character is unique |
+| geodesic_gles3 | geom | 3 | 3 | 3 | 9 | **KEEP** | vivid cyan-and-red geodesic dome wireframe, full-frame — flagship-tier math, no hyprsaver equivalent; **WINNER of the geodesic family** |
+
+**Group 3 subtotal: 10 KEEP, 0 CUT.**
+
+**Group 3 redundancy call — modern shader path overlap:**
+
+Each of these ten targets was checked against the 35 hyprsaver hacks
+and the curation-plan rewrite shortlist:
+
+- `noof`, `gravitywell`, `hexstrut`, `raverhoop`: in the rewrite
+  shortlist, but the legacy GL pass renders the algorithm well enough
+  to ship as-is (bucket A in this scoring) AND to inform the rewrite.
+- `lockward`, `geodesic`, `handsy`: no modern equivalent. Pure bucket-A.
+- `hypertorus`, `voronoi`, `hypnowheel`: superficially similar to
+  hyprsaver members but visually distinct (different rotation axes,
+  different geometry). KEEP both — they feel different enough that a
+  user would want both available.
+
+**All 10 KEEP.** This is the set the operator would point at first when
+asked "what does the legacy path still do well?".
+
+**Cumulative CUT after Group 3: 44 (no additional CUTs).**
+
 (continued in next batch.)
 
 (continued below in later commits.)
