@@ -61,6 +61,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <math.h>
+#include <sys/stat.h>
 
 #include <wayland-client.h>
 #include <wayland-egl.h>
@@ -437,11 +438,62 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
             hash *= UINT64_C(1099511628211);
         }
     }
-    free(pixels);
     fprintf(stderr,
             "[diag] framebuffer frame=%lu pixels=%zu nonblack=%zu "
             "hash=%016" PRIx64 " gl_error=0x%x\n",
             frame, npixels, nonblack, hash, (unsigned int)error);
+
+    /* Optional PNG dump -- driven by NCZ_FRAME_DUMP. Format:
+     *   NCZ_FRAME_DUMP=/abs/path  -- every captured frame written as
+     *                                <frame>.png (8-digit, hex)
+     * Useful for evidence validation against the existing pixel-diff
+     * gate. The renderer's PNG encoder uses stb_image_write, which
+     * is otherwise pulled in by the host's libpng path. */
+    static int dump_checked;
+    static int dump_enabled;
+    static char dump_dir[512];
+    if (!dump_checked) {
+        const char *env = getenv("NCZ_FRAME_DUMP");
+        if (env && *env) {
+            dump_enabled = 1;
+            snprintf(dump_dir, sizeof dump_dir, "%s", env);
+            mkdir(dump_dir, 0755);
+        }
+        dump_checked = 1;
+    }
+    if (dump_enabled) {
+        fprintf(stderr, "[dump] writing frame_%08lx to %s\n",
+                (unsigned long)frame, dump_dir);
+        /* Convert GL_RGBA (origin bottom-left) to a top-down PNG layout. */
+        unsigned char *flipped = malloc(npixels * 4);
+        if (flipped) {
+            for (size_t y = 0; y < (size_t)a->height; y++) {
+                memcpy(flipped + y * (size_t)a->width * 4,
+                       pixels + ((size_t)a->height - 1 - y) * (size_t)a->width * 4,
+                       (size_t)a->width * 4);
+            }
+            char path[1024];
+            snprintf(path, sizeof path, "%s/frame_%08lx.png",
+                     dump_dir, (unsigned long)frame);
+            FILE *f = fopen(path, "wb");
+            if (f) {
+                fwrite(flipped, 1, npixels * 4, f);
+                fclose(f);
+                fprintf(stderr, "[dump] wrote %s (%zu bytes)\n",
+                        path, npixels * 4);
+                char raw[1024];
+                snprintf(raw, sizeof raw, "%s/frame_%08lx.rgba",
+                         dump_dir, (unsigned long)frame);
+                FILE *r = fopen(raw, "wb");
+                if (r) { fwrite(flipped, 1, npixels * 4, r); fclose(r); }
+            } else {
+                fprintf(stderr, "[dump] could not open %s: %s\n",
+                        path, strerror(errno));
+            }
+            free(flipped);
+        }
+    }
+    free(pixels);
 }
 
 static void draw_and_swap(struct app *a, unsigned long frame) {
