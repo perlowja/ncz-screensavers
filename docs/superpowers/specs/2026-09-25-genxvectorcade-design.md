@@ -310,3 +310,77 @@ requirement.
 - **Platform abstraction applies** (see the platform-abstraction rule):
   sensor access sits behind the platform interface, not in hack code.
   Windows and macOS have entirely different sources.
+
+---
+
+# Environmental inputs, FINAL: local sensors AND space weather
+
+Operator direction: **use both.** They divide naturally by timescale,
+which maps onto the five-timescale requirement rather than duplicating it.
+
+| Layer | Cadence | Drives |
+|---|---|---|
+| **Local system sensors** | seconds to minutes | the world's moment-to-moment texture — climate, wind, activity, crowding |
+| **Space weather** | hours to days | cosmic seasons, long eras, and genuinely rare spectacular events |
+
+Local is required and always available. Space weather is an enrichment
+layer that must degrade to synthetic drift without it.
+
+## Verified NOAA SWPC endpoints (checked live 2026-09-26)
+
+Free, keyless, **global** — no location privacy problem, because it is the
+same data for every machine on Earth.
+
+| Endpoint | Status | Sample |
+|---|---|---|
+| `https://services.swpc.noaa.gov/json/planetary_k_index_1m.json` | **200**, ~28 KB, 1-minute cadence | `{"time_tag":"2026-09-25T19:36:00","kp_index":2,"estimated_kp":2.00,"kp":"2Z"}` |
+| `https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json` | **200**, 59 B | `{"proton_speed": 491, "time_tag": "2026-09-26T01:29:00Z"}` |
+| `https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json` | **200**, 421 B | `{"satellite": 18, "current_class": "B4.3", ...}` |
+| `https://services.swpc.noaa.gov/products/noaa-scales.json` | **200**, ~1 KB | R/S/G scales with 24h probabilities |
+
+**Paths that do NOT exist** — do not re-derive these, they 404:
+`/products/solar-wind/plasma-2-hour.json`,
+`/products/solar-wind/plasma-1-day.json`,
+`/products/solar-wind/mag-1-day.json`.
+
+## Mapping
+
+| Input | Range seen | Ecological meaning |
+|---|---|---|
+| **Kp index** | 0-9, quiet is 0-3 | mutation pressure and event frequency. A real geomagnetic storm (Kp 6+, a handful of times a year) becomes a rare ecosystem bloom |
+| **Solar wind speed** | ~300-800 km/s | energy input — growth rate, luminosity of the field |
+| **X-ray flare class** | A/B/C/M/X | punctuation. An M or X flare is a genuine, earned spectacular event |
+| **NOAA R/S/G scales** | 0-5 | slow era-setting; sustained storm conditions shift the whole palette and behaviour for hours |
+
+This solves a problem GRAEAE raised directly: rare events must feel
+**earned rather than canned**. An event driven by an actual solar flare is
+earned in the strongest possible sense — something really happened, 150
+million kilometres away, and the ecosystem responded.
+
+## Architecture — unchanged discipline
+
+- A small service polls SWPC on a slow timer (Kp updates every minute but
+  meaningfully changes over hours; **15-30 minute polling is ample** — do
+  not hammer a free public service).
+- It writes a tiny cache file. **The hack performs zero network I/O.**
+- Stale or absent cache, no network, offline laptop -> synthetic slow
+  drift. The screensaver must never look broken because wifi is down.
+- Cache values are smoothed; space weather should feel like season, not
+  like a data feed.
+- Nothing readable. No numbers, no gauges, no readouts — this runs on a
+  locked screen.
+- Network access sits behind the platform abstraction, not in hack code.
+
+## Why this combination is right
+
+Local sensors make the world **this machine's** — its heat, its load, its
+fans, discoverable by anyone who starts a compile and watches the
+ecosystem bloom.
+
+Space weather makes it **everyone's** — every machine running this shares
+the same sky, so a geomagnetic storm is felt simultaneously by every
+instance on Earth. Two people running it in different countries see
+related weather on the same night.
+
+That pairing is the whole idea in miniature: intensely local, quietly
+shared, and neither one requiring anyone to give up anything private.
