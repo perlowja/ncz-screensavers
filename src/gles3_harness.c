@@ -817,6 +817,19 @@ int main(void) {
         fprintf(stderr, "gles3_harness: GLES3 runtime init failed\n");
         ncz_harness_die(1);
     }
+
+    /* Explicitly disable GL_FRAMEBUFFER_SRGB. The GLES3.2 spec
+     * default for this toggle is DISABLED — we're not opting into
+     * sRGB writes — but Mesa and NVIDIA both report
+     * `glIsEnabled(GL_FRAMEBUFFER_SRGB) = ON` here even though we
+     * never called glEnable, because their tokens track the surface
+     * tag rather than the glEnable state. Pinning this explicitly to
+     * off removes one avenue for vendor drift and makes the harness
+     * spec-conformant. After this call, report_framebuffer's
+     * `srgb=ON|off` log will read `off` on every box. See
+     * docs/audit/blackhole-black-floor-evidence/ROOTCAUSE.md §11. */
+    glDisable(GL_FRAMEBUFFER_SRGB);
+
     /* Log GL strings now. */
     fprintf(stderr, "[diag] GL_VERSION=%s\nRENDERER=%s\nVENDOR=%s\nGLSL=%s\n",
             (const char*)glGetString(GL_VERSION),
