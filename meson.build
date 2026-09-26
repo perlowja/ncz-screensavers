@@ -874,6 +874,55 @@ foreach s : xshadertoy_shaders
 endforeach
 
 # -----------------------------------------------------------------------
+# Round 20 — wave 2 quiet-materiality shaders. Six original .glsl files
+# under vendor/wave2-materia/glsl/. The driver
+# (src/gles3_xshadertoy.c) is the same one as above; its shader-search
+# prefixes were extended with vendor/wave2-materia/glsl/ entries so the
+# binary resolves its .glsl from build tree or repo root. Each shader is
+# shipped in two places: the build tree (so dev iteration works) and
+# /usr/share/ncz-screensavers/shaders/ on install.
+#
+# The six are independent GLES3-native fragment shaders, all written
+# from scratch (no Shadertoy ports — its default CC BY-NC-SA licence
+# is non-commercial and unshippable). Each follows the wave-2 brief:
+# light RECEIVED rather than emitted. See
+# docs/superpowers/specs/wave2-materia.md for the perceptual brief
+# and the per-shader design intent.
+# -----------------------------------------------------------------------
+
+wave2_materia_shaders = [
+    'caustics-on-stone',
+    'satin-wind',
+    'foliage-plaster',
+    'frosted-glass',
+    'thin-film',
+    'aurora-restrained',
+]
+
+foreach s : wave2_materia_shaders
+    install_data('vendor/wave2-materia/glsl/' + s + '.glsl',
+                 install_dir: shader_install_dir,
+                 install_tag: 'runtime-shaders')
+    s_id = s.replace('-', '_')
+    executable(
+        'xshadertoy_' + s + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_xshadertoy.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DSHADER_FILE="@0@.glsl"'.format(s),
+            '-DHACK_PREFIX=xshadertoy_@0@'.format(s),
+            '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
+            '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
+        ],
+        install: false,
+    )
+endforeach
+
+# -----------------------------------------------------------------------
 # Round 19 — gl-transitions shader port (vendor/gl-transitions/,
 # 123 MIT / 1 BSD-3-Clause / 1 BSD-2-Clause; per-file Author +
 # License headers preserved; see vendor/gl-transitions-PORTED.md).
@@ -974,6 +1023,21 @@ executable(
     c_args: gles3_native_c_args + [
         '-DSTANDALONE',
     ],
+    install: false,
+)
+
+# Headless smoke tester for xshadertoy-format fragment shaders under
+# vendor/xshadertoy/glsl/. Same pattern as gles3_transitions_smoke
+# (EGL_KHR_surfaceless_context, PBuffer destination, real PNG dumps
+# via libpng). Validates compile/link/render for individual shaders
+# without needing a Wayland compositor or the full gles3_harness.
+# Usage: gles3_xshadertoy_smoke <shader.glsl> <out-dir> [t1 t2 ...]
+executable(
+    'gles3_xshadertoy_smoke',
+    files(['src/gles3_xshadertoy_smoke.c']),
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args,
     install: false,
 )
 
@@ -1127,37 +1191,13 @@ executable(
 )
 
 
-rss_sdl2_gles2_hacks = [
-    {'name': 'cyclone',       'src': 'src/cyclone_gles3.c'},
-    {'name': 'euphoria',      'src': 'src/euphoria_gles3.c'},
-    {'name': 'fieldlines',    'src': 'src/fieldlines_gles3.c'},
-    {'name': 'flocks',        'src': 'src/flocks_gles3.c'},
-    {'name': 'flux',          'src': 'src/flux_gles3.c'},
-    {'name': 'helios',        'src': 'src/helios_gles3.c'},
-    {'name': 'hyperspace',    'src': 'src/hyperspace_gles3.c'},
-    {'name': 'implicitdemo',  'src': 'src/implicitdemo_gles3.c'},
-    {'name': 'lattice',       'src': 'src/lattice_gles3.c'},
-    {'name': 'microcosm',     'src': 'src/microcosm_gles3.c'},
-    {'name': 'plasma',        'src': 'src/plasma_gles3.c'},
-    {'name': 'skyrocket',     'src': 'src/skyrocket_gles3.c'},
-    {'name': 'solarwinds',    'src': 'src/solarwinds_gles3.c'},
-]
+# rss-sdl2 family REMOVED 2026-09-26 -- all 13 targets cut after operator
+# visual judgement on real hardware: 1 of 5 reviewed was worth keeping, and
+# that one (fireworks) is better rebuilt as a shader. See
+# docs/superpowers/specs/2026-09-26-afterimage-design.md. The gles3_compat
+# display-list/glColorMaterial fix (cf59926, 0e450e7) is UNRELATED and stays --
+# it affected every GL1-path hack, not just these.
 
-foreach h : rss_sdl2_gles2_hacks
-    executable(
-        h['name'] + '_gles3',
-        files(common_gles3_sources + [
-            'src/gles3_harness.c',
-            h['src'],
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: gles3_native_c_args + [
-            '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
-        ],
-        install: false,
-    )
-endforeach
 
 # -----------------------------------------------------------------------
 # Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
@@ -1415,6 +1455,12 @@ foreach alias_name : [
     'xshadertoy_topologica_gles3', 'xshadertoy_trainmandala_gles3',
     'xshadertoy_trizm_gles3', 'xshadertoy_truchetzoom_gles3',
     'xshadertoy_universeball_gles3',
+    'xshadertoy_leviathan_gles3',
+    'xshadertoy_physarum_gles3',
+    'xshadertoy_attractor_gles3',
+    'xshadertoy_caustics_gles3',
+    'xshadertoy_aurora_gles3',
+    'xshadertoy_marble_gles3',
 ]
     run_target(
         alias_name + '_alias',
