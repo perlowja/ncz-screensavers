@@ -1,0 +1,47 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=1343435 hash=333a3b01b5cff4f5 gl_error=0x0
+[dump] writing frame_00000004 to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=1179883 hash=bc32d45e2b650955 gl_error=0x0
+[dump] writing frame_0000003c to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=1174782 hash=874c88ec9878e6ef gl_error=0x0
+[dump] writing frame_00000078 to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=1234023 hash=71ff510038f5b4b5 gl_error=0x0
+[dump] writing frame_000000b4 to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=1171818 hash=b9c3ddbdb60a7e57 gl_error=0x0
+[dump] writing frame_000000f0 to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=1140609 hash=be5d87344ad48325 gl_error=0x0
+[dump] writing frame_0000012c to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=1079876 hash=359f2df0ca2c1176 gl_error=0x0
+[dump] writing frame_00000168 to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=1087212 hash=2144df05fe87f77c gl_error=0x0
+[dump] writing frame_000001a4 to /home/pegasus/build-tmp/cap-microcosm
+[dump] wrote /home/pegasus/build-tmp/cap-microcosm/frame_000001a4.png (8294400 bytes)
+EXIT=124

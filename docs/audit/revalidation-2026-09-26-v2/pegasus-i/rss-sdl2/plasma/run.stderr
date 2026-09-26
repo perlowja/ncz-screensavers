@@ -1,0 +1,47 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=422820 hash=73f27cd5d7b99526 gl_error=0x0
+[dump] writing frame_00000004 to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=422820 hash=55aa7c3208796ae7 gl_error=0x0
+[dump] writing frame_0000003c to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=422820 hash=28ad663d377c4b51 gl_error=0x0
+[dump] writing frame_00000078 to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=422820 hash=4ae0a1f9ca469721 gl_error=0x0
+[dump] writing frame_000000b4 to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=422820 hash=174c66ff747e7bb1 gl_error=0x0
+[dump] writing frame_000000f0 to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=422820 hash=75fe54b2a6477b8d gl_error=0x0
+[dump] writing frame_0000012c to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=422820 hash=450e34c8dcc45617 gl_error=0x0
+[dump] writing frame_00000168 to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=422820 hash=42ebf0dd0533f29f gl_error=0x0
+[dump] writing frame_000001a4 to /home/pegasus/build-tmp/cap-plasma
+[dump] wrote /home/pegasus/build-tmp/cap-plasma/frame_000001a4.png (8294400 bytes)
+EXIT=124

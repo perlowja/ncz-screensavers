@@ -1,0 +1,47 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=20375 hash=71fc9a44db1e914a gl_error=0x0
+[dump] writing frame_00000004 to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=38040 hash=3c607bb42bb86c4a gl_error=0x0
+[dump] writing frame_0000003c to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=41803 hash=9ad12c24f73b57a3 gl_error=0x0
+[dump] writing frame_00000078 to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=39540 hash=96003990ee969bae gl_error=0x0
+[dump] writing frame_000000b4 to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=38581 hash=0ce80c7d80d4f109 gl_error=0x0
+[dump] writing frame_000000f0 to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=40224 hash=ead56640bdfc609b gl_error=0x0
+[dump] writing frame_0000012c to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=39581 hash=9b09e234fd78b7da gl_error=0x0
+[dump] writing frame_00000168 to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=39678 hash=91440838f4ff7ff6 gl_error=0x0
+[dump] writing frame_000001a4 to /home/pegasus/build-tmp/cap-flux
+[dump] wrote /home/pegasus/build-tmp/cap-flux/frame_000001a4.png (8294400 bytes)
+EXIT=124

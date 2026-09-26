@@ -1,0 +1,47 @@
+[diag] gles3_harness: EGL 1.5, GLES3 context live
+[diag] gles3_compat: shader program 3 compiled
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=15406 hash=5ec8ef849d416c33 gl_error=0x0
+[dump] writing frame_00000004 to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_00000004.png (8294400 bytes)
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=28542 hash=cb73dedc76b15877 gl_error=0x0
+[dump] writing frame_0000003c to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_0000003c.png (8294400 bytes)
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=33389 hash=2207b7f7d8a57bb0 gl_error=0x0
+[dump] writing frame_00000078 to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_00000078.png (8294400 bytes)
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=39794 hash=3bf6491b034812b3 gl_error=0x0
+[dump] writing frame_000000b4 to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_000000b4.png (8294400 bytes)
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=52539 hash=ded722eef660ebe0 gl_error=0x0
+[dump] writing frame_000000f0 to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_000000f0.png (8294400 bytes)
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=53607 hash=0881c62fae0bba44 gl_error=0x0
+[dump] writing frame_0000012c to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_0000012c.png (8294400 bytes)
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=57715 hash=f1e3e0683c96dac7 gl_error=0x0
+[dump] writing frame_00000168 to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_00000168.png (8294400 bytes)
+[diag] frame #420
+[diag] framebuffer frame=420 pixels=2073600 nonblack=73777 hash=92949f01b6961ee0 gl_error=0x0
+[dump] writing frame_000001a4 to /home/pegasus/build-tmp/cap-helios
+[dump] wrote /home/pegasus/build-tmp/cap-helios/frame_000001a4.png (8294400 bytes)
+EXIT=124
