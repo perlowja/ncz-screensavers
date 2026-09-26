@@ -268,7 +268,19 @@ static double now_monotonic(void) {
     return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
 }
 
-static uint32_t seed_rng(void) {
+/* Session seed is computed once at init and threaded through every
+ * subsequent rnd() call. Per-launch randomisation derives from
+ * /dev/urandom unless NCZ_NEO_ASTEROIDS_FIXED_SEED overrides (for
+ * A/B testing). All in-session randomness uses the same xorshift
+ * LCG state so successive calls produce uncorrelated streams.
+ *
+ * Pattern: game_init() calls session_seed() once, stores the
+ * result, and threads it through. spawn_rock / emit_debris etc
+ * step the LCG from a snapshot of the previous step, so each
+ * subsystem gets its own uncorrelated sub-stream. */
+static uint32_t g_session_seed = 0;
+
+static uint32_t session_seed(void) {
     const char *override = getenv("NCZ_NEO_ASTEROIDS_FIXED_SEED");
     if (override && *override) {
         uint32_t s = (uint32_t)strtoul(override, NULL, 10);
@@ -278,10 +290,28 @@ static uint32_t seed_rng(void) {
     int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     if (f >= 0) {
         ssize_t n = read(f, &s, 4); close(f);
-        if (n == 4) return s;
+        if (n == 4) {
+            if (s == 0) s = 1;
+            return s;
+        }
     }
     struct timespec t; clock_gettime(CLOCK_REALTIME, &t);
-    return (uint32_t)(t.tv_nsec ^ t.tv_sec ^ getpid());
+    s = (uint32_t)(t.tv_nsec ^ t.tv_sec ^ getpid());
+    if (s == 0) s = 1;
+    return s;
+}
+
+/* Step the session seed's LCG. Always non-zero. */
+static uint32_t seed_rng(void) {
+    if (g_session_seed == 0) {
+        g_session_seed = session_seed();
+        return g_session_seed;
+    }
+    g_session_seed ^= g_session_seed << 13;
+    g_session_seed ^= g_session_seed >> 17;
+    g_session_seed ^= g_session_seed << 5;
+    if (g_session_seed == 0) g_session_seed = 1;
+    return g_session_seed;
 }
 
 static float rnd01(uint32_t *s) {
@@ -611,7 +641,17 @@ static void game_init(State *st) {
     memset((char*)st + offsetof(State, ship), 0,
            sizeof (State) - offsetof(State, ship));
 
-    uint32_t z = seed_rng();
+    /* Reset the global LCG state so this launch produces a fresh,
+     * uncorrelated stream. Without this, a second launch in the
+     * same process would inherit the state from the first. */
+    g_session_seed = 0;
+
+    /* Per-launch randomisation. Capture the session seed first
+     * (this is what NCZ_NEO_ASTEROIDS_FIXED_SEED / /dev/urandom
+     * produces) before the LCG gets stepped by subsequent rnd()
+     * calls. */
+    uint32_t session = seed_rng();
+    uint32_t z = session;
     int pal_n = 6;
     st->palette_idx      = (float)(rnd_int(&z, 0, pal_n - 1));
     st->palette_phase    = rnd(&z, 0.f, 1.f);
@@ -632,7 +672,7 @@ static void game_init(State *st) {
         "[diag] neonasteroids seed=%u palette=%d palette_phase=%.4f "
         "palette_rate=%.5f density=%.3f start_wave=%d aggression=%.3f "
         "ship_hue=%.3f plume_hue=%.3f GL=%s\n",
-        z, (int)st->palette_idx, st->palette_phase, st->palette_rate,
+        session, (int)st->palette_idx, st->palette_phase, st->palette_rate,
         st->density, st->wave, st->aggression,
         st->ship_hue, st->plume_hue, (const char *)glGetString(GL_VERSION));
 }
