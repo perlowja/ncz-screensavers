@@ -83,6 +83,8 @@
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>     /* getpid() for iSeed entropy */
+#include <stddef.h>     /* uintptr_t */
 
 #include <GLES3/gl32.h>
 
@@ -142,6 +144,7 @@ typedef struct {
     GLint loc_iframe;
     GLint loc_idate;
     GLint loc_imouse;
+    GLint loc_iseed;         /* per-launch constant random vec4 */
     GLint loc_ichan0;
     GLint loc_ichan1;
     GLint loc_ichan2;
@@ -190,6 +193,7 @@ static const char *frag_preamble =
     "uniform int   iFrame;\n"
     "uniform vec4  iDate;\n"
     "uniform vec4  iMouse;\n"
+    "uniform vec4  iSeed;\n"   /* per-launch random vec4, constant for the run; see ncz_xorshift_seed() below */
     "\n"
     "uniform vec3  iChannelResolution[4];\n"
     "uniform float iChannelTime[4];\n"
@@ -218,6 +222,49 @@ now_seconds(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
+}
+
+/* iSeed generator — four floats in [0,1), constant for the lifetime
+ * of the process and therefore for the entire run of one shader
+ * instance. Re-seeded from a mix of CLOCK_MONOTONIC and getpid() so
+ * back-to-back launches on the same machine differ (the operator
+ * acceptance test is "two runs captured at the same frame index must
+ * differ materially, verified by hash" — without per-launch seeding
+ * every launch of the same shader would have identical structure
+ * driven only by iTime).
+ *
+ * The generator is Marsaglia's xorshift32 wrapped in a few rounds;
+ * 32 bits of state give us more than enough independence for four
+ * uniform reals per launch. Output is mapped into [0,1) by dividing
+ * by 2^32 — NOT by 2^32-1, so 1.0 is never returned and a shader
+ * that does `floor(iSeed * N)` to index into an array will never
+ * walk off the end. */
+static float
+ncz_xorshift_u32(uint32_t *s) {
+    uint32_t x = *s ? *s : 0x9E3779B9u;   /* avoid the zero fixed point */
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    *s = x;
+    return (float)((double)x / 4294967296.0);   /* x / 2^32 */
+}
+
+static void
+ncz_make_iseed(float out[4]) {
+    uint32_t s = 0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    s ^= (uint32_t)ts.tv_nsec;
+    s ^= (uint32_t)ts.tv_sec;
+    s ^= (uint32_t)getpid();
+    s ^= (uint32_t)((uintptr_t)out);    /* ASLR slot; cheap entropy */
+    if (s == 0) s = 0xA5A5A5A5u;
+    for (int i = 0; i < 4; i++) {
+        /* warm up a few rounds before each draw so consecutive
+         * outputs aren't trivially correlated. */
+        for (int j = 0; j < 3; j++) (void)ncz_xorshift_u32(&s);
+        out[i] = ncz_xorshift_u32(&s);
+    }
 }
 
 static char *
@@ -429,6 +476,7 @@ init_xshadertoy(ModeInfo *mi) {
     st->loc_iframe      = glGetUniformLocation(st->program, "iFrame");
     st->loc_idate       = glGetUniformLocation(st->program, "iDate");
     st->loc_imouse      = glGetUniformLocation(st->program, "iMouse");
+    st->loc_iseed       = glGetUniformLocation(st->program, "iSeed");
     st->loc_ichan0      = glGetUniformLocation(st->program, "iChannel0");
     st->loc_ichan1      = glGetUniformLocation(st->program, "iChannel1");
     st->loc_ichan2      = glGetUniformLocation(st->program, "iChannel2");
@@ -460,16 +508,29 @@ init_xshadertoy(ModeInfo *mi) {
 
     st->start_time = now_seconds();
     st->last_time  = st->start_time;
+
+    /* Generate the per-launch iSeed and upload it ONCE. We deliberately
+     * do NOT regenerate per frame — iSeed is meant to be a constant
+     * random vector that distinguishes one launch of the binary from
+     * the next, so the operator acceptance test ("two runs captured at
+     * the same frame index differ materially") passes. Shaders that
+     * want per-frame entropy should still use iTime/iFrame. */
+    float iseed[4];
+    ncz_make_iseed(iseed);
+    glUniform4fv(st->loc_iseed, 1, iseed);
+
     fprintf(stderr,
             "[diag] xshadertoy init ok: program=%u vbo=%u GL=%s "
-            "uniforms ires=%d itime=%d iframe=%d imouse=%d "
-            "ichan0..3=%d,%d,%d,%d\n",
+            "uniforms ires=%d itime=%d iframe=%d imouse=%d iseed=%d "
+            "ichan0..3=%d,%d,%d,%d "
+            "iSeed=[%.4f %.4f %.4f %.4f]\n",
             st->program, st->vbo,
             (const char *)glGetString(GL_VERSION),
             st->loc_iresolution, st->loc_itime, st->loc_iframe,
-            st->loc_imouse,
+            st->loc_imouse, st->loc_iseed,
             st->loc_ichan0, st->loc_ichan1,
-            st->loc_ichan2, st->loc_ichan3);
+            st->loc_ichan2, st->loc_ichan3,
+            iseed[0], iseed[1], iseed[2], iseed[3]);
 }
 
 static void
