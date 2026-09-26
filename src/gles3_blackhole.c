@@ -78,8 +78,13 @@ static void init_blackhole(ModeInfo*m){
  s->v[3]=rnd(&z,.72,1.3);
  s->v[4]=(rnd(&z,0,1)<.5?-1:1)*rnd(&z,.65,1.35);
  s->v[5]=rnd(&z,.18,.48);
- s->v[6]=rnd(&z,.175,.235);
- s->v[7]=rnd(&z,0,1)<.42?rnd(&z,.25,.75):0;
+ s->v[6]=rnd(&z,.140,.265);
+ // u_jet: the operator observed 0.000 in one launch. Cause: 58% of launches
+ // drew jet=0 (jet disabled). That made the jet feature effectively dead
+ // even though the shader supports it. Always draw a positive jet; the
+ // intensity range still spans "faint plume" (0.15) to "bright jet" (0.95)
+ // so the visual varies per launch. The old off/on draw has been removed.
+ s->v[7]=rnd(&z,.15,.95);
  s->v[8]=rnd(&z,.55,1.25);
  s->v[9]=(float)((z>>8)%4);
  // 0..5: five named palettes + psychedelic (5). ~1/6 chance of psychedelic
@@ -150,6 +155,91 @@ static void init_blackhole(ModeInfo*m){
  // Deterministic per-launch phase offset so two launches of the same mode
  // aren't sitting at the same point on the curve at t=0.
  s->v[34]=rnd(&z,0,6.2831853);
+ // ---------------------------------------------------------------------
+ // Audit (revalidation-2026-09-26): every uniform's draw, range, and the
+ // visible variety it produces. Reachable / distribution / change-of-mind.
+ //   u_seed             uint32       full       random per launch
+ //   u_radius           0.82..1.15   uniform     ~40% zoom-in variation,
+ //                                                visible in disk angular size
+ //   u_temperature      0.45..1.0    uniform     maps to disk "heat" and
+ //                                                paletteT (Reinhard input
+ //                                                warmth), clearly different
+ //   u_density          0.72..1.3    uniform     disk surface brightness;
+ //                                                doubles are obvious
+ //   u_rotation         +/- 0.65..1.35  symmetric  spin direction and rate,
+ //                                                visible Doppler band motion
+ //   u_inclination      0.18..0.48   uniform     ~30° elevation range;
+ //                                                disk silhouette changes
+ //   u_orbit_rate       0.140..0.265 uniform     widened from 0.175..0.235
+ //                                                so a path_o_count=1 launch
+ //                                                can take ~24s or ~45s;
+ //                                                combined with path_o_count
+ //                                                1..3 the period spans
+ //                                                ~7.9..44.9s
+ //   u_jet              0.15..0.95   uniform     FIXED: was 58% chance of 0
+ //                                                (operator observed 0.000);
+ //                                                now always-on with varied
+ //                                                intensity. The shader
+ //                                                branches on u_jet>0 so
+ //                                                every launch sees a jet
+ //   u_star_density     0.55..1.25   uniform     star coverage; 2.3x spread
+ //   u_camera_mode      0..3         uniform     (z>>8)%4: all four modes
+ //                                                equally likely (~25% each)
+ //   u_palette          0..5         uniform     (z>>16)%6: five named + one
+ //                                                psychedelic, ~16.7% each
+ //   u_approach         +/- 0.82..1.22  symmetric  direction and approach
+ //                                                intensity; both signs
+ //                                                equiprobable
+ //   u_periapsis        5.4..6.35    uniform     close approach distance;
+ //                                                dist is clamped >=5.4
+ //                                                so the camera never crosses
+ //                                                the event horizon
+ //   u_nebula.x         0..1         uniform     nebula base hue
+ //   u_nebula.y         2.8..6.5     uniform     nebula spatial scale; 2.3x
+ //                                                spread visibly varies cloud
+ //                                                size
+ //   u_nebula.z         0.28..0.95   uniform     nebula coverage; previous
+ //                                                range 0..1 wasted the
+ //                                                0..0.28 segment, fixed
+ //                                                earlier
+ //   u_nebula.w         0..2pi       uniform     nebula yaw
+ //   u_nebula_axis.x    -1.4..1.4    symmetric   nebula tilt; can flip sign
+ //   u_nebula_axis.y    0..128       uniform     nebula noise offset
+ //   u_palette_phase    0..1         uniform     hue rotation start
+ //   u_palette_rate     0.0084..0.0196  uniform  ~53..123s cycle period
+ //                                                (2pi / rate)
+ //   u_palette_contrast 0.95..1.25   uniform     toe contrast; shader clamps
+ //                                                to 0.85..1.35 so the
+ //                                                0.95 floor is just above
+ //                                                the clamp floor. Intentionally
+ //                                                narrow because too-wide
+ //                                                contrast makes the disk
+ //                                                wash to black or blow to
+ //                                                white.
+ //   u_nebula_scheme    0..2         uniform     z%3: complement / triad /
+ //                                                split-complement, equal
+ //   u_path_d_base      9.2..18.5    uniform     widened so even mode 3 can
+ //                                                be a slow arrival
+ //   u_path_d_swing     2.8..4.8     uniform     visible radial swing
+ //   u_path_d_harm_amp  0.5..1.4     uniform     secondary dist harmonic
+ //   u_path_d_harm_freq 1.6..2.4     uniform     secondary dist harmonic
+ //   u_path_o_rate      0.85..1.55   uniform     orbital rate multiplier
+ //   u_path_o_harm_amp  0.18..0.55   uniform     orbital harmonic amplitude
+ //   u_path_o_harm_freq 1.6..2.4     uniform     orbital harmonic frequency
+ //   u_path_o_count     1..3         uniform     orbits before phase wraps
+ //   u_path_sign        -1 or +1     binomial   prograde/retrograde,
+ //                                                equiprobable
+ //   u_path_e_swing     0.32..0.92   uniform     elevation swing amplitude
+ //   u_path_e_freq      0.65..1.35   uniform     elevation swing frequency
+ //   u_path_phase_jitter 0..2pi      uniform     per-launch phase offset
+ // Deliberately left narrow:
+ //   u_palette_contrast 0.95..1.25 - the shader clamps to 0.85..1.35; below
+ //       0.95 the S-curve collapses and the disk washes to grey, above 1.25
+ //       the dark stops blow out. This band is the safe range.
+ //   u_periapsis 5.4..6.35 - close enough to the event horizon (2.598) for a
+ //       dramatic lensing pass, but high enough that the floor clamp at 5.4
+ //       never bites.
+ // ---------------------------------------------------------------------
  fprintf(stderr,"[diag] blackhole nebula_hue=%.9g nebula_scale=%.9g nebula_coverage=%.9g nebula_yaw=%.9g nebula_tilt=%.9g nebula_offset=%.9g nebula_scheme=%d\n",
   s->v[13],s->v[14],s->v[15],s->v[16],s->v[17],s->v[18],(int)s->v[22]);
  s->started=now();
