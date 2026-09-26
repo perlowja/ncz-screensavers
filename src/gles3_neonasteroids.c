@@ -597,7 +597,12 @@ static void reset_ship(Ship *s) {
 }
 
 static void game_init(State *st) {
-    memset(st, 0, offsetof(State, ship));
+    /* Wipe just the per-launch fields, not the GL plumbing we just
+     * set up. The plumbing fields live at the top of the struct
+     * (line_prog, trail_prog, comp_prog, ...); game state starts
+     * at the `ship` field. */
+    memset((char*)st + offsetof(State, ship), 0,
+           sizeof (State) - offsetof(State, ship));
 
     uint32_t z = seed_rng();
     int pal_n = 6;
@@ -1274,20 +1279,11 @@ static void init_neonasteroids(ModeInfo *m) {
     if (!comp_src) ncz_harness_die(1);
 
     char *lines_src = load_shader_text("lines.frag");
-    fprintf(stderr, "[diag] neonasteroids: lines_src=%p (loaded=%d)\n",
-            (void*)lines_src, lines_src ? 1 : 0); fflush(stderr);
-
     st->line_prog = build_program("lines",
         line_vs, lines_src ? lines_src : line_fs);
-    fprintf(stderr, "[diag] neonasteroids: line_prog=%u\n", st->line_prog);
-    fflush(stderr);
     if (lines_src) free(lines_src);
     st->trail_prog = build_program("trail", trail_vs, trail_fs);
-    fprintf(stderr, "[diag] neonasteroids: trail_prog=%u\n", st->trail_prog);
-    fflush(stderr);
     st->comp_prog  = build_program("composite", trail_vs, comp_src);
-    fprintf(stderr, "[diag] neonasteroids: comp_prog=%u\n", st->comp_prog);
-    fflush(stderr);
     free(comp_src);
 
     if (!st->line_prog || !st->trail_prog || !st->comp_prog)
@@ -1360,12 +1356,7 @@ static void reshape_neonasteroids(ModeInfo *m, int w, int h) {
 
 static void draw_neonasteroids(ModeInfo *m) {
     State *st = m->data;
-    if (!st || !st->line_prog) {
-        fprintf(stderr, "[diag] neonasteroids draw skip: st=%p prog=%u\n",
-                (void*)st, st ? st->line_prog : 0);
-        fflush(stderr);
-        return;
-    }
+    if (!st || !st->line_prog) return;
 
     int w = m->xgwa.width, h = m->xgwa.height;
     if (w < 1) w = 1; if (h < 1) h = 1;
