@@ -107,3 +107,67 @@ void ncz_log_diag(const char *fmt, ...) {
     fflush(stderr);
     va_end(ap);
 }
+
+/* -------------------------------------------------------------------- */
+/* ncz_env_read_int                                                        */
+/* -------------------------------------------------------------------- */
+/* Tiny line scanner for KEY=VALUE pairs. Called once per read on a
+ * file that is at most a handful of lines; performance is fine.
+ * Looks in (in order):
+ *   $XDG_DATA_HOME/ncz-screensavers/sensors.env
+ *   $HOME/.local/share/ncz-screensavers/sensors.env
+ *   /etc/ncz-screensavers/sensors.env
+ *   /run/ncz-screensavers/sensors.env
+ *
+ * Format: KEY=VALUE per line, blank lines and lines starting with '#'
+ * ignored. The first matching key wins. */
+static const char *kEnvRoots[] = {
+    "/etc/ncz-screensavers/sensors.env",
+    "/run/ncz-screensavers/sensors.env",
+};
+static char g_user_env_buf[1024];
+static const char *user_env_path(void) {
+    const char *xdg = getenv("XDG_DATA_HOME");
+    if (xdg && *xdg) {
+        snprintf(g_user_env_buf, sizeof g_user_env_buf,
+                 "%s/ncz-screensavers/sensors.env", xdg);
+        return g_user_env_buf;
+    }
+    const char *home = getenv("HOME");
+    if (home && *home) {
+        snprintf(g_user_env_buf, sizeof g_user_env_buf,
+                 "%s/.local/share/ncz-screensavers/sensors.env", home);
+        return g_user_env_buf;
+    }
+    return NULL;
+}
+static int scan_file(const char *path, const char *key, int *out_v) {
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[256];
+    int found = 0;
+    while (fgets(line, sizeof line, f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = 0;
+        char *end = eq - 1;
+        while (end > line && (*end == ' ' || *end == '\t')) end--;
+        *(end + 1) = 0;
+        if (strcmp(line, key) != 0) continue;
+        *out_v = atoi(eq + 1);
+        found = 1;
+        break;
+    }
+    fclose(f);
+    return found;
+}
+int ncz_env_read_int(const char *key, int *out_v) {
+    if (!key || !out_v) return 0;
+    int v;
+    const char *up = user_env_path();
+    if (up && scan_file(up, key, &v)) { *out_v = v; return 1; }
+    for (size_t i = 0; i < sizeof(kEnvRoots)/sizeof(kEnvRoots[0]); i++) {
+        if (scan_file(kEnvRoots[i], key, &v)) { *out_v = v; return 1; }
+    }
+    return 0;
+}

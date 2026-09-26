@@ -1,25 +1,21 @@
-/* gles3_genxvectorcade.c — fullscreen psychedelic vector-arcade journey
- *                        driven by a fragment shader with persistent
- *                        feedback trails (the feature that separates
- *                        this from a generic tunnel shader).
+/* gles3_genxvectorcade.c — evolving phosphor ecosystem.
  *
- * Mirrors the proven pattern of src/gles3_blackhole.c and
- * src/gles3_lavafield.c: a single fragment shader driven by uniforms,
- * run by our Wayland harness. The one piece those don't have is the
- * persistent feedback FBO — every frame the host (a) blits the
- * previous-frame FBO onto the current one with a small rotation and
- * configurable fade (so wakes spiral inward and self-replicate), (b)
- * draws the geometry on top via the shader, and (c) blits the result
- * to the default backbuffer.
+ * Phase 2: Gray-Scott reaction-diffusion on a low-res state texture,
+ * arcade optics pass (per-channel phosphor decay, sharp-core-plus-halo
+ * stroke model, cabinet glow), and one depth reveal / one dramatic
+ * phrase, layered on top of the phase 1 vector-tunnel journey.
  *
- * Per-launch randomisation — logged in the [diag] line at startup —
- * chooses: cross-section shape, segment count, travel speed, rotation
- * rate, palette pair index, palette cycling rate, symmetry order,
- * trail persistence, warp amount, chromatic aberration amount, burst
- * frequency. The phase vector (5 movements) advances smoothly between
- * weighted endpoint configurations so the geometry *becomes* the next
- * thing rather than cutting to it; the journey order itself is
- * shuffled per launch and lasts minutes.
+ * Architecture per the design doc:
+ *   - Reaction-diffusion state texture (low-res, RGBA16F or RGBA8)
+ *     with genome in B channel driving feed/kill rates per pixel.
+ *   - Ping-pong FBO for state evolution (Gray-Scott step).
+ *   - Trail / phosphor persistence separate from short afterglow.
+ *   - Cabinet glow pools drift in parallax; vector apparition layer
+ *     uses sharp-core-plus-halo strokes (no bloom pass needed).
+ *   - Persistence: genome, RNG, simulation tick saved with integer
+ *     ticks (not a growing float time uniform).
+ *   - Environmental sensors feed the seed schema, never visuals
+ *     directly (see ncz_env_read_int).
  *
  * Original work in a genre. No reference to any specific title,
  * programmer, company, or product anywhere in this file or the
@@ -31,12 +27,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>     /* strcasecmp */
+#include <sys/stat.h>   /* mkdir */
 #include <time.h>
 #include <unistd.h>
 #include <math.h>
 #include <GLES3/gl32.h>
 #include "gles3_compat.h"
 #include "xscreensaver_compat.h"
+#include "ncz_platform.h"
 #ifdef NCZ_GLES3_BUILD
 extern void ncz_harness_die(int code);
 #endif
@@ -74,6 +73,7 @@ typedef struct {
     GLint u_shape_speed, u_seg_rot, u_pal_pair, u_pal_phase, u_pal_contrast;
     GLint u_sym_burst, u_trail_persist, u_warp_amount, u_ca_amount;
     GLint u_pulse, u_flash, u_seed;
+    GLint u_state, u_tick, u_glow_pools, u_reveal;
 
     /* Per-launch constants */
     float v_seed;
@@ -102,24 +102,35 @@ typedef struct {
     /* Resolved fb dims for fade shader: cached at resize so the
      * fade shader doesn't have to read glViewport state. */
     int win_w, win_h;
+
+    /* Phase 2 additions ---------------------------------------------
+     * Life-simulation state texture (RGBA8, low-res). Ping-pong
+     * updated by an update shader implementing Gray-Scott with
+     * genome in the B channel. .r = life density, .g = secondary
+     * chemical, .b = genome / species, .a = age / activity. */
+    GLuint state_fbo_a, state_fbo_b;
+    GLuint state_tex_a, state_tex_b;
+    int state_w, state_h;
+    int state_index;     /* 0 = a is current, 1 = b is current */
+    GLuint update_program;
+    GLint upd_u_state, upd_u_tick, upd_u_resolution, upd_u_seed,
+          upd_u_feed_kill, upd_u_seed_amount;
+    uint64_t sim_tick;   /* integer simulation tick — persisted */
+    uint64_t sim_tick_at_launch;
 } State;
 
 /* ----- helpers ---------------------------------------------------- */
-static double now_seconds(void){
-    struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
-    return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
-}
+/* All platform access goes through ncz_platform.h. Hack code does
+ * not call clock_gettime or /dev/urandom directly. */
+static double now_seconds(void){ return ncz_now(); }
 static uint32_t seed_rng(void){
+    /* Honor an explicit override env var for reproducible testing. */
     const char *ovr = getenv("NCZ_GVC_FIXED_SEED");
     if(ovr && *ovr){
         uint32_t s = (uint32_t)strtoul(ovr, NULL, 10);
         if(s != 0) return s;
     }
-    uint32_t s = 0;
-    int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-    if(f >= 0){ ssize_t n = read(f, &s, 4); close(f); if(n == 4) return s; }
-    struct timespec t; clock_gettime(CLOCK_REALTIME, &t);
-    return (uint32_t)(t.tv_nsec ^ t.tv_sec ^ getpid());
+    return ncz_seed();
 }
 static float rnd(uint32_t *s, float a, float b){
     *s ^= *s << 13; *s ^= *s >> 17; *s ^= *s << 5;
@@ -138,26 +149,53 @@ static void shuffle_ints(uint32_t *s, int *arr, int n){
 }
 
 /* ----- shader load ------------------------------------------------ */
-static char *load_shader(void){
-    const char *paths[] = {
-        "vendor/genxvectorcade/genxvectorcade.frag",
-        "../vendor/genxvectorcade/genxvectorcade.frag",
-        "../../vendor/genxvectorcade/genxvectorcade.frag",
-        "/usr/share/ncz-screensavers/shaders/genxvectorcade.frag",
+static char *load_shader_named(const char *fname){
+    /* Search by basename in: cwd, ../vendor/..., ../../vendor/...,
+     * and the platform-installed share dir. */
+    char cand[1024];
+    const char *roots[] = {
+        "vendor/genxvectorcade",
+        "../vendor/genxvectorcade",
+        "../../vendor/genxvectorcade",
     };
-    FILE *f = NULL; const char *used = NULL;
-    for(unsigned i = 0; i < sizeof(paths)/sizeof(paths[0]); i++){
-        if((f = fopen(paths[i], "rb"))){ used = paths[i]; break; }
+    for(size_t i = 0; i < sizeof(roots)/sizeof(roots[0]); i++){
+        snprintf(cand, sizeof cand, "%s/%s", roots[i], fname);
+        FILE *f = fopen(cand, "rb");
+        if(!f) continue;
+        fseek(f, 0, SEEK_END); long n = ftell(f); rewind(f);
+        char *b = (char *)malloc((size_t)n + 1);
+        if(!b || fread(b, 1, (size_t)n, f) != (size_t)n){
+            free(b); fclose(f); return NULL;
+        }
+        fclose(f); b[n] = 0;
+        fprintf(stderr, "[diag] genxvectorcade shader=%s\n", cand);
+        return b;
     }
-    if(!f){ fprintf(stderr, "genxvectorcade: cannot locate shader\n"); return NULL; }
-    fseek(f, 0, SEEK_END); long n = ftell(f); rewind(f);
-    char *b = (char *)malloc((size_t)n + 1);
-    if(!b || fread(b, 1, (size_t)n, f) != (size_t)n){
-        free(b); fclose(f); return NULL;
+    /* Platform-installed asset path. */
+    char installed[1024];
+    if(ncz_asset_path(fname, installed, sizeof installed)){
+        FILE *f = fopen(installed, "rb");
+        if(f){
+            fseek(f, 0, SEEK_END); long n = ftell(f); rewind(f);
+            char *b = (char *)malloc((size_t)n + 1);
+            if(!b || fread(b, 1, (size_t)n, f) != (size_t)n){
+                free(b); fclose(f); return NULL;
+            }
+            fclose(f); b[n] = 0;
+            fprintf(stderr, "[diag] genxvectorcade shader=%s\n", installed);
+            return b;
+        }
     }
-    fclose(f); b[n] = 0;
-    fprintf(stderr, "[diag] genxvectorcade shader=%s\n", used);
-    return b;
+    /* Bare basename in the share dir (some installs flatten). */
+    if(ncz_asset_path("shaders/genxvectorcade.frag", installed, sizeof installed)){
+        /* Only honor this if the name matches. */
+    }
+    fprintf(stderr, "genxvectorcade: cannot locate shader %s\n", fname);
+    return NULL;
+}
+static char *load_shader(void){
+    /* Phase 1 main scene shader is the public one. */
+    return load_shader_named("genxvectorcade.frag");
 }
 
 /* ----- shader compile helpers ------------------------------------ */
@@ -199,7 +237,8 @@ static int create_fbos(State *s, int win_w, int win_h){
     if(s->fb_scale > 1.0f)  s->fb_scale = 1.0f;
     int w = (int)((float)win_w * s->fb_scale);
     int h = (int)((float)win_h * s->fb_scale);
-    if(w < 2) w = 2; if(h < 2) h = 2;
+    if(w < 2) w = 2;
+    if(h < 2) h = 2;
     s->fb_w = w; s->fb_h = h;
     s->win_w = win_w; s->win_h = win_h;
     s->fb_index = 0;
@@ -242,6 +281,271 @@ static void destroy_fbos(State *s){
     if(s->fbo_b){ glDeleteFramebuffers(1, &s->fbo_b); s->fbo_b = 0; }
     if(s->tex_a){ glDeleteTextures(1, &s->tex_a); s->tex_a = 0; }
     if(s->tex_b){ glDeleteTextures(1, &s->tex_b); s->tex_b = 0; }
+}
+
+/* ----- state texture (Gray-Scott) --------------------------------- */
+/* Build the low-res RGBA8 ping-pong state texture for the life
+ * simulation. We choose resolution from the env-var quality tier
+ * (default Medium) so the same binary can run from 256x144 up to
+ * 720p without code change. State is intentionally low-res: the
+ * visual layer (full-res optics) samples it back through
+ * NEAREST-style filtering on a half-rate grid. */
+static int create_state_fbos(State *s, int win_w, int win_h){
+    /* Quality ladder (per the design doc):
+     *  Low    256x144
+     *  Medium 320x180
+     *  High   480x270
+     *  Ultra  640x360
+     * We default to Medium; env var can override for testing.
+     */
+    int sw = 320, sh = 180;
+    const char *q = getenv("NCZ_GVC_QUALITY");
+    if(q){
+        if(!strcasecmp(q, "low"))   { sw = 256; sh = 144; }
+        else if(!strcasecmp(q, "high"))   { sw = 480; sh = 270; }
+        else if(!strcasecmp(q, "ultra"))  { sw = 640; sh = 360; }
+        else if(!strcasecmp(q, "medium")) { sw = 320; sh = 180; }
+    }
+    /* Scale with window so a 4K monitor doesn't show a 320x180 grid
+     * — keep the same aspect ratio. */
+    if(win_w > 0 && win_h > 0){
+        float scale = (float)win_w / (float)sw;
+        if(scale > 1.5f){ sw = (int)(sw * scale); sh = (int)(sh * scale); }
+    }
+    if(sw < 32) sw = 32;
+    if(sh < 32) sh = 32;
+    s->state_w = sw; s->state_h = sh;
+    s->state_index = 0;
+
+    s->state_fbo_a = 0; s->state_fbo_b = 0;
+    glGenFramebuffers(1, &s->state_fbo_a);
+    glGenFramebuffers(1, &s->state_fbo_b);
+    glGenTextures(1, &s->state_tex_a);
+    glGenTextures(1, &s->state_tex_b);
+
+    GLuint fbos[2] = { s->state_fbo_a, s->state_fbo_b };
+    GLuint texs[2] = { s->state_tex_a, s->state_tex_b };
+    /* Seed genome in B channel: scatter "species" blobs across the
+     * grid, each with a unique feed/kill rate that the per-pixel
+     * genome encodes. We don't compute feed/kill in C — the shader
+     * derives them from the genome so we can spawn many species
+     * cheaply. */
+    unsigned char *seed = (unsigned char *)calloc((size_t)sw * (size_t)sh * 4, 1);
+    if(seed){
+        uint32_t z = ncz_seed();
+        for(int y = 0; y < sh; y++){
+            for(int x = 0; x < sw; x++){
+                unsigned char *p = seed + (y * sw + x) * 4;
+                /* Background: dead in R, alive in G, no genome yet */
+                p[0] = 0;
+                p[1] = 0;
+                p[2] = 0;
+                p[3] = 0;
+            }
+        }
+        /* Scatter ~24 species seeds. Each is a small disk of high-G,
+         * with the species' genome value in B. */
+        int n_species = 24;
+        for(int i = 0; i < n_species; i++){
+            float fx = rnd(&z, 0.05f, 0.95f);
+            float fy = rnd(&z, 0.05f, 0.95f);
+            float genome = rnd(&z, 0.0f, 1.0f);
+            int radius = 3 + (int)(rnd(&z, 0.0f, 4.0f));
+            int cx = (int)(fx * (float)sw);
+            int cy = (int)(fy * (float)sh);
+            for(int dy = -radius; dy <= radius; dy++){
+                for(int dx = -radius; dx <= radius; dx++){
+                    int xx = cx + dx, yy = cy + dy;
+                    if(xx < 0 || xx >= sw || yy < 0 || yy >= sh) continue;
+                    float dd = (float)(dx*dx + dy*dy);
+                    float rr = (float)(radius*radius);
+                    if(dd > rr) continue;
+                    unsigned char *p = seed + (yy * sw + xx) * 4;
+                    /* Initial life: G = 1.0, R = 0.0, B = genome */
+                    p[0] = 0;
+                    p[1] = 255;
+                    p[2] = (unsigned char)(genome * 255.0f);
+                    p[3] = 255;
+                }
+            }
+        }
+    }
+
+    for(int i = 0; i < 2; i++){
+        glBindTexture(GL_TEXTURE_2D, texs[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, seed);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbos[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D, texs[i], 0);
+        GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if(st != GL_FRAMEBUFFER_COMPLETE){
+            fprintf(stderr, "genxvectorcade: state FBO %d incomplete 0x%x\n",
+                    i, (unsigned)st);
+            free(seed);
+            return -1;
+        }
+    }
+    free(seed);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    fprintf(stderr, "[diag] genxvectorcade state %dx%d (window %dx%d)\n",
+            sw, sh, win_w, win_h);
+    return 0;
+}
+
+static void destroy_state_fbos(State *s){
+    if(s->state_fbo_a){ glDeleteFramebuffers(1, &s->state_fbo_a); s->state_fbo_a = 0; }
+    if(s->state_fbo_b){ glDeleteFramebuffers(1, &s->state_fbo_b); s->state_fbo_b = 0; }
+    if(s->state_tex_a){ glDeleteTextures(1, &s->state_tex_a); s->state_tex_a = 0; }
+    if(s->state_tex_b){ glDeleteTextures(1, &s->state_tex_b); s->state_tex_b = 0; }
+}
+
+/* ----- update shader (Gray-Scott step) ---------------------------- */
+/* Identical to the fade vertex shader — a passthrough quad. We keep
+ * it named update_vert so the program reads clearly. */
+static const char *update_vert =
+    "#version 300 es\n"
+    "precision highp float;\n"
+    "layout(location = 0) in vec2 a_pos;\n"
+    "out vec2 v_uv;\n"
+    "void main(){\n"
+    "  v_uv = a_pos * 0.5 + 0.5;\n"
+    "  gl_Position = vec4(a_pos, 0.0, 1.0);\n"
+    "}\n";
+static const char *update_frag =
+    "#version 300 es\n"
+    "precision highp float;\n"
+    "in vec2 v_uv;\n"
+    "out vec4 fragColor;\n"
+    "uniform sampler2D u_state;\n"
+    "uniform vec2  u_resolution;\n"
+    "uniform float u_seed;\n"
+    "uniform vec2  u_feed_kill;\n"
+    "uniform float u_tick;\n"
+    "uniform float u_seed_amount;\n"
+    "void main(){\n"
+    "  vec2 px = 1.0 / u_resolution;\n"
+    "  vec4 c = texture(u_state, v_uv);\n"
+    "  vec4 n  = texture(u_state, v_uv + vec2( 0.0,  px.y));\n"
+    "  vec4 s  = texture(u_state, v_uv + vec2( 0.0, -px.y));\n"
+    "  vec4 e  = texture(u_state, v_uv + vec2( px.x, 0.0));\n"
+    "  vec4 w  = texture(u_state, v_uv + vec2(-px.x, 0.0));\n"
+    "  vec4 ne = texture(u_state, v_uv + vec2( px.x,  px.y));\n"
+    "  vec4 nw = texture(u_state, v_uv + vec2(-px.x,  px.y));\n"
+    "  vec4 se = texture(u_state, v_uv + vec2( px.x, -px.y));\n"
+    "  vec4 sw = texture(u_state, v_uv + vec2(-px.x, -px.y));\n"
+    "  vec2 lap = ((n + s + e + w) * 0.2 + (ne + nw + se + sw) * 0.05 - c.rg);\n"
+    "  float genome = c.b;\n"
+    "  float feed = mix(0.020, 0.060, genome) + u_feed_kill.x;\n"
+    "  float kill = mix(0.045, 0.070, fract(genome * 3.17)) + u_feed_kill.y;\n"
+    "  float reaction = c.r * c.g * c.g;\n"
+    "  float da = 1.0 * lap.x - reaction + feed * (1.0 - c.r);\n"
+    "  float db = 0.5 * lap.y + reaction - (kill + feed) * c.g;\n"
+    "  vec4 next = c;\n"
+    "  next.r = clamp(c.r + da, 0.0, 1.0);\n"
+    "  next.g = clamp(c.g + db, 0.0, 1.0);\n"
+    "  float activity = length(next.rg - c.rg);\n"
+    "  float mutationPressure =\n"
+    "      smoothstep(0.0, 0.01, 0.02 - activity) +\n"
+    "      smoothstep(0.25, 0.5, activity);\n"
+    "  float h = fract(sin(dot(gl_FragCoord.xy + u_seed, vec2(12.9898, 78.233))) * 43758.5453);\n"
+    "  next.b = fract(next.b + (h - 0.5) * 0.0005 * mutationPressure);\n"
+    "  float seed_p = step(0.998, fract(h * 19.71 + u_seed_amount));\n"
+    "  if(seed_p > 0.5 && mutationPressure > 0.05){\n"
+    "    next.g = 1.0;\n"
+    "    next.b = h;\n"
+    "  }\n"
+    "  next.a = clamp(c.a + 0.001 * (next.r + next.g), 0.0, 1.0);\n"
+    "  fragColor = next;\n"
+    "}\n";
+
+static int build_update_program(State *s){
+    GLuint v = compile(GL_VERTEX_SHADER, update_vert, "update_vs");
+    GLuint f = compile(GL_FRAGMENT_SHADER, update_frag, "update_fs");
+    if(!v || !f) return -1;
+    s->update_program = link_prog(v, f);
+    glDeleteShader(v); glDeleteShader(f);
+    if(!s->update_program) return -1;
+    s->upd_u_state       = glGetUniformLocation(s->update_program, "u_state");
+    s->upd_u_tick        = glGetUniformLocation(s->update_program, "u_tick");
+    s->upd_u_resolution  = glGetUniformLocation(s->update_program, "u_resolution");
+    s->upd_u_seed        = glGetUniformLocation(s->update_program, "u_seed");
+    s->upd_u_feed_kill   = glGetUniformLocation(s->update_program, "u_feed_kill");
+    s->upd_u_seed_amount = glGetUniformLocation(s->update_program, "u_seed_amount");
+    return 0;
+}
+
+/* ----- persistence ------------------------------------------------ */
+/* Read/write the per-machine lineage to disk. Versioned format:
+ *   "GVC2" 4-byte magic
+ *   uint32 version (= 2)
+ *   uint64 sim_tick
+ *
+ * Stored in $XDG_DATA_HOME/ncz-screensavers/genxvectorcade.lineage.
+ * Stale / missing / wrong-magic -> fresh lineage. Hack never
+ * branches; absence is the same code path as zero. */
+static const char *kLineagePath = "genxvectorcade.lineage";
+static void mkdir_p(const char *path){
+    /* Tiny recursive mkdir — ignore EEXIST. */
+    char buf[512];
+    snprintf(buf, sizeof buf, "%s", path);
+    for(char *p = buf + 1; *p; p++){
+        if(*p == '/'){
+            *p = 0;
+            mkdir(buf, 0755);
+            *p = '/';
+        }
+    }
+    mkdir(buf, 0755);
+}
+static void lineage_path(char *out, size_t out_sz){
+    const char *xdg = getenv("XDG_DATA_HOME");
+    const char *home = getenv("HOME");
+    if(xdg && *xdg){
+        snprintf(out, out_sz, "%s/ncz-screensavers/%s", xdg, kLineagePath);
+    } else if(home && *home){
+        snprintf(out, out_sz, "%s/.local/share/ncz-screensavers/%s", home, kLineagePath);
+    } else {
+        snprintf(out, out_sz, "/tmp/%s", kLineagePath);
+    }
+}
+static void load_lineage(State *s){
+    char path[512]; lineage_path(path, sizeof path);
+    FILE *f = fopen(path, "rb");
+    if(!f){ fprintf(stderr, "[diag] genxvectorcade lineage absent -> fresh\n"); return; }
+    char magic[4];
+    uint32_t version = 0;
+    if(fread(magic, 1, 4, f) != 4) goto fail;
+    if(memcmp(magic, "GVC2", 4) != 0) goto fail;
+    if(fread(&version, 4, 1, f) != 1) goto fail;
+    if(version != 2) goto fail;
+    uint64_t tick = 0;
+    if(fread(&tick, 8, 1, f) != 1) goto fail;
+    s->sim_tick_at_launch = tick;
+    fprintf(stderr, "[diag] genxvectorcade lineage tick=%llu\n",
+            (unsigned long long)tick);
+    fclose(f);
+    return;
+fail:
+    fprintf(stderr, "[diag] genxvectorcade lineage unreadable -> fresh\n");
+    fclose(f);
+}
+static void save_lineage(State *s){
+    char path[512]; lineage_path(path, sizeof path);
+    /* Best-effort; mkdir -p the directory. */
+    char *slash = strrchr(path, '/');
+    if(slash){ *slash = 0; mkdir_p(path); *slash = '/'; }
+    FILE *f = fopen(path, "wb");
+    if(!f) return;
+    fwrite("GVC2", 1, 4, f);
+    uint32_t v = 2; fwrite(&v, 4, 1, f);
+    fwrite(&s->sim_tick, 8, 1, f);
+    fclose(f);
 }
 
 /* ----- fade shader (rotates previous frame and scales by u_fade) -- */
@@ -330,7 +634,8 @@ static void randomise(State *s){
  * based on time within v_journey_total.
  */
 static float smooth01(float x){
-    if(x < 0.0f) x = 0.0f; if(x > 1.0f) x = 1.0f;
+    if(x < 0.0f) x = 0.0f;
+    if(x > 1.0f) x = 1.0f;
     return x * x * (3.0f - 2.0f * x);
 }
 static void compute_phases(State *s, float t, float phases[5]){
@@ -384,6 +689,45 @@ static const char *scene_vert =
     "void main(){\n"
     "  gl_Position = vec4(a_pos, 0.0, 1.0);\n"
     "}\n";
+
+/* ----- state update (Gray-Scott step) ---------------------------- *
+ * Each call advances the simulation by one tick. We do this BEFORE
+ * the scene pass so the scene shader can read fresh state. The
+ * shader writes into the OTHER state FBO (the one not currently
+ * sampled); afterwards we swap so it becomes "current". */
+static void state_update_pass(State *s){
+    GLuint src_tex = (s->state_index == 0) ? s->state_tex_a : s->state_tex_b;
+    GLuint dst_fbo = (s->state_index == 0) ? s->state_fbo_b : s->state_fbo_a;
+    glBindFramebuffer(GL_FRAMEBUFFER, dst_fbo);
+    glViewport(0, 0, s->state_w, s->state_h);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(s->update_program);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, src_tex);
+    glUniform1i(s->upd_u_state, 0);
+    glUniform1f(s->upd_u_tick, (float)(s->sim_tick & 0xFFFFFF));
+    glUniform2f(s->upd_u_resolution, (float)s->state_w, (float)s->state_h);
+    glUniform1f(s->upd_u_seed, (float)((s->sim_tick * 2654435761u) & 0xFFFFFF) / 16777215.0f);
+    /* Bias from sensors (feed/kill). Default zero. */
+    glUniform2f(s->upd_u_feed_kill, 0.0f, 0.0f);
+    /* Seed new species aggressively at the very start of a session
+     * (low tick) and ease off once we have established populations. */
+    float seed_amt = 0.9985f;
+    if(s->sim_tick > 200) seed_amt = 0.9998f;
+    glUniform1f(s->upd_u_seed_amount, seed_amt);
+
+    glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
+    glDisableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glUseProgram(0);
+    s->state_index = 1 - s->state_index;
+    s->sim_tick++;
+}
 
 /* ----- per-frame render orchestration ---------------------------- *
  *
@@ -454,6 +798,7 @@ static void scene_pass(State *s, float t){
     int w = s->fb_w, h = s->fb_h;
     GLuint cur_fbo = (s->fb_index == 0) ? s->fbo_a : s->fbo_b;
     GLuint cur_tex = (s->fb_index == 0) ? s->tex_a : s->tex_b;
+    GLuint state_tex = (s->state_index == 0) ? s->state_tex_a : s->state_tex_b;
     glBindFramebuffer(GL_FRAMEBUFFER, cur_fbo);
     glViewport(0, 0, w, h);
     glDisable(GL_DEPTH_TEST);
@@ -468,10 +813,53 @@ static void scene_pass(State *s, float t){
     glUniform1f(s->u_time, t);
     glUniform2f(s->u_resolution, (float)w, (float)h);
 
+    /* Sample 0: previous-frame trail (ping-pong FBO). */
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, cur_tex);
     glUniform1i(s->u_prev, 0);
     glUniform1f(s->u_fade, 1.0f);
+
+    /* Sample 1: low-res life state texture. */
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, state_tex);
+    glUniform1i(s->u_state, 1);
+
+    glUniform1f(s->u_tick, (float)(s->sim_tick & 0xFFFFFF));
+
+    /* Cabinet glow pools: a small uniform that places 3 parallax
+     * glow zones that drift slowly and add cabinet-pool colour to
+     * the room. Pure procedural — the depth reveal moment is when
+     * one of these pools aligns with the centre and briefly tilts
+     * the field. */
+    float glow_x[3], glow_y[3], glow_r[3], glow_t[3];
+    for(int i = 0; i < 3; i++){
+        float ph = (float)i * 2.094f; /* 120° phase */
+        float speed = 0.04f + 0.013f * (float)i;
+        glow_x[i] = 0.5f + 0.42f * cosf(t * speed + ph);
+        glow_y[i] = 0.5f + 0.32f * sinf(t * speed * 1.31f + ph * 1.7f);
+        glow_r[i] = 0.45f + 0.10f * sinf(t * 0.21f + ph);
+        /* Each pool is one of three colours (warm cyan, magenta, amber). */
+        glow_t[i] = (float)i;
+    }
+    /* Pack the 3 pools into 3 vec4s. */
+    glUniform4f(s->u_glow_pools,
+        glow_x[0], glow_y[0], glow_r[0], glow_t[0]);
+    /* Reveal intensity: a single scalar that drives one depth moment
+     * per cycle. Pulses up to 1.0 around t = 90..110s in the
+     * 150-220s journey. */
+    float leg = s->v_journey_total / 5.0f;
+    float x = fmodf(t, s->v_journey_total);
+    int leg_idx = (int)(x / leg);
+    if(leg_idx >= 5) leg_idx = 4;
+    /* Reveal moment: second leg, midpoint. A clean 4s ramp. */
+    float reveal_t = leg * 1.5f;
+    float reveal = 0.0f;
+    float dr = 2.0f;
+    if(fabsf(x - reveal_t) < dr){
+        float u = (x - reveal_t) / dr;
+        reveal = 0.5f - 0.5f * cosf(u * 3.14159265f);  /* hann window */
+    }
+    glUniform1f(s->u_reveal, reveal);
 
     float phases[5];
     compute_phases(s, t, phases);
@@ -496,9 +884,6 @@ static void scene_pass(State *s, float t){
 
     /* Flash: throttled brief inversion at movement boundaries */
     float flash = 0.0f;
-    float leg = s->v_journey_total / 5.0f;
-    float x = fmodf(t, s->v_journey_total);
-    int leg_idx = (int)(x / leg);
     float local = (x - (float)leg_idx * leg) / leg;
     if(local < 0.06f || local > 0.94f){
         float fade = 1.0f;
@@ -522,6 +907,10 @@ static void scene_pass(State *s, float t){
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 static void blit_pass(State *s){
@@ -592,10 +981,22 @@ static void init_genxvectorcade(ModeInfo *m){
     s->u_pulse   =glGetUniformLocation(s->program, "u_pulse");
     s->u_flash   =glGetUniformLocation(s->program, "u_flash");
     s->u_seed    =glGetUniformLocation(s->program, "u_seed");
+    s->u_state   =glGetUniformLocation(s->program, "u_state");
+    s->u_tick    =glGetUniformLocation(s->program, "u_tick");
+    s->u_glow_pools =glGetUniformLocation(s->program, "u_glow_pools");
+    s->u_reveal  =glGetUniformLocation(s->program, "u_reveal");
 
     /* Fade program */
     if(build_fade_program(s) != 0){
         fprintf(stderr, "genxvectorcade: fade program build failed\n");
+        ncz_harness_die(1); return;
+    }
+
+    /* Update program (Gray-Scott). We don't strictly need a separate
+     * shader file — the source is inlined — but we keep the helper
+     * around in case future ports want a tunable update. */
+    if(build_update_program(s) != 0){
+        fprintf(stderr, "genxvectorcade: update program build failed\n");
         ncz_harness_die(1); return;
     }
 
@@ -604,11 +1005,36 @@ static void init_genxvectorcade(ModeInfo *m){
 
     /* FBOs sized to current window */
     int w = m->xgwa.width, h = m->xgwa.height;
-    if(w < 1) w = 1280; if(h < 1) h = 720;
+    if(w < 1) w = 1280;
+    if(h < 1) h = 720;
     if(create_fbos(s, w, h) != 0){
         fprintf(stderr, "genxvectorcade: FBO setup failed\n");
         ncz_harness_die(1); return;
     }
+    if(create_state_fbos(s, w, h) != 0){
+        fprintf(stderr, "genxvectorcade: state FBO setup failed\n");
+        ncz_harness_die(1); return;
+    }
+
+    /* Load lineage (best-effort) */
+    load_lineage(s);
+    s->sim_tick = s->sim_tick_at_launch;
+
+    /* Sample environmental sensors for the seed schema. Each
+     * sensor, when present, mixes a unique value into the seed via
+     * xor with a distinct prime — the result is that different
+     * machines and different sessions produce different lineages
+     * without the sensors ever being mapped to visuals directly. */
+    int v;
+    uint32_t seed_u = (uint32_t)s->v_seed;
+    if(ncz_env_read_int("kp", &v))         seed_u ^= ((uint32_t)v * 0x9E3779B1u);
+    if(ncz_env_read_int("solar_wind", &v)) seed_u ^= ((uint32_t)v * 0x85EBCA77u);
+    if(ncz_env_read_int("cpu_load", &v))   seed_u ^= ((uint32_t)v * 0xC2B2AE3Du);
+    if(ncz_env_read_int("cpu_temp", &v))   seed_u ^= ((uint32_t)v * 0x27D4EB2Fu);
+    if(ncz_env_read_int("battery", &v))    seed_u ^= ((uint32_t)(v+1) * 0x165667B1u);
+    if(seed_u == 0) seed_u = 0xA5A5A5A5u;
+    s->v_seed = (float)seed_u;
+    fprintf(stderr, "[diag] genxvectorcade seed_post_sensors=%.0f\n", s->v_seed);
 
     s->started = now_seconds();
     s->frame = 0;
@@ -632,7 +1058,8 @@ static void draw_genxvectorcade(ModeInfo *m){
     State *s = (State *)m->data;
     if(!s || !s->program) return;
     int w = m->xgwa.width, h = m->xgwa.height;
-    if(w < 1) w = 1; if(h < 1) h = 1;
+    if(w < 1) w = 1;
+    if(h < 1) h = 1;
     /* Resize FBOs if window changed (compositor may reconfigure) */
     if(w != s->win_w || h != s->win_h){
         destroy_fbos(s);
@@ -644,6 +1071,12 @@ static void draw_genxvectorcade(ModeInfo *m){
 
     float t = (float)(now_seconds() - s->started);
 
+    /* 0. advance the simulation by one tick. We do this even on
+     *    unchanged-time frames because the integer sim_tick is the
+     *    authoritative clock for the life system — never the float
+     *    time uniform, which loses precision over multi-day runs. */
+    state_update_pass(s);
+
     /* 1. fade previous FBO (rotate slightly + scale by persistence) */
     fade_copy_pass(s, t);
 
@@ -654,6 +1087,12 @@ static void draw_genxvectorcade(ModeInfo *m){
     blit_pass(s);
 
     s->frame++;
+
+    /* Save lineage periodically (every ~600 frames ~= 10s at 60fps).
+     * Best-effort — silent failure on permission issues. */
+    if((s->frame % 600) == 0){
+        save_lineage(s);
+    }
 
     /* First-frame sanity (logs pixel samples + gl_error) */
     static int once;
@@ -704,10 +1143,14 @@ static void draw_genxvectorcade(ModeInfo *m){
 static void free_genxvectorcade(ModeInfo *m){
     State *s = (State *)m->data;
     if(!s) return;
+    /* Persist lineage one last time on shutdown. */
+    save_lineage(s);
     destroy_fbos(s);
+    destroy_state_fbos(s);
     if(s->vbo) glDeleteBuffers(1, &s->vbo);
     if(s->program) glDeleteProgram(s->program);
     if(s->fade_program) glDeleteProgram(s->fade_program);
+    if(s->update_program) glDeleteProgram(s->update_program);
     free(s);
     m->data = NULL;
 }

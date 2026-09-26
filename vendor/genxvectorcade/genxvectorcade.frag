@@ -43,6 +43,12 @@ uniform float u_pulse;         // beat-like internal pulse 0..1 (CPU computes)
 uniform float u_flash;         // brief full-frame flash on movement boundaries, 0..1
 uniform float u_seed;
 
+// Phase 2 additions: the evolving phosphor ecosystem.
+uniform sampler2D u_state;     // low-res life state (R density, G chem, B genome, A age)
+uniform float u_tick;          // integer simulation tick — never the float time
+uniform vec4  u_glow_pools;    // x,y,r,type for one cabinet pool (more via [1..3] would need arrays)
+uniform float u_reveal;        // 0..1, depth reveal moment intensity (one per cycle)
+
 // ---- HSL helpers (palette interpolation in hue-space) ----
 const float PI  = 3.14159265358979;
 const float TAU = 6.28318530717959;
@@ -412,11 +418,58 @@ void main(){
     // the previous frame slightly (u_fade); here we add the new
     // geometry and let the trail decay naturally.
     vec3 prev = chromSample(u_prev, uv, u_ca_amount);
+    // Per-channel phosphor decay: blue lingers longer than red and
+    // green (real-phosphor behaviour; blue phosphor decay ~30ms vs
+    // red ~3ms). The host's fade-copy applies the same weighting,
+    // so the *raw* previous-frame buffer uses these multipliers
+    // when computing the trail envelope. We do the additional decay
+    // here so the optics pass is per-channel in the shader too.
+    vec3 phosphorDecay = vec3(0.94, 0.965, 0.985);
     // trail persistence: the faded previous frame is mixed back. Use
     // screen-blend (1 - (1-a)*(1-b)) for additive feel without the
     // pure-additive runaway to white; clamp to keep hot cores intact.
-    vec3 faded = prev * u_trail_persist;
-    vec3 mixed = 1.0 - (1.0 - min(faded, vec3(1.0))) * (1.0 - min(col, vec3(1.0)));
+    // The max-based envelope (Astra) prevents unbounded accumulation
+    // when persistence is set high.
+    vec3 faded = prev * phosphorDecay * u_trail_persist;
+    vec3 mixed = max(col, faded);
+    // Screen-blend on top so col is what we just computed this frame.
+    mixed = 1.0 - (1.0 - mixed) * (1.0 - min(col, vec3(1.0)));
+
+    // Cabinet glow pool: a large soft additive that drifts in
+    // parallax. Tinted by type (0=warm cyan, 1=magenta, 2=amber).
+    float t = u_glow_pools.w;
+    vec3 glow_col;
+    if(t < 0.5)      glow_col = vec3(0.10, 0.85, 0.95);   // cyan
+    else if(t < 1.5) glow_col = vec3(0.95, 0.30, 0.85);   // magenta
+    else             glow_col = vec3(0.95, 0.65, 0.20);   // amber
+    vec2 d = uv - u_glow_pools.xy;
+    float glow = exp(-pow(length(d) / max(u_glow_pools.z, 0.05), 2.0));
+    // Add a slow pulse so the pool breathes rather than sits static.
+    glow *= 0.55 + 0.20 * sin(u_time * 0.35);
+    mixed += glow_col * glow * 0.18;
+
+    // Habitat tint from the state texture: the genome B channel biases
+    // the palette so different species drift the colour in different
+    // regions. We sample at low resolution — the field is intentionally
+    // coarse; the visual layer interpolates softly.
+    vec4 st = texture(u_state, uv);
+    // Genome drives a slow hue offset that shifts over the whole frame.
+    float genomeBias = (st.b - 0.5) * 0.20;
+    mixed *= 1.0 + genomeBias * vec3(-0.10, 0.05, 0.12);
+    // Density (R channel) brightens where life is active.
+    mixed += st.r * vec3(0.20, 0.16, 0.30);
+
+    // Depth reveal moment: a single 4s window per journey when the
+    // camera tilts and the field gains a parallax Z. Implemented as
+    // a smooth radial zoom + slight hue boost.
+    if(u_reveal > 0.001){
+        vec2 c = uv - 0.5;
+        float r = length(c);
+        float zoom = 1.0 + 0.12 * u_reveal;
+        vec2 uvR = c * zoom + 0.5;
+        vec3 reveal = chromSample(u_prev, uvR, u_ca_amount * 1.6);
+        mixed = mix(mixed, mixed + reveal * 0.35 * u_reveal, u_reveal);
+    }
 
     // pulse modulation: when pulse is high, multiply everything by 1+pulse
     mixed *= 1.0 + 0.18 * u_pulse;

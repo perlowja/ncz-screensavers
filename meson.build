@@ -966,6 +966,7 @@ executable(
     files(common_gles3_sources + [
         'src/gles3_harness.c',
         'src/gles3_genxvectorcade.c',
+        'src/ncz_platform.c',
     ]) + gen_sources,
     include_directories: inc,
     dependencies: common_gles3_deps,

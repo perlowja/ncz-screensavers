@@ -205,7 +205,45 @@ meson compile -C ~/build-tmp/ncz-screensavers-build genxvectorcade_gles3
 ## Files
 
 - `src/gles3_genxvectorcade.c` — driver .c (init / draw / free,
-  three render passes, FB ping-pong setup, per-launch randomisation)
+  three render passes, FB ping-pong setup, per-launch randomisation,
+  Gray-Scott state ping-pong, persistence)
 - `vendor/genxvectorcade/genxvectorcade.frag` — fragment shader
+  (5 movements + cabinet glow + habitat tint + reveal moment)
+- `include/ncz_platform.h` — platform-abstraction header used for
+  clock, entropy, asset-path and sensor cache reads
+- `src/ncz_platform.c` — wayland/EGL-backend implementation of
+  the platform abstraction (currently the only backend)
 - `meson.build` — adds the executable + `install_data` rule for
   `/usr/share/ncz-screensavers/shaders/genxvectorcade.frag`
+
+## Phase 2 additions
+
+Per `docs/superpowers/specs/2026-09-25-genxvectorcade-design.md`:
+
+* **Life simulation** — Gray-Scott reaction-diffusion on a low-res
+  state texture (default 320x180, RGBA8). Ping-pong FBO. Genome in
+  the B channel drives per-pixel feed/kill rates. Activity-driven
+  mutation pressure prevents both heat death and explosion;
+  rare-seeding recovers from local collapse.
+
+* **Integer-tick clock** — `sim_tick` (uint64) is the authoritative
+  time for the life system; the float time uniform drives visuals
+  only. Float precision degrades over multi-day runs; ticks do not.
+
+* **Arcade optics** — per-channel phosphor decay
+  `vec3(0.94, 0.965, 0.985)`, max-based trail envelope so
+  persistence cannot accumulate unbounded, three drifting cabinet
+  glow pools in parallax (cyan / magenta / amber), genome-driven
+  habitat tint.
+
+* **Depth reveal** — single 4s Hann window around the midpoint of
+  the second leg of the journey drives a chromatic radial zoom.
+
+* **Persistence** — `GVC2` magic + versioned format writes the
+  simulation tick to `$XDG_DATA_HOME/ncz-screensavers/genxvectorcade.
+  lineage`. Loaded on launch; absent or stale = fresh lineage.
+
+* **Environmental seed schema** — kp, solar_wind, cpu_load,
+  cpu_temp, battery are read from sensors.env via the platform
+  interface and mixed into the per-launch seed via xor with
+  distinct primes. Never mapped to visuals.

@@ -59,6 +59,21 @@ void ncz_frame_size(int *w, int *h);
  * log format). \n appended automatically. */
 void ncz_log_diag(const char *fmt, ...);
 
+/* Read an integer from a key=value cache file. The hack never opens
+ * /proc or /sys directly; instead a separate poller writes
+ * sensors.env (or the per-platform equivalent) to a known location
+ * and the hack consumes it through this primitive.
+ *
+ * Looked up in:
+ *   $XDG_DATA_HOME/ncz-screensavers/sensors.env (or ~/.local/share/...)
+ *   /etc/ncz-screensavers/sensors.env
+ *   /run/ncz-screensavers/sensors.env
+ *
+ * Returns 1 if the key was found (out_v filled), 0 if not. Missing
+ * file is the same code path as zero — callers should treat absence
+ * as neutral bias, not an error. */
+int ncz_env_read_int(const char *key, int *out_v);
+
 #ifdef __cplusplus
 }
 #endif
