@@ -844,6 +844,7 @@ xshadertoy_shaders = [
     'rigrekt', 'selfreflect', 'skyline', 'stardome', 'starnest',
     'stripeytorus', 'synthwavecity', 'topologica', 'trainmandala',
     'trizm', 'truchetzoom', 'universeball',
+    'leviathan',
 ]
 
 foreach s : xshadertoy_shaders
@@ -974,6 +975,21 @@ executable(
     c_args: gles3_native_c_args + [
         '-DSTANDALONE',
     ],
+    install: false,
+)
+
+# Headless smoke tester for xshadertoy-format fragment shaders under
+# vendor/xshadertoy/glsl/. Same pattern as gles3_transitions_smoke
+# (EGL_KHR_surfaceless_context, PBuffer destination, real PNG dumps
+# via libpng). Validates compile/link/render for individual shaders
+# without needing a Wayland compositor or the full gles3_harness.
+# Usage: gles3_xshadertoy_smoke <shader.glsl> <out-dir> [t1 t2 ...]
+executable(
+    'gles3_xshadertoy_smoke',
+    files(['src/gles3_xshadertoy_smoke.c']),
+    include_directories: inc,
+    dependencies: common_gles3_deps,
+    c_args: gles3_native_c_args,
     install: false,
 )
 
@@ -1415,6 +1431,7 @@ foreach alias_name : [
     'xshadertoy_topologica_gles3', 'xshadertoy_trainmandala_gles3',
     'xshadertoy_trizm_gles3', 'xshadertoy_truchetzoom_gles3',
     'xshadertoy_universeball_gles3',
+    'xshadertoy_leviathan_gles3',
 ]
     run_target(
         alias_name + '_alias',
