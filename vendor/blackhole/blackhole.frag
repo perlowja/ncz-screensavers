@@ -7,6 +7,27 @@ uniform float u_time, u_seed, u_radius, u_temperature, u_density, u_rotation;
 uniform float u_inclination, u_orbit_rate, u_jet, u_star_density;
 uniform float u_camera_mode, u_palette, u_approach, u_periapsis;
 uniform float u_palette_phase, u_palette_rate, u_palette_contrast;
+// Per-launch flight-path parameters. Drawn per-launch in C; replace the
+// previously-hardcoded curve coefficients so each run traces a distinct
+// path shape (not a rescaled version of one).
+//   d_base   : base distance (was the 10.5 / 9.8 / 10.8 / 18 literals).
+//   d_swing  : amplitude of the cos(phase) radial swing.
+//   d_harm_a : secondary dist harmonic amplitude (modes 0, 1, 2).
+//   d_harm_f : secondary dist harmonic frequency multiplier.
+//   o_rate   : orbital rate multiplier on the phase ramp.
+//   o_harm_a : secondary orbital harmonic amplitude (the .28 / .34 / .55).
+//   o_harm_f : secondary orbital harmonic frequency multiplier.
+//   o_count  : how many orbits before phase wraps; combined with orbit_rate
+//              this sets the visible duration of a coherent arc.
+//   sign     : +1 prograde, -1 retrograde (flips orbit direction and roll).
+//   e_swing  : elevation swing amplitude (the .48..78).
+//   e_freq   : elevation swing frequency multiplier on phase.
+//   ph_jit   : deterministic per-launch phase offset so launches aren't
+//              phase-locked at t=0.
+uniform float u_path_d_base, u_path_d_swing, u_path_d_harm_amp, u_path_d_harm_freq;
+uniform float u_path_o_rate, u_path_o_harm_amp, u_path_o_harm_freq;
+uniform float u_path_o_count, u_path_sign;
+uniform float u_path_e_swing, u_path_e_freq, u_path_phase_jitter;
 uniform vec2 u_resolution;
 // hue, spatial scale, cloud coverage, yaw; tilt and bounded noise offset.
 uniform vec4 u_nebula;
@@ -159,35 +180,73 @@ vec3 jet_color(float axis){
 float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
 void main(){
  vec2 p=(2.*gl_FragCoord.xy-u_resolution)/u_resolution.y/u_radius;
- float phase=u_time*u_orbit_rate+u_seed*.000001,orbit,elev,dist,roll=0.,closeFX=0.,arrivalFX=0.;
+ // Per-launch flight-path parameters replace what used to be hardcoded
+ // curve coefficients. The four modes are still distinct *characters*;
+ // the magnitudes / harmonics are randomised within each so the specific
+ // path varies per launch.
+ float phase=u_time*u_orbit_rate*u_path_o_count+u_seed*.000001+u_path_phase_jitter;
+ float orbit,elev,dist,roll=0.,closeFX=0.,arrivalFX=0.;
  if(u_camera_mode<.5){
   // Diving arc: approach from above, skim the disk, then climb away.
-  dist=10.5+(3.7+.4*abs(u_approach))*cos(phase);orbit=u_approach*(phase*1.18+.28*sin(phase*2.));elev=u_inclination+.58*sin(phase*.83);
+  // Was: dist=10.5+(3.7+.4*abs(u_approach))*cos(phase);
+  //      orbit=u_approach*(phase*1.18+.28*sin(phase*2.));
+  //      elev=u_inclination+.58*sin(phase*.83);
+  // All four coefficients now come from uniforms; u_approach still scales
+  // the radial swing amplitude.
+  dist=u_path_d_base+(u_path_d_swing+.4*abs(u_approach))*cos(phase)
+      +u_path_d_harm_amp*sin(phase*u_path_d_harm_freq);
+  orbit=u_path_sign*u_approach*(phase*u_path_o_rate
+      +u_path_o_harm_amp*sin(phase*u_path_o_harm_freq));
+  elev=u_inclination+u_path_e_swing*sin(phase*u_path_e_freq);
  }else if(u_camera_mode<1.5){
   // Banking slingshot: asymmetric radius and a faster sweep at periapsis.
-  dist=9.8+(3.3+.4*abs(u_approach))*sin(phase)+1.15*sin(phase*2.);orbit=u_approach*(phase*1.35-.34*cos(phase));elev=u_inclination+.48*cos(phase*1.17);
+  // Was: dist=9.8+(3.3+.4*abs(u_approach))*sin(phase)+1.15*sin(phase*2.);
+  //      orbit=u_approach*(phase*1.35-.34*cos(phase));
+  //      elev=u_inclination+.48*cos(phase*1.17);
+  dist=u_path_d_base+(u_path_d_swing+.4*abs(u_approach))*sin(phase)
+      +u_path_d_harm_amp*sin(phase*u_path_d_harm_freq);
+  orbit=u_path_sign*u_approach*(phase*u_path_o_rate
+      -u_path_o_harm_amp*cos(phase*u_path_o_harm_freq));
+  elev=u_inclination+u_path_e_swing*cos(phase*u_path_e_freq);
  }else if(u_camera_mode<2.5){
   // Polar pass: crosses from one face of the disk to the other.
-  dist=10.8+(4.+.4*abs(u_approach))*cos(phase*.91);orbit=u_approach*(phase+.55*sin(phase*.72));elev=u_inclination+.78*sin(phase*.69);
+  // Was: dist=10.8+(4.+.4*abs(u_approach))*cos(phase*.91);
+  //      orbit=u_approach*(phase+.55*sin(phase*.72));
+  //      elev=u_inclination+.78*sin(phase*.69);
+  // No secondary dist harmonic in the original for this mode; the
+  // amplitude / freq uniforms are still drawn (and will be near zero
+  // when d_harm_amp is small) but the formula deliberately omits a
+  // sin(2*phase) term so the polar-pass character survives.
+  dist=u_path_d_base+(u_path_d_swing+.4*abs(u_approach))*cos(phase*u_path_o_rate);
+  orbit=u_path_sign*u_approach*(phase*u_path_o_rate
+      +u_path_o_harm_amp*sin(phase*u_path_o_harm_freq));
+  elev=u_inclination+u_path_e_swing*sin(phase*u_path_e_freq);
  }else{
   // Fast arrival, held banked sweep, slower release. Only the envelopes
   // wrap: accumulated azimuth stays continuous and never backtracks.
-  float tau=u_time*u_orbit_rate,cycles=tau/(2.*PI),lap=floor(cycles),q=fract(cycles);
+  // tau scales by u_path_o_count so a longer orbit budget produces more
+  // cycles per launch.
+  float tau=u_time*u_orbit_rate*u_path_o_count,cycles=tau/(2.*PI),lap=floor(cycles),q=fract(cycles);
   float arrival=ease5(.08,.40,q),departure=ease5(.60,.97,q);
   closeFX=arrival*(1.-departure);
   arrivalFX=4.*arrival*(1.-arrival);
-  dist=mix(18.,u_periapsis,closeFX);
-  elev=.635-.57*closeFX+.025*closeFX*sin(2.*PI*q);
-  orbit=u_seed*.000001+u_approach*(.35*tau+2.7*(lap+ease5(.27,.73,q)));
+  dist=mix(u_path_d_base,u_periapsis,closeFX);
+  // Elevation: u_path_e_swing replaces the hardcoded .57 amplitude; a tiny
+  // per-cycle wobble persists via the path_e_freq multiplier on q.
+  elev=.635-u_path_e_swing*closeFX+.025*closeFX*sin(2.*PI*q*u_path_e_freq);
+  // Orbit: u_path_o_rate replaces the .35 rate; u_path_o_harm_amp replaces
+  // the 2.7 cycle-accumulator gain; sign flips direction.
+  orbit=u_seed*.000001+u_path_sign*u_approach*(u_path_o_rate*tau
+      +u_path_o_harm_amp*(lap+ease5(.27,.73,q)));
   float bank=ease5(.16,.40,q)*(1.-ease5(.65,.96,q));
-  roll=(u_approach<0.?-1.:1.)*2.25*bank;
+  roll=u_path_sign*2.25*bank;
  }
  dist=max(dist,5.4);
  vec3 cam=dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),baseRight=normalize(cross(forward,vec3(0,0,1))),baseUp=cross(baseRight,forward),right=cos(roll)*baseRight+sin(roll)*baseUp,up=-sin(roll)*baseRight+cos(roll)*baseUp;
  // One ray, with subtle arrival-only peripheral distortion and framing drift.
  float r2=dot(p,p),shot=fract(u_time*u_orbit_rate/(2.*PI));
  vec2 lensP=p*(1.+.035*arrivalFX*r2/(1.+r2));
- lensP+=closeFX*vec2((u_approach<0.?-1.:1.)*.12*sin(2.*PI*shot),.06);
+ lensP+=closeFX*vec2(u_path_sign*.12*sin(2.*PI*shot),.06);
  vec3 ray=normalize(forward+lensP.x*right+lensP.y*up);
  float impact=length(cross(cam,ray));bool captured=impact<2.598076;
  float u=1./length(cam),phi=0.;vec3 normal=normalize(cam),perp=cross(cross(normal,ray),normal);float plen=length(perp);vec3 tangent=plen>1e-6?perp/plen:right;float tang=dot(ray,tangent),du=abs(tang)>1e-6?-dot(ray,normal)/tang*u:200.*u;vec3 old=cam,pos=cam,color=vec3(0);float trans=1.;
