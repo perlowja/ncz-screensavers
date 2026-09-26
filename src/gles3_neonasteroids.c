@@ -743,7 +743,10 @@ static void split_rock(State *st, int idx) {
         return;
     }
     uint32_t z = seed_rng() ^ (uint32_t)(idx * 31u + st->wave * 17u);
-    float speed = 0.25f + 0.10f * (float)(int)next;
+    /* Slower split speed so children don't immediately threaten the
+     * ship. Original 0.35-0.45 was too aggressive — children
+     * would reach the centre in ~2s. */
+    float speed = 0.18f + 0.06f * (float)(int)next;
     for (int i = 0; i < 2; i++) {
         float a = rnd(&z, 0.f, 2.f * (float)M_PI);
         V2 v = { cosf(a) * speed, sinf(a) * speed };
@@ -781,7 +784,7 @@ static void collision_step(State *st) {
             float dx = st->ship.pos.x - rk->pos.x;
             float dy = st->ship.pos.y - rk->pos.y;
             float d2 = dx * dx + dy * dy;
-            float sum = 0.04f + rk->radius;
+            float sum = 0.025f + rk->radius;
             if (d2 < sum * sum) {
                 kill_ship(st);
                 break;
