@@ -30,7 +30,7 @@ or nouveau — check which driver is actually loaded, don't assume). That
   human-supervised only (see `~/.claude/rules/kernel-build-checklist.md` —
   do not trigger an unattended reboot; running screensaver binaries on an
   already-booted system is fine, rebooting it is not).
-- **MEDUSA** (192.168.207.86): amd64, T2 MacBook, AMD Navi14 iGPU. Real
+- **MEDUSA** (192.168.207.84): amd64, T2 MacBook, AMD Navi14 iGPU. Real
   NCZ-OS install (kernel `7.2.6-2-t2-trixie`). `user medusa, password
   medusa`. `sudo -S` needs the SAME password (not NOPASSWD, not the fleet
   password).

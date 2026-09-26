@@ -2,7 +2,7 @@
 # setup-medusa.sh — push source + scripts to MEDUSA, build 90 _gles3
 # binaries natively.
 set -e
-TARGET="medusa@192.168.207.86"
+TARGET="medusa@192.168.207.84"
 PASSWORD="medusa"
 SRC=/home/jasonperlow/Projects/ncz-screensavers
 

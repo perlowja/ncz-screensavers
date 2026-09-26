@@ -318,7 +318,7 @@ Measure on Intel UHD, NVIDIA RTX 2060 and AMD Navi14:
 - **MEDUSA** (AMD Navi14): `sshpass -p medusa ssh -o
   PubkeyAuthentication=no -o IdentityAgent=none -o IdentitiesOnly=yes -o
   PreferredAuthentications=password -o StrictHostKeyChecking=no
-  medusamedusa@192.168.207.84`, repo `~/ncz-screensavers`.
+  medusa@192.168.207.84`, repo `~/ncz-screensavers`.
 
 Report **rendered segment counts per quality tier** alongside frame
 times. "It looked fine" is not a measurement.
@@ -459,3 +459,20 @@ Captures of all three modes, at least two different races' bridges in POV
 showing they genuinely differ, and one capture mid-transition showing
 geometry carrying through between modes. Report segment counts per mode —
 a close pass and an orthographic wide shot cost very differently.
+
+## Test host correction (2026-09-25)
+
+**MEDUSA is 192.168.207.84, user `medusa`, password `medusa`.** Verified
+working. The account was created by the NCZ-OS installer as a malformed
+`medusamedusa` — the name doubled — and was renamed in place with
+`usermod -l medusa -d /home/medusa -m`, preserving uid 1000 and all file
+ownership. Any brief or note using `medusamedusa@` is stale.
+
+A second admin account `jasonperlow` with the fleet password and
+passwordless sudo now exists on that host. It was added because `medusa`
+was the only non-system user, which made any account change a lockout
+risk. Root telnet recovery does NOT work there despite telnetd listening
+on :23, so `jasonperlow` is the real recovery path.
+
+`192.168.207.86` is dead and does not ping, despite the fleet table
+listing MEDUSA there.

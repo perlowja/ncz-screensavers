@@ -66,7 +66,7 @@ task, see "Verification" below):
 3. **Verification is cross-platform, not just O6N.** These 4 failures were
    only measured on Sky1/Panthor so far. Before declaring this done,
    rebuild and test all 4 on at least one AMD64 host too (MEDUSA,
-   `sshpass -p medusa ssh medusa@192.168.207.86`, or PEGASUS, `sshpass -p
+   `sshpass -p medusa ssh medusa@192.168.207.84`, or PEGASUS, `sshpass -p
    pegasus ssh pegasus@192.168.207.85` — both have working toolchains and
    real hardware acceleration confirmed this session) to see whether these
    are Panthor-specific or universal bugs. Report which.

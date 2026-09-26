@@ -57,7 +57,7 @@ correctness.
 | Built with             | gcc 14.x, meson 1.7.x | gcc 14.x, meson 1.7.x | gcc 14.x, meson 1.7.x |
 | GLES3 headers          | system `libgles2-mesa-dev` (aarch64) | system (amd64) | system (amd64) |
 | Linked against         | system `libGLESv2` + `libEGL` (no gl4es) | same | same |
-| Run via                | ssh `mini@192.168.207.3` against labwc | ssh `medusa@192.168.207.86` against labwc | ssh `pegasus@192.168.207.85` against labwc |
+| Run via                | ssh `mini@192.168.207.3` against labwc | ssh `medusa@192.168.207.84` against labwc | ssh `pegasus@192.168.207.85` against labwc |
 | Wayland session accessed via | `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0` from SSH | same | same |
 | Screenshot method      | `grim` against labwc, ~2 s after binary launch | same | same |
 | Total per-binary wallclock (run + capture + grace) | ~5 s | ~5 s | ~5 s |
@@ -973,7 +973,7 @@ ninja -C build  # produces 90 _gles3 binaries in build/
 # 2. Deploy source to MEDUSA and PEGASUS (rsync from ULTRA)
 rsync -avz --delete -e 'sshpass -e ssh -o StrictHostKeyChecking=no ...' \
     --exclude='.git' --exclude='build' \
-    ./ medusa@192.168.207.86:~/gles3-validation/src/
+    ./ medusa@192.168.207.84:~/gles3-validation/src/
 # (same for pegasus@192.168.207.85)
 
 # 3. On each remote host:
