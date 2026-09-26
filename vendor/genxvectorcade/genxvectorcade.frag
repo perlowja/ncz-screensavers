@@ -399,20 +399,28 @@ void main(){
     iTmp = kaleidoBloom(uvWarp, cTmp);    col += cTmp * iTmp * pK;        intensity += iTmp * pK;
     iTmp = latticeCanyon(uvWarp, cTmp);   col += cTmp * iTmp * pL;        intensity += iTmp * pL;
 
-    // tone: nonlinear contrast toe (deliberately overexposed)
-    col *= 1.6;
+    // tone: nonlinear contrast toe. Designed to be subtle so the
+    // persistent feedback trail doesn't blow the entire screen to
+    // white. The "deliberate overexposure" applies to HOT CORES (the
+    // tunnel vanishing point, the sun disc), not to the average
+    // background.
+    col *= 1.15;
     col = pow(col, vec3(1.0 / u_pal_contrast));
-    // let the hot cores clip to white (designed-in; not a bug)
-    col = col / (col + 0.55);
-    col *= 2.2;
+    // soft Reinhard knee so the hot cores clip but the background
+    // stays in range
+    col = col / (1.0 + col * 0.65);
+    col *= 1.8;
 
     // feedback mix: the previous frame, chromatically split, blended
     // back at the trail persistence level. The host has already faded
     // the previous frame slightly (u_fade); here we add the new
     // geometry and let the trail decay naturally.
     vec3 prev = chromSample(u_prev, uv, u_ca_amount);
-    // trail persistence: more weight on prev => longer wake
-    vec3 mixed = prev * u_trail_persist + col;
+    // trail persistence: the faded previous frame is mixed back. Use
+    // screen-blend (1 - (1-a)*(1-b)) for additive feel without the
+    // pure-additive runaway to white; clamp to keep hot cores intact.
+    vec3 faded = prev * u_trail_persist;
+    vec3 mixed = 1.0 - (1.0 - min(faded, vec3(1.0))) * (1.0 - min(col, vec3(1.0)));
 
     // pulse modulation: when pulse is high, multiply everything by 1+pulse
     mixed *= 1.0 + 0.18 * u_pulse;
