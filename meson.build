@@ -902,6 +902,7 @@ wave2_materia_shaders = [
     'foliage-plaster',
     'frosted-glass',
     'thin-film',
+    'aurora-restrained',
 ]
 
 foreach s : wave2_materia_shaders
