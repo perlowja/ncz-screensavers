@@ -1,0 +1,15 @@
+intel LINEAR bo: fd=7 stride=256
+vendor=NVIDIA Corporation renderer=NVIDIA GeForce RTX 2060/PCIe/SSE2
+  fourcc=AR24  : REJECTED  eglError=0x300c
+  fourcc=BGRA  : REJECTED  eglError=0x300c
+  fourcc=RA24  : REJECTED  eglError=0x300c
+  fourcc=AB24  : REJECTED  eglError=0x300c
+  fourcc=RX24  : REJECTED  eglError=0x300c
+  fourcc=XR24  : REJECTED  eglError=0x300c
+  fourcc=AR30  : REJECTED  eglError=0x300c
+  fourcc=XR30  : REJECTED  eglError=0x300c
+  fourcc=R8    : REJECTED  eglError=0x300c
+  fourcc=GR88  : REJECTED  eglError=0x300c
+  fourcc=R16   : REJECTED  eglError=0x300c
+summary: 0 accepted, 11 rejected
+exit-code-summary: 0

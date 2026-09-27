@@ -1,0 +1,31 @@
+=== cellmosaic run1 16:38:41 ===
+[diag] iSeed = 0.4436 0.0796 0.4141 0.9601
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.3216 0.6510 0.4614 0.9124]
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=652a2a5d815060da gl_error=0x0
+=== cellmosaic run2 16:38:56 ===
+[diag] iSeed = 0.2888 0.7631 0.2753 0.4458
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.8605 0.2827 0.7999 0.6238]
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=d4e6ed237f154d9d gl_error=0x0
+=== hexlattice run1 16:39:11 ===
+[diag] iSeed = 0.2535 0.1881 0.4831 0.4779
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.6277 0.6730 0.7486 0.4219]
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=569ae898ba7362d1 gl_error=0x0
+=== hexlattice run2 16:39:26 ===
+[diag] iSeed = 0.2035 0.0628 0.4261 0.5873
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.5358 0.8315 0.1435 0.1520]
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=f38b4b26a59416f0 gl_error=0x0
+=== ridgeline run1 16:39:41 ===
+[diag] iSeed = 0.4968 0.8888 0.7005 0.4462
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.5970 0.6975 0.9475 0.6485]
+=== ridgeline run2 16:39:56 ===
+[diag] iSeed = 0.4962 0.3412 0.4695 0.9405
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.9285 0.6742 0.1377 0.0984]
+=== wellcurve run1 16:40:11 ===
+[diag] iSeed = 0.9169 0.2000 0.1077 0.5759
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.4865 0.9208 0.9360 0.3627]
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=ddc03ace3cefebce gl_error=0x0
+=== wellcurve run2 16:40:26 ===
+[diag] iSeed = 0.7054 0.2174 0.7510 0.5653
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=2 ichan0..3=-1,-1,-1,-1 iSeed=[0.2432 0.3097 0.1941 0.0077]
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=658e7cc69f5f277a gl_error=0x0
+VERIFY4_DONE

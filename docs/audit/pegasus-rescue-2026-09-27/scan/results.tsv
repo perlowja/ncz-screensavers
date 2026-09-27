@@ -1,0 +1,39 @@
+target	status	first_samples	second_samples	renderer	failure	rc
+xshadertoy_alienbeacon_gles3	PASS	"255,202,218; 70,45,45; 64,42,39; 186,136,184"	"105,71,63; 255,120,81; 37,27,24; 65,42,42"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_amigajuggler_gles3	PASS	"94,9,9; 0,255,0; 0,255,0; 168,168,255"	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_batteredplanet_gles3	PASS	"131,122,108; 139,120,95; 58,63,53; 194,184,206"	"38,55,51; 81,76,61; 155,134,105; 194,184,206"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_bestill0-0_gles3	PASS	"202,125,67; 27,14,7; 41,21,10; 181,106,55"	"207,131,70; 13,6,3; 28,14,7; 166,94,49"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_bestill1-0_gles3	INCONCLUSIVE	"106,45,22; 40,16,8; 26,10,5; 189,92,48"	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	harness_shutdown_timeout	137
+xshadertoy_bestill2-0_gles3	INCONCLUSIVE	""	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	harness_shutdown_timeout	137
+xshadertoy_bestill3-0_gles3	INCONCLUSIVE	""	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	harness_shutdown_timeout	137
+xshadertoy_bestill4-0_gles3	INCONCLUSIVE	""	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	harness_shutdown_timeout	137
+xshadertoy_bestill5-0_gles3	FAIL	""	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	no_diag	0
+xshadertoy_bubblecolors_gles3	PASS	"2,2,2; 187,221,248; 35,135,119; 198,5,55"	"2,2,2; 230,240,178; 195,120,21; 120,242,227"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_darktransit_gles3	PASS	"37,47,87; 31,40,76; 112,125,165; 0,0,0"	"23,31,60; 5,8,23; 41,49,80; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_downfall_gles3	PASS	"41,41,41; 10,10,10; 7,7,7; 6,6,6"	"86,86,86; 9,9,9; 75,75,75; 7,7,7"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_driftclouds_gles3	PASS	"76,140,204; 146,203,247; 96,169,242; 104,148,182"	"181,218,231; 105,176,243; 96,169,242; 57,112,166"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_elementalring_gles3	PASS	"163,124,139; 91,100,142; 88,98,141; 90,99,141"	"153,140,174; 113,110,147; 83,96,141; 102,104,143"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_fluxcore_gles3	PASS	"123,136,175; 68,60,69; 95,73,70; 39,43,57"	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_gimbalharmonics_gles3	PASS	"75,36,60; 146,132,138; 99,95,94; 154,152,153"	"40,29,35; 106,102,99; 117,110,113; 255,255,255"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_goldenapollian_gles3	PASS	"28,33,39; 14,16,18; 31,36,43; 13,15,18"	"24,27,32; 43,50,59; 71,82,97; 30,35,41"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_hexplasma_gles3	PASS	"60,228,244; 15,21,23; 20,28,31; 5,7,8"	"141,255,255; 40,57,63; 57,80,89; 68,94,104"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_logarithmiccircles_gles3	PASS	"80,80,80; 0,0,0; 255,255,255; 0,0,0"	"81,81,81; 0,0,0; 255,255,255; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_neongravity-0_gles3	PASS	"0,0,0; 0,0,0; 0,0,0; 0,0,0"	"0,0,0; 0,0,0; 0,0,0; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_neongravity-1_gles3	PASS	"220,146,108; 84,69,81; 69,74,90; 23,13,26"	"250,226,200; 22,44,63; 40,68,88; 26,10,20"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_neontriangulator_gles3	PASS	"255,246,255; 76,225,233; 75,93,233; 0,0,0"	"255,246,255; 71,223,232; 62,76,229; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_noxfire_gles3	PASS	"255,255,255; 255,252,220; 255,249,203; 232,139,75"	"233,141,77; 0,0,0; 1,0,0; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_polarnight_gles3	PASS	"187,237,225; 190,248,238; 190,248,238; 19,31,54"	""	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_prococean_gles3	PASS	"88,134,167; 15,28,41; 13,25,38; 167,202,222"	"36,57,67; 11,18,26; 12,20,27; 146,179,183"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_protophore_gles3	PASS	"28,24,27; 163,146,154; 101,98,96; 132,129,130"	"32,28,28; 92,88,87; 123,113,117; 255,255,255"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_rigrekt_gles3	PASS	"155,176,155; 219,227,219; 111,124,111; 0,0,0"	"154,175,154; 193,204,193; 112,124,112; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_selfreflect_gles3	PASS	"241,224,202; 0,0,0; 0,0,0; 0,0,0"	"111,38,43; 0,0,0; 0,0,0; 0,0,0"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_skyline_gles3	PASS	"45,49,55; 86,92,95; 37,39,39; 164,171,182"	"64,77,108; 34,36,43; 60,66,79; 59,71,99"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_stardome_gles3	PASS	"1,2,5; 4,12,24; 15,31,51; 0,0,1"	"6,16,30; 29,58,91; 101,111,139; 1,2,5"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_starnest_gles3	PASS	"44,35,33; 66,38,28; 27,21,21; 29,22,20"	"59,57,78; 27,21,20; 40,34,33; 41,32,28"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_stripeytorus_gles3	PASS	"165,165,165; 55,55,55; 75,75,75; 15,15,15"	"42,42,42; 47,47,47; 19,19,19; 58,58,58"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_synthwavecity_gles3	PASS	"159,2,88; 28,22,48; 25,21,47; 50,4,59"	"159,2,88; 99,33,69; 96,32,68; 50,4,59"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_topologica_gles3	PASS	"155,255,255; 37,115,255; 27,84,255; 164,255,255"	"5,17,54; 56,176,255; 90,255,255; 255,255,255"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_trainmandala_gles3	PASS	"246,138,4; 98,109,92; 28,16,0; 28,16,0"	"9,149,252; 1,17,29; 1,17,28; 45,17,28"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_trizm_gles3	PASS	"76,130,108; 119,83,54; 67,93,97; 255,255,213"	"97,44,64; 56,58,77; 176,117,54; 72,56,81"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_truchetzoom_gles3	PASS	"0,0,0; 214,214,214; 0,0,0; 57,57,57"	"0,0,0; 0,0,0; 0,0,0; 57,57,57"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0
+xshadertoy_universeball_gles3	PASS	"80,127,222; 39,39,39; 40,39,39; 40,39,39"	"64,249,226; 39,39,39; 39,39,39; 40,39,39"	"Mesa Intel(R) UHD Graphics (CML GT2)"	-	0

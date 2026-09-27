@@ -1,0 +1,148 @@
+=============================================================
+nvidia-linear-buffer-test.c — cross-vendor LINEAR PoC
+=============================================================
+intel  = /dev/dri/card1
+nvidia = /dev/dri/card0
+size   = 512x512
+format = GBM_FORMAT_ARGB8888 (DRM FOURCC AR24)
+modifier = DRM_FORMAT_MOD_LINEAR (explicit)
+out_ppm = nvidia-linear-buffer-test.ppm
+
+[1/9] Open Intel DRM device: /dev/dri/card1
+    fd = 3
+    gbm_device = 0x559e950eac70
+
+[2/9] Allocate LINEAR gbm_bo on Intel (512x512 ARGB8888)
+    stride = 2048 bytes/row
+    fourcc = 'AR24' (0x34325241)
+    modifier = 0x0000000000000000 (LINEAR (as requested))
+
+[3/9] Export dma-buf fd
+    dma_buf_fd = 7
+
+[4/9] Open NVIDIA DRM device: /dev/dri/card0
+    fd = 8
+
+[5/9] Bind EGLDisplay to NVIDIA via EGL_EXT_platform_device
+    default EGLDisplay = 0x559e9509c480 (version 1.5)
+    default EGL_EXTENSIONS (first 200 chars):
+      EGL_ANDROID_native_fence_sync EGL_EXT_buffer_age EGL_EXT_client_sync EGL_EXT_create_context_robustness EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_MESA_image_dma_buf_export...
+
+    EGL extension audit:
+      EGL_EXT_device_query                  = NO
+      EGL_EXT_platform_device               = NO
+      EGL_EXT_image_dma_buf_import          = YES
+      EGL_EXT_image_dma_buf_import_modifiers= YES
+    EGL_EXT_platform_device / eglQueryDevicesEXT unavailable; cannot bind an EGL display to a specific GPU.
+    no device-bound EGL display; falling back to default EGLDisplay
+
+    dpy_nv EGL_EXTENSIONS (first 200 chars):
+      EGL_ANDROID_native_fence_sync EGL_EXT_buffer_age EGL_EXT_client_sync EGL_EXT_create_context_robustness EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_MESA_image_dma_buf_export...
+      EGL_EXT_image_dma_buf_import          = YES
+      EGL_EXT_image_dma_buf_import_modifiers= YES
+
+[6/9] Bind GLES2 + create context + pbuffer surface
+    context current, vendor=NVIDIA Corporation, renderer=NVIDIA GeForce RTX 2060/PCIe/SSE2, version=OpenGL ES 3.2 NVIDIA 615.71.09
+    eglCreateImageKHR             = 0x7ff4d258a520
+    eglDestroyImageKHR            = 0x7ff4d258a4e0
+    glEGLImageTargetTexture2DOES  = 0x7ff4de5afee0
+    eglQueryDmaBufFormatsEXT      = 0x7ff4d258ab70
+    eglQueryDmaBufModifiersEXT    = 0x7ff4d258ab00
+
+    nvidia eglQueryDmaBufFormatsEXT: 54 formats
+      fmt[0] = 0x34324241 'AB24'
+      fmt[1] = 0x34324258 'XB24'
+      fmt[2] = 0x20203852 'R8  '
+      fmt[3] = 0x38384752 'RG88'
+      fmt[4] = 0x20363152 'R16 '
+      fmt[5] = 0x32334752 'RG32'
+      fmt[6] = 0x59565955 'UYVY'
+      fmt[7] = 0x32315241 'AR12'
+      fmt[8] = 0x32314241 'AB12'
+      fmt[9] = 0x32314152 'RA12'
+      fmt[10] = 0x32314142 'BA12'
+      fmt[11] = 0x35315258 'XR15'
+      fmt[12] = 0x35314258 'XB15'
+      fmt[13] = 0x35315852 'RX15'
+      fmt[14] = 0x35315842 'BX15'
+      fmt[15] = 0x35315241 'AR15'
+      fmt[21] = 0x34325241 'AR24' <-- ARGB8888
+      ARGB8888 (AR24) advertised = YES
+    fmt 'AB24' (0x34324241): 13 modifiers
+        mod[0] = 0x0300000000606010  external_only=no
+        mod[1] = 0x0300000000606011  external_only=no
+        mod[2] = 0x0300000000606012  external_only=no
+        mod[3] = 0x0300000000606013  external_only=no
+        mod[4] = 0x0300000000606014  external_only=no
+        mod[5] = 0x0300000000606015  external_only=no
+        mod[6] = 0x0300000000e08010  external_only=no
+        mod[7] = 0x0300000000e08011  external_only=no
+        mod[8] = 0x0300000000e08012  external_only=no
+        mod[9] = 0x0300000000e08013  external_only=no
+        mod[10] = 0x0300000000e08014  external_only=no
+        mod[11] = 0x0300000000e08015  external_only=no
+        mod[12] = 0x0000000000000000  external_only=YES
+    fmt 'XB24' (0x34324258): 13 modifiers
+        mod[0] = 0x0300000000606010  external_only=no
+        mod[1] = 0x0300000000606011  external_only=no
+        mod[2] = 0x0300000000606012  external_only=no
+        mod[3] = 0x0300000000606013  external_only=no
+        mod[4] = 0x0300000000606014  external_only=no
+        mod[5] = 0x0300000000606015  external_only=no
+        mod[6] = 0x0300000000e08010  external_only=no
+        mod[7] = 0x0300000000e08011  external_only=no
+        mod[8] = 0x0300000000e08012  external_only=no
+        mod[9] = 0x0300000000e08013  external_only=no
+        mod[10] = 0x0300000000e08014  external_only=no
+        mod[11] = 0x0300000000e08015  external_only=no
+        mod[12] = 0x0000000000000000  external_only=YES
+    fmt 'R8  ' (0x20203852): 13 modifiers
+        mod[0] = 0x0300000000606010  external_only=no
+        mod[1] = 0x0300000000606011  external_only=no
+        mod[2] = 0x0300000000606012  external_only=no
+        mod[3] = 0x0300000000606013  external_only=no
+        mod[4] = 0x0300000000606014  external_only=no
+        mod[5] = 0x0300000000606015  external_only=no
+        mod[6] = 0x0300000000e08010  external_only=no
+        mod[7] = 0x0300000000e08011  external_only=no
+        mod[8] = 0x0300000000e08012  external_only=no
+        mod[9] = 0x0300000000e08013  external_only=no
+        mod[10] = 0x0300000000e08014  external_only=no
+        mod[11] = 0x0300000000e08015  external_only=no
+        mod[12] = 0x0000000000000000  external_only=YES
+    fmt 'AR24' (0x34325241): 13 modifiers
+        mod[0] = 0x0300000000606010  external_only=no
+        mod[1] = 0x0300000000606011  external_only=no
+        mod[2] = 0x0300000000606012  external_only=no
+        mod[3] = 0x0300000000606013  external_only=no
+        mod[4] = 0x0300000000606014  external_only=no
+        mod[5] = 0x0300000000606015  external_only=no
+        mod[6] = 0x0300000000e08010  external_only=no
+        mod[7] = 0x0300000000e08011  external_only=no
+        mod[8] = 0x0300000000e08012  external_only=no
+        mod[9] = 0x0300000000e08013  external_only=no
+        mod[10] = 0x0300000000e08014  external_only=no
+        mod[11] = 0x0300000000e08015  external_only=no
+        mod[12] = 0x0000000000000000  external_only=YES
+
+[7/9] eglCreateImageKHR(EGL_LINUX_DMA_BUF_EXT)
+    fd = 7, fourcc = 0x34325241, stride = 2048
+    attempt 1: with EGL_DMA_BUF_PLANE0_MODIFIER_LO/HI_EXT = LINEAR
+    [egl-error @ eglCreateImageKHR(modifier=LINEAR)] EGL_BAD_PARAMETER (0x300c)
+    attempt 2: without modifier attrs (bare fourcc/fd/stride)
+    [egl-error @ eglCreateImageKHR(no-modifier)] EGL_BAD_PARAMETER (0x300c)
+    attempt 3: with nvidia-tiled modifier 0x0300000000606010
+      (NOTE: buffer is actually LINEAR; this is a modifier
+       mismatch — driver-side rejection is expected regardless
+       of cross-vendor considerations. Diagnostic only.)
+    [egl-error @ eglCreateImageKHR(modifier=nvidia-tiled)] EGL_BAD_PARAMETER (0x300c)
+
+[7/9] RESULT: eglCreateImageKHR FAILED with all attempts.
+         attempt-1 (modifier=LINEAR)  : EGL_BAD_PARAMETER (0x300c)
+         attempt-2 (no modifier attr)  : EGL_BAD_PARAMETER (0x300c)
+         attempt-3 (nvidia-tiled mod)  : modifier-mismatch; diagnostic only
+         The fourcc probe (tools/nvidia-fourcc-probe.c) extends
+         coverage to 11 fourcc encodings (see separate run).
+         Answer to PoC: nvidia's EGL REJECTS the cross-vendor
+         LINEAR dma-buf at import time.
+exit-code-summary: 1

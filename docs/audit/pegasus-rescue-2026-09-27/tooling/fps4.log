@@ -1,0 +1,7 @@
+target       iGPU_frames_10s RTX_frames_10s
+cellmosaic              600            540
+hexlattice              600            540
+ridgeline                 4            300
+wellcurve               540            540
+blackhole               120            540
+FPS4_DONE
