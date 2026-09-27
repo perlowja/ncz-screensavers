@@ -198,18 +198,30 @@ That is real licence, not a shortcut. The constraints that DO exist are more
 interesting than free invention, and they are what keep each act's seafloor
 looking like a different world rather than a recoloured one.
 
-### Anachronisms to avoid
+### Why the era constraints stay
 
-NO KELP, IN ANY ACT. Kelp forests are Neogene, roughly 5-23 Ma. This is the
-single most likely error in the piece: the default mental image of "prehistoric
-sea" is a kelp forest, and it is off by at least a hundred million years.
+Operator decision 2026-09-27: true paleo accuracy is NOT a requirement. Nothing
+below is kept because it is correct. It is kept because it is what makes each
+act look like a DIFFERENT WORLD instead of one seafloor in four palettes, and
+because the unfamiliar forms are the piece's whole visual differentiator.
 
-NO SEAGRASS MEADOWS before the Late Cretaceous. Seagrasses are the first marine
-angiosperms; Act IV may carry sparse early ones, Acts I-III must not.
+Treat every constraint here as art direction. Break any of it when it looks
+better; there is no external standard to satisfy.
 
-NO MODERN-LOOKING CORAL REEFS in Acts I-II. Cambrian and Devonian reefs were
-built by entirely different organisms with different growth forms (below).
-Scleractinian (modern stony) corals do not appear until the Middle Triassic.
+### Anachronisms to avoid anyway
+
+NO KELP, IN ANY ACT. The reason is not that kelp forests are Neogene (they are);
+it is that a kelp forest is the default mental image of an underwater scene, and
+the moment one appears the piece reads as a generic aquarium screensaver. This
+is the most valuable rule here and the easiest to break by accident.
+
+NO SEAGRASS MEADOWS except sparsely in Act IV. Same reasoning -- meadows read as
+modern and familiar.
+
+NO MODERN-LOOKING CORAL REEFS in Acts I-II. A recognisable tropical reef makes
+Acts I and II look like Act IV with the colour changed. The Cambrian and
+Devonian reef builders below have genuinely different growth forms, which is the
+entire reason to use them.
 
 ### What each sea actually had
 
@@ -220,14 +232,14 @@ Scleractinian (modern stony) corals do not appear until the Middle Triassic.
 | III Jurassic | scleractinian stony corals | dasycladacean green algae, sponges, crinoids |
 | IV Cretaceous | rudist bivalves -- cone-and-lid clams that largely displaced corals as the dominant Late Cretaceous reef builder | coccolithophore blooms (the source of the chalky water), earliest seagrasses |
 
-Rudists are the most valuable of these. They built reefs, they look unlike
-anything alive, and they are almost absent from popular paleoart -- so Act IV's
-seafloor can be simultaneously alien and more correct than the expected one.
+Rudists are the most valuable of these, purely visually: cone-and-lid forms that
+look unlike anything alive and are almost absent from popular paleoart. Act IV's
+seafloor gets to be strange without being invented.
 
-CONSEQUENCE FOR ACT I's DATE: archaeocyathids went extinct around 513 Ma, so at
-510 Ma Act I has no reef builders at all. Moving Act I to approximately 520 Ma
-buys archaeocyathid reefs for a small change. Recommended, subject to open item
-1.
+ACT I's DATE: no longer a question. Archaeocyathid-style nested porous cones are
+used because they look good beside stromatolite domes and nothing alive looks
+like them -- not because a particular date supports it. Label the act however
+reads best.
 
 ### Additional generators
 
@@ -321,15 +333,14 @@ evidence the piece is shippable.
 
 ## Open items
 
-1. PALEO ACCURACY -- how hard to chase current scientific consensus.
-   Reconstructions move; mosasaur tail flukes were contested until recently.
-   Aiming at consensus is a real differentiator for a piece called
-   `jurassicaquarium`, but it is a commitment. OPERATOR DECISION, not made.
-   NOTE: the era/taxon assignments in the Flora section were written from
-   general knowledge and have NOT been checked against current literature.
-   They are stated confidently because they are well-established, but the
-   archaeocyathid extinction date driving Act I's proposed shift to 520 Ma
-   is exactly the kind of boundary that gets revised. Verify before building.
+1. PALEO ACCURACY -- RESOLVED 2026-09-27 (operator): true paleontological
+   accuracy is NOT required. No literature verification, no chasing current
+   consensus, no risk that a revised date invalidates anything already built.
+   Creature silhouettes may be stylized freely.
+   The era-specific material in the Flora section is RETAINED, but demoted from
+   correctness requirement to ART DIRECTION -- see "Why the era constraints
+   stay" there. Act I's date is no longer a decision; pick whatever looks best.
+
 2. Two-FBO bandwidth on an iGPU -- unmeasured, see Architecture.
 3. Saturation bias magnitude -- needs eyes on real output, blocked on a test
    host.
