@@ -770,6 +770,7 @@ ENTRYPOINT void draw_providence(ModeInfo * mi)
 #endif
 
   /* draw providence */
+  glScalef(4.0, 4.0, 4.0);
   draw_providence_strip(mi);
   glPopMatrix();
   

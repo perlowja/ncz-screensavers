@@ -268,18 +268,18 @@ init_quasicrystal (ModeInfo *mi)
             clear_gl_error();
 
             glGenTextures (1, &p->texid);
-            glBindTexture (GL_TEXTURE_1D, p->texid);
+            glBindTexture (GL_TEXTURE_2D, p->texid);
             glPixelStorei (GL_UNPACK_ALIGNMENT, 1);
-            glTexImage1D (GL_TEXTURE_1D, 0, GL_RGBA,
-                          tex_width, 0,
+            glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA,
+                          tex_width, 1, 0,
                           GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
             check_gl_error("texture");
 
-            glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
           }
@@ -307,6 +307,57 @@ draw_quasicrystal (ModeInfo *mi)
 
   glXMakeCurrent(MI_DISPLAY(mi), MI_WINDOW(mi), *bp->glx_context);
 
+#ifdef NCZ_GLES3_BUILD
+  /* The desktop version combines repeating one-dimensional textures with
+     framebuffer logic operations.  GLES has neither texture-1D nor logic
+     ops, so render an animated interference field as overlapping wave
+     bands instead of allowing the emulation to collapse to one flat color. */
+  {
+    static GLfloat phase;
+    int band, plane_no;
+
+    glViewport(0, 0, MI_WIDTH(mi), MI_HEIGHT(mi));
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-1, 1, -1, 1, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
+    glClearColor(0.025, 0.02, 0.06, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    for (plane_no = 0; plane_no < 7; plane_no++) {
+      GLfloat angle = plane_no * (M_PI / 7.0f) + phase * 0.07f;
+      GLfloat dx = cosf(angle), dy = sinf(angle);
+      GLfloat nx = -dy, ny = dx;
+      for (band = -20; band <= 20; band++) {
+        GLfloat p = band / 20.0f + 0.055f * sinf(phase + plane_no);
+        GLfloat w = 0.018f;
+        GLfloat lum = 0.28f + 0.18f * sinf(band * 0.9f + phase + plane_no);
+        glColor3f(lum * (0.5f + 0.5f * sinf(plane_no * 2.1f)),
+                  lum * (0.6f + 0.4f * sinf(plane_no * 1.7f + 2)),
+                  lum);
+        glBegin(GL_QUADS);
+        glVertex2f(nx * (p-w) - dx * 1.5f, ny * (p-w) - dy * 1.5f);
+        glVertex2f(nx * (p+w) - dx * 1.5f, ny * (p+w) - dy * 1.5f);
+        glVertex2f(nx * (p+w) + dx * 1.5f, ny * (p+w) + dy * 1.5f);
+        glVertex2f(nx * (p-w) + dx * 1.5f, ny * (p-w) + dy * 1.5f);
+        glEnd();
+      }
+    }
+    phase += 0.035f;
+    mi->polygon_count = 7 * 41;
+    if (mi->fps_p) do_fps(mi);
+    glFinish();
+    glXSwapBuffers(dpy, window);
+    return;
+  }
+#endif
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   mi->polygon_count = 0;
@@ -317,10 +368,7 @@ draw_quasicrystal (ModeInfo *mi)
   glDisable (GL_LIGHTING);
   if (!wire)
     {
-      glEnable (GL_TEXTURE_1D);
-# ifdef HAVE_JWZGLES
-      glEnable (GL_TEXTURE_2D);  /* jwzgles needs this, bleh. */
-# endif
+      glEnable (GL_TEXTURE_2D);
     }
 
   glEnable (GL_BLEND);
@@ -379,7 +427,7 @@ draw_quasicrystal (ModeInfo *mi)
       glColor4f (1, 1, 1, (wire ? 0.5 : 1.0 / bp->count));
 
       if (!wire)
-        glBindTexture (GL_TEXTURE_1D, p->texid);
+        glBindTexture (GL_TEXTURE_2D, p->texid);
 
       glBegin (wire ? GL_LINE_LOOP : GL_QUADS);
       glNormal3f (0, 0, 1);
@@ -392,7 +440,7 @@ draw_quasicrystal (ModeInfo *mi)
       if (wire)
         {
           float j;
-          glDisable (GL_TEXTURE_1D);
+          glDisable (GL_TEXTURE_2D);
           glColor4f (1, 1, 1, 1.0 / bp->count);
           for (j = 0; j < 1; j += (1 / scale))
             {
@@ -409,7 +457,10 @@ draw_quasicrystal (ModeInfo *mi)
       mi->polygon_count++;
     }
 
-  /* Colorize the grayscale image. */
+  /* Colorize the grayscale image.  The desktop version uses a destination-
+     color feedback blend that saturates to solid white on the GLES target;
+     keep the animated grayscale interference field there instead. */
+#ifndef NCZ_GLES3_BUILD
   {
     GLfloat c[4];
     c[0] = bp->colors[bp->ccolor].red   / 65536.0;
@@ -423,7 +474,7 @@ draw_quasicrystal (ModeInfo *mi)
     c[2] = (0.6666 + c[2]/3);
 
     glBlendFunc (GL_DST_COLOR, GL_SRC_COLOR);
-    glDisable (GL_TEXTURE_1D);
+    glDisable (GL_TEXTURE_2D);
     glColor4fv (c);
     glTranslatef (-0.5, -0.5, 0);
     glBegin (GL_QUADS);
@@ -434,14 +485,19 @@ draw_quasicrystal (ModeInfo *mi)
     glEnd();
     mi->polygon_count++;
   }
+#endif
 
   /* Clip the colors to simulate contrast. */
 
-  if (bp->contrast > 0)
+  if (bp->contrast > 0
+#ifdef NCZ_GLES3_BUILD
+      && False  /* GLES3 has no framebuffer logic-op stage. */
+#endif
+      )
     {
       /* If c > 0, map 0 - 100 to 0.5 - 1.0, and use (s & ~d) */
       GLfloat c = 1 - (bp->contrast / 2 / 100.0);
-      glDisable (GL_TEXTURE_1D);
+      glDisable (GL_TEXTURE_2D);
       glDisable (GL_BLEND);
       glEnable (GL_COLOR_LOGIC_OP);
       glLogicOp (GL_AND_REVERSE);

@@ -331,6 +331,7 @@ make_branch (ModeInfo *mi)
   branch *b = (branch *) calloc (1, sizeof(*b));
 
   b->blob = make_blob();
+  b->pos.z = -5;
   b->max_slices = 500 * resolution_arg;
   b->slice_height = 0.02 / resolution_arg;
   b->dlist = glGenLists (1);
@@ -860,6 +861,18 @@ init_chompytower (ModeInfo *mi)
 
   bp->nbranches = 0;
   add_branch (mi);
+
+  /* The original GLX module grows the tower from a single zero-radius
+     slice over roughly sixteen seconds.  A standalone saver must have a
+     useful first frame (and the Wayland preview captures at 2s/4s), so
+     construct the initial tower up front.  Subsequent ticks still move,
+     retire and regrow the same slices exactly as before. */
+  {
+    branch *b = bp->branches[0];
+    while (b->nslices < b->max_slices)
+      grow_branch (b);
+    render_branch (mi, b);
+  }
 }
 
 

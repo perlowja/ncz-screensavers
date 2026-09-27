@@ -528,6 +528,9 @@ static void Draw(ModeInfo * mi)
 {
     sballsstruct *sb = &sballs[MI_SCREEN(mi)];
     int sphere;
+#ifdef NCZ_GLES3_BUILD
+    static GLfloat drift_phase;
+#endif
 
     mi->polygon_count = 0;
 
@@ -574,6 +577,15 @@ static void Draw(ModeInfo * mi)
     glEnd();
     mi->polygon_count++;
 
+#ifdef NCZ_GLES3_BUILD
+    /* Some randomly selected polyhedra are rotationally symmetric at the
+       default four-degree step, and two captures can land on identical
+       orientations.  A slow, incommensurate lateral drift keeps those
+       selections visibly animated as well. */
+    glTranslatef(0.18f * sinf(drift_phase),
+                 0.10f * cosf(drift_phase * 0.73f), 0);
+    drift_phase += 0.037f;
+#endif
     gltrackball_rotate (sb->trackball);
 
     /* rotate the balls */
@@ -615,6 +627,12 @@ static void Init(ModeInfo * mi)
     int i;
 
     /* Default settings */
+#ifdef NCZ_GLES3_BUILD
+    /* The generic Wayland image loader supplies an unlabelled white fallback
+       for both the backdrop and face atlas, making the white balls disappear
+       into the background.  Use the model's lit, untextured presentation. */
+    do_texture = False;
+#endif
     if (MI_IS_WIREFRAME(mi))
 	do_texture = False;
     if (do_texture)

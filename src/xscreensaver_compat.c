@@ -360,6 +360,10 @@ int gluBuild2DMipmaps(GLenum target,
                       GLenum format, GLenum type,
                       const void *data)
 {
+    const void *upload = data;
+    unsigned char *converted = NULL;
+    GLenum upload_format = format;
+    GLint internal = components;
     if (target != GL_TEXTURE_2D) {
         fprintf(stderr, "gluBuild2DMipmaps: target=0x%x not supported\n",
                 (unsigned)target);
@@ -370,26 +374,48 @@ int gluBuild2DMipmaps(GLenum target,
                 (int)width, (int)height);
         return GLU_ERROR;
     }
-    /* Level-0 upload. The internalformat slot (the 'components'
-     * GLU arg) is what GLES3 expects in the 'internalformat' position;
-     * the second slot in upstream's gluBuild2DMipmaps is unused on
-     * GLES3 — we pass 'components' through both slots for source
-     * compatibility. */
-    glTexImage2D(target, 0, components, width, height, 0,
-                 format, type, data);
+    /* Desktop GL accepted component counts and luminance formats here;
+     * GLES3 does not.  Flurry supplies two-byte luminance/alpha pixels, so
+     * expand those to portable RGBA8 before asking the driver for mipmaps. */
+    if (type == GL_UNSIGNED_BYTE &&
+        (format == GL_LUMINANCE_ALPHA || components == 2)) {
+        size_t n = (size_t)width * height;
+        const unsigned char *src = (const unsigned char *)data;
+        converted = (unsigned char *)malloc(n * 4);
+        if (!converted) return GLU_ERROR;
+        for (size_t i = 0; i < n; i++) {
+            converted[i*4+0] = src[i*2+0];
+            converted[i*4+1] = src[i*2+0];
+            converted[i*4+2] = src[i*2+0];
+            converted[i*4+3] = src[i*2+1];
+        }
+        upload = converted;
+        upload_format = GL_RGBA;
+        internal = GL_RGBA;
+    } else if (components == 3) internal = GL_RGB;
+    else if (components == 4) internal = GL_RGBA;
+
+    glTexImage2D(target, 0, internal, width, height, 0,
+                 upload_format, type, upload);
     /* Generate mipmap chain. Required to be called from within a
      * glGenerateMipmap-able state; that's enforced by the spec, and
      * we surface a real error if the driver rejects it. */
+#ifdef NCZ_GLES3_BUILD
     glGenerateMipmap(target);
+#else
+    glTexParameteri(target, GL_GENERATE_MIPMAP, GL_TRUE);
+#endif
     {
         GLenum err = glGetError();
         if (err != GL_NO_ERROR) {
             fprintf(stderr,
                     "gluBuild2DMipmaps: glGenerateMipmap failed (0x%x)\n",
                     (unsigned)err);
+            free(converted);
             return GLU_ERROR;
         }
     }
+    free(converted);
     return 0;
 }
 
@@ -1201,13 +1227,20 @@ void load_texture_async(Screen *screen, Window window, GLXContext glx_context,
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEX_W, TEX_H, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    if (mipmap_p)
+    if (mipmap_p) {
+#ifdef NCZ_GLES3_BUILD
+        glGenerateMipmap(GL_TEXTURE_2D);
+#else
         glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+#endif
+    }
 
     geom.x = 0;
     geom.y = 0;
-    geom.width = TEX_W;
-    geom.height = TEX_H;
+    /* Geometry describes the requested display-sized image, while tw/th
+     * describe the compact fallback texture that is repeated across it. */
+    geom.width = (unsigned short)(x > 0 ? x : TEX_W);
+    geom.height = (unsigned short)(y > 0 ? y : TEX_H);
     if (callback)
         callback(NULL, &geom, TEX_W, TEX_H, TEX_W, TEX_H, closure);
 }
@@ -1721,26 +1754,45 @@ void screenhack_usleep(unsigned long usecs)
  * The implementations are no-ops / identity functions; they exist only
  * to satisfy the linker.
  */
-struct texture_font_data { int _placeholder; };
+struct texture_font_data { int glyph_w, ascent, descent; };
 
 texture_font_data *load_texture_font(Display *dpy, char *res)
 {
+    texture_font_data *fd;
     (void) dpy; (void) res;
-    return NULL;
+    fd = (texture_font_data *)calloc(1, sizeof(*fd));
+    if (fd) fd->glyph_w = 40, fd->ascent = 70, fd->descent = 10;
+    return fd;
 }
 
 void texture_string_metrics(texture_font_data *fd, const char *s,
                             XCharStruct *m, int *ascent, int *descent)
 {
-    (void) fd; (void) s;
-    if (m)      memset(m, 0, sizeof(*m));
-    if (ascent) *ascent = 0;
-    if (descent) *descent = 0;
+    int w = (fd && s) ? (int)strlen(s) * fd->glyph_w : 0;
+    if (m) {
+        memset(m, 0, sizeof(*m));
+        m->width = m->rbearing = w;
+        m->ascent = fd ? fd->ascent : 0;
+        m->descent = fd ? fd->descent : 0;
+    }
+    if (ascent) *ascent = fd ? fd->ascent : 0;
+    if (descent) *descent = fd ? fd->descent : 0;
 }
 
 void print_texture_string(texture_font_data *fd, const char *s)
 {
-    (void) fd; (void) s;
+    if (!fd || !s) return;
+    glDisable(GL_TEXTURE_2D);
+    for (; *s; s++) {
+        if (*s != ' ' && *s != '\t' && *s != '\n' && *s != '\r') {
+            glBegin(GL_QUADS);
+            glVertex3f(1, -800, 0); glVertex3f(fd->glyph_w - 1, -800, 0);
+            glVertex3f(fd->glyph_w - 1, 800, 0);
+            glVertex3f(1, 800, 0);
+            glEnd();
+        }
+        glTranslatef((GLfloat)fd->glyph_w, 0, 0);
+    }
 }
 
 void print_texture_label(Display *dpy, texture_font_data *fd,
@@ -1753,10 +1805,18 @@ void print_texture_label(Display *dpy, texture_font_data *fd,
 void string_to_texture(texture_font_data *fd, const char *s,
                        XCharStruct *ext, int *tw, int *th)
 {
-    (void) fd; (void) s;
-    if (ext) memset(ext, 0, sizeof(*ext));
-    if (tw)  *tw = 0;
-    if (th)  *th = 0;
+    int w = (fd && s && *s) ? (int)strlen(s) * fd->glyph_w : 1;
+    int h = fd ? fd->ascent + fd->descent : 1;
+    unsigned char *pixels = (unsigned char *)malloc((size_t)w * h * 4);
+    texture_string_metrics(fd, s, ext, NULL, NULL);
+    if (pixels) {
+        memset(pixels, 255, (size_t)w * h * 4);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        free(pixels);
+    }
+    if (tw)  *tw = w;
+    if (th)  *th = h;
 }
 
 void enable_texture_string_parameters(texture_font_data *fd)
@@ -1766,13 +1826,13 @@ void enable_texture_string_parameters(texture_font_data *fd)
 
 Bool blank_character_p(texture_font_data *fd, const char *s)
 {
-    (void) fd; (void) s;
-    return True;
+    (void) fd;
+    return (!s || !*s || (*s == ' ' && !s[1]));
 }
 
 void free_texture_font(texture_font_data *fd)
 {
-    (void) fd;
+    free(fd);
 }
 
 XftFont *texfont_xft(texture_font_data *fd)
@@ -1957,7 +2017,7 @@ char *XChar2b_to_utf8(const XChar2b *str, int *length_ret)
  * require a non-NULL client, so provide a small deterministic fallback
  * stream when the external X11 helper is unavailable.
  */
-struct text_data { int _placeholder; };
+struct text_data { size_t offset; };
 
 text_data *textclient_open(Display *dpy)
 {
@@ -1981,8 +2041,9 @@ void textclient_reshape(text_data *td,
 
 int textclient_getc(text_data *td)
 {
-    (void) td;
-    return -1;
+    static const char fallback[] = "NCZ Screensavers\n";
+    if (!td || td->offset >= sizeof(fallback) - 1) return -1;
+    return (unsigned char)fallback[td->offset++];
 }
 
 Bool textclient_puts(text_data *td, const char *s)

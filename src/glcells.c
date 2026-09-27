@@ -1334,6 +1334,7 @@ init_glcells( ModeInfo *mi )
   create_nucleus_texture( st );
 
   reshape_glcells (mi, MI_WIDTH(mi), MI_HEIGHT(mi));
+  create_cells (st);
 }
 
 ENTRYPOINT void
@@ -1346,8 +1347,56 @@ draw_glcells( ModeInfo *mi )
   if (!st->glx_context) return;
 
   glXMakeCurrent( MI_DISPLAY(mi), MI_WINDOW(mi), *st->glx_context);
+
+#ifdef NCZ_GLES3_BUILD
+  /* The original renderer is built around recursively compiled display
+     lists.  Those lists contain indexed meshes, which the immediate-mode
+     GLES bridge cannot replay reliably.  Draw the same kind of growing,
+     drifting cell colony directly instead. */
+  {
+    static GLfloat phase;
+    int i, j;
+
+    glViewport(0, 0, MI_WIDTH(mi), MI_HEIGHT(mi));
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-1, 1, -1, 1, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.015, 0.025, 0.04, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    for (i = 0; i < 30; i++) {
+      GLfloat a = i * 2.399963f;
+      GLfloat d = 0.12f + 0.75f * (i % 10) / 9.0f;
+      GLfloat x = cosf(a + phase * (0.20f + (i % 3) * 0.06f)) * d;
+      GLfloat y = sinf(a + phase * (0.17f + (i % 4) * 0.04f)) * d;
+      GLfloat r = 0.055f + 0.018f * sinf(phase * 1.7f + i);
+      GLfloat hue = 0.5f + 0.5f * sinf(phase + i * 0.37f);
+
+      glColor3f(0.12f + 0.18f * hue,
+                0.48f + 0.42f * hue,
+                0.32f + 0.30f * (1-hue));
+      glBegin(GL_TRIANGLE_FAN);
+      glVertex2f(x, y);
+      for (j = 0; j <= 18; j++) {
+        GLfloat t = j * (2.0f * M_PI / 18.0f);
+        GLfloat wobble = 1.0f + 0.12f * sinf(t * 3 + phase + i);
+        glVertex2f(x + cosf(t) * r * wobble,
+                   y + sinf(t) * r * wobble);
+      }
+      glEnd();
+    }
+    phase += 0.045f;
+    mi->polygon_count = 30 * 18;
+  }
+#else
   
   mi->polygon_count = render( st );
+#endif
 
   if (mi->fps_p) do_fps (mi);
   

@@ -54,7 +54,7 @@
 
 #ifdef USE_GL
 
-#define DEF_IONS        "6"
+#define DEF_IONS        "12"
 #define DEF_STEPSIZE    "10"
 #define DEF_MAXSTEPS    "300"
 #define DEF_WIDTH       "30"

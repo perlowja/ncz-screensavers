@@ -70,7 +70,7 @@
 #ifdef USE_GL
 
 #define DEF_SPEED    "50"
-#define DEF_STARS    "200"
+#define DEF_STARS    "1000"
 #define DEF_STARSIZE "50"
 #define DEF_DEPTH    "1000"
 #define DEF_FOV      "90"

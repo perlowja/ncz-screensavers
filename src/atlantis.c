@@ -381,12 +381,18 @@ reshape_atlantis(ModeInfo * mi, int width, int height)
 static void
 clear_tank (atlantisstruct * ap)
 {
+  static GLfloat water_phase;
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   if (do_gradient && !ap->wire)
     {
       GLfloat top[4] = { 0.0, 0.400, 0.70, };
       GLfloat bot[4] = { 0.0, 0.025, 0.09, };
+      GLfloat shimmer = 0.025f * sinf(water_phase);
+      water_phase += 0.012f;
+      top[1] += shimmer;
+      top[2] += shimmer;
+      bot[2] += shimmer * 0.5f;
 
       glMatrixMode(GL_PROJECTION);
       glPushMatrix();
@@ -508,6 +514,13 @@ init_atlantis(ModeInfo * mi)
 					   of the sharks */
 	ap->whalespeed = whalespeed;
 	ap->wire = MI_IS_WIREFRAME(mi);
+#ifdef NCZ_GLES3_BUILD
+        /* This effect relies on desktop texture-coordinate generation and
+           uploads into texture object 0, neither of which exists in GLES3.
+           Keep the animated animals visible; the gradient still supplies
+           the underwater background. */
+        do_texture = False;
+#endif
 
 	if (MI_IS_DEBUG(mi)) {
 		(void) fprintf(stderr,
@@ -554,6 +567,11 @@ draw_atlantis(ModeInfo * mi)
 	glXMakeCurrent(display, window, *ap->glx_context);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#ifdef NCZ_GLES3_BUILD
+        /* The legacy meshes mix winding conventions; desktop compatibility
+           drivers tolerated that, while GLES culls every animal. */
+        glDisable(GL_CULL_FACE);
+#endif
 
         glPushMatrix();
         glRotatef(current_device_rotation(), 0, 0, 1);

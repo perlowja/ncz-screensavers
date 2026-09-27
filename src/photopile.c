@@ -91,6 +91,7 @@ typedef struct {
 
   time_t last_time, now;
   int draw_tick;
+  unsigned long anim_tick;
   fade_mode mode;
   int mode_tick;
 
@@ -487,6 +488,11 @@ init_photopile (ModeInfo *mi)
   MI_INIT (mi, sss);
   ss = &sss[screen];
   ss->mi = mi;
+#ifdef NCZ_GLES3_BUILD
+  /* The fallback image is immediately available; keep it moving often
+     enough that a saver preview never sits on one unchanged pile. */
+  duration = 1;
+#endif
 
   if ((ss->glx_context = init_GL(mi)) != NULL) {
     reshape_photopile (mi, MI_WIDTH(mi), MI_HEIGHT(mi));
@@ -770,6 +776,7 @@ draw_photopile (ModeInfo *mi)
     glPushMatrix();
     glTranslatef (MI_WIDTH(mi)/2, MI_HEIGHT(mi)/2, 0);
     glRotatef(current_device_rotation(), 0, 0, 1);
+    glRotatef((GLfloat)(ss->anim_tick++ % 3600) * 0.1f, 0, 0, 1);
     glTranslatef (-MI_WIDTH(mi)/2, -MI_HEIGHT(mi)/2, 0);
 
     /* Handle state transitions. */

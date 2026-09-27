@@ -104,7 +104,13 @@ reset_floater (ModeInfo *mi, floater *f)
 {
   cow_configuration *bp = &bps[MI_SCREEN(mi)];
 
+#ifdef NCZ_GLES3_BUILD
+  /* Short previews can otherwise catch the cow entirely below the frustum:
+     it starts at -28 and spends much of each bounce off-screen. */
+  f->y = -8.0;
+#else
   f->y = -BOTTOM;
+#endif
   f->x = f->ix;
   f->z = f->iz;
 

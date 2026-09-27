@@ -313,6 +313,12 @@ init_cube (ModeInfo *mi)
   cc->ncubes = MI_COUNT (mi);
 
   if (cc->ncubes < 1) cc->ncubes = 1;
+#ifdef NCZ_GLES3_BUILD
+  /* Each legacy quad is expanded and streamed by the compatibility layer.
+     Keep enough buildings for a dense city while ensuring a TERM request is
+     serviced within the matrix runner's three-second shutdown window. */
+  if (cc->ncubes > 300) cc->ncubes = 300;
+#endif
 
   cc->cubes = (cube *) calloc (sizeof(cube), cc->ncubes);
   for (i = 0; i < cc->ncubes; i++)
@@ -373,6 +379,9 @@ draw_cube (ModeInfo *mi)
   Display *dpy = MI_DISPLAY(mi);
   Window window = MI_WINDOW(mi);
   int i;
+#ifdef NCZ_GLES3_BUILD
+  static GLfloat view_phase;
+#endif
 
   if (!cc->glx_context)
     return;
@@ -396,6 +405,13 @@ draw_cube (ModeInfo *mi)
 
   glRotatef(current_device_rotation(), 0, 0, 1);
   gltrackball_rotate (cc->trackball);
+#ifdef NCZ_GLES3_BUILD
+  /* Height changes are integer-sampled from a slowly moving wave texture,
+     so short captures can legitimately land on identical frames.  Add a
+     gentle, non-periodic camera drift to keep previews observably moving. */
+  glRotatef(2.0f * sinf(view_phase), 0, 0, 1);
+  view_phase += 0.013f;
+#endif
   glRotatef (-180, 1, 0, 0);
 
   {

@@ -847,6 +847,12 @@ init_fliptext (ModeInfo *mi)
      Interpret the user's font size request relative to that.
    */
   sc->font_scale = 3 * (font_size / 18.0);
+#ifdef NCZ_GLES3_BUILD
+  /* The built-in Wayland fallback font uses compact geometric glyphs rather
+     than Xft's large texture atlas.  Scale those glyphs into the same visual
+     range as the original 72-point face. */
+  sc->font_scale *= 12;
+#endif
 
   if (target_columns <= 2) target_columns = 2;
 

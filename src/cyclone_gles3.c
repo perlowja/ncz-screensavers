@@ -56,7 +56,7 @@
 #ifdef USE_GL
 
 #define DEF_CYCLONES   "1"
-#define DEF_PARTICLES  "400"
+#define DEF_PARTICLES  "800"
 #define DEF_SIZE       "7"
 #define DEF_COMPLEXITY "3"
 #define DEF_SPEED      "10"

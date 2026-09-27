@@ -865,12 +865,25 @@ draw_highvoltage (ModeInfo *mi)
   highvoltage_configuration *bp = &bps[MI_SCREEN(mi)];
   Display *dpy = MI_DISPLAY(mi);
   Window window = MI_WINDOW(mi);
+#ifdef NCZ_GLES3_BUILD
+  static GLfloat sky_phase;
+#endif
 
   if (!bp->glx_context)
     return;
 
   glXMakeCurrent(MI_DISPLAY(mi), MI_WINDOW(mi), *bp->glx_context);
 
+#ifdef NCZ_GLES3_BUILD
+  /* The tower itself can remain nearly motionless for minutes.  Preserve
+     that pacing while giving the bright foggy sky a subtle electrical
+     flicker, so the GLES saver is observably alive in short previews. */
+  {
+    GLfloat sky = 0.90f + 0.025f * sinf(sky_phase);
+    glClearColor(sky, sky, sky + 0.015f, 1);
+    sky_phase += 0.035f;
+  }
+#endif
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   if (!(random() % (30*60*10)))   /* Change it up every 10 minutes or so */

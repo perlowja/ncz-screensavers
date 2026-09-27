@@ -210,7 +210,8 @@ typedef struct {
      * glBegin/glEnd pairs within one glNewList/glEndList produce
      * multiple ops — they replay in order on glCallList. */
     nczDL  *rec_dl;
-    float   rec_batch_verts[SCRATCH_VERT_CAP * 12];
+    float  *rec_batch_verts;
+    int     rec_batch_cap;
     int     rec_batch_count;
     bool    has_material;
     float   material[4];
@@ -220,6 +221,7 @@ typedef struct {
     float   light_ambient[3];
     float   line_width;
     bool    has_texture;
+    bool    texture_enabled;
     GLuint  bound_tex;
     bool    use_flat;
     float   point_size;
@@ -257,6 +259,7 @@ typedef struct {
     GLint   u_light_dir;
     GLint   u_light_color;
     GLint   u_ambient;
+    GLint   u_lighting;
     GLint   u_has_material;
     GLint   u_material_color;
     GLint   u_has_texture;
@@ -269,6 +272,7 @@ typedef struct {
     GLint   a_uv;
     GLuint  scratch_vbo;
     GLuint  scratch_vao;
+    int     scratch_vbo_cap;
     bool    initialized;
 } ncz_runtime;
 
@@ -310,6 +314,7 @@ static void (*real_glGetIntegerv)(GLenum pname, GLint *data) = NULL;
 static void (*real_glEnable)(GLenum cap) = NULL;
 static void (*real_glDisable)(GLenum cap) = NULL;
 static void (*real_glBindTexture)(GLenum target, GLuint texture) = NULL;
+static void (*real_glLineWidth)(GLfloat width) = NULL;
 
 /* Forward declarations so the runtime init can reach the matrix-stack
  * helpers below. */
@@ -329,6 +334,7 @@ static const char *VERT_SHADER =
     "uniform vec3 u_light_dir;\n"
     "uniform vec3 u_light_color;\n"
     "uniform vec3 u_ambient;\n"
+    "uniform bool u_lighting;\n"
     "uniform vec4 u_material_color;\n"
     "uniform bool u_has_material;\n"
     "uniform bool u_has_texture;\n"
@@ -364,6 +370,7 @@ static const char *FRAG_SHADER =
     "uniform vec3 u_light_dir;\n"
     "uniform vec3 u_light_color;\n"
     "uniform vec3 u_ambient;\n"
+    "uniform bool u_lighting;\n"
     "uniform bool u_has_material;\n"
     "uniform bool u_has_texture;\n"
     "uniform bool u_use_flat;\n"
@@ -385,7 +392,9 @@ static const char *FRAG_SHADER =
     "  if (dot(Ldir, Ldir) < 1e-12) Ldir = vec3(0.0, 0.0, 1.0);\n"
     "  vec3 L = normalize(Ldir);\n"
     "  float ndotl = max(dot(N, L), 0.0);\n"
-    "  vec3 lit = v_color.rgb * (u_ambient + u_light_color * ndotl);\n"
+    "  vec3 lit = u_lighting\n"
+    "    ? v_color.rgb * (u_ambient + u_light_color * ndotl)\n"
+    "    : v_color.rgb;\n"
     "  if (u_has_texture) {\n"
     "    vec4 t = texture(u_tex, v_uv);\n"
     "    frag = vec4(lit * t.rgb, v_color.a * t.a);\n"
@@ -445,6 +454,7 @@ static int compile_program(void) {
     U(light_dir);
     U(light_color);
     U(ambient);
+    U(lighting);
     U(has_material);
     U(material_color);
     U(has_texture);
@@ -507,6 +517,7 @@ int ncz_gles3_runtime_init(void) {
     real_glEnable = (void (*)(GLenum))dlsym(RTLD_NEXT, "glEnable");
     real_glDisable = (void (*)(GLenum))dlsym(RTLD_NEXT, "glDisable");
     real_glBindTexture = (void (*)(GLenum, GLuint))dlsym(RTLD_NEXT, "glBindTexture");
+    real_glLineWidth = (void (*)(GLfloat))dlsym(RTLD_NEXT, "glLineWidth");
 
     if (compile_program() < 0) return -1;
     fprintf(stderr, "[diag] gles3_compat: shader program %u compiled\n", g_rt.program);
@@ -521,6 +532,7 @@ int ncz_gles3_runtime_init(void) {
     glBufferData(GL_ARRAY_BUFFER,
                  (GLsizeiptr)(SCRATCH_VERT_CAP * 12 * sizeof(float)),
                  NULL, GL_DYNAMIC_DRAW);
+    g_rt.scratch_vbo_cap = SCRATCH_VERT_CAP;
 
     /* Per-vertex layout: pos(3) + normal(3) + color(4) + uv(2) = 12 floats.
      * stride = 12 * sizeof(float) = 48. */
@@ -582,6 +594,9 @@ void ncz_gles3_runtime_fini(void) {
         if (g_rt.scratch_vao) glDeleteVertexArrays(1, &g_rt.scratch_vao);
         if (g_rt.program)    glDeleteProgram(g_rt.program);
     }
+    free(g_im.rec_batch_verts);
+    g_im.rec_batch_verts = NULL;
+    g_im.rec_batch_cap = 0;
     memset(&g_rt, 0, sizeof g_rt);
 }
 
@@ -896,8 +911,15 @@ void ncz_im_blend_func(GLenum sfactor, GLenum dfactor) {
 }
 
 void ncz_im_line_width(float w) {
-    g_im.line_width = w;
-    glLineWidth(w);
+    /* NVIDIA's GLES path becomes extremely slow when fieldlines changes
+     * this state thousands of times per frame.  Quantize redundant legacy
+     * widths and cap them to the portable rasterizer range. */
+    float q = floorf(w + 0.5f);
+    if (q < 1.0f) q = 1.0f;
+    if (q > 8.0f) q = 8.0f;
+    if (q == g_im.line_width) return;
+    g_im.line_width = q;
+    if (real_glLineWidth) real_glLineWidth(q);
 }
 
 void ncz_im_shade_model(GLenum mode) {
@@ -908,7 +930,8 @@ void ncz_im_shade_model(GLenum mode) {
 
 void ncz_im_material(GLenum face, GLenum pname, const float *value) {
     (void)face;
-    if (pname == GL_AMBIENT_AND_DIFFUSE) {
+    if (pname == GL_AMBIENT_AND_DIFFUSE ||
+        pname == GL_DIFFUSE || pname == GL_AMBIENT) {
         memcpy(g_im.material, value, sizeof g_im.material);
         g_im.has_material = true;
     }
@@ -974,7 +997,7 @@ void ncz_im_light_specular(int light, const float *rgba) {
 void ncz_im_bind_texture(GLenum target, GLuint tex) {
     (void)target;
     g_im.bound_tex = tex;
-    g_im.has_texture = true;
+    g_im.has_texture = g_im.texture_enabled && tex != 0;
 }
 
 void ncz_im_set_recording(bool on) {
@@ -1153,7 +1176,15 @@ void ncz_im_begin(GLenum primitive) {
 
 static float *im_push_vertex(float x, float y, float z) {
     if (g_im.recording) {
-        if (g_im.rec_batch_count >= SCRATCH_VERT_CAP) return NULL;  /* batch full */
+        if (g_im.rec_batch_count >= g_im.rec_batch_cap) {
+            int new_cap = g_im.rec_batch_cap ? g_im.rec_batch_cap * 2
+                                             : SCRATCH_VERT_CAP;
+            float *nv = realloc(g_im.rec_batch_verts,
+                                (size_t)new_cap * 12 * sizeof(*nv));
+            if (!nv) return NULL;
+            g_im.rec_batch_verts = nv;
+            g_im.rec_batch_cap = new_cap;
+        }
         float *v = g_im.rec_batch_verts + g_im.rec_batch_count * 12;
         v[0] = x; v[1] = y; v[2] = z;
         v[3] = g_im.cur_normal[0];
@@ -1281,6 +1312,14 @@ static void im_flush_as_draw(void) {
     /* Bind scratch VAO + VBO. */
     glBindVertexArray(g_rt.scratch_vao);
     glBindBuffer(GL_ARRAY_BUFFER, g_rt.scratch_vbo);
+    if (g_im.vertex_count > g_rt.scratch_vbo_cap) {
+        int new_cap = g_rt.scratch_vbo_cap;
+        while (new_cap < g_im.vertex_count) new_cap *= 2;
+        glBufferData(GL_ARRAY_BUFFER,
+                     (GLsizeiptr)(new_cap * 12 * sizeof(float)),
+                     NULL, GL_DYNAMIC_DRAW);
+        g_rt.scratch_vbo_cap = new_cap;
+    }
     glBufferSubData(GL_ARRAY_BUFFER, 0,
                     (GLsizeiptr)(g_im.vertex_count * 12 * sizeof(float)),
                     g_im.verts);
@@ -1389,7 +1428,9 @@ static void im_flush_as_draw(void) {
     if (g_rt.u_light_dir >= 0)  glUniform3fv(g_rt.u_light_dir, 1, g_im.light_dir);
     if (g_rt.u_light_color >= 0) glUniform3fv(g_rt.u_light_color, 1, g_im.light_color);
     if (g_rt.u_ambient >= 0)    glUniform3fv(g_rt.u_ambient, 1, g_im.light_ambient);
-    if (g_rt.u_has_material >= 0) glUniform1i(g_rt.u_has_material, g_im.has_material ? 1 : 0);
+    if (g_rt.u_lighting >= 0)   glUniform1i(g_rt.u_lighting, g_im.lit ? 1 : 0);
+    if (g_rt.u_has_material >= 0) glUniform1i(g_rt.u_has_material,
+                                              (g_im.lit && g_im.has_material) ? 1 : 0);
     if (g_rt.u_material_color >= 0) glUniform4fv(g_rt.u_material_color, 1, g_im.material);
     if (g_rt.u_has_texture >= 0) glUniform1i(g_rt.u_has_texture, g_im.has_texture ? 1 : 0);
     if (g_im.has_texture) {
@@ -1649,7 +1690,8 @@ void nczGLList_draw(const nczGLListChain *chain) {
     glUniform3fv(g_rt.u_light_dir, 1, g_im.light_dir);
     glUniform3fv(g_rt.u_light_color, 1, g_im.light_color);
     glUniform3fv(g_rt.u_ambient, 1, g_im.light_ambient);
-    glUniform1i(g_rt.u_has_material, g_im.has_material ? 1 : 0);
+    glUniform1i(g_rt.u_lighting, g_im.lit ? 1 : 0);
+    glUniform1i(g_rt.u_has_material, (g_im.lit && g_im.has_material) ? 1 : 0);
     glUniform4fv(g_rt.u_material_color, 1, g_im.material);
     glUniform1i(g_rt.u_has_texture, g_im.has_texture ? 1 : 0);
     if (g_im.has_texture) {
@@ -1690,7 +1732,8 @@ void nczGLList_draw_wire(const nczGLListChain *chain) {
     glUniform3fv(g_rt.u_light_dir, 1, g_im.light_dir);
     glUniform3fv(g_rt.u_light_color, 1, g_im.light_color);
     glUniform3fv(g_rt.u_ambient, 1, g_im.light_ambient);
-    glUniform1i(g_rt.u_has_material, g_im.has_material ? 1 : 0);
+    glUniform1i(g_rt.u_lighting, g_im.lit ? 1 : 0);
+    glUniform1i(g_rt.u_has_material, (g_im.lit && g_im.has_material) ? 1 : 0);
     glUniform4fv(g_rt.u_material_color, 1, g_im.material);
     glUniform1i(g_rt.u_has_texture, g_im.has_texture ? 1 : 0);
     if (g_im.has_texture) {
@@ -2092,6 +2135,12 @@ void glClientActiveTexture(GLenum t) { (void)t; }
 
 void glEnable(GLenum cap) {
     if (cap == GL_TEXTURE_2D) {
+        /* Fixed-function texture enable is independent of the currently
+         * bound object.  In particular, many generated-model display lists
+         * bind texture 0 merely to clear stale state; treating that bind as
+         * an enable made the shader sample GLES's incomplete default texture
+         * and turned the whole list black. */
+        g_im.texture_enabled = true;
         g_im.has_texture = (g_im.bound_tex != 0);
         return;
     }
@@ -2112,6 +2161,7 @@ void glEnable(GLenum cap) {
 
 void glDisable(GLenum cap) {
     if (cap == GL_TEXTURE_2D) {
+        g_im.texture_enabled = false;
         g_im.has_texture = false;
         return;
     }
@@ -2213,7 +2263,7 @@ void glTexGenfv(GLenum coord, GLenum pname, const GLfloat *v) {
 }
 void glHint(GLenum target, GLenum mode) { (void)target; (void)mode; }
 void glLineStipple(GLint f, GLushort p) { (void)f; (void)p; }
-void glLineWidth(GLfloat w)             { (void)w; }
+void glLineWidth(GLfloat w)             { ncz_im_line_width(w); }
 /* glAlphaFunc — GLES3 dropped the desktop GL_ALPHA_TEST pipeline state
  * (no GL_ALPHA_TEST enable, no glAlphaFunc). Vendored hacks that
  * conditionally call glAlphaFunc(GL_GREATER, 0.5) etc. (glforestfire

@@ -1032,6 +1032,9 @@ init_tunnel (ModeInfo *mi)
 
 # ifdef HAVE_JWZGLES /* #### glPolygonMode other than GL_FILL unimplemented */
   wire = 0;
+  /* Several optional logo files have no Wayland loader.  The procedural
+     tunnel geometry is complete without them and remains animated. */
+  do_texture = False;
 # endif
 
   MI_INIT (mi, tconf);
@@ -1156,6 +1159,52 @@ draw_tunnel (ModeInfo *mi)
     return;
 
   glXMakeCurrent(MI_DISPLAY(mi), MI_WINDOW(mi), *tc->glx_context);
+
+#ifdef NCZ_GLES3_BUILD
+  /* All three legacy tunnel primitives below depend on desktop-only display
+     lists and blend equations and are compiled out for GLES.  Keep the
+     characteristic forward motion with a direct, untextured ring tunnel. */
+  {
+    static GLfloat phase;
+    int ring, side;
+
+    glViewport(0, 0, MI_WIDTH(mi), MI_HEIGHT(mi));
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-1, 1, -1, 1, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glClearColor(0.005, 0.008, 0.025, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glLineWidth(4);
+
+    for (ring = 0; ring < 22; ring++) {
+      GLfloat f = fmodf(ring / 22.0f + phase, 1.0f);
+      GLfloat radius = 0.035f + f * 1.22f;
+      GLfloat twist = phase * 4.0f + f * 1.8f;
+      GLfloat bright = 0.25f + 0.75f * f;
+      glColor3f(0.15f * bright,
+                (0.45f + 0.4f * sinf(f * 8 + phase)) * bright,
+                bright);
+      glBegin(GL_LINE_LOOP);
+      for (side = 0; side < 12; side++) {
+        GLfloat a = side * (2.0f * M_PI / 12.0f) + twist;
+        glVertex2f(cosf(a) * radius, sinf(a) * radius);
+      }
+      glEnd();
+    }
+    phase = fmodf(phase + 0.012f, 1.0f);
+    mi->polygon_count = 22 * 12;
+    if (mi->fps_p) do_fps(mi);
+    glFinish();
+    glXSwapBuffers(dpy, window);
+    return;
+  }
+#endif
 
   glShadeModel(GL_SMOOTH);
 
