@@ -190,6 +190,90 @@ A creature is a parameter file. That makes creatures authorable content without
 anyone modelling geometry, which is a natural fit for ArtistPack as a content
 type. Not a Phase 1 dependency.
 
+## Flora and the seafloor
+
+Marine flora barely fossilizes -- soft algae leave almost no record -- so
+reconstruction here is legitimately more speculative than for the animals.
+That is real licence, not a shortcut. The constraints that DO exist are more
+interesting than free invention, and they are what keep each act's seafloor
+looking like a different world rather than a recoloured one.
+
+### Anachronisms to avoid
+
+NO KELP, IN ANY ACT. Kelp forests are Neogene, roughly 5-23 Ma. This is the
+single most likely error in the piece: the default mental image of "prehistoric
+sea" is a kelp forest, and it is off by at least a hundred million years.
+
+NO SEAGRASS MEADOWS before the Late Cretaceous. Seagrasses are the first marine
+angiosperms; Act IV may carry sparse early ones, Acts I-III must not.
+
+NO MODERN-LOOKING CORAL REEFS in Acts I-II. Cambrian and Devonian reefs were
+built by entirely different organisms with different growth forms (below).
+Scleractinian (modern stony) corals do not appear until the Middle Triassic.
+
+### What each sea actually had
+
+| Act | Reef builders | Flora and other benthos |
+|---|---|---|
+| I Cambrian | archaeocyathids (nested porous cones), sponges | red and green algae, stromatolite / microbial mats. No vascular plants exist anywhere on Earth yet |
+| II Devonian | tabulate corals (honeycomb Favosites, chain Halysites), rugose horn corals, stromatoporoid sponges | algae, extensive crinoid gardens |
+| III Jurassic | scleractinian stony corals | dasycladacean green algae, sponges, crinoids |
+| IV Cretaceous | rudist bivalves -- cone-and-lid clams that largely displaced corals as the dominant Late Cretaceous reef builder | coccolithophore blooms (the source of the chalky water), earliest seagrasses |
+
+Rudists are the most valuable of these. They built reefs, they look unlike
+anything alive, and they are almost absent from popular paleoart -- so Act IV's
+seafloor can be simultaneously alien and more correct than the expected one.
+
+CONSEQUENCE FOR ACT I's DATE: archaeocyathids went extinct around 513 Ma, so at
+510 Ma Act I has no reef builders at all. Moving Act I to approximately 520 Ma
+buys archaeocyathid reefs for a small change. Recommended, subject to open item
+1.
+
+### Additional generators
+
+G5 -- CONE AND TUBE ACCRETION. One generator covers archaeocyathids (nested
+cones with a porous wall), rugose horn corals (single cone with radial septa),
+tabulate corals (packed polygonal tubes) and rudists (irregular cone plus lid).
+Parameters: cone angle, septa count, wall porosity, packing pattern (solitary,
+hexagonal, chain), lid present.
+
+G6 -- SPACE COLONIZATION (Runions et al.) for branching corals. Preferred over
+a plain L-system because branching responds to available space, so colonies
+vary naturally instead of repeating a rule. G4's L-system is retained for the
+genuinely regular forms -- crinoid arms, whorled dasycladacean algae.
+
+G7 -- FROND RIBBON. A flattened swept blade (a degenerate G1) with noise-driven
+ruffle along the edge. Algae fronds. These are the elements that make a current
+legible, so they matter more than their polygon count suggests.
+
+Anemones: a G1 column plus a crown of small G7/G1 tentacles, current-driven.
+Cnidarian soft tissue essentially does not fossilize, so these are free-rein
+within the constraint that they existed.
+
+Stromatolites (Act I): layered accretionary domes. Cheap, and strongly
+evocative of early Earth.
+
+### The current field
+
+One shared low-frequency 3D noise VECTOR FIELD drives sway for everything --
+fronds, anemone tentacles, crinoid arms, branching coral tips. This is the
+single most important detail on the seafloor: independent per-object wiggling
+is what makes CG seafloors read as fake, and one shared field makes the scene
+read as one place with weather.
+
+CREATURES DISPLACE THE FIELD LOCALLY. A mosasaur passing over the reef pushes
+fronds down and they recover behind it. Implemented as a radial impulse added
+to the field around each creature, decaying with distance and time. Cheap, and
+it ties the cast to the world instead of letting it slide over the top.
+
+### Density
+
+Nelson's reef density is half of why the reference reads the way it does. A
+sparse seafloor will not look like it. Scatter by blue noise / Poisson disk on
+the seafloor with per-instance parameter jitter, instanced, tier-gated count.
+Per-instance jitter matters as much as count -- twenty visibly identical corals
+look worse than eight varied ones.
+
 ## Fidelity tiers
 
 Wires into `2026-09-27-wayshade-fidelity-tiers-design.md`.
@@ -202,6 +286,8 @@ Wires into `2026-09-27-wayshade-fidelity-tiers-design.md`.
 | Caustics | off -> projected -> projected + chromatic |
 | Particulate | sparse -> dense |
 | Creature stations/rings | coarse -> fine |
+| Seafloor instance count | sparse -> dense |
+| Current-field sample rate | per-object -> per-vertex |
 | Spray particles | low -> high |
 
 ## Phasing
@@ -209,11 +295,13 @@ Wires into `2026-09-27-wayshade-fidelity-tiers-design.md`.
 PHASE 1 -- one act (Cretaceous), engine complete.
   Waterline surface, refraction, Fresnel, foam. Sky and weather above.
   Volume extinction + scatter, godrays, caustics, particulate.
-  G1 and G2 generators. Mosasaur, ammonites, seafloor silhouette.
+  G1, G2, G5 and G7 generators. Mosasaur, ammonites, rudist reef,
+  algal fronds, the shared current field and creature displacement.
   The breach: surface-crossing event, spray burst, wet-specular decay.
   All tier knobs.
 
-PHASE 2 -- remaining three acts, G3 and G4, act transitions, seafloor density.
+PHASE 2 -- remaining three acts, G3/G4/G5/G6/G7, act transitions, seafloor
+density, per-act reef-builder sets.
 
 Cretaceous first because it carries the breach, which is the piece's hardest
 technical requirement and its best shot. If the breach does not work, that is
@@ -235,8 +323,13 @@ evidence the piece is shippable.
 
 1. PALEO ACCURACY -- how hard to chase current scientific consensus.
    Reconstructions move; mosasaur tail flukes were contested until recently.
-   Aiming at consensus is a real differentiator for a piece called `jurassicaquarium`,
-   but it is a commitment. OPERATOR DECISION, not made.
+   Aiming at consensus is a real differentiator for a piece called
+   `jurassicaquarium`, but it is a commitment. OPERATOR DECISION, not made.
+   NOTE: the era/taxon assignments in the Flora section were written from
+   general knowledge and have NOT been checked against current literature.
+   They are stated confidently because they are well-established, but the
+   archaeocyathid extinction date driving Act I's proposed shift to 520 Ma
+   is exactly the kind of boundary that gets revised. Verify before building.
 2. Two-FBO bandwidth on an iGPU -- unmeasured, see Architecture.
 3. Saturation bias magnitude -- needs eyes on real output, blocked on a test
    host.
