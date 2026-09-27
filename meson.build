@@ -836,13 +836,13 @@ xshadertoy_shaders = [
     'alienbeacon', 'batteredplanet',
     'bestill0-0', 'bestill1-0', 'bestill2-0', 'bestill3-0',
     'bestill4-0', 'bestill5-0',
-    'bubblecolors', 'caustictidepool', 'darktransit', 'downfall', 'driftclouds',
+    'caustictidepool', 'darktransit', 'downfall',
     'elementalring', 'fluxcore', 'gimbalharmonics', 'goldenapollian',
-    'hexplasma', 'logarithmiccircles',
-    'neongravity-0', 'neongravity-1', 'neontriangulator',
+    'hexlattice', 'hexplasma', 'iridescence', 'logarithmiccircles',
+    'neongravity-0', 'neongravity-1', 'neonhorizon', 'neontriangulator',
     'noxfire', 'polarnight', 'prococean', 'protophore',
     'rigrekt', 'selfreflect', 'skyline', 'stardome', 'starnest',
-    'stripeytorus', 'synthwavecity', 'topologica', 'trainmandala',
+    'stratus', 'stripeytorus', 'topologica', 'trainmandala',
     'trizm', 'truchetzoom', 'universeball',
     'leviathan',
     'physarum',
@@ -1204,37 +1204,13 @@ executable(
 )
 
 
-rss_sdl2_gles2_hacks = [
-    {'name': 'cyclone',       'src': 'src/cyclone_gles3.c'},
-    {'name': 'euphoria',      'src': 'src/euphoria_gles3.c'},
-    {'name': 'fieldlines',    'src': 'src/fieldlines_gles3.c'},
-    {'name': 'flocks',        'src': 'src/flocks_gles3.c'},
-    {'name': 'flux',          'src': 'src/flux_gles3.c'},
-    {'name': 'helios',        'src': 'src/helios_gles3.c'},
-    {'name': 'hyperspace',    'src': 'src/hyperspace_gles3.c'},
-    {'name': 'implicitdemo',  'src': 'src/implicitdemo_gles3.c'},
-    {'name': 'lattice',       'src': 'src/lattice_gles3.c'},
-    {'name': 'microcosm',     'src': 'src/microcosm_gles3.c'},
-    {'name': 'plasma',        'src': 'src/plasma_gles3.c'},
-    {'name': 'skyrocket',     'src': 'src/skyrocket_gles3.c'},
-    {'name': 'solarwinds',    'src': 'src/solarwinds_gles3.c'},
-]
+# rss-sdl2 family REMOVED 2026-09-26 -- all 13 targets cut after operator
+# visual judgement on real hardware: 1 of 5 reviewed was worth keeping, and
+# that one (fireworks) is better rebuilt as a shader. See
+# docs/superpowers/specs/2026-09-26-afterimage-design.md. The gles3_compat
+# display-list/glColorMaterial fix (cf59926, 0e450e7) is UNRELATED and stays --
+# it affected every GL1-path hack, not just these.
 
-foreach h : rss_sdl2_gles2_hacks
-    executable(
-        h['name'] + '_gles3',
-        files(common_gles3_sources + [
-            'src/gles3_harness.c',
-            h['src'],
-        ]) + gen_sources,
-        include_directories: inc,
-        dependencies: common_gles3_deps,
-        c_args: gles3_native_c_args + [
-            '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h['name']),
-        ],
-        install: false,
-    )
-endforeach
 
 # -----------------------------------------------------------------------
 # Phase 1+ — upstream xscreensaver 6.00+ GLES3 rewrites (5 Carsten Steger
@@ -1466,29 +1442,26 @@ foreach alias_name : [
     'hyprsaver_wormhole_gles3',
     # Round 13 — Task 1a ports (atlantis + flurry).
     'atlantis_gles3', 'flurry_gles3',
-    # Round 15 — RSS-SDL2-GLES2 port (13 savers).
-    'cyclone_gles3', 'euphoria_gles3', 'fieldlines_gles3',
-    'flocks_gles3', 'flux_gles3', 'helios_gles3', 'hyperspace_gles3',
-    'implicitdemo_gles3', 'lattice_gles3', 'microcosm_gles3',
-    'plasma_gles3', 'skyrocket_gles3', 'solarwinds_gles3',
     # Round 16 — xshadertoy shader ports (38).
     'xshadertoy_alienbeacon_gles3',
     'xshadertoy_batteredplanet_gles3',
     'xshadertoy_bestill0-0_gles3', 'xshadertoy_bestill1-0_gles3',
     'xshadertoy_bestill2-0_gles3', 'xshadertoy_bestill3-0_gles3',
     'xshadertoy_bestill4-0_gles3', 'xshadertoy_bestill5-0_gles3',
-    'xshadertoy_bubblecolors_gles3', 'xshadertoy_darktransit_gles3',
-    'xshadertoy_downfall_gles3', 'xshadertoy_driftclouds_gles3',
+    'xshadertoy_darktransit_gles3',
+    'xshadertoy_downfall_gles3',
     'xshadertoy_elementalring_gles3', 'xshadertoy_fluxcore_gles3',
     'xshadertoy_gimbalharmonics_gles3', 'xshadertoy_goldenapollian_gles3',
-    'xshadertoy_hexplasma_gles3', 'xshadertoy_logarithmiccircles_gles3',
+    'xshadertoy_hexplasma_gles3', 'xshadertoy_iridescence_gles3',
+    'xshadertoy_logarithmiccircles_gles3',
     'xshadertoy_neongravity-0_gles3', 'xshadertoy_neongravity-1_gles3',
-    'xshadertoy_neontriangulator_gles3', 'xshadertoy_noxfire_gles3',
+    'xshadertoy_neonhorizon_gles3', 'xshadertoy_neontriangulator_gles3',
+    'xshadertoy_noxfire_gles3',
     'xshadertoy_polarnight_gles3', 'xshadertoy_prococean_gles3',
     'xshadertoy_protophore_gles3', 'xshadertoy_rigrekt_gles3',
     'xshadertoy_selfreflect_gles3', 'xshadertoy_skyline_gles3',
     'xshadertoy_stardome_gles3', 'xshadertoy_starnest_gles3',
-    'xshadertoy_stripeytorus_gles3', 'xshadertoy_synthwavecity_gles3',
+    'xshadertoy_stratus_gles3', 'xshadertoy_stripeytorus_gles3',
     'xshadertoy_topologica_gles3', 'xshadertoy_trainmandala_gles3',
     'xshadertoy_trizm_gles3', 'xshadertoy_truchetzoom_gles3',
     'xshadertoy_universeball_gles3',
