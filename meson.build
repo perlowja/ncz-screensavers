@@ -850,9 +850,14 @@ xshadertoy_shaders = [
     'caustics',
     'aurora',
     'marble',
-    'ridgeline',
     'wellcurve',
 ]
+
+# ridgeline.glsl stays in vendor/xshadertoy/glsl/ but is deliberately NOT
+# installed: it is a calibration/stress shader, not catalogue content.
+# Measured on an Intel UHD CML GT2 iGPU at 1920x1080 it managed 4 frames
+# in 10s where cellmosaic and hexlattice both hit the 600-frame vsync cap,
+# so it is useful for GPU-tier benchmarking and unusable as a screensaver.
 
 foreach s : xshadertoy_shaders
     install_data('vendor/xshadertoy/glsl/' + s + '.glsl',
