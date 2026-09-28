@@ -912,6 +912,43 @@ wave2_materia_shaders = [
     'aurora-restrained',
 ]
 
+# -----------------------------------------------------------------------
+# JurassicAquarium — procedural prehistoric sea at the waterline.
+# Same generic driver as xshadertoy/wave2-materia; only the shader search
+# prefix differs (src/gles3_xshadertoy.c was extended for
+# vendor/jurassicaquarium/glsl/). Design doc:
+# docs/superpowers/specs/2026-09-27-jurassicaquarium-design.md
+#
+# NOT installed: this is the skeleton build (current field + seaweed +
+# waterline), measured on a dGPU only. It stays out of the catalogue until
+# it has a real iGPU measurement. Building it is what makes that
+# measurement possible at all.
+# -----------------------------------------------------------------------
+
+jurassicaquarium_shaders = [
+    'jurassicaquarium_skeleton',
+]
+
+foreach s : jurassicaquarium_shaders
+    s_id = s.replace('-', '_')
+    executable(
+        'xshadertoy_' + s + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/gles3_xshadertoy.c',
+        ]) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DSHADER_FILE="@0@.glsl"'.format(s),
+            '-DHACK_PREFIX=xshadertoy_@0@'.format(s),
+            '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
+            '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
+        ],
+        install: false,
+    )
+endforeach
+
 foreach s : wave2_materia_shaders
     install_data('vendor/wave2-materia/glsl/' + s + '.glsl',
                  install_dir: shader_install_dir,
