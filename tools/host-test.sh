@@ -8,7 +8,8 @@
 # Authentication is delegated: HOST_TEST_SSH is a command prefix invoked as
 #   $HOST_TEST_SSH <alias> <remote command...>
 # (default: plain ssh with BatchMode).  HT_SUDO_PW, when set, is forwarded to
-# the agent through stdin only, never on a command line.
+# the agent through stdin only, never on a command line (the special value
+# @user sends the host's login name, the convention on the lab test hosts).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -104,7 +105,9 @@ run_host() {
     [ "$no_dpms" = 1 ] && args="$args --no-dpms"
     echo "[$h] running agent (phases=$phases)"
     # First stdin line carries the sudo secret (empty line = none).
-    printf '%s\n' "${HT_SUDO_PW:-}" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && python3 host-test-agent.py $args" \
+    local pw="${HT_SUDO_PW:-}"
+    [ "$pw" = "@user" ] && pw="${HOST_USER[$h]}"   # lab hosts: login name doubles as sudo secret
+    printf '%s\n' "$pw" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && python3 host-test-agent.py $args" \
         > "$outdir/agent.stdout" 2> "$outdir/agent.stderr"
     local rc=$?
     echo "[$h] agent exit=$rc; collecting results"

@@ -10,7 +10,10 @@ The screensaver performs ZERO network I/O at runtime, so every structure is
 baked in here at build time.
 """
 
-import sys, os, glob, json
+import glob
+import json
+import os
+import sys
 
 # Covalent radii (angstrom) and CPK colours. Both are published factual
 # reference data, not derived from any implementation.

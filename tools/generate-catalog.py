@@ -30,7 +30,7 @@ TITLES = {
 
 
 def ship_list(source):
-    m = re.search(r"ncz_ship_bins\s*=\s*\[(.*?)\]", source, re.S)
+    m = re.search(r"ncz_ship_bins\s*=\s*\[(.*?)\]", source, re.DOTALL)
     if m is None:
         raise SystemExit("missing ncz_ship_bins list in meson.build")
     return re.findall(r"['\"]([A-Za-z0-9_-]+_gles3)['\"]", m.group(1))

@@ -265,6 +265,33 @@ static void state_set(struct idled_state *st, const char *name)
  * Idle notification callbacks
  * ------------------------------------------------------------------------- */
 
+static void on_stop_before_lock_exited(GPid pid, gint status, gpointer user_data)
+{
+    struct idled_state *st = user_data;
+    on_child_exited(pid, status, st);
+    spawn_action_locked(st);
+}
+
+/* Stop the saver first, then run the lock command once the stop has finished,
+ * so the animated overlay never keeps rendering behind the lock surface. */
+static void stop_then_lock(struct idled_state *st)
+{
+    char *argv[] = { "ncz-screensaver", "stop", NULL };
+    GError *err = NULL;
+    GPid pid = -1;
+    if (g_spawn_async(NULL, argv, NULL,
+                      G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
+                      NULL, NULL, &pid, &err)) {
+        st->stop_pid = pid;
+        g_child_watch_add(pid, on_stop_before_lock_exited, st);
+        log_debug("lock: stop saver first, pid=%d", (int)pid);
+        return;
+    }
+    log_warn("lock: stop spawn failed: %s", err->message);
+    g_clear_error(&err);
+    spawn_action_locked(st);
+}
+
 static void notif_dispatch_idled(struct idled_state *st, enum notif_role r)
 {
     switch (r) {
@@ -290,22 +317,7 @@ static void notif_dispatch_idled(struct idled_state *st, enum notif_role r)
         break;
     case ROLE_LOCK:
         st->lock_idled = true;
-        {
-            char *argv[] = { "ncz-screensaver", "stop", NULL };
-            GError *err = NULL;
-            GPid pid = -1;
-            if (g_spawn_async(NULL, argv, NULL,
-                              G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
-                              NULL, NULL, &pid, &err)) {
-                st->stop_pid = pid;
-                g_child_watch_add(pid, on_child_exited, st);
-                log_debug("lock idled: spawn stop pid=%d", (int)pid);
-            } else {
-                log_warn("lock: stop spawn failed: %s", err->message);
-                g_clear_error(&err);
-            }
-        }
-        spawn_action_locked(st);
+        stop_then_lock(st);
         state_set(st, "locked");
         state_file_update(st);
         break;

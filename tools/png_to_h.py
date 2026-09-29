@@ -22,8 +22,8 @@ This file intentionally stays tiny — it is invoked from a meson
 embedded at build time.
 """
 
-import sys
 import os
+import sys
 
 
 def main(argv):

@@ -158,7 +158,7 @@ def _run_with_sudo(
         timeout=timeout,
         env=env,
         cwd=cwd,
-        input=stdin_text if pw is not None else None,
+        input=(pw + "\n" + (stdin_text or "")) if pw is not None else stdin_text,
         check=check,
     )
     return proc
@@ -294,6 +294,10 @@ def _build_session_env() -> dict[str, str]:
     gpu = _compositor_env()
     # Splat the compositor vars; the design says they always win.
     base.update(gpu)
+    rt = base.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    base.setdefault("WAYLAND_DISPLAY", "wayland-0")
+    base.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path={rt}/bus")
+    base["G_MESSAGES_DEBUG"] = ""
     return base
 
 
@@ -552,7 +556,9 @@ def _wlr_randr() -> str:
 
 def _wl_globals() -> list[dict[str, Any]]:
     """Run ``wl_poke.py globals`` and return parsed JSON list."""
-    script = os.environ.get("HT_WL_POKE", "")
+    script = os.environ.get("HT_WL_POKE") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "wl_poke.py"
+    )
     if not script:
         return []
     try:
@@ -580,6 +586,24 @@ def _read_unit_state(unit: str, env: dict[str, str]) -> str:
     return proc.stdout.decode("utf-8", errors="replace").strip()
 
 
+def _guard(fn):
+    """Turn an unexpected exception in a phase into a recorded failure."""
+
+    def inner(results, checks, *args, **kwargs):
+        try:
+            fn(results, checks, *args, **kwargs)
+        except Exception:  # noqa: BLE001 - a phase crash must not lose the run
+            import traceback
+
+            _record(
+                checks, f"{fn.__name__}-crash", "fail", traceback.format_exc()[-800:]
+            )
+
+    inner.__name__ = fn.__name__
+    return inner
+
+
+@_guard
 def phase_env(
     results: dict[str, Any], checks: list[Check], env: dict[str, str]
 ) -> None:
@@ -706,6 +730,7 @@ def phase_env(
 # ---------------------------------------------------------------------------
 
 
+@_guard
 def phase_install(
     results: dict[str, Any],
     checks: list[Check],
@@ -731,7 +756,7 @@ def phase_install(
     # Step 1: dry-run apt-get install -s to detect removals.
     try:
         proc = _run(
-            ["apt-get", "install", "-s", f"./{remote_deb}"],
+            ["apt-get", "install", "-s", "--reinstall", remote_deb],
             timeout=60.0,
             env=env,
         )
@@ -763,11 +788,13 @@ def phase_install(
     try:
         proc = _run_with_sudo(
             [
+                "env",
                 "DEBIAN_FRONTEND=noninteractive",
                 "apt-get",
                 "install",
                 "-y",
-                f"./{remote_deb}",
+                "--reinstall",
+                remote_deb,
             ],
             pw=pw,
             timeout=180.0,
@@ -784,7 +811,7 @@ def phase_install(
             checks,
             "install-real",
             "fail",
-            proc.stderr.decode("utf-8", errors="replace")[:400],
+            proc.stderr[:400],
         )
         return
     _record(checks, "install-real", "pass", "apt-get install succeeded")
@@ -927,6 +954,7 @@ def _stop_with_launcher(launcher_path: str, env: dict[str, str]) -> tuple[bool, 
     return True, "ok"
 
 
+@_guard
 def phase_hacks(
     results: dict[str, Any],
     checks: list[Check],
@@ -1172,1399 +1200,816 @@ def phase_hacks(
 
 
 # ---------------------------------------------------------------------------
+# Shared helpers for the launcher / idle / color / chooser phases.
+# ---------------------------------------------------------------------------
+
+LAUNCHER = "/usr/bin/ncz-screensaver"
+IDLED = "/usr/libexec/ncz-screensaver-idled"
+SETTINGS_APP = "/usr/bin/ncz-screensaver-settings"
+IDLED_UNIT = "ncz-screensaver-idled.service"
+OLD_IDLE_UNIT = "ncz-idle-manager.service"
+
+
+def _rt_dir() -> str:
+    return os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+
+
+def _isolated_env(env: dict[str, str], extra: dict[str, str] | None = None):
+    """Session env plus a private keyfile GSettings backend (no dconf writes)."""
+    tmp = tempfile.mkdtemp(prefix="ncz-ht-cfg-")
+    out = dict(env)
+    out["XDG_CONFIG_HOME"] = os.path.join(tmp, "config")
+    out["XDG_STATE_HOME"] = os.path.join(tmp, "state")
+    out["GSETTINGS_BACKEND"] = "keyfile"
+    out["G_MESSAGES_DEBUG"] = ""
+    os.makedirs(out["XDG_CONFIG_HOME"], exist_ok=True)
+    if extra:
+        out.update(extra)
+    return out
+
+
+def _cli(env, *args, timeout=15.0):
+    """Run the launcher CLI; returns CompletedProcess with text output."""
+    try:
+        return subprocess.run(
+            [LAUNCHER, *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return subprocess.CompletedProcess(args, 124, "", f"timeout: {exc}")
+    except OSError as exc:
+        return subprocess.CompletedProcess(args, 127, "", str(exc))
+
+
+def _status(env):
+    """Launcher status as a dict (running False when not running)."""
+    p = _cli(env, "status", "--json", timeout=8.0)
+    try:
+        return json.loads(p.stdout)
+    except ValueError:
+        return {"running": False, "error": p.stderr[:200]}
+
+
+def _wait_until(pred, timeout, step=0.2):
+    """Poll pred() until truthy; returns seconds waited or None on timeout."""
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < timeout:
+        if pred():
+            return time.monotonic() - t0
+        time.sleep(step)
+    return None
+
+
+def _grab_frame(env, scale=0.125):
+    """Screenshot as (w, h, rgb) or None."""
+    fd, path = tempfile.mkstemp(suffix=".ppm", prefix="ncz-ht-")
+    os.close(fd)
+    try:
+        ok, _ = _capture_grim(path, scale, env)
+        if not ok:
+            return None
+        return hti.parse_ppm(pathlib.Path(path).read_bytes())
+    except (OSError, hti.PPMError):
+        return None
+    finally:
+        with contextlib.suppress(OSError):
+            os.unlink(path)
+
+
+def _kill_hacks():
+    """Belt and braces between phases: nothing of ours may keep running."""
+    for pat in ("ncz-screensaver.*--foreground", "/usr/lib/ncz-screensavers/"):
+        subprocess.run(["pkill", "-f", pat], capture_output=True, check=False)
+    time.sleep(0.5)
+
+
+def _pids(pattern):
+    p = subprocess.run(
+        ["pgrep", "-f", pattern], capture_output=True, text=True, check=False
+    )
+    return [int(x) for x in p.stdout.split() if x.isdigit() and int(x) != os.getpid()]
+
+
+def _unit_active(env, unit):
+    p = subprocess.run(
+        ["systemctl", "--user", "is-active", unit],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    return p.stdout.strip() == "active"
+
+
+def _systemctl(env, *args):
+    return subprocess.run(
+        ["systemctl", "--user", *args],
+        capture_output=True,
+        text=True,
+        timeout=20,
+        env=env,
+        check=False,
+    )
+
+
+def _idled_json():
+    try:
+        return json.loads(pathlib.Path(_rt_dir(), IDLED_STATE).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _poke(env, *args, timeout=10.0):
+    script = os.environ.get("HT_WL_POKE") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "wl_poke.py"
+    )
+    try:
+        return subprocess.run(
+            [sys.executable, script, *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", "timeout")
+
+
+# ---------------------------------------------------------------------------
 # Phase: launcher.
 # ---------------------------------------------------------------------------
 
 
-def _isolated_config_env(extra: dict[str, str] | None = None) -> dict[str, str]:
-    """Build an isolated env with GSettings keyfile backend.
-
-    The launcher reads ``$XDG_CONFIG_HOME/dev.ncz/screensaver/`` via the
-    keyfile backend; this lets the harness tweak values without touching
-    dconf. The schema is loaded from the system-wide compiled location.
-    """
-    cfg_dir = tempfile.mkdtemp(prefix="ncz-host-test-cfg-")
-    os.makedirs(os.path.join(cfg_dir, "dev.ncz", "screensaver"), exist_ok=True)
-    env = dict(os.environ)
-    env["XDG_CONFIG_HOME"] = cfg_dir
-    env["GSETTINGS_BACKEND"] = "keyfile"
-    env["GSETTINGS_SCHEMA_DIR"] = SYSTEM_SCHEMA_DIR
-    if extra:
-        env.update(extra)
-    return env
-
-
-def _launcher_cmd(
-    launcher: str,
-    cmd_args: list[str],
-    env: dict[str, str],
-    timeout: float = 10.0,
-) -> subprocess.CompletedProcess:
-    return _run([launcher, *cmd_args], timeout=timeout, env=env)
-
-
-def phase_launcher(
-    results: dict[str, Any],
-    checks: list[Check],
-    env: dict[str, str],
-    workdir: str,
-    launcher_path: str,
-) -> None:
-    if not os.path.exists(launcher_path):
-        _record(checks, "launcher-cli", "fail", f"missing: {launcher_path}")
+@_guard
+def phase_launcher(results, checks, env, workdir, launcher_path):
+    if not os.path.exists(LAUNCHER):
+        _record(checks, "launcher-installed", "fail", f"{LAUNCHER} missing")
         return
-    ienv = _isolated_config_env()
-    # Ensure a clean slate.
-    _launcher_cmd(launcher_path, ["stop"], ienv, timeout=5.0)
+    ienv = _isolated_env(env)
+    _cli(ienv, "stop")
+    _kill_hacks()
 
-    # list --json sanity.
+    p = _cli(ienv, "list", "--json", "--installed")
     try:
-        proc = _launcher_cmd(launcher_path, ["list", "--json"], ienv, timeout=8.0)
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        _record(checks, "launcher-list", "fail", f"list failed: {exc}")
-        return
-    text = proc.stdout.decode("utf-8", errors="replace")
-    try:
-        listing = json.loads(text)
-    except json.JSONDecodeError:
-        listing = []
-    if not isinstance(listing, list) or len(listing) < 80:
-        _record(
-            checks,
-            "launcher-list",
-            "fail",
-            f"got {len(listing) if isinstance(listing, list) else 0} entries",
+        n_installed = len(json.loads(p.stdout))
+    except ValueError:
+        n_installed = -1
+    _record(
+        checks,
+        "list-installed",
+        "pass" if n_installed >= 80 else "fail",
+        f"{n_installed} installed hacks in the catalog",
+    )
+
+    # Lifecycle: start, status, single instance, stop.
+    p = _cli(ienv, "start", "--hack", "voronoi_gles3", "--seconds", "60")
+    up = _wait_until(lambda: _status(ienv).get("running"), 5.0)
+    _record(
+        checks,
+        "start-status",
+        "pass" if up is not None else "fail",
+        f"running after {up:.1f}s"
+        if up is not None
+        else f"not running: {p.stderr[:200]}",
+    )
+    p2 = _cli(ienv, "start", "--hack", "voronoi_gles3", "--seconds", "60")
+    sup = _pids("ncz-screensaver.*--foreground")
+    _record(
+        checks,
+        "single-instance",
+        "pass" if "already running" in p2.stdout and len(sup) == 1 else "fail",
+        f"second start said {p2.stdout.strip()!r}; supervisors={len(sup)}",
+    )
+    # The compositor's graphics environment must reach the hack.
+    st = _status(ienv)
+    child_env = {}
+    with contextlib.suppress(OSError, ValueError, TypeError):
+        state = json.loads(
+            pathlib.Path(_rt_dir(), "ncz-screensaver", "state.json").read_text()
         )
-        return
-    _record(checks, "launcher-list", "pass", f"{len(listing)} hacks listed")
-
-    # start a known hack and verify status running=true.
-    try:
-        proc = _launcher_cmd(
-            launcher_path,
-            ["start", "--hack", "blackhole_gles3", "--seconds", "30", "--force"],
-            ienv,
-            timeout=8.0,
+        raw = pathlib.Path(f"/proc/{state['child_pid']}/environ").read_bytes()
+        child_env = dict(
+            x.split("=", 1)
+            for x in raw.decode(errors="replace").split("\0")
+            if "=" in x
         )
-        rc_start = proc.returncode
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        _record(checks, "launcher-start", "fail", str(exc))
-        rc_start = -1
-    if rc_start == 0:
-        _record(checks, "launcher-start", "pass", "start --force exit 0")
-    else:
-        _record(checks, "launcher-start", "fail", f"start returned {rc_start}")
-
-    # status --json running:true
-    try:
-        proc = _launcher_cmd(launcher_path, ["status", "--json"], ienv, timeout=5.0)
-        st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-    except (
-        FileNotFoundError,
-        OSError,
-        subprocess.TimeoutExpired,
-        json.JSONDecodeError,
-    ) as exc:
-        st = {}
-        _record(checks, "launcher-status", "fail", str(exc))
-    if st.get("running") is True:
-        _record(checks, "launcher-status", "pass", "running=true after start")
-    else:
-        _record(checks, "launcher-status", "fail", f"unexpected status: {st}")
-
-    # A second start must report already-running.
-    try:
-        proc = _launcher_cmd(
-            launcher_path,
-            ["start", "--hack", "blackhole_gles3", "--seconds", "30"],
-            ienv,
-            timeout=5.0,
-        )
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        proc = None  # type: ignore[assignment]
-        _record(checks, "launcher-single-instance", "fail", str(exc))
-    else:
-        if proc.returncode != 0:
-            _record(
-                checks,
-                "launcher-single-instance",
-                "pass",
-                f"second start refused (rc={proc.returncode})",
-            )
-        else:
-            _record(
-                checks,
-                "launcher-single-instance",
-                "fail",
-                "second start succeeded; single-instance not enforced",
-            )
-
-    # stop -> exit 3 (not running) and no hack proc.
-    _launcher_cmd(launcher_path, ["stop"], ienv, timeout=8.0)
-    try:
-        proc = _launcher_cmd(launcher_path, ["status"], ienv, timeout=5.0)
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        proc = None  # type: ignore[assignment]
-        _record(checks, "launcher-stop", "fail", str(exc))
-    else:
-        if proc.returncode == 3:
-            _record(
-                checks,
-                "launcher-stop",
-                "pass",
-                "status returned 3 (not running) after stop",
-            )
-        else:
-            _record(
-                checks,
-                "launcher-stop",
-                "fail",
-                f"status rc={proc.returncode} after stop",
-            )
-    time.sleep(1.5)
-    leftover = _hack_alive(os.path.join(HACK_BIN_DIR, "blackhole_gles3"))
-    if leftover:
-        _record(checks, "launcher-cleanup", "fail", "hack process still running")
-    else:
-        _record(checks, "launcher-cleanup", "pass", "no hack leftover")
-
-    # Crash fallback: feed a fake hack directory holding one crashing script
-    # and one symlink to the real blackhole_gles3.
-    fake_dir = tempfile.mkdtemp(prefix="ncz-host-test-hacks-")
-    crash_id = "ncz_test_crash"
-    real_id = "ncz_test_real"
-    crash_script = os.path.join(fake_dir, crash_id)
-    real_link = os.path.join(fake_dir, real_id)
-    pathlib.Path(crash_script).write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    os.chmod(crash_script, 0o755)
-    try:
-        os.symlink(os.path.join(HACK_BIN_DIR, "blackhole_gles3"), real_link)
-    except OSError:
-        pass
-    cfg_dir = ienv["XDG_CONFIG_HOME"]
-    settings_path = os.path.join(cfg_dir, "dev.ncz", "screensaver", "settings.keyfile")
-    pathlib.Path(settings_path).write_text(
-        "\n".join(
-            [
-                "[dev.ncz.screensaver]",
-                "mode=random",
-                f"random-hacks=['{crash_id}', '{real_id}']",
-                "cycle-delay=5",
-                "hack-idle-delay=1",
-            ]
+    comp = _compositor_env()
+    missing = [
+        k
+        for k in comp
+        if k.startswith(("__EGL", "MESA_", "NCZ_GPU")) and k not in child_env
+    ]
+    _record(
+        checks,
+        "child-gpu-env",
+        "pass" if child_env.get("WAYLAND_DISPLAY") and not missing else "fail",
+        f"WAYLAND_DISPLAY={child_env.get('WAYLAND_DISPLAY')!r}, compositor GPU vars missing in child: {missing}",
+    )
+    _cli(ienv, "stop")
+    gone = _wait_until(
+        lambda: (
+            not _status(ienv).get("running") and not _pids("/usr/lib/ncz-screensavers/")
         ),
-        encoding="utf-8",
+        5.0,
     )
-    crash_env = dict(ienv)
-    crash_env["NCZ_SCREENSAVER_DIRS"] = fake_dir
-    crash_env["NCZ_SCREENSAVER_ALLOW_UNLISTED"] = "1"
-    _launcher_cmd(launcher_path, ["stop"], crash_env, timeout=5.0)
-    _launcher_cmd(
-        launcher_path,
-        ["start", "--mode", "random", "--seconds", "20", "--force"],
-        crash_env,
-        timeout=8.0,
+    rc = _cli(ienv, "status").returncode
+    _record(
+        checks,
+        "stop",
+        "pass" if gone is not None and rc == 3 else "fail",
+        f"status rc={rc}, leftover hacks={_pids('/usr/lib/ncz-screensavers/')} ({st.get('hack')})",
     )
-    # Give the supervisor time to skip the crash and land on the real hack.
-    deadline = time.monotonic() + 12.0
-    alive_real = False
-    while time.monotonic() < deadline:
-        if _hack_alive(real_link) or _hack_alive(
-            os.path.join(HACK_BIN_DIR, "blackhole_gles3")
-        ):
-            alive_real = True
-            break
-        time.sleep(0.3)
-    _launcher_cmd(launcher_path, ["stop"], crash_env, timeout=8.0)
-    if alive_real:
+
+    # Crash fallback and playlist, using fake hacks next to real ones.
+    fake = tempfile.mkdtemp(prefix="ncz-ht-fake-")
+    crash = os.path.join(fake, "fakecrash")
+    pathlib.Path(crash).write_text("#!/bin/sh\nexit 1\n")
+    os.chmod(crash, 0o755)
+    with contextlib.suppress(OSError):
+        os.symlink(f"{HACK_BIN_DIR}/voronoi_gles3", os.path.join(fake, "fakereal"))
+        os.symlink(f"{HACK_BIN_DIR}/klein_gles3", os.path.join(fake, "fakereal2"))
+    fenv = _isolated_env(
+        env,
+        {
+            "NCZ_SCREENSAVER_DIRS": fake,
+            "NCZ_SCREENSAVER_ALLOW_UNLISTED": "1",
+            "NCZ_SCREENSAVER_MIN_CYCLE": "1",
+        },
+    )
+    _cli(fenv, "config", "set", "verify-render", "false")
+    _cli(fenv, "config", "set", "playlist", "fakecrash,fakereal")
+    _cli(fenv, "set-mode", "playlist")
+    subprocess.Popen(
+        [LAUNCHER, "start", "--force", "--seconds", "25"],
+        env=fenv,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    ok = _wait_until(lambda: _status(fenv).get("hack") == "fakereal", 12.0)
+    _record(
+        checks,
+        "crash-fallback",
+        "pass" if ok is not None else "fail",
+        "playlist skipped the crashing hack and ran the real one"
+        if ok is not None
+        else f"status={_status(fenv)}",
+    )
+    _cli(fenv, "stop")
+    _wait_until(lambda: not _status(fenv).get("running"), 5.0)
+
+    _cli(fenv, "config", "set", "playlist", "fakereal,fakereal2")
+    _cli(fenv, "config", "set", "cycle-delay", "5")
+    subprocess.Popen(
+        [LAUNCHER, "start", "--force", "--seconds", "30"],
+        env=fenv,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    seen: list[str] = []
+
+    def _watch():
+        h = _status(fenv).get("hack")
+        if h and (not seen or seen[-1] != h):
+            seen.append(h)
+        return len(seen) >= 3
+
+    _wait_until(_watch, 24.0, step=0.5)
+    _record(
+        checks,
+        "playlist-rotation",
+        "pass" if seen[:3] == ["fakereal", "fakereal2", "fakereal"] else "fail",
+        f"observed order {seen}",
+    )
+    _cli(fenv, "stop")
+    _wait_until(lambda: not _status(fenv).get("running"), 5.0)
+
+    # Config round trips through the CLI.
+    for setter, key, val in (
+        (["set-timeout", "42"], "hack-idle-delay", 42),
+        (["set-mode", "random"], "mode", "random"),
+        (["set-hack", "klein_gles3"], "hack-id", "klein_gles3"),
+        (["set-color", "kipthorne"], "blackhole-color-mode", "kipthorne"),
+    ):
+        _cli(ienv, *setter)
+        got = _cli(ienv, "config", "get", key).stdout.strip()
+        try:
+            got = json.loads(got)
+        except ValueError:
+            pass
         _record(
             checks,
-            "launcher-crash-fallback",
-            "pass",
-            "supervisor skipped crash hack and ran real hack",
-        )
-    else:
-        _record(
-            checks,
-            "launcher-crash-fallback",
-            "fail",
-            "real hack never became alive after crash",
+            f"config-{setter[0]}",
+            "pass" if got == val else "fail",
+            f"{key}={got!r} expected {val!r}",
         )
 
-    # Playlist rotation with two real hacks and short cycle delay.
-    playlist_env = _isolated_config_env()
-    p_cfg = os.path.join(
-        playlist_env["XDG_CONFIG_HOME"],
-        "dev.ncz",
-        "screensaver",
-        "settings.keyfile",
-    )
-    pathlib.Path(p_cfg).write_text(
-        "\n".join(
-            [
-                "[dev.ncz.screensaver]",
-                "mode=playlist",
-                "playlist=['hyprsaver_aurora_gles3', 'voronoi_gles3']",
-                "cycle-delay=5",
-                "hack-idle-delay=1",
-                "verify-render=false",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    playlist_env["NCZ_SCREENSAVER_MIN_CYCLE"] = "1"
-    _launcher_cmd(launcher_path, ["stop"], playlist_env, timeout=5.0)
-    _launcher_cmd(
-        launcher_path,
-        ["start", "--mode", "playlist", "--seconds", "20", "--force"],
-        playlist_env,
-        timeout=8.0,
-    )
-    seen_hacks: set[str] = set()
-    deadline = time.monotonic() + 20.0
-    while time.monotonic() < deadline and len(seen_hacks) < 2:
-        try:
-            proc = _launcher_cmd(
-                launcher_path, ["status", "--json"], playlist_env, timeout=4.0
-            )
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
-            proc = None  # type: ignore[assignment]
-        if proc is not None and proc.returncode == 0:
-            try:
-                st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-            except json.JSONDecodeError:
-                st = {}
-            current = st.get("hack_id") or st.get("hack-id")
-            if current:
-                seen_hacks.add(current)
-        time.sleep(0.5)
-    _launcher_cmd(launcher_path, ["stop"], playlist_env, timeout=8.0)
-    if len(seen_hacks) >= 2:
-        _record(
-            checks,
-            "launcher-playlist",
-            "pass",
-            f"saw rotation: {sorted(seen_hacks)}",
+    # kill -9 of the supervisor must not orphan the hack.
+    _cli(ienv, "start", "--hack", "voronoi_gles3", "--seconds", "60")
+    _wait_until(lambda: _status(ienv).get("running"), 5.0)
+    try:
+        state = json.loads(
+            pathlib.Path(_rt_dir(), "ncz-screensaver", "state.json").read_text()
         )
-    else:
-        _record(
-            checks,
-            "launcher-playlist",
-            "fail",
-            f"only saw {sorted(seen_hacks)} in playlist",
+        os.kill(state["pid"], signal.SIGKILL)
+        gone = _wait_until(
+            lambda: not _pids("/usr/lib/ncz-screensavers/voronoi_gles3"), 6.0
         )
-
-    # set-timeout/set-hack/set-mode/set-color round-trips via config dump.
-    round_env = _isolated_config_env()
-    for setter, getter, value in [
-        ("set-timeout", "hack-idle-delay", "42"),
-        ("set-hack", "hack-id", "voronoi_gles3"),
-        ("set-mode", "mode", "random"),
-        ("set-color", "blackhole-color-mode", "kipthorne"),
-    ]:
-        try:
-            proc = _launcher_cmd(
-                launcher_path,
-                [setter, value],
-                round_env,
-                timeout=5.0,
-            )
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-            _record(checks, f"set-{setter}", "fail", str(exc))
-            continue
-        if proc.returncode != 0:
-            _record(
-                checks,
-                f"set-{setter}",
-                "fail",
-                proc.stderr.decode("utf-8", errors="replace")[:200],
-            )
-            continue
-        # Read back via config dump.
-        try:
-            dump = _launcher_cmd(
-                launcher_path, ["config", "dump"], round_env, timeout=5.0
-            )
-            cfg = json.loads(dump.stdout.decode("utf-8", errors="replace"))
-        except (
-            FileNotFoundError,
-            OSError,
-            subprocess.TimeoutExpired,
-            json.JSONDecodeError,
-        ) as exc:
-            _record(checks, f"set-{setter}-readback", "fail", str(exc))
-            continue
-        if cfg.get(getter) == value:
-            _record(
-                checks,
-                f"set-{setter}",
-                "pass",
-                f"{getter}={value} round-tripped",
-            )
-        else:
-            _record(
-                checks,
-                f"set-{setter}",
-                "fail",
-                f"{getter}={cfg.get(getter)!r} expected {value!r}",
-            )
-
-    # kill -9 of the supervisor: no orphan hack within 5 s.
-    kill_env = _isolated_config_env()
-    _launcher_cmd(
-        kill_env,
-        ["start", "--hack", "blackhole_gles3", "--seconds", "60", "--force"],
-        ienv,
-        timeout=8.0,
-    )
-    # The launcher keeps its state in XDG_RUNTIME_DIR/ncz-screensaver/state.json.
-    state_path = os.path.join(
-        os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"),
-        SUPERVISOR_STATE,
-    )
-    sup_pid = 0
-    if os.path.exists(state_path):
-        try:
-            st_data = json.loads(pathlib.Path(state_path).read_text(encoding="utf-8"))
-            sup_pid = int(st_data.get("supervisor_pid", 0))
-        except (OSError, ValueError, json.JSONDecodeError):
-            sup_pid = 0
-    if sup_pid > 0:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.kill(sup_pid, signal.SIGKILL)
-        time.sleep(1.0)
-        leftover_hack = _hack_alive(os.path.join(HACK_BIN_DIR, "blackhole_gles3"))
-        deadline = time.monotonic() + 4.0
-        while time.monotonic() < deadline and leftover_hack:
-            time.sleep(0.3)
-            leftover_hack = _hack_alive(os.path.join(HACK_BIN_DIR, "blackhole_gles3"))
-        if leftover_hack:
-            _record(
-                checks,
-                "pdeathsig",
-                "fail",
-                "hack survived supervisor SIGKILL",
-            )
-        else:
-            _record(
-                checks,
-                "pdeathsig",
-                "pass",
-                "hack died with supervisor (PDEATHSIG)",
-            )
-    else:
         _record(
             checks,
             "pdeathsig",
-            "skip",
-            f"could not locate supervisor pid in {state_path}",
+            "pass" if gone is not None else "fail",
+            "hack exited after the supervisor was killed"
+            if gone is not None
+            else "hack orphaned",
+        )
+    except (OSError, ValueError, KeyError) as exc:
+        _record(checks, "pdeathsig", "fail", f"no state to kill: {exc}")
+    _cli(ienv, "stop")
+    _kill_hacks()
+
+
+# ---------------------------------------------------------------------------
+# Phase: idle (daemon, input dismissal, inhibit, lock chain, DPMS, unit).
+# ---------------------------------------------------------------------------
+
+
+def _start_idled(env, logpath):
+    fh = open(logpath, "ab")  # noqa: SIM115 - owned by the child
+    proc = subprocess.Popen(
+        [IDLED, "--verbose"],
+        env=env,
+        stdout=fh,
+        stderr=fh,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    fh.close()
+    return proc
+
+
+def _stop_idled(proc):
+    if proc and proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=3)
+
+
+@_guard
+def phase_idle(results, checks, env, workdir, launcher_path, idled_path, no_dpms, pw):
+    if not os.path.exists(IDLED):
+        _record(checks, "idled-installed", "fail", f"{IDLED} missing")
+        return
+    logs = os.path.join(workdir, "logs")
+    os.makedirs(logs, exist_ok=True)
+    was_new = _unit_active(env, IDLED_UNIT)
+    was_old = _unit_active(env, OLD_IDLE_UNIT)
+    _systemctl(env, "stop", IDLED_UNIT)
+    _systemctl(env, "stop", OLD_IDLE_UNIT)
+    subprocess.run(["pkill", "-x", "swayidle"], capture_output=True, check=False)
+    marker = os.path.join(tempfile.mkdtemp(prefix="ncz-ht-lock-"), "locked")
+    lock_script = os.path.join(os.path.dirname(marker), "lock.sh")
+    pathlib.Path(lock_script).write_text(f"#!/bin/sh\ndate +%s > {marker}\n")
+    os.chmod(lock_script, 0o755)
+    ienv = _isolated_env(env, {"NCZ_LOCK_CMD": lock_script})
+    proc = None
+    try:
+        for k, v in (
+            ("mode", "one"),
+            ("hack-id", "hyprsaver_aurora_gles3"),
+            ("hack-idle-delay", "6"),
+            ("lock-enabled", "false"),
+            ("display-off-delay", "0"),
+            ("lock-on-suspend", "false"),
+        ):
+            _cli(ienv, "config", "set", k, v)
+        dry = subprocess.run(
+            [IDLED, "--dry-run"], capture_output=True, text=True, env=ienv, check=False
+        )
+        _record(
+            checks,
+            "dry-run-plan",
+            "pass"
+            if '"saver":6' in dry.stdout and '"lock":null' in dry.stdout
+            else "fail",
+            dry.stdout.strip() or dry.stderr.strip(),
+        )
+        proc = _start_idled(ienv, os.path.join(logs, "idled.log"))
+        up = _wait_until(lambda: _idled_json().get("state") == "active", 4.0)
+        _record(
+            checks,
+            "daemon-start",
+            "pass" if up is not None else "fail",
+            f"state={_idled_json()}",
+        )
+        if up is None:
+            return
+
+        def saver_running():
+            return _status(ienv).get("running")
+
+        lat = _wait_until(saver_running, 6 + 6.0)
+        _record(
+            checks,
+            "idle-fires-saver",
+            "pass" if lat is not None else "fail",
+            f"saver started {lat:.1f}s after daemon start (timer 6s)"
+            if lat is not None
+            else "saver never started",
+            metrics={"seconds": lat},
+        )
+        if lat is not None:
+            time.sleep(2.5)
+            fa = _grab_frame(env)
+            time.sleep(1.0)
+            fb = _grab_frame(env)
+            if fa and fb:
+                cov = hti.coverage_fraction(fb[2])
+                mot = hti.frame_diff_fraction(fa[2], fb[2])
+                _record(
+                    checks,
+                    "idle-saver-visible",
+                    "pass" if cov >= COVERAGE_GATE and mot >= MOTION_GATE else "fail",
+                    f"coverage={cov:.3f} motion={mot:.3f}",
+                    metrics={"coverage": cov, "motion": mot},
+                )
+            else:
+                _record(checks, "idle-saver-visible", "fail", "screenshot failed")
+            t0 = time.monotonic()
+            pr = _poke(env, "motion")
+            gone = _wait_until(
+                lambda: not saver_running(), DISMISS_DEADLINE + 2, step=0.1
+            )
+            _record(
+                checks,
+                "dismiss-on-pointer",
+                "pass" if gone is not None and pr.returncode == 0 else "fail",
+                f"stopped {time.monotonic() - t0:.2f}s after injected motion (poke rc={pr.returncode} {pr.stderr[-120:]})",
+                metrics={"seconds": gone},
+            )
+            back = _wait_until(lambda: _idled_json().get("state") == "active", 3.0)
+            _record(
+                checks,
+                "state-returns-active",
+                "pass" if back is not None else "fail",
+                f"{_idled_json().get('state')}",
+            )
+
+            # Keyboard dismissal (virtual keyboard).
+            again = _wait_until(saver_running, 6 + 6.0)
+            if again is None:
+                _record(
+                    checks,
+                    "dismiss-on-key",
+                    "fail",
+                    "saver did not restart for the key test",
+                )
+            else:
+                time.sleep(1.5)
+                pk = _poke(env, "key")
+                gone = _wait_until(
+                    lambda: not saver_running(), DISMISS_DEADLINE + 2, step=0.1
+                )
+                if pk.returncode != 0 and gone is None:
+                    _record(
+                        checks,
+                        "dismiss-on-key",
+                        "fail",
+                        f"key injection failed rc={pk.returncode}: {pk.stderr[-150:]}",
+                    )
+                else:
+                    _record(
+                        checks,
+                        "dismiss-on-key",
+                        "pass" if gone is not None else "fail",
+                        f"saver stopped {gone}s after key"
+                        if gone is not None
+                        else "saver still running",
+                    )
+            _poke(env, "motion")
+            _wait_until(lambda: not saver_running(), 4.0)
+
+        # Idle inhibitor: the saver must not start while a client inhibits idle.
+        inh = subprocess.Popen(
+            [
+                sys.executable,
+                os.environ.get("HT_WL_POKE")
+                or os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "wl_poke.py"
+                ),
+                "inhibit",
+                "--seconds",
+                "24",
+            ],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            line = ""
+            t0 = time.monotonic()
+            while time.monotonic() - t0 < 8 and inh.poll() is None:
+                line = inh.stdout.readline()
+                if "inhibitor active" in line:
+                    break
+            if "inhibitor active" not in line:
+                _record(
+                    checks,
+                    "idle-inhibit",
+                    "fail",
+                    f"inhibitor client did not start: {inh.stderr.read()[-200:] if inh.poll() is not None else line}",
+                )
+            else:
+                _poke(env, "motion")  # start the idle clock from now
+                early = _wait_until(saver_running, 6 + 8.0)
+                _record(
+                    checks,
+                    "idle-inhibit-blocks",
+                    "pass" if early is None else "fail",
+                    "saver stayed off for 14 s while inhibited"
+                    if early is None
+                    else f"saver started after {early:.1f}s despite inhibitor",
+                )
+                inh.wait(timeout=30)
+                after = _wait_until(saver_running, 6 + 6.0)
+                _record(
+                    checks,
+                    "idle-inhibit-releases",
+                    "pass" if after is not None else "fail",
+                    f"saver started {after:.1f}s after the inhibitor ended"
+                    if after is not None
+                    else "saver never started after release",
+                )
+                _poke(env, "motion")
+                _wait_until(lambda: not saver_running(), 4.0)
+        finally:
+            if inh.poll() is None:
+                inh.kill()
+
+        # Live reconfiguration.
+        _cli(ienv, "config", "set", "hack-idle-delay", "9")
+        ok = _wait_until(
+            lambda: (_idled_json().get("plan") or {}).get("saver") == 9, 4.0
+        )
+        _record(
+            checks,
+            "live-reconfigure",
+            "pass" if ok is not None else "fail",
+            f"plan={_idled_json().get('plan')}",
         )
 
+        # Lock chain: saver at 6, lock 4 s later, saver stopped before the lock command.
+        _stop_idled(proc)
+        _cli(ienv, "config", "set", "hack-idle-delay", "6")
+        _cli(ienv, "config", "set", "lock-enabled", "true")
+        _cli(ienv, "config", "set", "lock-delay", "4")
+        pathlib.Path(marker).unlink(missing_ok=True)
+        proc = _start_idled(ienv, os.path.join(logs, "idled-lock.log"))
+        _wait_until(lambda: _idled_json().get("state") == "active", 4.0)
+        started = _wait_until(saver_running, 12.0)
+        locked = _wait_until(lambda: os.path.exists(marker), 10.0)
+        stopped_first = not saver_running()
+        _record(
+            checks,
+            "lock-chain",
+            "pass"
+            if started is not None and locked is not None and stopped_first
+            else "fail",
+            f"saver_start={started} lock_marker={locked is not None} saver_stopped_before_lock={stopped_first}",
+        )
+        _poke(env, "motion")
+        _wait_until(lambda: not saver_running(), 4.0)
 
-# ---------------------------------------------------------------------------
-# Phase: idle.
-# ---------------------------------------------------------------------------
+        # DPMS.
+        if no_dpms:
+            _record(checks, "dpms", "skip", "--no-dpms")
+        else:
+            _stop_idled(proc)
+            _cli(ienv, "config", "set", "lock-enabled", "false")
+            _cli(ienv, "set-mode", "off")
+            _cli(ienv, "config", "set", "display-off-delay", "12")
+            proc = _start_idled(ienv, os.path.join(logs, "idled-dpms.log"))
+            _wait_until(lambda: _idled_json().get("state") == "active", 4.0)
+            off = _wait_until(lambda: _idled_json().get("state") == "display-off", 18.0)
+            time.sleep(1.0)
+            frame = _grab_frame(env)
+            dark = frame is None or hti.coverage_fraction(frame[2]) < 0.005
+            _poke(env, "motion")
+            back = _wait_until(lambda: _idled_json().get("state") == "active", 5.0)
+            time.sleep(1.0)
+            frame2 = _grab_frame(env)
+            lit = frame2 is not None and hti.coverage_fraction(frame2[2]) > 0.02
+            _record(
+                checks,
+                "dpms-off-on",
+                "pass" if off is not None and back is not None and lit else "fail",
+                f"display-off state={off is not None}, capture dark while off={dark}, back to active={back is not None}, lit after input={lit}",
+            )
+    finally:
+        _stop_idled(proc)
+        _cli(env, "stop")
+        _kill_hacks()
+        outs = _read_proc("wlr-randr", [])
+        _record(
+            checks,
+            "outputs-enabled-after-tests",
+            "pass" if outs and "Enabled: no" not in outs else "fail",
+            "all outputs enabled"
+            if "Enabled: no" not in outs
+            else "an output is left disabled",
+        )
 
-
-def _idled_state_path() -> str:
-    return os.path.join(
-        os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"),
-        IDLED_STATE,
+    # The real user unit.
+    _systemctl(env, "daemon-reload")
+    _systemctl(env, "start", IDLED_UNIT)
+    act = _wait_until(lambda: _unit_active(env, IDLED_UNIT), 4.0)
+    j = subprocess.run(
+        ["journalctl", "--user", "-u", IDLED_UNIT, "-n", "20", "--no-pager"],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
     )
-
-
-def _read_idled_state() -> dict[str, Any]:
-    path = _idled_state_path()
-    if not os.path.exists(path):
-        return {}
-    try:
-        return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def _wait_for_idled_state(value: str, timeout: float) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if _read_idled_state().get("state") == value:
-            return True
-        time.sleep(0.1)
-    return False
-
-
-def _wait_for_running(launcher: str, env: dict[str, str], timeout: float) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        try:
-            proc = _run([launcher, "status", "--json"], timeout=4.0, env=env)
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
-            proc = None  # type: ignore[assignment]
-        if proc is not None and proc.returncode == 0:
-            try:
-                st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-            except json.JSONDecodeError:
-                st = {}
-            if st.get("running") is True:
-                return True
-        time.sleep(0.2)
-    return False
-
-
-def phase_idle(
-    results: dict[str, Any],
-    checks: list[Check],
-    env: dict[str, str],
-    workdir: str,
-    launcher_path: str,
-    idled_path: str,
-    no_dpms: bool,
-    pw: str | None,
-) -> None:
-    if not os.path.exists(idled_path):
-        _record(checks, "idled-binary", "fail", f"missing: {idled_path}")
-        return
-    if not os.path.exists(launcher_path):
-        _record(checks, "launcher-binary", "fail", f"missing: {launcher_path}")
-        return
-
-    # Stop system-managed idled/idle-manager and remember to restore later.
-    restore: list[tuple[str, str]] = []
-    for svc in ("ncz-screensaver-idled.service", "ncz-idle-manager.service"):
-        state = _read_unit_state(svc, env)
-        if state == "active":
-            try:
-                _run(
-                    ["systemctl", "--user", "stop", svc],
-                    timeout=10.0,
-                    env=env,
-                )
-            except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-                _record(checks, f"stop-{svc}", "fail", str(exc))
-                continue
-            restore.append((svc, "start"))
+    pathlib.Path(logs, "idled-unit-journal.txt").write_text(j.stdout)
     _record(
         checks,
-        "pre-stop-services",
-        "pass",
-        f"services stopped, will restore {restore or 'none'}",
+        "systemd-unit",
+        "pass" if act is not None else "fail",
+        "unit active"
+        if act is not None
+        else "unit did not stay active (see logs/idled-unit-journal.txt)",
+        evidence="logs/idled-unit-journal.txt",
     )
-
-    # Isolated config: mode=one, hack-id=hyprsaver_aurora_gles3,
-    # hack-idle-delay=6, lock-enabled=false, display-off-delay=0.
-    ienv = _isolated_config_env()
-    cfg_dir = ienv["XDG_CONFIG_HOME"]
-    settings_path = os.path.join(cfg_dir, "dev.ncz", "screensaver", "settings.keyfile")
-    pathlib.Path(settings_path).write_text(
-        "\n".join(
-            [
-                "[dev.ncz.screensaver]",
-                "mode=one",
-                "hack-id=hyprsaver_aurora_gles3",
-                "hack-idle-delay=6",
-                "lock-enabled=false",
-                "display-off-delay=0",
-                "verify-render=false",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    # --dry-run plan comparison.
-    try:
-        proc = _run([idled_path, "--dry-run"], timeout=10.0, env=ienv)
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        _record(checks, "idled-dry-run", "fail", str(exc))
-    else:
-        plan = proc.stdout.decode("utf-8", errors="replace")
-        if "6" in plan and "one" in plan:
-            _record(checks, "idled-dry-run", "pass", plan.splitlines()[0])
-        else:
-            _record(
-                checks,
-                "idled-dry-run",
-                "fail",
-                f"plan did not reflect config: {plan[:200]}",
-            )
-
-    # Run the daemon in the background; remember to kill it in finally.
-    daemon: subprocess.Popen | None = None
-    try:
-        daemon = subprocess.Popen(
-            [idled_path],
-            env=ienv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-        time.sleep(1.5)
-        if daemon.poll() is not None:
-            output = (
-                daemon.stdout.read().decode("utf-8", errors="replace")
-                if daemon.stdout
-                else ""
-            )
-            _record(
-                checks, "idled-start", "fail", f"exited immediately: {output[:200]}"
-            )
-            return
-        _record(checks, "idled-start", "pass", f"pid={daemon.pid}")
-
-        # idled.json state should be "active".
-        if _wait_for_idled_state("active", timeout=4.0):
-            _record(checks, "idled-state-active", "pass", "state=active")
-        else:
-            _record(
-                checks,
-                "idled-state-active",
-                "fail",
-                f"state stuck at {_read_idled_state().get('state')!r}",
-            )
-
-        # Wait until saver runs (deadline = idle-delay + 6 s headroom).
-        deadline = 6.0 + IDLE_DEADLINE_HEADROOM
-        if _wait_for_running(launcher_path, ienv, deadline):
-            _record(
-                checks,
-                "idled-saver-started",
-                "pass",
-                "launcher reports running after idle delay",
-            )
-        else:
-            _record(
-                checks,
-                "idled-saver-started",
-                "fail",
-                "launcher never reported running",
-            )
-            # Bail out of further idle checks; daemon is still running and
-            # will be cleaned up in the finally block.
-            return
-
-        # Non-black screenshot while the saver is up.
-        saver_path = os.path.join(workdir, "shots", "idle_saver.ppm")
-        ok, detail = _capture_grim(saver_path, 0.125, ienv)
-        if ok:
-            try:
-                _, _, buf = hti.parse_ppm(pathlib.Path(saver_path).read_bytes())
-                cov = hti.coverage_fraction(buf)
-                if cov >= 0.02:
-                    _record(
-                        checks,
-                        "idle-saver-frame",
-                        "pass",
-                        f"coverage={cov:.3f}",
-                    )
-                else:
-                    _record(
-                        checks,
-                        "idle-saver-frame",
-                        "fail",
-                        f"coverage={cov:.3f} (looks black)",
-                    )
-            except (OSError, hti.PPMError) as exc:
-                _record(checks, "idle-saver-frame", "fail", str(exc))
-        else:
-            _record(checks, "idle-saver-frame", "fail", detail)
-
-        # Inject motion; saver must stop within 4 s.
-        poke = os.environ.get("HT_WL_POKE", "")
-        if poke:
-            t0 = time.monotonic()
-            try:
-                _run([sys.executable, poke, "motion"], timeout=5.0, env=ienv)
-            except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-                _record(checks, "idle-motion", "fail", str(exc))
-            stopped = False
-            deadline = time.monotonic() + DISMISS_DEADLINE
-            while time.monotonic() < deadline:
-                try:
-                    proc = _run(
-                        [launcher_path, "status", "--json"], timeout=4.0, env=ienv
-                    )
-                    st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-                except (
-                    FileNotFoundError,
-                    OSError,
-                    subprocess.TimeoutExpired,
-                    json.JSONDecodeError,
-                ):
-                    st = {}
-                if not st.get("running"):
-                    stopped = True
-                    break
-                time.sleep(0.2)
-            latency = time.monotonic() - t0
-            if stopped:
-                _record(
-                    checks,
-                    "idle-motion-dismiss",
-                    "pass",
-                    f"stopped in {latency:.2f}s",
-                    metrics={"latency_s": round(latency, 3)},
-                )
-            else:
-                _record(
-                    checks,
-                    "idle-motion-dismiss",
-                    "fail",
-                    f"still running after {latency:.2f}s",
-                    metrics={"latency_s": round(latency, 3)},
-                )
-
-            # Wait for the saver to run again, then test key dismissal.
-            if _wait_for_running(launcher_path, ienv, 6.0 + IDLE_DEADLINE_HEADROOM):
-                t0 = time.monotonic()
-                try:
-                    _run([sys.executable, poke, "key"], timeout=5.0, env=ienv)
-                except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-                    _record(checks, "idle-key", "fail", str(exc))
-                stopped = False
-                deadline = time.monotonic() + DISMISS_DEADLINE
-                while time.monotonic() < deadline:
-                    try:
-                        proc = _run(
-                            [launcher_path, "status", "--json"], timeout=4.0, env=ienv
-                        )
-                        st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-                    except (
-                        FileNotFoundError,
-                        OSError,
-                        subprocess.TimeoutExpired,
-                        json.JSONDecodeError,
-                    ):
-                        st = {}
-                    if not st.get("running"):
-                        stopped = True
-                        break
-                    time.sleep(0.2)
-                latency = time.monotonic() - t0
-                if stopped:
-                    _record(
-                        checks,
-                        "idle-key-dismiss",
-                        "pass",
-                        f"stopped in {latency:.2f}s",
-                        metrics={"latency_s": round(latency, 3)},
-                    )
-                else:
-                    _record(
-                        checks,
-                        "idle-key-dismiss",
-                        "fail",
-                        f"still running after {latency:.2f}s",
-                        metrics={"latency_s": round(latency, 3)},
-                    )
-
-        # Idle inhibitor: start one, confirm the saver does NOT start, then
-        # wait for the inhibitor to end and confirm it does start.
-        if poke:
-            try:
-                proc = subprocess.Popen(
-                    [sys.executable, poke, "inhibit", "--seconds", "25"],
-                    env=ienv,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-            except (FileNotFoundError, OSError) as exc:
-                proc = None  # type: ignore[assignment]
-                _record(checks, "idle-inhibit", "fail", str(exc))
-            else:
-                # Wait until wl_poke.py prints "inhibitor active".
-                start_deadline = time.monotonic() + 8.0
-                ready = False
-                if proc.stdout is not None:
-                    while time.monotonic() < start_deadline:
-                        line = proc.stdout.readline()
-                        if not line:
-                            break
-                        if "inhibitor active" in line:
-                            ready = True
-                            break
-                if ready:
-                    _record(
-                        checks,
-                        "idle-inhibit-active",
-                        "pass",
-                        "inhibitor reported active",
-                    )
-                else:
-                    _record(
-                        checks,
-                        "idle-inhibit-active",
-                        "fail",
-                        "inhibitor never reported active",
-                    )
-
-                # Saver must NOT start while the inhibitor is up.
-                if _wait_for_running(launcher_path, ienv, 6.0 + 8.0):
-                    _record(
-                        checks,
-                        "idle-inhibit-blocks-saver",
-                        "fail",
-                        "saver started while inhibitor was active",
-                    )
-                else:
-                    _record(
-                        checks,
-                        "idle-inhibit-blocks-saver",
-                        "pass",
-                        "saver did not start under inhibition",
-                    )
-
-                # Stop the inhibitor (kill the wl_poke process).
-                with contextlib.suppress(ProcessLookupError):
-                    proc.terminate()
-                with contextlib.suppress(subprocess.TimeoutExpired):
-                    proc.wait(timeout=4.0)
-                with contextlib.suppress(ProcessLookupError):
-                    proc.kill()
-
-                # After the inhibitor ends, the saver should start.
-                if _wait_for_running(launcher_path, ienv, 6.0 + 8.0):
-                    _record(
-                        checks,
-                        "idle-inhibit-release",
-                        "pass",
-                        "saver started after inhibition ended",
-                    )
-                else:
-                    _record(
-                        checks,
-                        "idle-inhibit-release",
-                        "fail",
-                        "saver did not start after inhibition ended",
-                    )
-
-        # Live reconfigure: change hack-idle-delay and verify the new plan.
-        pathlib.Path(settings_path).write_text(
-            "\n".join(
-                [
-                    "[dev.ncz.screensaver]",
-                    "mode=one",
-                    "hack-id=hyprsaver_aurora_gles3",
-                    "hack-idle-delay=12",
-                    "lock-enabled=false",
-                    "display-off-delay=0",
-                    "verify-render=false",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        try:
-            _run(["gsettings", "recursively-relabel"], timeout=2.0, env=ienv)
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
-            pass
-        # Trigger a keyfile reload by writing again -- gsettings watches mtime.
-        time.sleep(1.5)
-        st = _read_idled_state()
-        plan = st.get("plan", {})
-        if plan.get("hack_idle_delay") == 12:
-            _record(
-                checks,
-                "idle-reconfigure",
-                "pass",
-                "plan updated to hack-idle-delay=12",
-            )
-        else:
-            _record(
-                checks,
-                "idle-reconfigure",
-                "fail",
-                f"plan still shows {plan.get('hack_idle_delay')!r}",
-            )
-
-        # Lock chain: harmless lock script that touches a marker file.
-        lock_dir = os.path.join(workdir, "fake-lock")
-        os.makedirs(lock_dir, exist_ok=True)
-        marker = os.path.join(lock_dir, "marker.txt")
-        marker2 = os.path.join(lock_dir, "marker2.txt")
-        lock_script = os.path.join(lock_dir, "lock.sh")
-        pathlib.Path(lock_script).write_text(
-            f"#!/bin/sh\ntouch {marker}\nsleep 1\ntouch {marker2}\n",
-            encoding="utf-8",
-        )
-        os.chmod(lock_script, 0o755)
-        pathlib.Path(settings_path).write_text(
-            "\n".join(
-                [
-                    "[dev.ncz.screensaver]",
-                    "mode=one",
-                    "hack-id=hyprsaver_aurora_gles3",
-                    "hack-idle-delay=3",
-                    "lock-enabled=true",
-                    "lock-delay=4",
-                    "display-off-delay=0",
-                    "verify-render=false",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        lock_env = dict(ienv)
-        lock_env["NCZ_LOCK_CMD"] = lock_script
-        # The daemon already running is using ienv; restart it with the new
-        # env so NCZ_LOCK_CMD takes effect.
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(os.getpgid(daemon.pid), signal.SIGTERM)
-        try:
-            daemon.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(daemon.pid), signal.SIGKILL)
-        daemon = subprocess.Popen(
-            [idled_path],
-            env=lock_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        time.sleep(1.0)
-        # Wait for saver to start (3 s delay + headroom).
-        if _wait_for_running(launcher_path, lock_env, 3.0 + 6.0):
-            # Then 4 s after that the lock marker must appear.
-            deadline = time.monotonic() + 4.0 + 4.0
-            while time.monotonic() < deadline:
-                if os.path.exists(marker):
-                    break
-                time.sleep(0.2)
-            if os.path.exists(marker):
-                _record(
-                    checks,
-                    "idle-lock-chain",
-                    "pass",
-                    f"lock script ran at {time.ctime(os.path.getmtime(marker))}",
-                )
-            else:
-                _record(
-                    checks,
-                    "idle-lock-chain",
-                    "fail",
-                    "lock marker never appeared",
-                )
-            # Saver must be stopped by the lock chain.
-            time.sleep(2.0)
-            try:
-                proc = _run(
-                    [launcher_path, "status", "--json"], timeout=4.0, env=lock_env
-                )
-                st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-            except (
-                FileNotFoundError,
-                OSError,
-                subprocess.TimeoutExpired,
-                json.JSONDecodeError,
-            ):
-                st = {}
-            if not st.get("running"):
-                _record(
-                    checks,
-                    "idle-lock-stops-saver",
-                    "pass",
-                    "saver stopped before lock script",
-                )
-            else:
-                _record(
-                    checks,
-                    "idle-lock-stops-saver",
-                    "fail",
-                    "saver still running while lock chain ran",
-                )
-        else:
-            _record(
-                checks,
-                "idle-lock-chain",
-                "fail",
-                "saver never started for lock test",
-            )
-
-        # DPMS (unless --no-dpms).
-        if not no_dpms:
-            pathlib.Path(settings_path).write_text(
-                "\n".join(
-                    [
-                        "[dev.ncz.screensaver]",
-                        "mode=off",
-                        "hack-idle-delay=3",
-                        "lock-enabled=false",
-                        "display-off-delay=14",
-                        "verify-render=false",
-                    ]
-                ),
-                encoding="utf-8",
-            )
-            dpms_env = dict(lock_env)
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(daemon.pid), signal.SIGTERM)
-            try:
-                daemon.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                with contextlib.suppress(ProcessLookupError):
-                    os.killpg(os.getpgid(daemon.pid), signal.SIGKILL)
-            daemon = subprocess.Popen(
-                [idled_path],
-                env=dpms_env,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            time.sleep(1.0)
-            # 14 s + headroom before checking that outputs are off.
-            time.sleep(14.0 + 2.0)
-            dpms_shot = os.path.join(workdir, "shots", "dpms_off.ppm")
-            ok_dpms, detail_dpms = _capture_grim(dpms_shot, 0.125, dpms_env)
-            randr = _read_proc("wlr-randr", [])
-            off_line = ""
-            for line in randr.splitlines():
-                if "enabled" in line and "no" in line:
-                    off_line = line.strip()
-                    break
-            if (ok_dpms is False) or (off_line != ""):
-                _record(
-                    checks,
-                    "idle-dpms-off",
-                    "pass",
-                    f"grim failed or outputs report off ({off_line or detail_dpms[:60]})",
-                )
-            else:
-                # grim returned a frame: assume it's black.
-                try:
-                    _, _, buf = hti.parse_ppm(pathlib.Path(dpms_shot).read_bytes())
-                    cov = hti.coverage_fraction(buf)
-                except (OSError, hti.PPMError):
-                    cov = -1.0
-                if cov < 0.05:
-                    _record(
-                        checks,
-                        "idle-dpms-off",
-                        "pass",
-                        f"grim returned black frame (cov={cov:.3f})",
-                    )
-                else:
-                    _record(
-                        checks,
-                        "idle-dpms-off",
-                        "fail",
-                        f"outputs not off (cov={cov:.3f})",
-                    )
-
-            # Wake up with motion and verify the display returns.
-            if poke:
-                try:
-                    _run([sys.executable, poke, "motion"], timeout=5.0, env=dpms_env)
-                except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-                    _record(checks, "idle-dpms-wake", "fail", str(exc))
-                else:
-                    deadline = time.monotonic() + 5.0
-                    awake = False
-                    while time.monotonic() < deadline:
-                        ok2, _ = _capture_grim(
-                            os.path.join(workdir, "shots", "dpms_on.ppm"),
-                            0.125,
-                            dpms_env,
-                        )
-                        if ok2:
-                            try:
-                                _, _, buf = hti.parse_ppm(
-                                    pathlib.Path(
-                                        os.path.join(workdir, "shots", "dpms_on.ppm")
-                                    ).read_bytes()
-                                )
-                                cov = hti.coverage_fraction(buf)
-                            except (OSError, hti.PPMError):
-                                cov = 0.0
-                            if cov >= 0.02:
-                                awake = True
-                                break
-                        time.sleep(0.3)
-                    if awake:
-                        _record(
-                            checks,
-                            "idle-dpms-wake",
-                            "pass",
-                            "display returned to non-black",
-                        )
-                    else:
-                        _record(
-                            checks,
-                            "idle-dpms-wake",
-                            "fail",
-                            "display did not return within 5 s",
-                        )
-
-    finally:
-        # ALWAYS power outputs back on and stop the daemon.
-        if daemon is not None and daemon.poll() is None:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(daemon.pid), signal.SIGTERM)
-            try:
-                daemon.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                with contextlib.suppress(ProcessLookupError):
-                    os.killpg(os.getpgid(daemon.pid), signal.SIGKILL)
-                daemon.wait(timeout=2.0)
-        # Confirm outputs on (best-effort).
-        randr_after = _read_proc("wlr-randr", [])
-        if randr_after:
-            _record(
-                checks,
-                "idle-outputs-restored",
-                "pass",
-                "wlr-randr answered after daemon stop",
-            )
-
-        # Restore services.
-        for svc, action in restore:
-            try:
-                _run(
-                    ["systemctl", "--user", action, svc],
-                    timeout=10.0,
-                    env=env,
-                )
-            except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
-                pass
-
-    # Test the real user unit too. This is independent of the daemon above.
-    try:
-        _run(["systemctl", "--user", "daemon-reload"], timeout=10.0, env=env)
-        _run(
-            ["systemctl", "--user", "start", "ncz-screensaver-idled.service"],
-            timeout=10.0,
-            env=env,
-        )
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        _record(checks, "user-unit-start", "fail", str(exc))
-    else:
-        deadline = time.monotonic() + 3.0
-        active = False
-        while time.monotonic() < deadline:
-            if _read_unit_state("ncz-screensaver-idled.service", env) == "active":
-                active = True
-                break
-            time.sleep(0.2)
-        if active:
-            _record(checks, "user-unit-active", "pass", "service is-active=active")
-        else:
-            _record(
-                checks,
-                "user-unit-active",
-                "fail",
-                "service did not become active within 3 s",
-            )
-        try:
-            proc = _run(
-                [
-                    "journalctl",
-                    "--user",
-                    "-u",
-                    "ncz-screensaver-idled",
-                    "-n",
-                    "20",
-                    "--no-pager",
-                ],
-                timeout=10.0,
-                env=env,
-            )
-            jlog = proc.stdout.decode("utf-8", errors="replace").strip()
-            if jlog:
-                pathlib.Path(workdir, "logs", "idled.journal.txt").write_text(
-                    jlog, encoding="utf-8"
-                )
-                _record(checks, "user-unit-journal", "pass", "journal captured")
-            else:
-                _record(checks, "user-unit-journal", "skip", "no journal entries")
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-            _record(checks, "user-unit-journal", "fail", str(exc))
-        try:
-            _run(
-                ["systemctl", "--user", "stop", "ncz-screensaver-idled.service"],
-                timeout=10.0,
-                env=env,
-            )
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
-            pass
+    _systemctl(env, "stop", IDLED_UNIT)
+    # Restore what was running before the phase.
+    if was_new:
+        _systemctl(env, "start", IDLED_UNIT)
+    elif was_old:
+        _systemctl(env, "start", OLD_IDLE_UNIT)
 
 
 # ---------------------------------------------------------------------------
-# Phase: color.
+# Phase: color (black hole modes).
 # ---------------------------------------------------------------------------
 
 
-def phase_color(
-    results: dict[str, Any],
-    checks: list[Check],
-    env: dict[str, str],
-    workdir: str,
-    launcher_path: str,
-) -> None:
-    if not os.path.exists(launcher_path):
-        _record(checks, "color-launcher", "fail", f"missing: {launcher_path}")
-        return
-    ienv = _isolated_config_env()
-    cfg_dir = ienv["XDG_CONFIG_HOME"]
-    settings_path = os.path.join(cfg_dir, "dev.ncz", "screensaver", "settings.keyfile")
-    pathlib.Path(settings_path).write_text(
-        "\n".join(
-            [
-                "[dev.ncz.screensaver]",
-                "mode=one",
-                "hack-id=blackhole_gles3",
-                "hack-idle-delay=1",
-                "lock-enabled=false",
-                "display-off-delay=0",
-                "verify-render=false",
-                "blackhole-color-mode=stylized",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    samples: dict[str, dict[str, Any]] = {}
-    unknown_seen = False
+@_guard
+def phase_color(results, checks, env, workdir, launcher_path):
+    shots = os.path.join(workdir, "shots")
+    os.makedirs(shots, exist_ok=True)
+    ienv = _isolated_env(env)
+    _cli(ienv, "config", "set", "verify-render", "false")
+    stats = {}
     for mode in ("stylized", "kipthorne", "faithful"):
-        # set-color writes blackhole-color-mode into the keyfile.
-        try:
-            proc = _run(
-                [launcher_path, "set-color", mode],
-                timeout=5.0,
-                env=ienv,
-            )
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-            _record(checks, f"color-{mode}", "fail", str(exc))
+        _cli(ienv, "stop")
+        _wait_until(lambda: not _status(ienv).get("running"), 4.0)
+        _cli(ienv, "set-color", mode)
+        _cli(ienv, "preview", "blackhole_gles3", "--seconds", "30")
+        _wait_until(lambda: _status(ienv).get("running"), 5.0)
+        time.sleep(5.0)
+        fr = _grab_frame(env, 0.125)
+        png = os.path.join(shots, f"blackhole_{mode}.png")
+        _screenshot_to_png("", png, env, 0.25)
+        if not fr:
+            _record(checks, f"color-{mode}", "fail", "screenshot failed")
             continue
-        if proc.returncode != 0:
-            text = proc.stderr.decode("utf-8", errors="replace")
-            if "unknown" in text or "fallback" in text.lower():
-                unknown_seen = True
-            _record(checks, f"color-set-{mode}", "fail", text[:200])
-            continue
-        # Start the saver, capture 4 s in.
-        _run([launcher_path, "stop"], timeout=5.0, env=ienv)
-        _run(
-            [
-                launcher_path,
-                "start",
-                "--hack",
-                "blackhole_gles3",
-                "--seconds",
-                "20",
-                "--force",
-            ],
-            timeout=8.0,
-            env=ienv,
-        )
-        time.sleep(4.0)
-        ppm = os.path.join(workdir, "shots", f"blackhole_{mode}.ppm")
-        png = os.path.join(workdir, "shots", f"blackhole_{mode}.png")
-        ok, detail = _capture_grim(ppm, 0.125, ienv)
-        png_ok, _ = _screenshot_to_png(ppm, png, ienv, 0.25)
-        _run([launcher_path, "stop"], timeout=5.0, env=ienv)
-        if not ok:
-            _record(checks, f"color-{mode}-capture", "fail", detail)
-            continue
-        try:
-            _, _, buf = hti.parse_ppm(pathlib.Path(ppm).read_bytes())
-            cov = hti.coverage_fraction(buf)
-            r, g, b, n = hti.mean_brightness_of_bright_pixels(buf)
-        except (OSError, hti.PPMError) as exc:
-            _record(checks, f"color-{mode}-metrics", "fail", str(exc))
-            continue
-        samples[mode] = {
-            "coverage": cov,
-            "mean_r": r,
-            "mean_g": g,
-            "mean_b": b,
-            "n_bright": n,
-        }
+        cov = hti.coverage_fraction(fr[2])
+        r, g, b, _n = hti.mean_brightness_of_bright_pixels(fr[2])
+        stats[mode] = (r, g, b)
         _record(
             checks,
             f"color-{mode}",
             "pass" if cov >= COLOR_COVERAGE_GATE else "fail",
-            f"coverage={cov:.3f} mean=({r:.1f},{g:.1f},{b:.1f})",
-            evidence=f"blackhole_{mode}.png" if png_ok else None,
-            metrics=samples[mode],
+            f"coverage={cov:.3f} mean_rgb=({r:.0f},{g:.0f},{b:.0f})",
+            evidence=f"shots/blackhole_{mode}.png",
+            metrics={"coverage": cov, "r": r, "g": g, "b": b},
         )
-
-    if unknown_seen:
+    _cli(ienv, "stop")
+    if len(stats) == 3:
+        names = list(stats)
+        worst = 1.0
+        for i in range(3):
+            for j in range(i + 1, 3):
+                a, b = stats[names[i]], stats[names[j]]
+                d = hti.chromaticity_distance(a, b)
+                ratio = hti.brightness_ratio(sum(a), sum(b))
+                worst = min(
+                    worst,
+                    max(
+                        d / COLOR_CHROMA_MIN,
+                        abs(ratio - 1.0) / (COLOR_BRIGHTNESS_MIN - 1.0),
+                    ),
+                )
         _record(
             checks,
-            "color-unknown-fallback",
-            "pass",
-            "launcher reported fallback for unknown mode",
+            "color-modes-differ",
+            "pass" if worst >= 1.0 else "fail",
+            "every pair of modes differs visibly"
+            if worst >= 1.0
+            else f"two modes look identical (score {worst:.2f})",
         )
-
-    # Pairwise comparison: every pair must differ.
-    modes = list(samples.keys())
-    pairs_ok = True
-    for i in range(len(modes)):
-        for j in range(i + 1, len(modes)):
-            a = samples[modes[i]]
-            b = samples[modes[j]]
-            chroma = hti.chromaticity_distance(
-                (a["mean_r"], a["mean_g"], a["mean_b"]),
-                (b["mean_r"], b["mean_g"], b["mean_b"]),
-            )
-            bright_a = a["mean_r"] + a["mean_g"] + a["mean_b"]
-            bright_b = b["mean_r"] + b["mean_g"] + b["mean_b"]
-            br = hti.brightness_ratio(bright_a, bright_b)
-            metrics = {"chroma": chroma, "brightness_ratio": br}
-            if chroma < COLOR_CHROMA_MIN and br < COLOR_BRIGHTNESS_MIN:
-                _record(
-                    checks,
-                    f"color-pair-{modes[i]}-{modes[j]}",
-                    "fail",
-                    f"chroma={chroma:.3f} brightness_ratio={br:.2f}",
-                    metrics=metrics,
-                )
-                pairs_ok = False
-            else:
-                _record(
-                    checks,
-                    f"color-pair-{modes[i]}-{modes[j]}",
-                    "pass",
-                    f"chroma={chroma:.3f} brightness_ratio={br:.2f}",
-                    metrics=metrics,
-                )
-    if pairs_ok:
-        _record(checks, "color-pairs-distinct", "pass", "all pairs differ")
-    else:
-        _record(checks, "color-pairs-distinct", "fail", "some pair is identical")
+    # Unknown value: must warn and fall back, not crash.
+    _cli(ienv, "config", "set", "blackhole-color-mode", "bogus")
+    _cli(ienv, "preview", "blackhole_gles3", "--seconds", "12")
+    alive = _wait_until(lambda: _status(ienv).get("running"), 6.0)
+    time.sleep(3.0)
+    still = _status(ienv).get("running")
+    _record(
+        checks,
+        "color-unknown-value",
+        "pass" if alive is not None and still else "fail",
+        "hack kept running with an unknown color value"
+        if still
+        else "hack died with an unknown color value",
+    )
+    _cli(ienv, "stop")
 
 
 # ---------------------------------------------------------------------------
-# Phase: chooser.
+# Phase: chooser (settings app).
 # ---------------------------------------------------------------------------
 
 
-def phase_chooser(
-    results: dict[str, Any],
-    checks: list[Check],
-    env: dict[str, str],
-    workdir: str,
-    settings_path: str,
-    launcher_path: str,
-) -> None:
-    if not os.path.exists(settings_path):
-        _record(checks, "chooser-binary", "fail", f"missing: {settings_path}")
+@_guard
+def phase_chooser(results, checks, env, workdir, settings_path, launcher_path):
+    shots = os.path.join(workdir, "shots")
+    os.makedirs(shots, exist_ok=True)
+    ienv = _isolated_env(env)
+    if not os.path.exists(SETTINGS_APP):
+        _record(checks, "settings-installed", "fail", f"{SETTINGS_APP} missing")
         return
-    # --dump returns valid JSON with >= 80 catalog entries.
+    d = subprocess.run(
+        [SETTINGS_APP, "--dump"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=ienv,
+        check=False,
+    )
     try:
-        proc = _run([settings_path, "--dump"], timeout=10.0, env=env)
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        _record(checks, "chooser-dump", "fail", str(exc))
-        return
-    text = proc.stdout.decode("utf-8", errors="replace")
+        dump = json.loads(d.stdout)
+        n = len(dump.get("catalog", []))
+    except ValueError:
+        n = -1
+    _record(
+        checks,
+        "settings-dump",
+        "pass" if n >= 80 else "fail",
+        f"{n} catalog entries in --dump {d.stderr[-120:]}",
+    )
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
-        _record(checks, "chooser-dump", "fail", f"invalid JSON: {exc}")
-        return
-    if isinstance(data, list) and len(data) >= 80:
-        _record(
-            checks,
-            "chooser-dump",
-            "pass",
-            f"{len(data)} catalog entries returned",
-        )
-    else:
-        _record(
-            checks,
-            "chooser-dump",
-            "fail",
-            f"unexpected dump shape (type={type(data).__name__}, len={len(data) if hasattr(data, '__len__') else '?'})",
-        )
-
-    # --self-test, capture every PASS/FAIL line.
-    ienv = _isolated_config_env()
-    try:
-        proc = subprocess.run(
-            [settings_path, "--self-test"],
+        s = subprocess.run(
+            [SETTINGS_APP, "--self-test"],
             capture_output=True,
-            timeout=45.0,
+            text=True,
+            timeout=60,
             env=ienv,
+            check=False,
+        )
+        lines = [ln for ln in s.stdout.splitlines() if ln.startswith(("PASS", "FAIL"))]
+        bad = [ln for ln in lines if ln.startswith("FAIL")]
+        pathlib.Path(workdir, "logs", "settings-selftest.txt").write_text(
+            s.stdout + s.stderr
+        )
+        _record(
+            checks,
+            "settings-self-test",
+            "pass" if s.returncode == 0 and lines and not bad else "fail",
+            f"rc={s.returncode}, {len(lines)} checks, failures={bad[:3]} {s.stderr[-150:]}",
+            evidence="logs/settings-selftest.txt",
         )
     except subprocess.TimeoutExpired:
-        _record(checks, "chooser-selftest", "fail", "self-test timed out")
-    else:
-        out = proc.stdout.decode("utf-8", errors="replace")
-        err = proc.stderr.decode("utf-8", errors="replace")
-        log_path = os.path.join(workdir, "logs", "chooser_selftest.txt")
-        pathlib.Path(log_path).write_text(
-            out + "\n--- stderr ---\n" + err, encoding="utf-8"
-        )
-        pass_count = sum(1 for line in out.splitlines() if "PASS" in line)
-        fail_count = sum(1 for line in out.splitlines() if "FAIL" in line)
-        if fail_count == 0 and pass_count > 0:
-            _record(
-                checks,
-                "chooser-selftest",
-                "pass",
-                f"{pass_count} PASS lines, 0 FAIL",
-            )
-        else:
-            _record(
-                checks,
-                "chooser-selftest",
-                "fail",
-                f"{pass_count} PASS, {fail_count} FAIL",
-                evidence=os.path.basename(log_path),
-            )
-
-    # Launch the GUI in the background and screenshot it.
+        _record(checks, "settings-self-test", "fail", "timed out after 60 s")
+    app = subprocess.Popen(
+        [SETTINGS_APP],
+        env=ienv,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
     try:
-        proc = subprocess.Popen(
-            [settings_path],
-            env=ienv,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
+        time.sleep(5.0)
+        png = os.path.join(shots, "settings.png")
+        ok, detail = _screenshot_to_png("", png, env, 0.5)
+        _record(
+            checks,
+            "settings-screenshot",
+            "pass" if ok and app.poll() is None else "fail",
+            f"window alive={app.poll() is None}; {detail}",
+            evidence="shots/settings.png",
         )
-    except (FileNotFoundError, OSError) as exc:
-        _record(checks, "chooser-launch", "fail", str(exc))
-        proc = None  # type: ignore[assignment]
-    if proc is not None:
-        time.sleep(4.0)
-        png = os.path.join(workdir, "shots", "settings.png")
-        ok, detail = _screenshot_to_png(None, png, ienv, 0.5)
-        if ok:
-            _record(
-                checks,
-                "chooser-launch",
-                "pass",
-                f"screenshot -> {os.path.basename(png)}",
-                evidence=os.path.basename(png),
-            )
-        else:
-            _record(checks, "chooser-launch", "fail", detail)
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        try:
-            proc.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            proc.wait(timeout=2.0)
-
-    # launcher list sanity (cheaper than re-running the launcher phase).
-    if os.path.exists(launcher_path):
-        try:
-            proc = _run([launcher_path, "list"], timeout=5.0, env=env)
-            lines = [ln for ln in proc.stdout.decode().splitlines() if ln.strip()]
-            if len(lines) >= 80:
-                _record(checks, "chooser-list-sanity", "pass", f"{len(lines)} hacks")
-            else:
-                _record(
-                    checks,
-                    "chooser-list-sanity",
-                    "fail",
-                    f"only {len(lines)} hacks listed",
-                )
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-            _record(checks, "chooser-list-sanity", "fail", str(exc))
-
-
-# ---------------------------------------------------------------------------
-# Result aggregation and atomic write.
-# ---------------------------------------------------------------------------
+    finally:
+        app.terminate()
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            app.wait(timeout=5)
 
 
 def _summarize(checks_by_phase: dict[str, list[Check]]) -> dict[str, int]:

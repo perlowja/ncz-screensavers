@@ -416,9 +416,11 @@ class Connection:
         self._send(WL_DISPLAY_ID, 0, payload)  # wl_display.sync
         deadline = time.monotonic() + SOCKET_TIMEOUT
         while not done["fired"]:
-            self.dispatch(max_events=64)
-            if done["fired"]:
-                break
+            # One message at a time: dispatch(64) would block on the socket
+            # timeout after the done event when the compositor goes quiet.
+            msg = self._drain_one()
+            if msg is not None:
+                self._dispatch(*msg)
             if time.monotonic() > deadline:
                 raise TimeoutError("wl_display.roundtrip timed out after 5 s")
         self._event_handlers.pop(cb_id, None)
@@ -500,12 +502,12 @@ def find_socket_path(display: str | None = None, runtime: str | None = None) -> 
 # included in the size we send, per the xkb spec (keymaps are NUL-terminated
 # text).
 XKB_KEYMAP_TEXT = (
-    "xkb_keymap {"
-    ' xkb_keycodes { include "evdev+aliases(qwerty)"; };'
-    ' xkb_types { include "complete"; };'
-    ' xkb_compat { include "complete"; };'
-    ' xkb_symbols { include "pc+us"; };'
-    " };"
+    "xkb_keymap {\n"
+    ' xkb_keycodes { include "evdev+aliases(qwerty)" };\n'
+    ' xkb_types { include "complete" };\n'
+    ' xkb_compat { include "complete" };\n'
+    ' xkb_symbols { include "pc+us" };\n'
+    "};\n"
     "\x00"
 )
 
@@ -835,6 +837,8 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
                 # xdg_surface.configure opcode = 0; payload is serial(u32).
                 if opcode == 0:
                     (serial,) = _U32.unpack(data[:4])
+                    if configured["done"]:
+                        pending_serials.append(serial)  # later configure: ack it
                     configured["serial"] = serial
                     configured["done"] = True
 
@@ -849,17 +853,18 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
             conn.on_event(wm_id, on_wm_event)
             # Drain globals + the initial configure (some compositors bundle
             # the configure with the post-bind roundtrip).
-            conn.roundtrip()
+            # The role is only configured after an initial commit without a
+            # buffer (wl_surface.commit is opcode 6).
+            conn.send(surface_id, 6, b"")
+            cfg_deadline = time.monotonic() + 5.0
+            while not configured["done"] and time.monotonic() < cfg_deadline:
+                msg = conn._drain_one()
+                if msg is not None:
+                    conn._dispatch(*msg)
             if not configured["done"]:
-                # Be patient: labwc sometimes sends the configure after a
-                # brief scheduling delay. Drain whatever is queued, then
-                # roundtrip again.
-                conn.dispatch(64)
-                if not configured["done"]:
-                    raise WaylandError(
-                        "xdg_surface.configure never arrived; compositor refuses the role"
-                    )
-            pending_serials.append(configured["serial"])
+                raise WaylandError(
+                    "xdg_surface.configure never arrived; compositor refuses the role"
+                )
             # xdg_surface.ack_configure(serial) opcode = 4.
             conn.send(xdg_surface_id, 4, _U32.pack(configured["serial"] & 0xFFFFFFFF))
             # wl_surface.attach(buffer, x:int, y:int) opcode = 1.
@@ -868,17 +873,17 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
                 1,
                 _U32.pack(buffer_id & 0xFFFFFFFF) + _I32.pack(0) + _I32.pack(0),
             )
-            # wl_surface.commit opcode = 5.
-            conn.send(surface_id, 5, b"")
+            # wl_surface.commit opcode = 6.
+            conn.send(surface_id, 6, b"")
 
             # Now create the inhibitor against the mapped surface.
             inhibitor_id = conn.alloc_id()
             # zwp_idle_inhibit_manager_v1.create_inhibitor(new_id, surface)
-            # opcode = 0
+            # opcode = 1 (0 is the manager's destroy)
             payload = _U32.pack(inhibitor_id & 0xFFFFFFFF) + _U32.pack(
                 surface_id & 0xFFFFFFFF
             )
-            conn.send(inhibit_mgr_id, 0, payload)
+            conn.send(inhibit_mgr_id, 1, payload)
             sys.stdout.write("inhibitor active\n")
             sys.stdout.flush()
 
@@ -886,7 +891,12 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
             # servicing ping/pong and any further configure events.
             deadline = time.monotonic() + args.seconds
             while time.monotonic() < deadline:
-                conn.dispatch(max_events=64)
+                # Short poll: _send() resets the socket timeout, so set it
+                # again for every wait to keep the loop responsive.
+                conn._sock.settimeout(0.1)
+                msg = conn._drain_one()
+                if msg is not None:
+                    conn._dispatch(*msg)
                 if pending_serials:
                     for serial in pending_serials:
                         # ack_configure opcode = 4.
@@ -902,13 +912,7 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
             # before the surface it was bound to).
             conn.send(inhibitor_id, 0, b"")  # zwp_idle_inhibitor_v1.destroy
             conn.roundtrip()
-            # Tear down the toplevel + surface in reverse construction order.
-            conn.send(xdg_toplevel_id, 0, b"")  # xdg_toplevel.destroy
-            conn.send(xdg_surface_id, 0, b"")  # xdg_surface.destroy
-            conn.send(buffer_id, 0, b"")  # wl_buffer.destroy
-            conn.send(pool_id, 1, b"")  # wl_shm_pool.destroy
-            conn.send(surface_id, 0, b"")  # wl_surface.destroy
-            conn.roundtrip()
+            # The remaining objects die with the connection (conn.close()).
         finally:
             os.close(buf_fd)
     finally:
