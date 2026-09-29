@@ -1,5 +1,19 @@
 ncz-screensavers (0.6.0) unstable; urgency=medium
 
+  * Classics on the shader engine: voronoi, gravitywell, hexstrut, cubestorm,
+    crackberg, cityflow, noof, geodesic and gibson are native GLES3 programs
+    (src/classics_shader); binary names are unchanged. The GL1 emulation
+    layer, the legacy binaries and any gl4es routing are gone from the ship
+    set (no glBegin/glVertex/glu symbols in any shipped binary).
+  * Real 4K measurements on the Sky1 (MS-R1, output scale 1.75): the Mali
+    1080-line render cap stays; render-hints.tsv regenerated at that point.
+  * Test-only NCZ_TEST_SURFACE_SIZE knob; eval tools use password auth only.
+  * debian/copyright: stanzas for the ported classics.
+
+ -- Jason Perlow <jperlow@gmail.com>  Wed, 30 Sep 2026 03:00:00 +0000
+
+ncz-screensavers (0.6.0) unstable; urgency=medium
+
   * The nine remaining OpenGL 1 classics (voronoi, gravitywell, hexstrut, cubestorm,
     crackberg, cityflow, noof, geodesic, gibson) are native GLES3 shader-engine ports
     with retained buffers and instancing (classic and enhanced styles, options per
