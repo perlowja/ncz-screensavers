@@ -23,7 +23,6 @@ Version: $VER
 Architecture: $ARCH
 Maintainer: Jason Perlow <jperlow@gmail.com>
 Depends: ncz-singularity-desktop, ncz-screensavers (>= 0.7.0)
-Replaces: ncz-screensavers (<< 0.7.0)
 Section: x11
 Priority: optional
 Description: Screensaver and Lockscreen page for the Singularity desktop
@@ -37,10 +36,19 @@ cat > "$W/DEBIAN/postinst" <<'EOC'
 set -e
 S=/opt/singularity/share/glib-2.0/schemas
 OV=$S/99-zz-ncz-screensaver-plugin.gschema.override
-if [ "$1" = configure ] && [ -d "$S" ]; then
-    list=$(sed -n "s/^enabled-plugins=//p" "$S"/*.override 2>/dev/null | grep -v "^$" | tail -n 1)
+if { [ "$1" = configure ] || [ "$1" = triggered ]; } && [ -d "$S" ]; then
+    # the distribution default: last enabled-plugins under [dev.sinty.desktop] in any
+    # override except our own (so a later change to the base list is followed)
+    list=""
+    for f in "$S"/*.override; do
+        [ -e "$f" ] || continue
+        [ "$f" = "$OV" ] && continue
+        v=$(awk '/^\[/{g=$0} g=="[dev.sinty.desktop]" && sub(/^enabled-plugins=/,"") {print}' "$f" | tail -n 1)
+        [ -n "$v" ] && list=$v
+    done
     if [ -n "$list" ]; then
         case "$list" in
+            "[]"|"@as []") list="['screensaver']" ;;
             *"'screensaver'"*) ;;
             *) list=$(printf '%s' "$list" | sed "s/\]\s*$/, 'screensaver']/") ;;
         esac
@@ -62,6 +70,7 @@ if [ "$1" = remove ] || [ "$1" = purge ]; then
 fi
 exit 0
 EOC
+printf 'interest-noawait /opt/singularity/share/glib-2.0/schemas\n' > "$W/DEBIAN/triggers"
 chmod 0755 "$W/DEBIAN/postinst" "$W/DEBIAN/postrm"
 dpkg-deb --root-owner-group -b "$W" "$OUT" >/dev/null
 echo "$OUT"

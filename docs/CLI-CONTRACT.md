@@ -67,7 +67,7 @@ The convenience setters (`set-timeout`, `set-hack`, `set-mode`, `set-gpu`, `set-
 | `tiers.tsv` | id, min class (`weak`, `mid`, `strong`), fps/p95 on UHD 630 native, UHD 630 at 0.5, Mali-G720, Navi14, RTX 2060, date and commit |
 | `broken.tsv` | id, status (`broken`, `suspect`), reason, date, tracking |
 | `presets.tsv` | id, title, group, hack, args, accuracy, description, min class, measured |
-| `options/<hack>.tsv`, `options/_render.tsv` | name, type, default, min, max, choices, label, description, group, env name |
+| `options/<id>.tsv`, else `options/<id without _gles3>.tsv`; plus `options/_render.tsv` for shader hacks (`hyprsaver_`, `xshadertoy_`, `blackhole_`) | name, type, default, min, max, choices, label, description, group, env name |
 | `render-defaults.tsv`, `render-hints.tsv` | platform render caps; per-hack render scale hints |
 
 ## Rules for a front end

@@ -458,7 +458,7 @@ public class ScreensaverSettings : Gtk.Box {
 
     private string warning_text (string id) {
         string expect = backend.expectation (id);
-        return expect != "" ? "\u26a0 may stutter - " + expect : "\u26a0 may stutter on this graphics chip";
+        return expect != "" ? "May stutter - " + expect : "May stutter on this graphics chip";
     }
 
     // Flagged hacks ask first; without a parent application, preview at once.
@@ -469,7 +469,7 @@ public class ScreensaverSettings : Gtk.Box {
             return;
         }
         var dialog = new ConfirmDialog (window.application, "Preview anyway?", "dialog-warning-symbolic",
-                                        warning_text (id).replace ("\u26a0 ", "This screensaver may run poorly here: "),
+                                        warning_text (id).replace ("May stutter", "This screensaver may run poorly here"),
                                         "Preview");
         dialog.transient_for = window;
         dialog.response.connect ((r) => {
@@ -502,7 +502,7 @@ public class ScreensaverSettings : Gtk.Box {
 
         string mode = backend.mode;
         int mi = index_of (MODE_IDS, mode);
-        mode_row.current_value = mi >= 0 ? MODE_LABELS[mi] : MODE_LABELS[2];
+        mode_row.current_value = mi >= 0 ? MODE_LABELS[mi] : MODE_LABELS[0];
         hack_row.visible = mode == "one";
         rotate_row.visible = mode != "one";
         pool_row.visible = mode != "one" && backend.has_tiers;

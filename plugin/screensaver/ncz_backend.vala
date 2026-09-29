@@ -5,6 +5,12 @@ public ScreensaverBackend create_screensaver_backend () {
 public class NczScreensaverBackend : Object, ScreensaverBackend {
     private const string SCHEMA = "dev.ncz.screensaver";
     private const string CATALOG = "/usr/share/ncz-screensavers/hacks.tsv";
+    private const string[] REQUIRED_KEYS = {
+        "mode", "hack-id", "random-hacks", "hack-idle-delay", "cycle-delay", "lock-enabled",
+        "lock-delay", "lock-on-suspend", "display-off-delay", "gpu-offload", "pool-gpu-class",
+        "show-all-hacks", "render-scale-mode", "render-scale", "max-render-height",
+        "hack-options", "blackhole-color-mode"
+    };
     private const string TIERS = "/usr/share/ncz-screensavers/tiers.tsv";
     private const string PRESETS = "/usr/share/ncz-screensavers/presets.tsv";
     private const string OPTIONS_DIR = "/usr/share/ncz-screensavers/options";
@@ -21,6 +27,8 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public NczScreensaverBackend () {
         settings = open (SCHEMA);
+        if (settings != null && !has_all_keys (settings))
+            settings = null;
         if (settings != null) {
             settings.changed.connect ((key) => {
                 if (key == "gpu-offload" || key == "pool-gpu-class") {
@@ -41,6 +49,14 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         if (source == null || source.lookup (schema, true) == null)
             return null;
         return new Settings (schema);
+    }
+
+    // A stale schema missing a key would abort the shell on first access
+    private static bool has_all_keys (Settings s) {
+        foreach (unowned string key in REQUIRED_KEYS)
+            if (!s.settings_schema.has_key (key))
+                return false;
+        return true;
     }
 
     private void load_catalog () {
@@ -105,7 +121,16 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             var proc = new Subprocess (SubprocessFlags.STDOUT_PIPE | SubprocessFlags.STDERR_SILENCE,
                                        LAUNCHER, sub, "--json");
             string? out_text = null;
-            proc.communicate_utf8 (null, null, out out_text, null);
+            var cancel = new Cancellable ();
+            uint watchdog = Timeout.add_seconds (5, () => {
+                cancel.cancel ();
+                return false;
+            });
+            try {
+                proc.communicate_utf8 (null, cancel, out out_text, null);
+            } finally {
+                Source.remove (watchdog);
+            }
             // `status` exits 3 when no screensaver is running; the JSON is valid anyway
             if (out_text == null)
                 return null;
@@ -160,6 +185,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public bool is_available () {
         return settings != null
+            && has_all_keys (settings)
             && !catalog.is_empty
             && Environment.find_program_in_path (LAUNCHER) != null
             && FileUtils.test (IDLED, FileTest.IS_EXECUTABLE);
