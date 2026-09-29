@@ -186,3 +186,45 @@ widgets only (`PreferencesGroup`, `SwitchRow`, `SpinRow`, `SelectionRow`, `Actio
 - **Evidence.** `docs/ux-shots/` (CHIMERA, MEDUSA, PEGASUS after a greetd restart and scripted login): settings search
   result, the Plugins list with the entry, and the plugin page including the black hole, graphics (PEGASUS only) and per-hack
   groups. Clicking the switches and spin buttons changes `dev.sinty.lockscreen` and `dev.ncz.screensaver` as expected.
+
+## 7. GPU classes, offload, per-hack options, render quality, host lock
+
+The GPU work has its own reference, `docs/GPU-CLASSES.md`: calibration, the weak, mid and
+strong classes, the measured per-hack requirements in `tiers.tsv`, how each system presents
+the catalog, vendor-agnostic per-process offload and the tests. This section keeps the rest of
+the launcher contract.
+
+**Per-hack options.** A hack with `options/<id>.tsv` (columns: name, type `bool|int|float|enum|string`, default, min, max,
+choices, label, description, group, env name) gets user values from `dev.ncz.screensaver hack-options` (`a{sa{ss}}`),
+validated by the launcher and passed as environment variables to that process only; unknown names and out-of-range values
+are dropped with a warning. Values arrive as environment, so they override the hack's own config file.
+`ncz-screensaver list-options|get-option|set-option|reset-options` manage them, `preview HACK --option name=value` tries
+values without storing them, and the legacy `blackhole-color-mode` fills `palette` when no palette option is stored. Both
+UIs generate their controls from the schema. `options/_render.tsv` is the common schema for every shader hack.
+
+**Render quality.** `render-scale-mode` (auto|fixed), `render-scale` and `max-render-height` reach shader hacks as
+`NCZ_RENDER_SCALE_MODE`, `NCZ_RENDER_SCALE` and `NCZ_MAX_RENDER_HEIGHT` (an explicit 0 means unlimited, unset means the
+platform default). Auto applies platform data (`render-defaults.tsv`: 1080 cap on Sky1 and on a large integrated-GPU
+display), a render scale of 0.5 on a weak-class GPU and the per-hack scale from `render-hints.tsv` on a mid-class GPU;
+High (fixed, 1.0) overrides all of them. The UI presets are Auto, High, Balanced, Fast plus an advanced height field.
+
+**Environment and cache.** A hack process gets the compositor's GPU environment (EGL vendor file, library path, backend
+selection), so it never falls back to llvmpipe; an exit status of 3 means the hack's software-renderer guard refused and the
+launcher never retries or benches it. The Mesa shader cache stays on, in `$XDG_CACHE_HOME/ncz-screensavers/mesa`. The
+one-time black-frame check runs once per boot per hack. `ncz-screensaver doctor` prints the hack environment against the
+unit environment, cache size, unit resource limits, the GPU classes and the effective offload plan.
+
+**Host lock.** `tools/host-lock.sh` takes an exclusive per-host lock (`acquire build|test WHO WHAT`, atomic `mkdir`,
+refresh, release, status; a stale lock is reported and never removed silently). `tools/host-test.sh` takes it in test mode,
+waits for a load below 2, runs the agent under `timeout`, refreshes the lock and cleans up on exit. Builds take it in build
+mode, run under `nice -n 10` with at most six jobs, and never on a host that is being tested.
+
+**Transport and drivers.** `tools/host-test.sh` connects with password authentication only (`sshpass -e`, forced, no key
+fallback, host keys checked). The harness records the kernel GPU driver (Mali: `mali_kbase` or `panthor`) in every result
+and fails an aarch64 run when only `panthor` is loaded unless `--allow-panthor` is given: the open driver reports GLES 3.1
+and the hacks need 3.2 shader syntax, so numbers from it are not comparable.
+
+**Broken and suspect hacks.** `assets/screensaver-chooser/broken.tsv` (id, status broken|suspect, reason, date, tracking)
+keeps listed hacks out of every pool, marks them in `list` and both UIs, and still allows an explicit run. The harness
+flags a hack that is lit and moving but looks wrong (flat fill, one dominant color, tiny motion) as REVIEW instead of PASS
+and builds per-host contact sheets with `tools/make-contact-sheet.py`.

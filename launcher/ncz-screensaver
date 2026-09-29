@@ -541,7 +541,8 @@ def expectation(hack_id, cls, rows=None):
         cell, chip = row.get("mali", "-"), "Mali-G720"
     fps = _fps_cell(cell)
     if fps is None:
-        return ""
+        # a measured row without a number: too slow to print two frame-counter lines
+        return f"under 6 fps on {chip}" if row.get("measured") and row["min"] != "weak" else ""
     return f"about {fps:.0f} fps on {chip}"
 
 
