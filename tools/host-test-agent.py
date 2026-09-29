@@ -32,6 +32,7 @@ import contextlib
 import dataclasses
 import datetime as _dt
 import glob
+import itertools
 import json
 import os
 import pathlib
@@ -684,12 +685,34 @@ def _try_unlock(env, pw):
     return _wait_until(lambda: not _is_display_locked(), 8.0) is not None
 
 
+def _kernel_gpu_driver():
+    """Mali driver state of an aarch64 board: which of mali_kbase and panthor is loaded."""
+    mods = ""
+    cmdline = ""
+    with contextlib.suppress(OSError):
+        mods = pathlib.Path("/proc/modules").read_text()
+    with contextlib.suppress(OSError):
+        cmdline = pathlib.Path("/proc/cmdline").read_text().strip()
+    loaded = sorted(
+        m
+        for m in ("mali_kbase", "panthor", "panfrost", "amdgpu", "i915", "nvidia")
+        if re.search(rf"^{m} ", mods, re.MULTILINE)
+    )
+    return {
+        "loaded": loaded,
+        "blacklist": next(
+            (t for t in cmdline.split() if t.startswith("module_blacklist=")), ""
+        ),
+    }
+
+
 @_guard
 def phase_env(
     results: dict[str, Any], checks: list[Check], env: dict[str, str]
 ) -> None:
     """Record host facts into ``results`` and the env-phase ``checks``."""
     gpu: dict[str, Any] = {}
+    gpu["kernel_driver"] = _kernel_gpu_driver()
 
     if _is_display_locked():
         ok = _try_unlock(env, results.get("_pw"))
@@ -1703,6 +1726,114 @@ def phase_launcher(results, checks, env, workdir, launcher_path):
             f"{key}={got!r} expected {val!r}",
         )
 
+    # GPU policy: offload variables appear only for discrete-tier hacks on a hybrid NVIDIA machine.
+    doc = {}
+    with contextlib.suppress(ValueError):
+        doc = json.loads(_cli(ienv, "doctor").stdout)
+    tiers = {}
+    with contextlib.suppress(OSError):
+        for ln in (
+            pathlib.Path("/usr/share/ncz-screensavers/tiers.tsv")
+            .read_text()
+            .splitlines()
+        ):
+            f = ln.split("\t")
+            if len(f) >= 2 and not ln.startswith("#"):
+                tiers[f[0]] = f[1]
+    if tiers:
+        _cli(ienv, "config", "set", "verify-render", "false")
+        _cli(ienv, "set-gpu", "auto")
+        want_nv = bool((doc.get("gpu") or {}).get("nvidia_offload"))
+        for tier in ("discrete", "igpu"):
+            hid = next(
+                (
+                    h
+                    for h, t in sorted(tiers.items())
+                    if t == tier and os.path.exists(f"{HACK_BIN_DIR}/{h}")
+                ),
+                None,
+            )
+            if not hid:
+                continue
+            _cli(ienv, "preview", hid, "--seconds", "20")
+            _wait_until(lambda: _status(ienv).get("running"), 5.0)
+            time.sleep(2.0)
+            got = None
+            with contextlib.suppress(OSError, ValueError, KeyError):
+                state = json.loads(
+                    pathlib.Path(_rt_dir(), "ncz-screensaver", "state.json").read_text()
+                )
+                raw = (
+                    pathlib.Path(f"/proc/{state['child_pid']}/environ")
+                    .read_bytes()
+                    .decode(errors="replace")
+                )
+                got = "__NV_PRIME_RENDER_OFFLOAD=1" in raw.split("\0")
+                bad = [
+                    x
+                    for x in raw.split("\0")
+                    if x.startswith("__EGL_VENDOR_LIBRARY_FILENAMES=") and "nvidia" in x
+                ]
+                got = got and not bad
+            _cli(ienv, "stop")
+            expect = want_nv and tier == "discrete"
+            _record(
+                checks,
+                f"offload-policy-{tier}",
+                "pass" if got is not None and got == expect else "fail",
+                f"{hid} ({tier} tier): offload variables in the hack process={got}, expected {expect} (nvidia_offload={want_nv})",
+            )
+
+    # Per-hack options reach the hack as environment variables.
+    if os.path.exists(
+        "/usr/share/ncz-screensavers/options/blackhole.tsv"
+    ) or os.path.exists("/usr/share/ncz-screensavers/options/blackhole_gles3.tsv"):
+        rows = json.loads(
+            _cli(ienv, "list-options", "blackhole_gles3", "--json").stdout or "[]"
+        )
+        names = {r["name"] for r in rows}
+        wanted = [
+            (n, v)
+            for n, v in (("palette", "singularity"), ("flyby", "slingshot"))
+            if n in names
+        ]
+        for n, v in wanted:
+            _cli(ienv, "set-option", "blackhole_gles3", n, v)
+        bad = _cli(ienv, "set-option", "blackhole_gles3", "palette", "no-such-palette")
+        _cli(ienv, "set-gpu", "off")
+        _cli(ienv, "preview", "blackhole_gles3", "--seconds", "20")
+        _wait_until(lambda: _status(ienv).get("running"), 5.0)
+        time.sleep(4.0)
+        fa = _grab_frame(env)
+        time.sleep(1.0)
+        fb = _grab_frame(env)
+        raw = ""
+        with contextlib.suppress(OSError, ValueError, KeyError):
+            state = json.loads(
+                pathlib.Path(_rt_dir(), "ncz-screensaver", "state.json").read_text()
+            )
+            raw = (
+                pathlib.Path(f"/proc/{state['child_pid']}/environ")
+                .read_bytes()
+                .decode(errors="replace")
+            )
+        _cli(ienv, "stop")
+        env_ok = all(f"={v}" in raw and n.upper() in raw for n, v in wanted) and bool(
+            wanted
+        )
+        cov = hti.coverage_fraction(fb[2]) if fb else 0.0
+        mot = hti.frame_diff_fraction(fa[2], fb[2]) if fa and fb else 0.0
+        _record(
+            checks,
+            "blackhole-options",
+            "pass"
+            if env_ok and cov >= 0.05 and mot >= MOTION_GATE and bad.returncode != 0
+            else "fail",
+            f"options {wanted} reached the process={env_ok}; invalid value rejected={bad.returncode != 0}; coverage {cov:.2f} motion {mot:.3f}",
+            metrics={"coverage": cov, "motion": mot},
+        )
+        _cli(ienv, "reset-options", "blackhole_gles3")
+
     # kill -9 of the supervisor must not orphan the hack.
     _cli(ienv, "start", "--hack", "voronoi_gles3", "--seconds", "60")
     _wait_until(lambda: _status(ienv).get("running"), 5.0)
@@ -2413,7 +2544,7 @@ def _measure_fps(mod, hid, mode, seconds, warmup=3.0):
     if len(pts) < 2:
         return {"error": "no frame progress", "renderer": renderer}
     rates = []
-    for (ta, na), (tb, nb) in zip(pts, pts[1:], strict=False):
+    for (ta, na), (tb, nb) in itertools.pairwise(pts):
         if nb > na and tb > ta:
             rates.append((tb - ta) / (nb - na))
     if not rates:
@@ -2991,6 +3122,20 @@ def run_phases(
         results.pop("_pw", None)
     if "install" in phases:
         phase_install(results, checks_by_phase["install"], env, deb, pw, workdir)
+    if os.uname().machine == "aarch64" and not os.environ.get("HT_ALLOW_PANTHOR"):
+        drv = _kernel_gpu_driver()["loaded"]
+        if "panthor" in drv and "mali_kbase" not in drv:
+            _record(
+                checks_by_phase.setdefault("env", []),
+                "mali-driver",
+                "fail",
+                "panthor is loaded and mali_kbase is not: renders and fps would be Panthor-era numbers (use --allow-panthor to run anyway)",
+            )
+            results["phases"] = {}
+            _write_results(
+                os.path.join(workdir, "results.json"), results, checks_by_phase
+            )
+            return 1
     if os.environ.get("HT_GPU_OFFLOAD") and offload_before is None:
         # The key only exists once the package under test is installed.
         offload_before = _set_offload(env, os.environ["HT_GPU_OFFLOAD"])
@@ -3227,6 +3372,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--perf-seconds", type=float, default=10.0)
     p.add_argument(
+        "--allow-panthor",
+        action="store_true",
+        help="run on an aarch64 board even when only panthor is loaded",
+    )
+    p.add_argument(
         "--no-dpms",
         action="store_true",
         help="Skip the DPMS sub-test in the idle phase.",
@@ -3286,6 +3436,8 @@ def main(argv: list[str] | None = None) -> int:
 
     phases = [p.strip() for p in args.phases.split(",") if p.strip()]
     os.environ["HT_HACKS_ARG"] = args.hacks
+    if args.allow_panthor:
+        os.environ["HT_ALLOW_PANTHOR"] = "1"
     os.environ["HT_PERF_MODE"] = args.perf_mode
     os.environ["HT_PERF_SECONDS"] = str(args.perf_seconds)
     if args.gpu_offload:

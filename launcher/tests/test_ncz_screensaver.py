@@ -178,7 +178,8 @@ class HackOptionTests(unittest.TestCase):
         self.assertEqual(rows["palette"]["env"], "NCZ_BLACKHOLE_PALETTE")
         self.assertEqual(rows["spin"]["env"], "NCZ_BLACKHOLE_SPIN")
         self.assertEqual(
-            rows["palette"]["choices"], ["stylized", "kipthorne", "faithful", "slingshot", "singularity"]
+            rows["palette"]["choices"],
+            ["stylized", "kipthorne", "faithful", "slingshot", "singularity"],
         )
         self.assertEqual(ns.load_option_schema("voronoi_gles3"), [])
 
@@ -236,6 +237,87 @@ class HackOptionTests(unittest.TestCase):
         value = {"blackhole_gles3": {"palette": "slingshot", "spin": "0.5"}}
         self.assertEqual(ns.parse_gvariant(ns.gvariant_text(value)), value)
         self.assertEqual(ns.parse_gvariant(ns.gvariant_text({})), {})
+
+
+class RenderAndCacheTests(unittest.TestCase):
+    def test_render_env_shader_only_and_cap_from_platform(self):
+        with mock.patch.object(ns, "default_render_cap", return_value=1080):
+            self.assertEqual(
+                ns.render_env("blackhole_gles3", {"render-scale-mode": "auto"}),
+                {"NCZ_MAX_RENDER_HEIGHT": "1080"},
+            )
+            self.assertEqual(
+                ns.render_env("voronoi_gles3", {"render-scale-mode": "auto"}), {}
+            )
+            self.assertEqual(
+                ns.render_env(
+                    "xshadertoy_x_gles3",
+                    {"render-scale-mode": "auto", "max-render-height": 720},
+                ),
+                {"NCZ_MAX_RENDER_HEIGHT": "720"},
+            )
+
+    def test_render_env_fixed_scale_and_per_hack_override(self):
+        with mock.patch.object(ns, "default_render_cap", return_value=1080):
+            fixed = {
+                "render-scale-mode": "fixed",
+                "render-scale": 0.5,
+                "max-render-height": 0,
+            }
+            self.assertEqual(
+                ns.render_env("hyprsaver_a_gles3", fixed), {"NCZ_RENDER_SCALE": "0.50"}
+            )
+            over = dict(
+                fixed, **{"hack-options": {"voronoi_gles3": {"render-scale": "0.75"}}}
+            )
+            self.assertEqual(
+                ns.render_env("voronoi_gles3", over), {"NCZ_RENDER_SCALE": "0.75"}
+            )
+            self.assertEqual(ns.render_env("voronoi_gles3", fixed), {})
+
+    def test_default_cap_platform_and_igpu(self):
+        with mock.patch.object(
+            ns, "render_defaults", return_value={"sky1-arm64": 1080, "igpu-large": 1080}
+        ):
+            with mock.patch.object(ns, "platform_id", return_value="sky1-arm64"):
+                self.assertEqual(ns.default_render_cap(), 1080)
+            with mock.patch.object(ns, "platform_id", return_value="generic"):
+                with mock.patch.object(
+                    ns,
+                    "gpu_topology",
+                    return_value={
+                        "display_class": "integrated",
+                        "nvidia_offload": False,
+                    },
+                ):
+                    with mock.patch.object(ns, "native_height", return_value=2160):
+                        self.assertEqual(ns.default_render_cap(), 1080)
+                    with mock.patch.object(ns, "native_height", return_value=1080):
+                        self.assertEqual(ns.default_render_cap(), 0)
+                with mock.patch.object(
+                    ns,
+                    "gpu_topology",
+                    return_value={"display_class": "discrete", "nvidia_offload": False},
+                ), mock.patch.object(ns, "native_height", return_value=2160):
+                    self.assertEqual(ns.default_render_cap(), 0)
+
+    def test_shader_cache_enabled_and_persistent(self):
+        with tempfile.TemporaryDirectory() as home:
+            env = {
+                "HOME": home,
+                "MESA_SHADER_CACHE_DISABLE": "true",
+                "MESA_GLSL_CACHE_DISABLE": "1",
+            }
+            ns.shader_cache_env(env)
+            self.assertNotIn("MESA_SHADER_CACHE_DISABLE", env)
+            self.assertNotIn("MESA_GLSL_CACHE_DISABLE", env)
+            self.assertEqual(
+                env["MESA_SHADER_CACHE_DIR"], f"{home}/.cache/ncz-screensavers/mesa"
+            )
+            self.assertTrue(os.path.isdir(env["MESA_SHADER_CACHE_DIR"]))
+            keep = {"HOME": home, "MESA_SHADER_CACHE_DIR": "/x/cache"}
+            ns.shader_cache_env(keep)
+            self.assertEqual(keep["MESA_SHADER_CACHE_DIR"], "/x/cache")
 
 
 class GpuPolicyTests(unittest.TestCase):

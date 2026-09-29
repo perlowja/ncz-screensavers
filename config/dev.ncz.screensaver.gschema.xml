@@ -95,6 +95,27 @@
       <summary>Screensavers used in random and playlist mode</summary>
       <description>igpu-only: only hacks that run well on integrated GPUs. all: every hack. auto: all when a discrete GPU renders the display or is used for offload, otherwise igpu-only.</description>
     </key>
+    <key name="render-scale-mode" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="fixed"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Render quality mode</summary>
+      <description>auto: shader screensavers render at native resolution unless the platform data (render-defaults.tsv) caps the height, for example on a 4K panel driven by an integrated GPU. fixed: use render-scale and max-render-height exactly as set.</description>
+    </key>
+    <key name="render-scale" type="d">
+      <range min="0.25" max="1.0"/>
+      <default>1.0</default>
+      <summary>Render scale</summary>
+      <description>Fraction of the native resolution shader screensavers render at (passed as NCZ_RENDER_SCALE). Lower values reduce GPU load and stutter on high resolution screens.</description>
+    </key>
+    <key name="max-render-height" type="i">
+      <range min="0" max="8192"/>
+      <default>0</default>
+      <summary>Maximum render height</summary>
+      <description>Cap on the render height in pixels, 0 for none (passed as NCZ_MAX_RENDER_HEIGHT). A non-zero value overrides the platform default in auto mode.</description>
+    </key>
     <key name="hack-options" type="a{sa{ss}}">
       <default>{}</default>
       <summary>Per-screensaver options</summary>

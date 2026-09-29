@@ -68,9 +68,13 @@ def main():
     ships = ship_list(src)
     sparse = args.output.with_name("sparse.tsv")
     if not sparse.exists():
-        sparse = args.meson_build.parent / "assets" / "screensaver-chooser" / "sparse.tsv"
+        sparse = (
+            args.meson_build.parent / "assets" / "screensaver-chooser" / "sparse.tsv"
+        )
     if not sparse.exists():
-        raise SystemExit(f"sparse.tsv not found (looked next to the output and at {sparse})")
+        raise SystemExit(
+            f"sparse.tsv not found (looked next to the output and at {sparse})"
+        )
     bad = []
     seen = set()
     for n, line in enumerate(sparse.read_text().splitlines(), 1):
@@ -99,6 +103,44 @@ def main():
             bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
     if bad:
         raise SystemExit("sparse.tsv: " + "; ".join(bad))
+    tiers = args.output.with_name("tiers.tsv")
+    if not tiers.exists():
+        tiers = args.meson_build.parent / "assets" / "screensaver-chooser" / "tiers.tsv"
+    if tiers.exists():
+        bad = []
+        seen = set()
+        for n, line in enumerate(tiers.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            cols = line.split("\t")
+            problem = None
+            if len(cols) != 7:
+                problem = "needs exactly 7 tab-separated columns"
+            elif cols[0] not in ships:
+                problem = "id is not in the ship set"
+            elif cols[0] in seen:
+                problem = "duplicate id"
+            elif cols[1] not in ("igpu", "discrete"):
+                problem = "tier must be igpu or discrete"
+            elif not all(
+                c == "-" or re.fullmatch(r"\d+(\.\d+)?/\d+(\.\d+)?", c)
+                for c in cols[2:6]
+            ):
+                problem = "GPU columns must be fps/p95_ms or -"
+            elif not cols[6].strip():
+                problem = "empty measured column"
+            seen.add(cols[0])
+            if problem:
+                bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
+        missing = sorted(set(ships) - seen)
+        if missing:
+            bad.append(
+                "missing ids: "
+                + ", ".join(missing[:5])
+                + (" ..." if len(missing) > 5 else "")
+            )
+        if bad:
+            raise SystemExit("tiers.tsv: " + "; ".join(bad))
     order = {"Black Hole Simulation": 0, "hyprsaver": 1, "xshadertoy": 2, "Classics": 3}
     rows = []
     for t in ships:
