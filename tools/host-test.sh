@@ -28,6 +28,8 @@ phases="env,install,hacks,launcher,idle,color,chooser"
 results=""
 no_dpms=0
 gpu_offload=
+perf_mode=default
+perf_seconds=10
 keep=0
 dry=0
 
@@ -53,6 +55,8 @@ while [ $# -gt 0 ]; do
         --phases) phases="${2:?}"; shift 2 ;;
         --results) results="${2:?}"; shift 2 ;;
         --no-dpms) no_dpms=1; shift ;;
+        --perf-mode) perf_mode="${2:?}"; shift 2 ;;
+        --perf-seconds) perf_seconds="${2:?}"; shift 2 ;;
         --gpu-offload) gpu_offload="${2:?}"; shift 2 ;;
         --keep-installed) keep=1; shift ;;
         --dry-run) dry=1; shift ;;
@@ -106,6 +110,7 @@ run_host() {
     [ -n "$deb" ] && args="$args --deb \$HOME/ncz-host-test/ncz-screensavers.deb"
     [ "$no_dpms" = 1 ] && args="$args --no-dpms"
     [ -n "$gpu_offload" ] && args="$args --gpu-offload $gpu_offload"
+    args="$args --perf-mode $perf_mode --perf-seconds $perf_seconds"
     echo "[$h] running agent (phases=$phases)"
     # First stdin line carries the sudo secret (empty line = none).
     local pw="${HT_SUDO_PW:-}"

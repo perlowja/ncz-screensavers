@@ -35,6 +35,7 @@ import glob
 import json
 import os
 import pathlib
+import re
 import shutil
 import signal
 import socket
@@ -2341,6 +2342,112 @@ def _smi():
         return None, None
 
 
+def _load_launcher():
+    import importlib.machinery
+    import importlib.util
+
+    loader = importlib.machinery.SourceFileLoader("ncz_launcher_mod", LAUNCHER)
+    spec = importlib.util.spec_from_loader("ncz_launcher_mod", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod
+
+
+_FRAME_RE = re.compile(r"\[diag\] frame #(\d+)")
+
+
+def _measure_fps(mod, hid, mode, seconds, warmup=3.0):
+    """Run one hack directly and derive fps and p95 frame time from the
+    "[diag] frame #N" progress lines (printed every 60 frames)."""
+    binary = mod.find_binary(hid)
+    if not binary:
+        return {"error": "not installed"}
+    settings, _ = mod.load_settings()
+    settings = dict(settings)
+    extra = {}
+    if mode == "prime":
+        settings["gpu-offload"] = "prime"
+    else:
+        settings["gpu-offload"] = "off"
+        if mode.startswith("dri:"):
+            extra["DRI_PRIME"] = mode[4:]
+    env = mod.build_child_env(hid, settings)
+    env.update(extra)
+    proc = subprocess.Popen(
+        [binary],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+        text=True,
+        bufsize=1,
+    )
+    stamps: list[tuple[float, int]] = []
+    renderer = ""
+    t0 = time.monotonic()
+    import threading
+
+    def reader():
+        nonlocal renderer
+        for line in proc.stdout:
+            now = time.monotonic()
+            m = _FRAME_RE.search(line)
+            if m:
+                stamps.append((now, int(m.group(1))))
+            elif line.startswith("RENDERER="):
+                renderer = line.strip()[9:]
+
+    th = threading.Thread(target=reader, daemon=True)
+    th.start()
+    time.sleep(warmup + seconds)
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    try:
+        proc.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    th.join(timeout=2)
+    pts = [(t, n) for t, n in stamps if t - t0 >= warmup]
+    if len(pts) < 2:
+        return {"error": "no frame progress", "renderer": renderer}
+    rates = []
+    for (ta, na), (tb, nb) in zip(pts, pts[1:], strict=False):
+        if nb > na and tb > ta:
+            rates.append((tb - ta) / (nb - na))
+    if not rates:
+        return {"error": "no frame progress", "renderer": renderer}
+    total = (pts[-1][1] - pts[0][1]) / (pts[-1][0] - pts[0][0])
+    rates.sort()
+    p95 = rates[min(len(rates) - 1, int(0.95 * len(rates)))]
+    return {
+        "fps": round(total, 1),
+        "p95_ms": round(p95 * 1000, 1),
+        "renderer": renderer,
+    }
+
+
+@_guard
+def phase_perf(results, checks, env, workdir, mode, seconds):
+    """Frame rate per hack at native resolution (window `seconds` after a warm-up)."""
+    mod = _load_launcher()
+    ids = _resolve_hacks(os.environ.get("HT_HACKS_ARG", "all"))
+    perf = {}
+    _cli(env, "stop")
+    for hid in ids:
+        perf[hid] = _measure_fps(mod, hid, mode, seconds)
+        _kill_hacks()
+    results["perf"] = {"mode": mode, "seconds": seconds, "hacks": perf}
+    good = sum(1 for v in perf.values() if "fps" in v)
+    _record(
+        checks,
+        "perf-measured",
+        "pass" if good == len(perf) else "fail",
+        f"{good}/{len(perf)} hacks measured in mode {mode}",
+    )
+
+
 @_guard
 def phase_gpu(results, checks, env, workdir, pw):
     """Hybrid GPUs: per-process PRIME offload of a few hacks to the NVIDIA GPU
@@ -2924,6 +3031,15 @@ def run_phases(
             no_dpms,
             pw,
         )
+    if "perf" in phases:
+        phase_perf(
+            results,
+            checks_by_phase["perf"],
+            env,
+            workdir,
+            os.environ.get("HT_PERF_MODE", "default"),
+            float(os.environ.get("HT_PERF_SECONDS", "10")),
+        )
     if "gpu" in phases:
         phase_gpu(results, checks_by_phase["gpu"], env, workdir, pw)
     if "multioutput" in phases:
@@ -3105,6 +3221,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Set the real gpu-offload key for the whole run (restored afterwards).",
     )
     p.add_argument(
+        "--perf-mode",
+        default="default",
+        help="perf phase: default, prime or dri:<value>",
+    )
+    p.add_argument("--perf-seconds", type=float, default=10.0)
+    p.add_argument(
         "--no-dpms",
         action="store_true",
         help="Skip the DPMS sub-test in the idle phase.",
@@ -3164,6 +3286,8 @@ def main(argv: list[str] | None = None) -> int:
 
     phases = [p.strip() for p in args.phases.split(",") if p.strip()]
     os.environ["HT_HACKS_ARG"] = args.hacks
+    os.environ["HT_PERF_MODE"] = args.perf_mode
+    os.environ["HT_PERF_SECONDS"] = str(args.perf_seconds)
     if args.gpu_offload:
         os.environ["HT_GPU_OFFLOAD"] = args.gpu_offload
     hack_ids = _resolve_hacks(args.hacks)
