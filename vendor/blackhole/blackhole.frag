@@ -17,7 +17,21 @@ uniform float u_palette_phase, u_palette_rate, u_palette_contrast;
 // Colour model derived from hydrogendeuteride/BlackHoleRayTracer (MIT).
 // The Planck curve is evaluated analytically rather than sampled from a
 // blackbody LUT texture, so no binary asset is required.
-uniform float u_color_mode;
+// Palettes (ids): 0 stylized, 1 kipthorne, 2 faithful, 3 singularity,
+// 4 slingshot, 5 whitehole. u_pal_a/u_pal_b/u_pal_mix cross-fade two palettes
+// (mix = 0 renders only palette a).
+uniform float u_pal_a, u_pal_b, u_pal_mix;
+// Options (see docs/BLACKHOLE-OPTIONS.md). All default to the previous look.
+uniform float u_spin, u_isco, u_exposure, u_beaming, u_bloom, u_fringe;
+uniform float u_lensing, u_nebula_amt, u_hot_sector, u_fade;
+// Scene extras (presets): outer disk radius, jet length scale, dusty torus
+// (opacity, ring radius), companion star with a gas stream (0..1).
+uniform float u_disk_out, u_jet_len, u_torus, u_torus_r, u_comp;
+// Camera path selector: 0 = legacy per-launch path, 1..7 = orbit, slow-orbit,
+// equatorial, polar, plunge, slingshot, drift. u_fly_t is time in cycles,
+// u_fly_var a 0..1 per-cycle variation, u_dmin/u_dmax the distance range,
+// u_incl the orbit-plane inclination in radians (<0 = per-type default).
+uniform float u_flyby, u_fly_t, u_fly_var, u_dmin, u_dmax, u_incl;
 // Per-launch flight-path parameters. Drawn per-launch in C; replace the
 // previously-hardcoded curve coefficients so each run traces a distinct
 // path shape (not a rescaled version of one).
@@ -156,7 +170,7 @@ vec3 nebula(vec3 d){
  float warp=skyNoise(v*.65+vec3(7,19,3));
  v+=1.8*vec3(warp,-warp,.5*warp);
  float n=.57*skyNoise(v)+.28*skyNoise(v*2.03+17.1)+.15*skyNoise(v*4.11-9.2);
- float band=exp(-pow((q.y+.24*(warp-.5))/.36,2.));
+ float bq=(q.y+.24*(warp-.5))/.36;float band=exp(-bq*bq);   // not pow(x,2.): pow of a negative base is undefined
  float cloud=smoothstep(.30,.78,n+u_nebula.z)*(.20+.80*band);
  float filaments=smoothstep(.42,.72,n)*cloud;
  // Nebula sampled in HSL with its own decorrelated hue; never falls into the
@@ -191,9 +205,9 @@ vec3 stars(vec3 d){
  float on=step(1.-.0022*u_star_density,n);
  vec2 sp=vec2(hash21(hc+3.1),hash21(hc+8.7))*.6+.2;
  float dist=length(f-sp);
- float s=on*smoothstep(.34,.0,dist);
+ float s=on*(1.-smoothstep(0.,.34,dist));   // smoothstep needs edge0 < edge1
  vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(hc+7.));
- return c*s*s*(.65+.35*sin(u_seed+n*40.))*2.4+nebula(d);
+ return c*s*s*(.65+.35*sin(u_seed+n*40.))*2.4;
 }
 // ---- Disk axis tilt ----
 // Build the world-space disk normal at the current time. Two contributions:
@@ -239,10 +253,11 @@ vec3 diskNormalAtTime(float t){
 // that maps +Z to diskNormal. Implemented as Rodrigues' rotation about the
 // axis (diskNormal x +Z).
 vec3 toDiskLocal(vec3 p,vec3 n){
- vec3 axis=normalize(cross(n,vec3(0.,0.,1.)));
+ vec3 cz=cross(n,vec3(0.,0.,1.));
+ if(length(cz)<1e-5)return p;         // n ~ +Z: identity (checked before normalize: normalize(0) is undefined)
+ vec3 axis=normalize(cz);
  float ang=acos(clamp(n.z,-1.,1.));    // angle from world +Z
  float c=cos(ang),s=sin(ang);
- if(length(axis)<1e-5)return p;        // n ~ +Z: identity
  return p*c + cross(axis,p)*s + axis*dot(axis,p)*(1.-c);
 }
 // Analytic blackbody colour over ~1000K..40000K, approximating the Planck
@@ -259,9 +274,75 @@ vec3 blackbodyRGB(float kelvin){
  return vec3(r,g,b);
 }
 
+float g_hit=0.;   // index of the disk crossing being shaded (0 = primary image)
+vec3 srgbLin(vec3 c){return pow(c,vec3(2.2));}
+// Piecewise-linear color ramp with 5 stops (already linear light), x in 0..1.
+vec3 ramp5(float x,vec3 c0,vec3 c1,vec3 c2,vec3 c3,vec3 c4){
+ float t=clamp(x,0.,1.)*4.;
+ if(t<1.)return mix(c0,c1,t);
+ if(t<2.)return mix(c1,c2,t-1.);
+ if(t<3.)return mix(c2,c3,t-2.);
+ return mix(c3,c4,t-3.);
+}
 // Saturation about luma. The analytic blackbody fit is pale in sRGB and the
 // tonemap pulls it further toward white, so the physical modes boost it.
 vec3 satBoost(vec3 c,float k){float l=dot(c,vec3(.299,.587,.114));return max(mix(vec3(l),c,k),vec3(0.));}
+// Disk color and brightness factor for one palette. Everything the palette
+// contributes lives here so two palettes can be cross-faded.
+vec3 palTint(float mode,float hm,float dop,float grav,float r,float a,float paletteT,float sector,float drama){
+ float dopE=mix(1.,dop,u_beaming);
+ if(mode<.5){
+  // stylized: unchanged look, hot sector gated by the option (default 0.22)
+  float boost=1.+u_hot_sector*drama*sector*(1.-smoothstep(4.,8.,r));
+  return palette(paletteT)*dopE*dopE*boost;
+ }
+ if(mode<1.5){
+  // kipthorne: symmetric warm blackbody, no Doppler, redshift or beaming
+  return satBoost(blackbodyRGB(mix(1900.,4300.,hm)),1.4)*(.85+.35*hm);
+ }
+ // Circular-orbit speed for a Schwarzschild hole (rs=1): v^2 = .5/(r-1);
+ // line-of-sight Doppler D = sqrt(1-v^2)/(1-v sin a); sin a>0 = approaching.
+ float v2=.5/max(r-1.,.6);
+ float v=min(sqrt(min(v2,.72))*u_beaming,.9);
+ float D=sqrt(1.-v*v)/max(1.-v*sin(a),.12);
+ if(mode<2.5){
+  float g=D*grav;
+  return satBoost(blackbodyRGB(mix(3400.,10500.,hm)*clamp(g*g,.2,3.6)),2.4)*(.42*clamp(D*D*D,.05,3.2));
+ }
+ if(mode<3.5){
+  // singularity: the Singularity desktop look, white on black. Sampled from
+  // its default wallpaper: background #000000, mark #ffffff, neutral greys.
+  float d3=mix(1.,dop,.6*u_beaming);
+  vec3 c=mix(vec3(.985,.99,1.),vec3(1.),hm);
+  return c*mix(.5,1.,hm)*1.25*d3*d3;
+ }
+ if(mode<4.5){
+  // slingshot: brick/rust disk, orange -> gold -> near white where beaming is
+  // strongest, blue-white limb on the secondary (lensed) image.
+  float g=D*grav;
+  float x=clamp(pow(g,1.15)*(.30+.70*hm)*.95,0.,1.);
+  vec3 c=ramp5(x,srgbLin(vec3(.365,.125,.078)),srgbLin(vec3(.69,.29,.165)),srgbLin(vec3(1.,.70,.28)),srgbLin(vec3(1.,.88,.54)),srgbLin(vec3(1.,.953,.784)));
+  if(g_hit>.5)c=mix(c,srgbLin(vec3(.812,.890,1.)),.5);
+  return c*(.85*clamp(D*D*D,.05,3.4)*(.6+.8*hm));
+ }
+ if(mode>5.5){
+  // eht: Event Horizon Telescope false color (afmhot): dark red through orange
+  // to pale yellow, with a bright crescent on the approaching side.
+  float g=D*grav;
+  float x=clamp(pow(clamp(D*D*D,.05,4.)*(.25+.75*hm),.62)*.55*pow(g,.3),0.,1.);
+  vec3 c=ramp5(x,srgbLin(vec3(.06,.01,.0)),srgbLin(vec3(.45,.09,.0)),srgbLin(vec3(.86,.34,.03)),srgbLin(vec3(1.,.72,.30)),srgbLin(vec3(1.,.96,.80)));
+  return c*1.05;
+ }
+ // whitehole: icy, symmetric and calm. Ramp from deep teal-navy at the outer
+ // glow through steel blue, teal/seafoam and ice blue to a pure white core.
+ float x=clamp(.12+1.05*pow(hm,.9),0.,1.);
+ vec3 c=ramp5(x,srgbLin(vec3(.063,.20,.29)),srgbLin(vec3(.227,.427,.561)),srgbLin(vec3(.31,.816,.784)),srgbLin(vec3(.812,.91,1.)),vec3(1.));
+ // faint chromatic fringe: cyan on the inner edge, magenta on the outer edge
+ float ein=1.-smoothstep(0.,.7,r-u_isco),eout=smoothstep(u_disk_out-4.,u_disk_out-1.5,r)*(1.-smoothstep(u_disk_out-1.5,u_disk_out+.5,r));
+ c+=u_fringe*(vec3(-.05,.30,.36)*ein+vec3(.36,-.04,.38)*eout);
+ float d5=mix(1.,dop,.25*u_beaming);
+ return max(c,vec3(0.))*1.15*d5;
+}
 vec3 disk_color(vec3 p,vec3 diskN,float drama){
  // Rotate into the disk's local frame (z = disk normal at this instant).
  // Everything below runs in plane-polar (r, a) where a is the orbital
@@ -273,8 +354,8 @@ vec3 disk_color(vec3 p,vec3 diskN,float drama){
  float ph=a-u_rotation*u_time*.3/pow(max(r,1.1),1.5);
  float n=fbm(vec2(r*2.7+cos(ph)*5.,sin(ph)*5.+u_time*.08+u_seed*.01));
  n=mix(n,fbm(vec2(r*9.+cos(ph)*13.,sin(ph)*13.-u_time*.17)),.42);
- float edge=smoothstep(3.,3.7,r)*(1.-smoothstep(10.5,12.5,r));
- float heat=clamp(pow(3./max(r,3.),.75)*u_temperature,0.,1.);
+ float edge=smoothstep(u_isco,u_isco+.7,r)*(1.-smoothstep(u_disk_out-1.5,u_disk_out+.5,r));
+ float heat=clamp(pow(3./max(r,u_isco),.75)*u_temperature,0.,1.);
  float dop=clamp(1.+.55/sqrt(max(r,1.5))*sin(a)*1.5,.35,1.8);
  float grav=sqrt(max(1.-1./max(r,1.001),.02));
  // Oil-slick iridescence: hue shifts with orbital angle and Doppler term so
@@ -301,37 +382,13 @@ vec3 disk_color(vec3 p,vec3 diskN,float drama){
  // The physical colour modes derive their asymmetry from Doppler beaming
  // (dop) which is already applied; an artistic hot sector on top of that is
  // double-counting, so it is stylised-only.
- float sector_amp=(u_color_mode<0.5)?0.22:0.0;
- float boost=1.+sector_amp*drama*sector*(1.-smoothstep(4.,8.,r));
- vec3 tint; float bright=1.; float beam=dop*dop;
  float hm=clamp(heat,0.,1.);
- if(u_color_mode<0.5){
-  tint=palette(paletteT);              // stylised: unchanged, still default
- } else if(u_color_mode<1.5){
-  // kipthorne: the Interstellar / Gargantua look. Blackbody disk in a narrow
-  // warm gold-to-white range, with NO Doppler shift, NO gravitational shift
-  // and NO beaming (Thorne and Double Negative switched all three off so the
-  // disk reads symmetric and cinematic). Fully rotation-symmetric.
-  tint=satBoost(blackbodyRGB(mix(1900.,4300.,hm)),1.4);
-  beam=1.;
-  bright=.85+.35*hm;
- } else {
-  // faithful: the physically shifted disk. Circular-orbit speed for a
-  // Schwarzschild hole (rs=1, M=1/2): v^2 = M/(r-2M) = .5/(r-1). Line-of-sight
-  // Doppler factor D = sqrt(1-v^2)/(1-v*sin(a)) (sin(a)>0 = approaching side),
-  // times gravitational redshift sqrt(1-1/r). Observed temperature scales with
-  // g = D*grav; surface brightness scales as D^3 (relativistic beaming).
-  float v2=.5/max(r-1.,.6);
-  float v=sqrt(min(v2,.72));
-  float D=sqrt(1.-v*v)/max(1.-v*sin(a),.12);
-  float g=D*sqrt(max(1.-1./max(r,1.001),.02));
-  // Shift exponent 2: the plain linear shift is too subtle to read at a
-  // normal viewing inclination, so the color displacement is exaggerated.
-  tint=satBoost(blackbodyRGB(mix(3400.,10500.,hm)*clamp(g*g,.2,3.6)),2.4);
-  beam=1.;
-  bright=.42*clamp(D*D*D,.05,3.2);
+ vec3 cA=palTint(u_pal_a,hm,dop,grav,r,a,paletteT,sector,drama);
+ if(u_pal_mix>.001){
+  vec3 cB=palTint(u_pal_b,hm,dop,grav,r,a,paletteT,sector,drama);
+  cA=mix(cA,cB,u_pal_mix);
  }
- return tint*edge*(.32+1.2*n)*u_density*beam*boost*bright;
+ return cA*edge*(.32+1.2*n)*u_density;
 }
 // Jet picks up the palette so it tracks the rest of the scene instead of a
 // fixed blue. Sampled at a hot temperature so it sits at the bright stop.
@@ -343,7 +400,7 @@ vec3 jet_tint(){
  vec3 c=hsl2rgb(vec3(hot.h,.9,.58));
  // Physical colour modes: relativistic jets are non-thermal synchrotron
  // emission, cool blue-white, not part of the blackbody disk palette.
- return (u_color_mode<0.5)?c:vec3(.55,.72,1.);
+ return (u_pal_a<.5)?c:(u_pal_a<3.5&&u_pal_a>2.5)?vec3(1.):(u_pal_a>5.5)?vec3(1.,.72,.42):vec3(.55,.72,1.);
 }
 // Two thin collimated beams along +-axis (the disk normal), rendered from the
 // ray's closest approach to the axis line (unlensed straight-ray approximation).
@@ -361,13 +418,13 @@ vec3 jet_glow(vec3 cam,vec3 ray,vec3 axis){
  if(t<0.)return vec3(0.);
  float sa=(e-b*d)/den;              // height along the jet axis at closest approach
  float h=abs(sa);
- if(h<3.2||h>60.)return vec3(0.);
+ if(h<3.2||h>max(60.,u_jet_len*4.))return vec3(0.);
  vec3 q=cam+t*ray-sa*axis;
  float w=.22+.07*h;                 // gently opening beam
  float prof=exp(-dot(q,q)/(w*w));
  // Knots streaming outward, smooth in beam-space (no screen-space blocks).
  float knots=.55+.45*noise(vec2(h*.55-u_time*1.6*sign(sa),atan(q.y,q.x)*.0+u_seed*.01));
- float fade=smoothstep(3.2,5.5,h)*exp(-h*.045);
+ float fade=smoothstep(3.2,5.5,h)*exp(-h/u_jet_len);
  float near=smoothstep(1.,7.,t);       // no hard cut where the closest approach passes the camera
  return jet_tint()*prof*knots*fade*pole*near;
 }
@@ -375,6 +432,68 @@ vec3 jet_glow(vec3 cam,vec3 ray,vec3 axis){
 float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
 
 
+// ---- scene extras (presets): dusty torus, companion star and gas stream ----
+// Straight-ray approximations (no lensing): artistic, not geodesic.
+// Dusty torus: an elliptical-section ring around the disk axis; returns
+// (emission rgb, optical depth in .w) accumulated along the ray.
+vec4 torusAlong(vec3 cam,vec3 ray,vec3 axis){
+ float tmax=length(cam)*2.+u_torus_r*2.;
+ float dt=tmax/20.,tau=0.;vec3 em=vec3(0.);
+ for(int i=0;i<20;i++){
+  vec3 p=cam+ray*(dt*(float(i)+.5));
+  float z=dot(p,axis);float rho=length(p-axis*z);
+  float dr=(rho-u_torus_r)/(.17*u_torus_r),dz=z/(.13*u_torus_r);
+  float d=exp(-(dr*dr+dz*dz));
+  tau+=d*dt*.06;
+  em+=d*dt*.032*vec3(.62,.30,.16)*(.6+.4*exp(-rho/(u_torus_r*.9)));
+ }
+ return vec4(em,tau);
+}
+// Companion star (blue supergiant sphere) plus a gas stream spiralling from
+// its near side into the disk. Returns radiance, or zero when not hit.
+vec3 companionAlong(vec3 cam,vec3 ray,vec3 axis){
+ float R=u_disk_out*1.7;                 // orbital radius
+ float th=u_time*.035;
+ vec3 e1=normalize(cross(axis,abs(axis.x)<.9?vec3(1.,0.,0.):vec3(0.,1.,0.)));vec3 e2=cross(axis,e1);
+ vec3 C=R*(cos(th)*e1+sin(th)*e2);
+ float rs=R*.13;
+ vec3 oc=cam-C;float b=dot(oc,ray),c=dot(oc,oc)-rs*rs,disc=b*b-c;
+ vec3 col=vec3(0.);
+ if(disc>0.&&-b>0.){
+  float t=-b-sqrt(disc);
+  vec3 n=normalize(oc+ray*t);
+  float mu=clamp(-dot(n,ray),0.,1.);
+  col+=vec3(.45,.58,1.)*(.25+.75*mu)*.85;   // limb-darkened blue-white surface
+ }
+ // stream: from the star's inner side toward the disk edge, curving ahead of the orbit
+ vec3 P0=C*(1.-rs/R*1.1);
+ vec3 prev=P0;
+ for(int i=1;i<=10;i++){
+  float s=float(i)/10.;
+  float ang=th-1.6*s*s;                    // trails behind the star's motion
+  float rad=mix(R*(1.-.22*1.1),u_disk_out*.9,s);
+  vec3 P=rad*(cos(ang)*e1+sin(ang)*e2);
+  vec3 seg=P-prev;float sl=dot(seg,seg);
+  float h=clamp(dot(cam-prev,-seg)/max(sl,1e-4),0.,1.);
+  // closest point between ray and segment (approximate via projection onto the segment)
+  vec3 q=prev+seg*h;float t=dot(q-cam,ray);
+  float d=length(cam+ray*max(t,0.)-q);
+  float w=.35+.9*(1.-s);
+  col+=vec3(1.,.66,.36)*exp(-(d*d)/(w*w))*(.5+.9*s)*.9;
+  prev=P;
+ }
+ return col*u_comp;
+}
+// Sky/bloom constants per palette: x = nebula scale, base sky color, star tint,
+// nebula tint, halo color, palette bloom strength, interior haze amount.
+void palSky(float mode,out float neb,out vec3 base,out vec3 stint,out vec3 ntint,out vec3 halo,out float pbloom,out float haze){
+ neb=1.;base=vec3(.002,.003,.007);stint=vec3(1.);ntint=vec3(1.);halo=vec3(1.);pbloom=0.;haze=0.;
+ if(mode<2.5)return;
+ if(mode<3.5){neb=0.;base=vec3(0.);stint=vec3(1.);halo=vec3(1.);pbloom=.15;return;}
+ if(mode<4.5){neb=.30;base=vec3(.0035,.0055,.0135);stint=vec3(.85,.92,1.15);ntint=vec3(.55,.75,1.3);halo=vec3(1.,.62,.30);pbloom=.9;return;}
+ if(mode>5.5){neb=0.;base=vec3(0.);stint=vec3(.6,.55,.5);halo=vec3(1.,.55,.15);pbloom=.35;return;}
+ neb=.55;base=vec3(.0016,.0042,.0100);stint=vec3(.9,1.,1.1);ntint=vec3(.35,.65,1.);halo=vec3(.55,.80,1.);pbloom=.7;haze=1.;
+}
 void main(){
  vec2 p=(2.*gl_FragCoord.xy-u_resolution)/u_resolution.y/u_radius;
  // Per-launch flight-path parameters replace what used to be hardcoded
@@ -484,22 +603,63 @@ void main(){
   closeFX=1.-clamp(r_/(u_periapsis*8.),0.,1.);
   arrivalFX=4.*closeFX*(1.-closeFX);
  }
- dist=max(dist,5.4);
- vec3 cam=dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),baseRight=normalize(cross(forward,vec3(0,0,1))),baseUp=cross(baseRight,forward),right=cos(roll)*baseRight+sin(roll)*baseUp,up=-sin(roll)*baseRight+cos(roll)*baseUp;
+ bool useFly=u_flyby>.5;
+ vec3 camV=vec3(0.),upH=vec3(0.,0.,1.);
+ if(useFly){
+  // Deterministic flyby camera: a curve in an orbital plane through the hole.
+  // Plane inclination ii, node angle Om (from the per-cycle variation), radial
+  // profile and angle by type. All functions of u_fly_t, so paths are smooth.
+  float ty=u_flyby,f=u_fly_t,ff=fract(f),Om=u_fly_var*6.2831853;
+  float sg=(fract(u_fly_var*7.31)<.5)?1.:-1.;
+  float rr=.5*(u_dmin+u_dmax),nu=0.;
+  float ii=(u_incl>=0.)?u_incl:.32+.3*(fract(u_fly_var*3.7)-.5);
+  if(ty<2.5){
+   nu=sg*6.2831853*f;                       // circular orbit, one revolution per cycle
+  }else if(ty<4.5||(ty>5.5&&ty<6.5)){
+   // Hyperbolic pass: equatorial (3), polar (4), slingshot (6).
+   float e=(ty>5.5)?1.18:1.6;
+   float nmax=acos(-1./e)*((ty>5.5)?.96:.93);
+   nu=sg*nmax*sin((2.*ff-1.)*1.5707963);    // slow at the ends, fast at periapsis
+   float r0=u_dmin*(1.+e)/(1.+e*cos(nu));
+   rr=1./(1./r0+1./u_dmax)*(1.+u_dmin/u_dmax);   // soft cap: exactly dmin at periapsis
+   if(u_incl<0.)ii=(ty<3.5)?.04:((ty<4.5)?1.5:.35);
+  }else if(ty<5.5){
+   // Plunge: dive to dmin and climb back out while sweeping through 1.4 pi.
+   float c=cos(3.14159265*ff);
+   rr=u_dmin+(u_dmax-u_dmin)*c*c;
+   nu=Om+sg*4.4*ff;
+   if(u_incl<0.)ii=.4;
+  }else{
+   // Drift: slow closed Lissajous-like wandering (periodic in ff).
+   rr=mix(u_dmin,u_dmax,.5+.5*sin(6.2831853*ff+Om));
+   nu=sg*6.2831853*ff;
+   ii+=.3*sin(12.5663706*ff+Om*1.7);
+  }
+  rr=max(rr,u_dmin);
+  vec3 e1=vec3(cos(Om),sin(Om),0.),e2=vec3(-sin(Om)*cos(ii),cos(Om)*cos(ii),sin(ii));
+  camV=rr*(cos(nu)*e1+sin(nu)*e2);
+  vec3 nn=normalize(cross(e1,e2));if(nn.z<0.)nn=-nn;
+  upH=nn;                                    // plane normal is "up": stable horizon
+  dist=rr;
+  float cl=1.-clamp((rr-u_dmin)/(u_dmin*3.),0.,1.);
+  closeFX=cl*cl;arrivalFX=4.*cl*(1.-cl);
+ }
+ dist=max(dist,useFly?3.2:5.4);
+ vec3 cam=useFly?camV*(dist/max(length(camV),1e-4)):dist*vec3(cos(orbit)*cos(elev),sin(orbit)*cos(elev),sin(elev)),forward=normalize(-cam),baseRight=normalize(cross(forward,upH)),baseUp=cross(baseRight,forward),right=cos(roll)*baseRight+sin(roll)*baseUp,up=-sin(roll)*baseRight+cos(roll)*baseUp;
  // Disk normal at this frame. Used for the plane-crossing detection in
  // the integrator (line 318) and the jet axis check (line 320). Computing
  // it once per frame avoids recomputing the Rodrigues rotation in inner
  // loops. Falls back to +Z if the draw produced a near-degenerate axis
  // (probability zero from a uniform-on-sphere draw, but it's cheap).
  vec3 diskN=diskNormalAtTime(u_time);
- if(length(diskN)<.5)diskN=vec3(0.,0.,1.);
+ if(length(diskN)<.5||useFly)diskN=vec3(0.,0.,1.);
  // One ray, with subtle arrival-only peripheral distortion and framing drift.
  float r2=dot(p,p),shot=fract(u_time*u_orbit_rate/(2.*PI));
  vec2 lensP=p*(1.+.035*arrivalFX*r2/(1.+r2));
  lensP+=closeFX*vec2(u_path_sign*.12*sin(2.*PI*shot),.06);
  vec3 ray=normalize(forward+lensP.x*right+lensP.y*up);
  float impact=length(cross(cam,ray));bool captured=impact<2.598076;
- float u=1./length(cam),phi=0.;vec3 normal=normalize(cam),perp=cross(cross(normal,ray),normal);float plen=length(perp);vec3 tangent=plen>1e-6?perp/plen:right;float tang=dot(ray,tangent),du=abs(tang)>1e-6?-dot(ray,normal)/tang*u:200.*u;vec3 old=cam,pos=cam,color=vec3(0);float trans=1.;
+ float u=1./length(cam),phi=0.;vec3 normal=normalize(cam),perp=cross(cross(normal,ray),normal);float plen=length(perp);vec3 tangent=plen>1e-6?perp/plen:right;float tang=dot(ray,tangent),du=abs(tang)>1e-6?-dot(ray,normal)/tang*u:200.*u;vec3 old=cam,pos=cam,color=vec3(0);float trans=1.;int nhit=0;
  // Disk-plane crossing test against diskN (the plane through the origin
  // with normal diskN). When old and pos are on opposite sides, their dot
  // products with diskN differ in sign and the segment crosses the disk.
@@ -510,9 +670,9 @@ void main(){
  // the disk-local frame and the actual polar coords (r,a) live there.
  for(int i=0;i<int(u_max_steps);i++){
    float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));
-   du+=.5*(-u+1.5*u*u)*step;
+   du+=.5*(-u+u_lensing*1.5*u*u)*step;
    u+=du*step;
-   du+=.5*(-u+1.5*u*u)*step;
+   du+=.5*(-u+u_lensing*1.5*u*u)*step;
    phi+=step;
    if(u>=1.||u<=.0005)break;
    old=pos;
@@ -524,22 +684,52 @@ void main(){
     vec3 x=mix(old,pos,t_);
     x=x-diskN*dot(x,diskN);
     float rd=length(x);
-    if(rd>2.8&&rd<13.){
+    if(rd>u_isco-.2&&rd<u_disk_out+1.){
+     g_hit=float(nhit);nhit++;
      color+=trans*disk_color(x,diskN,closeFX);
      trans*=.72;
     }
    }
   }
- if(!captured){vec3 d=length(pos-old)>1e-5?normalize(pos-old):ray;color+=trans*(stars(d)+vec3(.002,.003,.007));}
+ {
+  float nA,pbA,hzA;vec3 bsA,stA,ntA,hlA;
+  palSky(u_pal_a,nA,bsA,stA,ntA,hlA,pbA,hzA);
+  float nM=nA,pbM=pbA,hzM=hzA;vec3 bsM=bsA,stM=stA,ntM=ntA,hlM=hlA;
+  if(u_pal_mix>.001){
+   float nB,pbB,hzB;vec3 bsB,stB,ntB,hlB;
+   palSky(u_pal_b,nB,bsB,stB,ntB,hlB,pbB,hzB);
+   nM=mix(nA,nB,u_pal_mix);pbM=mix(pbA,pbB,u_pal_mix);hzM=mix(hzA,hzB,u_pal_mix);
+   bsM=mix(bsA,bsB,u_pal_mix);stM=mix(stA,stB,u_pal_mix);ntM=mix(ntA,ntB,u_pal_mix);hlM=mix(hlA,hlB,u_pal_mix);
+  }
+  if(!captured){
+   vec3 d=length(pos-old)>1e-5?normalize(pos-old):ray;
+   color+=trans*(stM*stars(d)+nM*ntM*nebula(d)*u_nebula_amt+bsM);
+  }else if(hzM>.001){
+   // whitehole: hazy blue-gray vortex interior instead of a black disc
+   float ang=atan(p.y,p.x);   // periodic sampling: no seam at +-pi
+   float sw=noise(vec2(cos(ang)*1.8+impact*2.-u_time*.05,sin(ang)*1.8+impact*3.+u_time*.07));
+   vec3 hz=mix(srgbLin(vec3(.12,.29,.36)),srgbLin(vec3(.24,.45,.52)),sw);
+   color+=trans*hzM*hz*(.35+.65*sw)*.55*(1.-.6*smoothstep(1.2,2.6,impact));
+  }
+  // Cheap halo: a wide falloff in impact parameter around the shadow edge,
+  // tinted per palette; scaled by the palette strength and the bloom option.
+  if(u_bloom>0.&&pbM>0.&&!captured){
+   float ex=max(impact-2.598,0.);
+   color+=u_bloom*pbM*(.55*exp(-ex*.6)+.25*exp(-ex*.14))*hlM*.30;
+  }
+ }
  if(u_jet>0.&&!captured){color+=trans*u_jet*1.2*jet_glow(cam,ray,diskN);}
+ if(u_comp>0.&&!captured){color+=trans*companionAlong(cam,ray,diskN);}
+ if(u_torus>0.){vec4 tr=torusAlong(cam,ray,diskN);float a=1.-exp(-tr.w*u_torus);color=color*(1.-a)+tr.rgb*u_torus*(1.-exp(-tr.w));}
  // Reinhard tonemap -> 1/2.2 gamma -> contrast toe + black point.
  // u_palette_contrast ~1.0 (gentle S-curve restoring Reinhard-flattened
  // contrast). 0.95-1.25 randomised per-launch.
+ color*=u_exposure;
  color=color/(1.+color);
  color=pow(max(color,0.),vec3(1./2.2));
  // Soft S-curve: (c-.5)*k+.5, then small black point + small white point lift.
  float k=clamp(u_palette_contrast,.85,1.35);
  color=(color-.5)*k+.5;
  color=max(color-vec3(.018),vec3(0));
- fragColor=vec4(clamp(color,0.,1.),1);
+ fragColor=vec4(clamp(color*u_fade,0.,1.),1);
 }

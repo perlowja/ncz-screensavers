@@ -23,7 +23,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.3.4',
+    version: '0.5.3',
     license: 'GPL-2.0-or-later',
 )
 
@@ -153,6 +153,7 @@ dep_glesv2         = dependency('glesv2',         required: true)
 # drags libm in transitively, so we declare it explicitly.
 cc = meson.get_compiler('c')
 dep_m = cc.find_library('m', required: false)
+add_project_arguments('-DNCZ_VERSION="@0@"'.format(meson.project_version()), language: 'c')
 
 # GL4ES dependency — optional. We DO NOT use pkg-config because GL4ES
 # upstream doesn't ship a .pc file. Detection strategy:
@@ -282,6 +283,7 @@ protocols = {
     'wayland':           'protocols/wayland.xml',
     'xdg-shell':         'protocols/xdg-shell.xml',
     'wlr-layer-shell-unstable-v1': 'protocols/wlr-layer-shell-unstable-v1.xml',
+    'viewporter':        'protocols/viewporter.xml',
 }
 
 gen_sources = []
@@ -625,6 +627,11 @@ common_gles3_sources = [
     'src/gles3_compat.c',
     'src/ncz_platform.c',
     'src/ncz_gpu_tier.c',
+    'src/ncz_options.c',
+    'src/ncz_render.c',
+    'src/ncz_gpu_guard.c',
+    'src/ncz_stats.c',
+    'src/ncz_harness_cfg.c',
 ]
 # GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
 # helpers in xscreensaver_compat.c compile to empty stubs (they
@@ -1223,7 +1230,7 @@ executable(
 # -----------------------------------------------------------------------
 
 # MIT Schwarzschild raytracer port; see vendor/blackhole-PORTED.md.
-executable(
+blackhole_exe = executable(
     'blackhole_gles3',
     files(common_gles3_sources + [
         'src/gles3_harness.c',
@@ -1648,6 +1655,18 @@ install_data('assets/screensaver-chooser/hacks.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 # Shipped to both directories, like hacks.tsv: the launcher reads share/ncz-screensavers,
 # the chooser plugin reads share/ncz-screensaver-chooser. Do not de-duplicate.
+install_subdir('assets/screensaver-chooser/options/presets/blackhole',
+               install_dir: get_option('prefix') / 'share' / 'ncz-screensavers' / 'presets')
+install_data('assets/screensaver-chooser/render-hints.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/render-hints.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data('assets/screensaver-chooser/presets.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/presets.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data(['assets/screensaver-chooser/options/blackhole.tsv', 'assets/screensaver-chooser/options/_render.tsv'],
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers' / 'options')
 install_data('assets/screensaver-chooser/sparse.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('assets/screensaver-chooser/sparse.tsv',
@@ -1675,4 +1694,40 @@ endif
 
 if get_option('singularity-plugin').enabled()
     subdir('plugin')
+endif
+
+# ---------------------------------------------------------------------------
+# Option parser unit test and blackhole schema sync test.
+# ---------------------------------------------------------------------------
+test_ncz_options = executable(
+    'test_ncz_options',
+    files(['tests/test_ncz_options.c', 'src/ncz_options.c']),
+    include_directories: inc,
+    c_args: ['-D_GNU_SOURCE'],
+    dependencies: [dep_m],
+    install: false,
+)
+test('ncz_options', test_ncz_options)
+test_harness_cfg = executable(
+    'test_harness_cfg',
+    files(['tests/test_harness_cfg.c', 'src/ncz_render.c', 'src/ncz_gpu_guard.c', 'src/ncz_options.c']),
+    include_directories: inc,
+    c_args: ['-D_GNU_SOURCE'],
+    dependencies: [dep_m],
+    install: false,
+)
+test('harness_cfg', test_harness_cfg)
+if not meson.is_cross_build()
+    test('blackhole-schema-in-sync',
+         find_program('sh'),
+         args: ['-c', '"$0" --dump-schema | diff -u "$1" -',
+                blackhole_exe, files('assets/screensaver-chooser/options/blackhole.tsv')])
+    test('blackhole-preset-precedence',
+         find_program('sh'),
+         args: ['-c', 'cd "$1" && test "$($0 --preset=kerr --print-config | grep ^spin=)" = "spin=0.998" && test "$(NCZ_BLACKHOLE_SPIN=0.5 $0 --preset=kerr --print-config | grep ^spin=)" = "spin=0.5" && test "$(NCZ_BLACKHOLE_SPIN=0.5 $0 --preset=kerr --spin=0.7 --print-config | grep ^spin=)" = "spin=0.7" && test "$($0 --preset=nope --print-config 2>/dev/null | grep ^spin=)" = "spin=0"',
+                blackhole_exe.full_path(), meson.project_source_root()])
+    test('common-render-schema-in-sync',
+         find_program('sh'),
+         args: ['-c', '"$0" --dump-schema-common | diff -u "$1" -',
+                blackhole_exe, files('assets/screensaver-chooser/options/_render.tsv')])
 endif

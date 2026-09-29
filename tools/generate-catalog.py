@@ -59,6 +59,171 @@ def classify(target):
     raise SystemExit(f"unclassified ship entry: {target}")
 
 
+
+OPT_TYPES = {"bool", "int", "float", "enum", "string"}
+
+
+def validate_options(directory, ships):
+    """Validate options/<hack>.tsv schemas: 10 tab separated columns
+    (name, type, default, min, max, choices, label, description, group, env)."""
+    if not directory.is_dir():
+        return
+    problems = []
+    for path in sorted(directory.glob("*.tsv")):
+        hack = path.stem
+        if not hack.startswith("_") and not any(t == hack or t == hack + "_gles3" for t in ships):
+            problems.append(f"{path.name}: no ship-set hack named {hack}")
+        seen = set()
+        for n, line in enumerate(path.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            c = line.split("\t")
+            where = f"{path.name}:{n}"
+            if len(c) != 10:
+                problems.append(f"{where}: expected 10 columns, got {len(c)}")
+                continue
+            name, typ, default, lo, hi, choices, label, desc, group, env = c
+            if not re.fullmatch(r"[a-z][a-z0-9-]*", name):
+                problems.append(f"{where}: bad option name {name!r}")
+            if name in seen:
+                problems.append(f"{where}: duplicate option {name}")
+            seen.add(name)
+            if typ not in OPT_TYPES:
+                problems.append(f"{where}: unknown type {typ!r}")
+                continue
+            if not (label.strip() and desc.strip() and group.strip()):
+                problems.append(f"{where}: label, description and group are required")
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", env):
+                problems.append(f"{where}: bad env name {env!r}")
+            try:
+                if typ in ("int", "float"):
+                    fl, fh, fd = float(lo), float(hi), float(default)
+                    if not fl <= fd <= fh:
+                        problems.append(f"{where}: default {default} outside {lo}..{hi}")
+                    if typ == "int" and fd != int(fd):
+                        problems.append(f"{where}: int default {default} is not an integer")
+                elif typ == "bool":
+                    if default not in ("true", "false"):
+                        problems.append(f"{where}: bool default must be true or false")
+                elif typ == "enum":
+                    if default not in choices.split(","):
+                        problems.append(f"{where}: enum default {default!r} not in choices")
+            except ValueError:
+                problems.append(f"{where}: numeric column is not a number")
+    if problems:
+        raise SystemExit("options schema: " + "; ".join(problems))
+
+
+def load_schema(path):
+    rows = {}
+    for line in path.read_text().splitlines():
+        if line.strip() and not line.startswith("#"):
+            c = line.split("\t")
+            if len(c) == 10:
+                rows[c[0]] = c
+    return rows
+
+
+def check_value(row, value):
+    """Return an error string or None for `value` against one schema row."""
+    name, typ, default, lo, hi, choices = row[:6]
+    if typ in ("int", "float"):
+        try:
+            v = float(value)
+        except ValueError:
+            return "not a number"
+        if not float(lo) <= v <= float(hi):
+            return f"outside {lo}..{hi}"
+        if typ == "int" and v != int(v):
+            return "not an integer"
+    elif typ == "bool":
+        if value not in ("true", "false", "1", "0"):
+            return "not a bool"
+    elif typ == "enum":
+        if value not in choices.split(","):
+            return f"not one of {choices}"
+    return None
+
+
+def parse_conf(path):
+    sections, cur = {}, None
+    for n, line in enumerate(path.read_text().splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("["):
+            cur = line.strip("[]")
+            sections.setdefault(cur, {})
+        elif "=" in line and cur:
+            k, v = line.split("=", 1)
+            sections[cur][k.strip()] = v.strip()
+        else:
+            raise SystemExit(f"{path}: line {n}: cannot parse")
+    return sections
+
+
+PRESET_TITLES = {"blackhole": ("Black Hole", "Black Hole Simulation")}
+
+
+def build_presets(root, ships):
+    """Validate assets/screensaver-chooser/options/presets/<hack>/*.conf against the
+    option schema and return presets.tsv rows: id, title, group, hack, args,
+    accuracy, description."""
+    base = root / "assets" / "screensaver-chooser" / "options"
+    rows, problems, failed = [], [], set()
+    pdir = base / "presets"
+    if not pdir.is_dir():
+        return rows
+    for hdir in sorted(d for d in pdir.iterdir() if d.is_dir()):
+        hack = hdir.name
+        binary = hack + "_gles3"
+        if binary not in ships:
+            problems.append(f"{hdir}: no ship-set hack {binary}")
+            continue
+        schema_path = base / (hack + ".tsv")
+        schema = load_schema(schema_path) if schema_path.exists() else {}
+        title, group = PRESET_TITLES.get(hack, (hack, hack))
+        for conf in sorted(hdir.glob("*.conf")):
+            pid = conf.stem
+            key = f"{hack}/{conf.name}"
+            n_before = len(problems)
+            if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", pid):
+                problems.append(f"{conf.name}: bad preset id")
+                continue
+            sec = parse_conf(conf)
+            meta = sec.get("preset", {})
+            for k in ("name", "description", "accuracy", "sources", "min-gpu-class", "measured"):
+                if not meta.get(k):
+                    problems.append(f"{conf.name}: [preset] {k} is required")
+            if meta.get("min-gpu-class") and meta["min-gpu-class"] not in ("weak", "mid", "strong"):
+                problems.append(f"{conf.name}: min-gpu-class must be weak, mid or strong")
+            for k in ("name", "description", "accuracy", "measured"):
+                if any(ch in meta.get(k, "") for ch in "\t\r\n"):
+                    problems.append(f"{conf.name}: [preset] {k} contains a tab or newline")
+            if meta.get("accuracy") and meta.get("accuracy") not in ("faithful", "artistic"):
+                problems.append(f"{conf.name}: accuracy must be faithful or artistic")
+            opts = sec.get(hack, {})
+            if not opts:
+                problems.append(f"{conf.name}: missing [{hack}] section")
+            for k, v in opts.items():
+                if k == "preset" or k not in schema:
+                    problems.append(f"{conf.name}: option {k!r} is not in the {hack} schema")
+                    continue
+                err = check_value(schema[k], v)
+                if err:
+                    problems.append(f"{conf.name}: {k}={v}: {err}")
+            if len(problems) > n_before:
+                failed.add(key)
+                continue
+            rows.append("\t".join([
+                f"{binary}--{pid}", f"{title}: {meta['name']}", group, binary,
+                f"--preset={pid}", meta["accuracy"], meta["description"],
+                meta["min-gpu-class"], meta["measured"]]))
+    if problems:
+        raise SystemExit("presets: " + "; ".join(problems))
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("meson_build", type=pathlib.Path)
@@ -103,6 +268,27 @@ def main():
             bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
     if bad:
         raise SystemExit("sparse.tsv: " + "; ".join(bad))
+    validate_options(args.meson_build.parent / "assets" / "screensaver-chooser" / "options", ships)
+    hints = args.meson_build.parent / "assets" / "screensaver-chooser" / "render-hints.tsv"
+    if hints.exists():
+        bad = []
+        for n, line in enumerate(hints.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            cols = line.split("\t")
+            try:
+                ok = len(cols) == 4 and cols[0] in ships and 0.25 <= float(cols[1]) <= 1.0 and float(cols[2]) >= 0
+            except ValueError:
+                ok = False
+            if not ok:
+                bad.append(f"line {n}: {line.strip()[:70]}")
+        if bad:
+            raise SystemExit("render-hints.tsv: " + "; ".join(bad))
+    prows = build_presets(args.meson_build.parent, ships)
+    if prows:
+        args.output.with_name("presets.tsv").write_text(
+            "# Generated by tools/generate-catalog.py from options/presets/<hack>/*.conf\n"
+            "# id\ttitle\tgroup\thack\targs\taccuracy\tdescription\tmin_gpu_class\tmeasured\n" .replace("\\t","\t") + "\n".join(prows) + "\n")
     broken = args.meson_build.parent / "assets" / "screensaver-chooser" / "broken.tsv"
     if broken.exists():
         bad = []
