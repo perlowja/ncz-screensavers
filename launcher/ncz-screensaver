@@ -454,18 +454,33 @@ def is_our_process(pid):
     return b"ncz-screensaver" in cmdline
 
 
-def terminate_group(pgid, grace=1.0):
+def terminate_group(pgid, grace=1.0, child=None):
+    """SIGTERM the hack's process group, wait up to `grace` seconds, then SIGKILL.
+
+    Returns as soon as the hack has exited. When `child` (the Popen of the
+    group leader) is given it is reaped first: a zombie leader still makes
+    killpg(pgid, 0) succeed, which would otherwise burn the whole grace period
+    on every stop.
+    """
     with contextlib.suppress(OSError):
         os.killpg(pgid, signal.SIGTERM)
     deadline = time.monotonic() + grace
     while time.monotonic() < deadline:
-        try:
-            os.killpg(pgid, 0)
-        except OSError:
-            return
-        time.sleep(0.05)
+        if child is not None:
+            if child.poll() is not None:
+                break
+        else:
+            try:
+                os.killpg(pgid, 0)
+            except OSError:
+                return
+        time.sleep(0.02)
+    # Leader gone or grace over: make sure no member of the group survives.
     with contextlib.suppress(OSError):
         os.killpg(pgid, signal.SIGKILL)
+    if child is not None:
+        with contextlib.suppress(Exception):
+            child.wait(timeout=1)
 
 
 def session_locked():
@@ -564,9 +579,7 @@ class Supervisor:
 
     def stop_child(self):
         if self.child is not None:
-            terminate_group(self.child.pid)
-            with contextlib.suppress(Exception):
-                self.child.wait(timeout=1)
+            terminate_group(self.child.pid, child=self.child)
             self.child = None
             self.child_hack = None
 
