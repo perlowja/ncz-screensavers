@@ -265,13 +265,23 @@ class RenderAndCacheTests(unittest.TestCase):
                 "max-render-height": 0,
             }
             self.assertEqual(
-                ns.render_env("hyprsaver_a_gles3", fixed), {"NCZ_RENDER_SCALE": "0.50"}
+                ns.render_env("hyprsaver_a_gles3", fixed),
+                {
+                    "NCZ_RENDER_SCALE_MODE": "fixed",
+                    "NCZ_RENDER_SCALE": "0.50",
+                    "NCZ_MAX_RENDER_HEIGHT": "0",
+                },
             )
             over = dict(
                 fixed, **{"hack-options": {"voronoi_gles3": {"render-scale": "0.75"}}}
             )
             self.assertEqual(
-                ns.render_env("voronoi_gles3", over), {"NCZ_RENDER_SCALE": "0.75"}
+                ns.render_env("voronoi_gles3", over),
+                {
+                    "NCZ_RENDER_SCALE_MODE": "fixed",
+                    "NCZ_RENDER_SCALE": "0.75",
+                    "NCZ_MAX_RENDER_HEIGHT": "0",
+                },
             )
             self.assertEqual(ns.render_env("voronoi_gles3", fixed), {})
 
@@ -294,11 +304,17 @@ class RenderAndCacheTests(unittest.TestCase):
                         self.assertEqual(ns.default_render_cap(), 1080)
                     with mock.patch.object(ns, "native_height", return_value=1080):
                         self.assertEqual(ns.default_render_cap(), 0)
-                with mock.patch.object(
-                    ns,
-                    "gpu_topology",
-                    return_value={"display_class": "discrete", "nvidia_offload": False},
-                ), mock.patch.object(ns, "native_height", return_value=2160):
+                with (
+                    mock.patch.object(
+                        ns,
+                        "gpu_topology",
+                        return_value={
+                            "display_class": "discrete",
+                            "nvidia_offload": False,
+                        },
+                    ),
+                    mock.patch.object(ns, "native_height", return_value=2160),
+                ):
                     self.assertEqual(ns.default_render_cap(), 0)
 
     def test_shader_cache_enabled_and_persistent(self):

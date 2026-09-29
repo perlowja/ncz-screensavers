@@ -57,6 +57,7 @@ INT_RANGES = {
 ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 WORD_RE = re.compile(r"^[a-z0-9_-]+$")
 EARLY_EXIT_SECONDS = 3.0
+GUARD_EXIT = 3  # the hack's software-renderer guard refused to run
 MAX_CONSECUTIVE_FAILURES = 3
 BENCH_SECONDS = 24 * 3600
 COMPOSITOR_COMMS = (
@@ -450,6 +451,16 @@ def filter_pool(ids, settings):
     return kept or ids
 
 
+def notify(title, body):
+    if shutil.which("notify-send"):
+        with contextlib.suppress(OSError):
+            subprocess.Popen(
+                ["notify-send", "-a", "ncz-screensaver", title, body],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+
 def parse_option_args(items):
     out = {}
     for item in items:
@@ -470,14 +481,7 @@ def short_name(hack_id):
     return re.sub(r"_gles3$", "", hack_id)
 
 
-def load_option_schema(hack_id):
-    """Rows of options/<hack>.tsv: name, type, default, min, max, choices, label, description, group, env."""
-    for stem in (hack_id, short_name(hack_id)):
-        path = options_dir() / f"{stem}.tsv"
-        if path.is_file():
-            break
-    else:
-        return []
+def _read_schema_file(path, hack_id):
     rows = []
     for line in path.read_text().splitlines():
         f = (line.split("\t") + [""] * 10)[:10]
@@ -505,6 +509,24 @@ def load_option_schema(hack_id):
                 "env": env,
             }
         )
+    return rows
+
+
+def load_option_schema(hack_id):
+    """Rows of options/<hack>.tsv plus the common options/_render.tsv for shader hacks.
+
+    Columns: name, type, default, min, max, choices, label, description, group, env.
+    """
+    rows = []
+    for stem in (hack_id, short_name(hack_id)):
+        path = options_dir() / f"{stem}.tsv"
+        if path.is_file():
+            rows = _read_schema_file(path, hack_id)
+            break
+    common = options_dir() / "_render.tsv"
+    if is_shader_hack(hack_id) and common.is_file():
+        have = {r["name"] for r in rows}
+        rows += [r for r in _read_schema_file(common, hack_id) if r["name"] not in have]
     return rows
 
 
@@ -646,16 +668,19 @@ def render_env(hack_id, settings):
     except (TypeError, ValueError):
         return {}
     if (
-        not override
+        "max-render-height" not in override
         and str(settings.get("render-scale-mode", "auto")) == "auto"
         and cap == 0
     ):
         cap = default_render_cap()
     env = {}
+    fixed = str(settings.get("render-scale-mode", "auto")) == "fixed"
+    if fixed:
+        env["NCZ_RENDER_SCALE_MODE"] = "fixed"
     if 0.25 <= scale < 1.0:
         env["NCZ_RENDER_SCALE"] = f"{scale:.2f}"
-    if cap > 0:
-        env["NCZ_MAX_RENDER_HEIGHT"] = str(cap)
+    if cap > 0 or (fixed and cap == 0):
+        env["NCZ_MAX_RENDER_HEIGHT"] = str(cap)  # an explicit 0 means unlimited
     return env
 
 
@@ -1000,6 +1025,15 @@ class Supervisor:
                 self.child = None
                 if code == 0 and now - began >= EARLY_EXIT_SECONDS:
                     return "ended"  # the hack quit by itself, e.g. a key press
+                if code == GUARD_EXIT:
+                    log(
+                        f"{hack_id}: the software renderer guard refused to start it; not retrying"
+                    )
+                    notify(
+                        "Screensaver not started",
+                        "No hardware GPU is available for the screensaver.",
+                    )
+                    return "refused"
                 if offload:
                     log(
                         f"{hack_id} failed under GPU offload; retrying on the display GPU"
@@ -1045,7 +1079,7 @@ class Supervisor:
                     if self.session_failures >= MAX_CONSECUTIVE_FAILURES:
                         log("giving up after 3 consecutive failures")
                         return 1
-                elif result == "ended":
+                elif result in ("ended", "refused"):
                     return 0
                 else:
                     self.session_failures = 0
