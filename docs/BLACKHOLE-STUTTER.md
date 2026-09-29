@@ -4,7 +4,7 @@ Symptom: a visible hitch about once per second while Black Hole runs on CHIMERA 
 
 ## Root cause
 
-`src/gles3_harness.c` called `report_framebuffer()` on frame 4 and on every 60th frame in production. That function does a synchronous full-frame `glReadPixels` and a CPU histogram over every pixel, which stalls the pipeline for about 20 ms. It affected every hack that uses the harness, not only Black Hole. Fix: the every-60th-frame report now runs only when `NCZ_HARNESS_DIAG` or `NCZ_FRAME_DUMP` is set; frame 4 is still sampled once, and the cheap `[diag] frame #N` progress line stays unconditional.
+`src/gles3_harness.c` called `report_framebuffer()` on frame 4 and on every 60th frame in production. That function does a synchronous full-frame `glReadPixels` and a CPU histogram over every pixel, which stalls the pipeline for about 20 ms. It affected every hack that uses the harness, not only Black Hole. Fix: the every-60th-frame report now runs only when `NCZ_DIAG_FRAMEBUFFER` or `NCZ_FRAME_DUMP` is set; frame 4 is still sampled once, and the cheap `[diag] frame #N` progress line stays unconditional.
 
 ## Evidence (NCZ_BLACKHOLE_PERF_LOG=2, 1536x960, default options, 45 s, nothing else running)
 

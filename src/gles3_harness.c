@@ -292,6 +292,15 @@ static double mono_s(void) {
     return t.tv_sec + t.tv_nsec * 1e-9;
 }
 
+/* Opaque region covers the whole (native) surface; re-issued on every resize. */
+static void set_opaque_region(struct app *a) {
+    struct wl_region *opaque = wl_compositor_create_region(a->compositor);
+    if (!opaque) return;
+    wl_region_add(opaque, 0, 0, a->nat_w, a->nat_h);
+    wl_surface_set_opaque_region(a->surface, opaque);
+    wl_region_destroy(opaque);
+}
+
 /* Decide the buffer size for a surface of nw x nh (see ncz_render.h). The
  * buffer is smaller than the surface when scaled; wp_viewport upscales it in
  * the compositor (no extra GPU pass). Without wp_viewporter, or when nothing
@@ -319,6 +328,31 @@ static void apply_render_size(struct app *a, int nw, int nh) {
                 rw, rh, nw, nh, a->rscale, cap, scaled ? "wp_viewport upscale" : "native");
     a->nat_w = nw; a->nat_h = nh;
     a->width = rw; a->height = rh;
+    if (a->configured) set_opaque_region(a);
+}
+
+/* After apply_render_size on a live window: resize the buffer, publish the
+ * new size to the hack and tell it to reshape. */
+static void commit_render_size(struct app *a) {
+    wl_egl_window_resize(a->egl_window, a->width, a->height, 0, 0);
+    g_harness_width = a->width;
+    g_harness_height = a->height;
+    a->mi.xgwa.width = a->width;
+    a->mi.xgwa.height = a->height;
+    if (hack->reshape_cb) hack->reshape_cb(&a->mi, a->width, a->height);
+}
+
+/* Software-renderer guard; see ncz_gpu_guard.h. Called with a context current,
+ * both before the surface exists and once it does (some stacks only report
+ * GL_RENDERER later). An unknown (NULL) renderer is logged, not trusted. */
+static void guard_renderer(const char *where) {
+    const char *rend = (const char *)glGetString(GL_RENDERER);
+    if (!rend) { fprintf(stderr, "[guard] renderer string unavailable at %s\n", where); return; }
+    char gmsg[512];
+    if (ncz_gpu_guard_check("", rend, getenv("NCZ_ALLOW_SOFTWARE"), gmsg, sizeof gmsg)) {
+        fprintf(stderr, "[guard] %s\n", gmsg);
+        ncz_harness_die(3);
+    }
 }
 
 static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
@@ -342,6 +376,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         }
         DIE(eglMakeCurrent(a->egl_display, a->egl_surface, a->egl_surface,
                            a->egl_context), EGL_TRUE, "eglMakeCurrent failed");
+        guard_renderer("surface");
 
         /* Explicitly request vblank-paced eglSwapBuffers. Measured
          * 2026-09-22 on all three platforms (O6N/Mali, MEDUSA/radeonsi,
@@ -394,14 +429,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         a->configured = true;
     } else if (w != (uint32_t)a->nat_w || h != (uint32_t)a->nat_h) {
         apply_render_size(a, (int)w, (int)h);
-        wl_egl_window_resize(a->egl_window, a->width, a->height, 0, 0);
-        g_harness_width = a->width;
-        g_harness_height = a->height;
-        a->mi.xgwa.width = a->width;
-        a->mi.xgwa.height = a->height;
-        if (hack->reshape_cb) {
-            hack->reshape_cb(&a->mi, a->width, a->height);
-        }
+        commit_render_size(a);
     }
 }
 
@@ -617,6 +645,20 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
     free(pixels);
 }
 
+/* Frame 4 is a one-shot sample; periodic full-frame readbacks (a 70-110 ms
+ * stall on O6N) are opt-in via NCZ_DIAG_FRAMEBUFFER or NCZ_FRAME_DUMP, which
+ * needs the frames. See ncz_diag_sample_frame() in gles3_compat.h. */
+static int report_wanted(unsigned long idx) {
+    static int dump = -1;
+    if (dump < 0) {
+        const char *f = getenv("NCZ_FRAME_DUMP");
+        dump = (f && *f && strcmp(f, "0") != 0) ? 1 : 0;
+    }
+    if (dump && idx >= 60 && (idx % 60) == 0)
+        return 1;
+    return ncz_diag_sample_frame(idx, 60);
+}
+
 static void draw_and_swap(struct app *a, unsigned long frame, unsigned long report_idx) {
     ncz_harness_attach_frame_size(a->width, a->height);
     hack->draw_cb(&a->mi);
@@ -631,14 +673,7 @@ static void draw_and_swap(struct app *a, unsigned long frame, unsigned long repo
      * post-increment frame counter in the main loop, which meant frame 4
      * was never passed in — see the comment above the main loop for the
      * off-by-one history. */
-    /* The framebuffer report does a full glReadPixels plus a CPU histogram, which
-     * stalls the pipeline for tens of milliseconds. Frame 4 (one time) is kept for
-     * the validators; the every-60th-frame samples are a visible once-per-second
-     * hitch in production, so they only run when diagnostics are requested. */
-    static int diag_periodic = -1;
-    if (diag_periodic < 0)
-        diag_periodic = (getenv("NCZ_HARNESS_DIAG") || getenv("NCZ_FRAME_DUMP")) ? 1 : 0;
-    if (report_idx == 4 || (diag_periodic && report_idx >= 60 && (report_idx % 60) == 0))
+    if (report_wanted(report_idx))
         report_framebuffer(a, report_idx);
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",
@@ -827,12 +862,7 @@ static void adapt_render(struct app *a, unsigned long frame) {
     a->rscale = ns;
     a->last_adapt_s = t;
     apply_render_size(a, a->nat_w, a->nat_h);
-    wl_egl_window_resize(a->egl_window, a->width, a->height, 0, 0);
-    g_harness_width = a->width;
-    g_harness_height = a->height;
-    a->mi.xgwa.width = a->width;
-    a->mi.xgwa.height = a->height;
-    if (hack->reshape_cb) hack->reshape_cb(&a->mi, a->width, a->height);
+    commit_render_size(a);
 }
 
 static volatile sig_atomic_t g_stats_req;
@@ -915,16 +945,8 @@ int main(int argc, char **argv) {
     DIE(eglMakeCurrent(app.egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                        app.egl_context), EGL_TRUE,
         "eglMakeCurrent (no surface) failed");
-    {
-        /* Never software render on a machine that has a GPU. Runs before any
-         * shader work so a misconfigured environment fails in well under a second. */
-        const char *rend = (const char *)glGetString(GL_RENDERER);
-        char gmsg[512];
-        if (ncz_gpu_guard_check("", rend, getenv("NCZ_ALLOW_SOFTWARE"), gmsg, sizeof gmsg)) {
-            fprintf(stderr, "[guard] %s\n", gmsg);
-            ncz_harness_die(3);
-        }
-    }
+    /* Never software render on a machine that has a GPU: fail before any shader work. */
+    guard_renderer("startup");
     if (ncz_gles3_runtime_init() < 0) {
         fprintf(stderr, "gles3_harness: GLES3 runtime init failed\n");
         ncz_harness_die(1);

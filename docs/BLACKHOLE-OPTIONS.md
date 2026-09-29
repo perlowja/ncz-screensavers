@@ -63,15 +63,14 @@ printf '[blackhole]\npalette=singularity\nbloom=0.5\n' > ~/.config/ncz-screensav
 
 | Option | Type | Default | Range / choices | Description |
 |---|---|---|---|---|
-| `--render-scale` | float | `1` | 0.4 to 1 | Fraction of the output resolution the ray-marcher renders at (linear upscale). Lower it on heavy panels; combined with automatic scaling. |
-| `--adaptive` | bool | `true` |  | Measure frame times and lower ray steps and resolution when frames miss the display refresh, with hysteresis (only when quality is auto). |
+| `--adaptive` | bool | `true` |  | Measure frame times and lower the ray-step budget when frames miss the display refresh, with hysteresis (only when quality is auto). Resolution is controlled by the shared render-scale options. |
 | `--quality` | enum | `auto` | auto, low, medium, high, ultra | Ray-march step budget tier. auto picks by GPU and adapts to frame time. |
 | `--seed` | int | `0` | 0 to 4.29497e+09 | Fixes the per-launch randomness so a run can be reproduced; 0 = random. |
 
 
 ## Performance notes
 
-`quality=auto` (default) with `adaptive=true` adapts ray steps and render scale to the display refresh; see `BLACKHOLE-STUTTER.md`. `NCZ_BLACKHOLE_PERF_LOG=2` prints frame-time statistics. Palette and flyby settings never recompile the shader: they are uniforms, and palette changes cross-fade over `palette-transition` seconds.
+`quality=auto` (default) with `adaptive=true` adapts the ray-step budget to the display refresh; see `BLACKHOLE-STUTTER.md`. `NCZ_BLACKHOLE_PERF_LOG=2` prints frame-time statistics. Palette and flyby settings never recompile the shader: they are uniforms, and palette changes cross-fade over `palette-transition` seconds. Render resolution is a shared, generic option (`--render-scale`, `--max-render-height`, `--render-scale-mode`, see `RENDER-AND-GUARD.md`).
 
 ## Flyby camera paths
 

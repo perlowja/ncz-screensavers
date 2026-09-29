@@ -16,6 +16,12 @@
 #include <stdio.h>
 #include <stddef.h>
 
+/* Bits returned by ncz_opts_apply_argv / ncz_opts_resolve. */
+#define NCZ_ARG_HELP            1
+#define NCZ_ARG_LIST            2
+#define NCZ_ARG_UNKNOWN_OPTION  4
+#define NCZ_ARG_STRAY_ARGUMENT  8
+
 typedef enum {
     NCZ_OPT_BOOL,
     NCZ_OPT_INT,

@@ -1,3 +1,20 @@
+ncz-screensavers (0.4.0) unstable; urgency=medium
+
+  * Black Hole: configurable through one option table (command line,
+    NCZ_BLACKHOLE_<OPTION>, blackhole.conf): 26 options, three new palettes
+    (singularity, slingshot, whitehole), eight camera flyby types, palette
+    cycling with cross-fades, spin, bloom, exposure, beaming and more.
+    Declarative option schema installed under share/ncz-screensavers/options.
+  * Fix the once-per-second stutter: the diagnostic framebuffer readbacks in
+    the harness, xshadertoy and transitions are now opt-in.
+  * Shared harness: --help/--version/--list-options for every hack, unknown
+    options are an error, render-scale and max-render-height (wp_viewport
+    upscaling, Mali defaults to 1080p), adaptive scale, per-run [stats] line.
+  * Refuse to software render on a machine that has a GPU (exit 3).
+  * Black Hole adaptive ray-step quality that converges without oscillating.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 18:00:00 +0000
+
 ncz-screensavers (0.3.4) unstable; urgency=medium
 
   * Add sparse.tsv, the list of hacks that are legitimately sparse line art,

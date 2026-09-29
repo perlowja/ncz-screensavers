@@ -73,7 +73,7 @@ int ncz_harness_cfg_init(int argc, char **argv) {
     memcpy(m, GEN_OPTS, sizeof GEN_OPTS);
     if (hack) memcpy(m + GEN_N, hack, hn * sizeof *m);
     g_merged = m;
-    if (ncz_opts_init(&g_o, m, GEN_N + hn) != 0) return -1;
+    if (ncz_opts_init(&g_o, m, GEN_N + hn) != 0) { free(m); g_merged = NULL; return -1; }
     /* generic render options may come from ~/.config/ncz-screensavers/render.conf */
     {
         const char *x = getenv("XDG_CONFIG_HOME"), *h = getenv("HOME");
@@ -84,7 +84,7 @@ int ncz_harness_cfg_init(int argc, char **argv) {
     }
     int flags = ncz_opts_resolve(&g_o, prefix, group, NULL, argc, argv, prog, NULL);
     g_ready = 1;
-    if (flags & 12) {
+    if (flags & (NCZ_ARG_UNKNOWN_OPTION | NCZ_ARG_STRAY_ARGUMENT)) {
         fprintf(stderr, "%s: unknown option or argument (see --help)\n", prog);
         return 2;
     }

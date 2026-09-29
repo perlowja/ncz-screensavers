@@ -28,9 +28,24 @@ static int hw_driver(const char *d) {
 int ncz_gpu_hardware_present(const char *root, char *driver, size_t drvsz) {
     char path[PATH_MAX];
     if (!root) root = "";
-    snprintf(path, sizeof path, "%s/dev/mali0", root);
     struct stat st;
-    if (stat(path, &st) == 0) { if (driver) snprintf(driver, drvsz, "mali_kbase"); return 1; }
+    {
+        /* Mali kbase nodes: /dev/mali, /dev/mali0, /dev/mali1, ... */
+        snprintf(path, sizeof path, "%s/dev", root);
+        DIR *dd = opendir(path);
+        if (dd) {
+            struct dirent *de;
+            while ((de = readdir(dd))) {
+                if (strncmp(de->d_name, "mali", 4) == 0) {
+                    closedir(dd);
+                    if (driver) snprintf(driver, drvsz, "mali_kbase");
+                    return 1;
+                }
+            }
+            closedir(dd);
+        }
+    }
+    (void)st;
     snprintf(path, sizeof path, "%s/sys/class/drm", root);
     DIR *d = opendir(path);
     if (!d) return 0;

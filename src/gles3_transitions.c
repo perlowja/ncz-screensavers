@@ -908,7 +908,7 @@ draw_transition(ModeInfo *mi) {
     glUseProgram(0);
 
     /* Diagnostic samples — same cadence as xshadertoy. */
-    if (st->frame == 4 || (st->frame >= 30 && (st->frame % 30) == 0)) {
+    if (ncz_diag_sample_frame(st->frame, 30)) {
         unsigned char px[16] = {0};
         glReadPixels(w/2, h/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
         glReadPixels(w/8, h/8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px+4);

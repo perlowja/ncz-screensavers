@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <GLES3/gl32.h>
+#include <EGL/egl.h>
 
 static double now_ms(void) {
     struct timespec t;
@@ -26,6 +27,8 @@ static float recent[720]; static double recent_t[720]; static int nr;
 void glCompileShader(GLuint s) {
     static void (*real)(GLuint);
     if (!real) real = (void (*)(GLuint))dlsym(RTLD_NEXT, "glCompileShader");
+    if (!real) real = (void (*)(GLuint))eglGetProcAddress("glCompileShader");
+    if (!real) return;
     double a = now_ms();
     real(s);
     ms_c += now_ms() - a; nc++;
@@ -33,6 +36,8 @@ void glCompileShader(GLuint s) {
 void glLinkProgram(GLuint p) {
     static void (*real)(GLuint);
     if (!real) real = (void (*)(GLuint))dlsym(RTLD_NEXT, "glLinkProgram");
+    if (!real) real = (void (*)(GLuint))eglGetProcAddress("glLinkProgram");
+    if (!real) return;
     double a = now_ms();
     real(p);
     ms_l += now_ms() - a; nl++;

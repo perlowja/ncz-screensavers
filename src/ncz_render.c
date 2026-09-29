@@ -7,6 +7,7 @@ int ncz_render_size(int nw, int nh, double scale, int max_h, int *rw, int *rh) {
     if (nw < 2 || nh < 2) { *rw = nw; *rh = nh; return 0; }
     if (!(scale >= 0.25)) scale = 0.25;
     if (scale > 1.0) scale = 1.0;
+    if (scale >= 0.9999 && (max_h <= 0 || nh <= max_h)) { *rw = nw; *rh = nh; return 0; }
     double w = nw * scale, h = nh * scale;
     if (max_h > 0 && h > max_h) {
         double k = (double)max_h / h;
