@@ -838,9 +838,26 @@ legacy_gles3_hacks = [
     {'name': 'flurry',         'src': 'src/flurry.c',         'extras': ['src/flurry-smoke.c', 'src/flurry-spark.c', 'src/flurry-star.c', 'src/flurry-texture.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
 ]
 
+# Shader-engine ports of the xscreensaver classics (src/classics_shader/).
+# A ported hack keeps its <hack>_gles3 binary name; the GL1 immediate-mode
+# original is only built with -Dlegacy-classics=true, as <hack>_legacy_gles3,
+# for one release of A/B comparison.  See docs/CLASSICS-SHADER-PORT.md.
+classics_shader_ported = ['voronoi', 'gravitywell', 'hexstrut', 'cubestorm', 'crackberg', 'cityflow']
+# extra vendored xscreensaver helper sources a port still needs (rotators, RNG)
+classics_shader_extras = {
+    'hexstrut': ['src/rotator.c', 'src/yarandom.c'],
+    'cubestorm': ['src/rotator.c', 'src/yarandom.c'],
+}
+legacy_classics = get_option('legacy-classics')
+
 foreach h : legacy_gles3_hacks
+    is_ported = classics_shader_ported.contains(h['name'])
+    if is_ported and not legacy_classics
+        continue
+    endif
+    legacy_bin = h['name'] + (is_ported ? '_legacy' : '') + '_gles3'
     executable(
-        h['name'] + '_gles3',
+        legacy_bin,
         files(common_gles3_sources + [
             'src/gles3_harness.c',
             h['src'],
@@ -860,7 +877,7 @@ foreach h : legacy_gles3_hacks
             # dict key overrides the default when they differ.
             '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
         ],
-        install: ncz_ship_bins.contains(h['name'] + '_gles3'), install_dir: ncz_libdir,
+        install: is_ported ? true : ncz_ship_bins.contains(h['name'] + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -1706,3 +1723,24 @@ if not meson.is_cross_build()
          args: ['-c', '"$0" --dump-schema-common | diff -u "$1" -',
                 blackhole_exe, files('assets/screensaver-chooser/options/_render.tsv')])
 endif
+
+# -----------------------------------------------------------------------
+# Shader-engine ports of the xscreensaver classics.  One source file per
+# hack in src/classics_shader/, same xscreensaver_function_table symbol as
+# the GL1 original so the harness, catalog and packaging are unchanged.
+# -----------------------------------------------------------------------
+foreach cname : classics_shader_ported
+    executable(
+        cname + '_gles3',
+        files(common_gles3_sources + [
+            'src/gles3_harness.c',
+            'src/classics_shader/cs_' + cname + '.c',
+        ] + classics_shader_extras.get(cname, [])) + gen_sources,
+        include_directories: inc,
+        dependencies: common_gles3_deps,
+        c_args: gles3_native_c_args + [
+            '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(cname),
+        ],
+        install: ncz_ship_bins.contains(cname + '_gles3'), install_dir: ncz_libdir,
+    )
+endforeach

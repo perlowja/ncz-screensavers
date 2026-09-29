@@ -35,3 +35,8 @@ option(
     'singularity-plugin-dir', type: 'string', value: '/opt/singularity/lib/singularity/plugins',
     description: 'Where Singularity loads plugins from.',
 )
+
+option(
+    'legacy-classics', type: 'boolean', value: false,
+    description: 'Also build the GL1 immediate-mode xscreensaver originals of the ported classics as <hack>_legacy_gles3 (A/B comparison, one release).',
+)
