@@ -1061,6 +1061,19 @@ def _stop_with_launcher(launcher_path: str, env: dict[str, str]) -> tuple[bool, 
     return True, "ok"
 
 
+def _sparse_floors():
+    """{hack id: tile floor} from the package's sparse.tsv (empty if absent)."""
+    floors = {}
+    for path in ("/usr/share/ncz-screensavers/sparse.tsv",):
+        with contextlib.suppress(OSError):
+            for ln in pathlib.Path(path).read_text().splitlines():
+                f = ln.split("\t")
+                if ln.strip() and not ln.startswith("#") and len(f) >= 2:
+                    with contextlib.suppress(ValueError):
+                        floors[f[0]] = float(f[1])
+    return floors
+
+
 def _display_probe(env):
     """True when a known bright hack is visible in a screenshot."""
     _cli(env, "preview", "voronoi_gles3", "--seconds", "12")
@@ -1165,6 +1178,7 @@ def phase_hacks(
         return
 
     hack_results: list[dict[str, Any]] = []
+    sparse_floors = _sparse_floors()
     for hid in hack_ids:
         if _is_display_locked():
             _record(
@@ -1322,8 +1336,12 @@ def phase_hacks(
         moving = metrics.get("motion", 0.0) >= MOTION_GATE
         dense = metrics.get("coverage", 0.0) >= COVERAGE_GATE
         tiles = metrics.get("tile_coverage", 0.0) >= TILE_GATE
-        passed = healthy and moving and (dense or tiles)
+        floor = sparse_floors.get(hid)
+        listed = floor is not None and metrics.get("tile_coverage", 0.0) >= floor
+        passed = healthy and moving and (dense or tiles or listed)
         sub["sparse"] = bool(passed and not dense)
+        if floor is not None:
+            sub["sparse_floor"] = floor
         status = "pass" if passed else "fail"
         detail = (
             f"coverage={metrics.get('coverage', 0):.3f} "

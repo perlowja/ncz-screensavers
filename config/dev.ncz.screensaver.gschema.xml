@@ -49,9 +49,9 @@
       <description>Seconds each hack runs before the next one in random and playlist modes.</description>
     </key>
     <key name="lock-enabled" type="b">
-      <default>true</default>
-      <summary>Lock after screensaver</summary>
-      <description>Lock the screen after the idle period. With mode off the lock happens at hack-idle-delay.</description>
+      <default>false</default>
+      <summary>Lock from the idle daemon</summary>
+      <description>Lock from ncz-screensaver-idled after the idle period. Off by default: the desktop shell locks by itself (dev.sinty.lockscreen). With mode off the lock happens at hack-idle-delay.</description>
     </key>
     <key name="lock-delay" type="i">
       <range min="0" max="86400"/>

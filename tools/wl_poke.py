@@ -622,6 +622,86 @@ def _bind_virtual_pointer(conn: Connection) -> tuple[int, int, int]:
     return seat_id, mgr_id, pointer_id
 
 
+def cmd_click(args: argparse.Namespace) -> int:
+    """Move the virtual pointer to (x, y) in a width x height extent and click."""
+    conn = Connection(find_socket_path(), verbose=args.verbose)
+    try:
+        conn.connect()
+        conn.install_default_registry()
+        conn.roundtrip()
+        _seat_id, mgr_id, pointer_id = _bind_virtual_pointer(conn)
+        try:
+            now_ms = int(time.time() * 1000)
+            # motion_absolute(time, x, y, x_extent, y_extent) opcode 1
+            payload = b"".join(
+                _U32.pack(v & 0xFFFFFFFF)
+                for v in (now_ms, args.x, args.y, args.width, args.height)
+            )
+            conn.send(pointer_id, 1, payload)
+            conn.send(pointer_id, 4, b"")
+            time.sleep(0.15)
+            for state in (1, 0):
+                now_ms += 40
+                # button(time, button, state) opcode 2; BTN_LEFT is 0x110
+                conn.send(
+                    pointer_id,
+                    2,
+                    _U32.pack(now_ms & 0xFFFFFFFF)
+                    + _U32.pack(args.button)
+                    + _U32.pack(state),
+                )
+                conn.send(pointer_id, 4, b"")
+                time.sleep(0.08)
+            conn.roundtrip()
+        finally:
+            conn.send(pointer_id, 8, b"")
+            if mgr_id:
+                conn.send(mgr_id, 2, b"")
+    finally:
+        conn.close()
+    return 0
+
+
+def cmd_scroll(args: argparse.Namespace) -> int:
+    """Move to (x, y) and scroll vertically by `amount` (positive scrolls down)."""
+    conn = Connection(find_socket_path(), verbose=args.verbose)
+    try:
+        conn.connect()
+        conn.install_default_registry()
+        conn.roundtrip()
+        _seat_id, mgr_id, pointer_id = _bind_virtual_pointer(conn)
+        try:
+            now_ms = int(time.time() * 1000)
+            payload = b"".join(
+                _U32.pack(v & 0xFFFFFFFF)
+                for v in (now_ms, args.x, args.y, args.width, args.height)
+            )
+            conn.send(pointer_id, 1, payload)
+            conn.send(pointer_id, 4, b"")
+            time.sleep(0.2)
+            for _ in range(args.steps):
+                now_ms += 30
+                # axis_source(wheel) opcode 5, axis(time, axis, value) opcode 3
+                conn.send(pointer_id, 5, _U32.pack(0))
+                conn.send(
+                    pointer_id,
+                    3,
+                    _U32.pack(now_ms & 0xFFFFFFFF)
+                    + _U32.pack(0)
+                    + _U32.pack(wl_fixed_from_int(args.amount)),
+                )
+                conn.send(pointer_id, 4, b"")
+                time.sleep(0.08)
+            conn.roundtrip()
+        finally:
+            conn.send(pointer_id, 8, b"")
+            if mgr_id:
+                conn.send(mgr_id, 2, b"")
+    finally:
+        conn.close()
+    return 0
+
+
 def cmd_motion(args: argparse.Namespace) -> int:
     """Bind zwlr_virtual_pointer_manager_v1 and a wl_seat, create a virtual
     pointer, send ``count`` relative motions, then tear it down. The
@@ -962,6 +1042,23 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sp.add_argument("--count", type=int, default=1, help="Repetitions (default: 1)")
     sp.set_defaults(func=cmd_key)
+
+    sp = sub.add_parser("click", help="Click at x,y inside a width x height extent.")
+    sp.add_argument("x", type=int)
+    sp.add_argument("y", type=int)
+    sp.add_argument("--width", type=int, default=1536)
+    sp.add_argument("--height", type=int, default=960)
+    sp.add_argument("--button", type=int, default=0x110)
+    sp.set_defaults(func=cmd_click)
+
+    sp = sub.add_parser("scroll", help="Scroll vertically at x,y.")
+    sp.add_argument("x", type=int)
+    sp.add_argument("y", type=int)
+    sp.add_argument("--amount", type=int, default=15)
+    sp.add_argument("--steps", type=int, default=3)
+    sp.add_argument("--width", type=int, default=1536)
+    sp.add_argument("--height", type=int, default=960)
+    sp.set_defaults(func=cmd_scroll)
 
     sp = sub.add_parser("inhibit", help="Hold an idle inhibitor for N seconds.")
     sp.add_argument(

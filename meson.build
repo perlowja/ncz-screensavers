@@ -1661,3 +1661,7 @@ fs = import('fs')
 if fs.is_dir('launcher') and fs.exists('launcher/meson.build')
     subdir('launcher')
 endif
+
+if get_option('singularity-plugin').enabled()
+    subdir('plugin')
+endif

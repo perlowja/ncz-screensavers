@@ -20,3 +20,18 @@ option(
     'install-extras', type: 'boolean', value: false,
     description: 'Also install shaders of non-ship (development-only) hacks.',
 )
+
+option(
+    'singularity-plugin', type: 'feature', value: 'disabled',
+    description: 'Build the Singularity Settings plugin (needs the Singularity SDK: valac, libsingularity vapi and pkg-config file).',
+)
+
+option(
+    'singularity-vapidir', type: 'string', value: '/opt/singularity/share/vala/vapi',
+    description: 'Directory holding singularity-1.0.vapi.',
+)
+
+option(
+    'singularity-plugin-dir', type: 'string', value: '/opt/singularity/lib/singularity/plugins',
+    description: 'Where Singularity loads plugins from.',
+)

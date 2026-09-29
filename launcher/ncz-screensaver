@@ -33,7 +33,7 @@ DEFAULTS = {
     "playlist": [],
     "hack-idle-delay": 300,
     "cycle-delay": 600,
-    "lock-enabled": True,
+    "lock-enabled": False,
     "lock-delay": 60,
     "lock-on-suspend": True,
     "display-off-delay": 0,

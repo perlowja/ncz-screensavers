@@ -15,7 +15,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 declare -A HOST_USER=([chimera]=chimera [medusa]=medusa [pegasus]=pegasus [o6n]=mini)
-declare -A HOST_IP=([chimera]=192.168.207.6 [medusa]=192.168.207.20 [pegasus]=192.168.207.85 [o6n]=192.168.207.3)
+declare -A HOST_IP=([chimera]=192.168.207.6 [medusa]=192.168.207.38 [pegasus]=192.168.207.85 [o6n]=192.168.207.3)
 declare -A HOST_ARCH=([chimera]=amd64 [medusa]=amd64 [pegasus]=amd64 [o6n]=arm64)
 ALL_HOSTS=(chimera medusa pegasus o6n)
 

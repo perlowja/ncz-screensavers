@@ -17,6 +17,7 @@ check() { # name expected-json
     if [ "$got" = "$2" ]; then echo "PASS $1"; else echo "FAIL $1: got $got expected $2"; fail=1; fi
 }
 gsettings set $S hack-idle-delay 300
+gsettings set $S lock-enabled true
 gsettings set $S lock-delay 60
 check "mode off: lock at idle delay" '{"saver":null,"lock":300,"dpms":null,"lock_on_suspend":true}'
 gsettings set $S mode random
