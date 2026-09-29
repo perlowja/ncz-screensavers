@@ -447,39 +447,33 @@ def _lspci_display() -> str:
 
 
 def _driver_in_use() -> str:
-    """Find the kernel driver currently bound to the display class."""
+    """Kernel drivers bound to the display-class PCI devices (comma list)."""
     raw = _read_proc("lspci", ["-nnk", "-d", "::0300"])
+    drivers = []
     for line in raw.splitlines():
         line = line.strip()
         if line.startswith("Kernel driver in use:"):
-            return line.split(":", 1)[1].strip()
-    return ""
+            drivers.append(line.split(":", 1)[1].strip())
+    return ", ".join(drivers)
 
 
-def _egl_info() -> dict[str, str]:
-    """Best-effort EGL renderer string; never fails the phase."""
+def _egl_info(env: dict[str, str]) -> dict[str, str]:
+    """GLES renderer and version as seen through EGL on the Wayland session."""
     out: dict[str, str] = {}
-    # ``eglinfo -B`` prints a short block including "EGL version" and
-    # "EGL client APIs" on Mesa. ``es2_info`` and ``es_info`` are similar.
-    for cmd in (["eglinfo", "-B"], ["es2_info"], ["es_info"], ["glxinfo"]):
+    for cmd in (["eglinfo", "-p", "wayland", "-B"], ["eglinfo", "-B"]):
         try:
-            proc = _run(cmd, timeout=5.0)
+            proc = _run(cmd, timeout=10.0, env=env)
         except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
             continue
         if proc.returncode != 0:
             continue
-        text = proc.stdout.decode("utf-8", errors="replace")
-        for line in text.splitlines():
-            low = line.lower()
-            if (
-                "renderer" in low
-                or "vendor" in low
-                or "version" in low
-                or "client apis" in low
-            ):
-                out[line.strip()] = ""
+        for line in proc.stdout.decode("utf-8", errors="replace").splitlines():
+            for key in ("renderer", "version", "vendor"):
+                pre = f"OpenGL ES profile {key}:"
+                if line.startswith(pre):
+                    out[f"gles_{key}"] = line[len(pre) :].strip()
         if out:
-            out["__source"] = cmd[0]
+            out["source"] = " ".join(cmd)
             return out
     return out
 
@@ -628,14 +622,19 @@ def phase_env(
     driver = _driver_in_use()
     if driver:
         gpu["driver"] = driver
-        _record(checks, "driver", "pass", f"{driver} bound to display class")
+        _record(checks, "driver", "pass", f"kernel driver(s): {driver}")
     else:
         _record(checks, "driver", "fail", "no kernel driver bound to display class")
 
-    egl = _egl_info()
+    egl = _egl_info(env)
     gpu["egl"] = egl
     if egl:
-        _record(checks, "egl-info", "pass", f"source={egl.get('__source', '?')}")
+        _record(
+            checks,
+            "egl-info",
+            "pass",
+            f"{egl.get('gles_renderer', '?')} | {egl.get('gles_version', '?')}",
+        )
     else:
         # Fall back to running a hack briefly.
         hack = os.path.join(HACK_BIN_DIR, "blackhole_gles3")
@@ -651,6 +650,7 @@ def phase_env(
         else:
             _record(checks, "egl-info", "skip", "no EGL tool and no blackhole_gles3")
 
+    results["gpu"] = gpu
     pkgs = _dpkg_versions(
         [
             "libgl1-mesa-dri",
