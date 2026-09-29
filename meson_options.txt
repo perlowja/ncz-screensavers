@@ -15,3 +15,8 @@ option(
     description: 'Build the vendored xscreensaver glmatrix port through GL4ES + compat shim (round 7 part 2).',
 )
 
+
+option(
+    'install-extras', type: 'boolean', value: false,
+    description: 'Also install shaders of non-ship (development-only) hacks.',
+)

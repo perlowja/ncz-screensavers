@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <enum id="dev.ncz.screensaver.BlackholeColorMode">
+    <value nick="stylized" value="0"/>
+    <value nick="kipthorne" value="1"/>
+    <value nick="faithful" value="2"/>
+  </enum>
+  <schema id="dev.ncz.screensaver" path="/dev/ncz/screensaver/">
+    <key name="mode" type="s"><default>'off'</default><summary>Screensaver mode</summary></key>
+    <key name="hack-id" type="s"><default>'hyprsaver_aurora_gles3'</default><summary>Selected screensaver</summary></key>
+    <key name="random-hacks" type="as"><default>[]</default><summary>Random rotation set</summary></key>
+    <key name="hack-idle-delay" type="i"><range min="60" max="86400"/><default>300</default><summary>Idle delay</summary></key>
+    <key name="cycle-delay" type="i"><range min="60" max="86400"/><default>600</default><summary>Rotation interval</summary></key>
+    <key name="lock-enabled" type="b"><default>true</default><summary>Lock after screensaver</summary></key>
+    <key name="lock-delay" type="i"><range min="0" max="86400"/><default>60</default><summary>Lock delay after screensaver</summary></key>
+    <key name="lock-on-suspend" type="b"><default>true</default><summary>Lock on suspend</summary></key>
+    <key name="blackhole-color-mode" enum="dev.ncz.screensaver.BlackholeColorMode">
+      <default>'stylized'</default>
+      <summary>Black hole color mode</summary>
+      <description>Color model of the Black Hole screensaver: stylized (the original palette), kipthorne (blackbody colors with no Doppler or gravitational shift, in the manner of Interstellar), or faithful (blackbody colors with Doppler and gravitational shift applied). The launcher exports the nick as NCZ_BLACKHOLE_COLORS before starting blackhole_gles3.</description>
+    </key>
+  </schema>
+</schemalist>
