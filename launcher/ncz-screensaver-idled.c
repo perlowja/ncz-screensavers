@@ -771,42 +771,60 @@ static void maybe_bind_pwr_mgr(struct idled_state *st)
  * GSource for wl_display
  * ------------------------------------------------------------------------- */
 
-/* The GSource callback context provides our state; we wire it via
- * g_source_set_callback()'s user_data. */
+/* GSource wrapper for the wl_display fd, following the documented libwayland
+ * read protocol: dispatch pending events, flush, prepare_read in prepare();
+ * read_events or cancel_read in check() depending on what poll reported. */
+struct wl_glib_source {
+    GSource base;
+    struct idled_state *st;
+    GPollFD pfd;       /* must outlive the source registration */
+    bool    reading;
+};
+
 static gboolean wayland_source_prepare(GSource *src, gint *timeout)
 {
-    (void)src; (void)timeout;
-    return FALSE;  /* we use pollfd -> always polled */
+    struct wl_glib_source *w = (struct wl_glib_source *)src;
+    struct wl_display *d = w->st->w_display;
+    *timeout = -1;
+    if (!d) return FALSE;
+    while (wl_display_prepare_read(d) != 0) {
+        if (wl_display_dispatch_pending(d) < 0) return TRUE; /* dispatch reports it */
+    }
+    w->reading = true;
+    if (wl_display_flush(d) < 0 && errno != EAGAIN) return TRUE;
+    return FALSE;
 }
 
 static gboolean wayland_source_check(GSource *src)
 {
-    /* If our pollfd fired, we want to dispatch. The pollfd state was set up
-     * in wl_attach_source(). */
-    return TRUE;
+    struct wl_glib_source *w = (struct wl_glib_source *)src;
+    struct wl_display *d = w->st->w_display;
+    if (!d) return FALSE;
+    if (w->reading) {
+        w->reading = false;
+        if (w->pfd.revents & G_IO_IN) {
+            if (wl_display_read_events(d) < 0) return TRUE;
+        } else {
+            wl_display_cancel_read(d);
+        }
+    }
+    return w->pfd.revents != 0;
 }
 
 static gboolean wayland_source_dispatch(GSource *src, GSourceFunc cb, gpointer data)
 {
-    (void)src; (void)cb;
-    struct idled_state *st = data;
+    (void)cb; (void)data;
+    struct wl_glib_source *w = (struct wl_glib_source *)src;
+    struct idled_state *st = w->st;
     if (!st->w_display) return G_SOURCE_REMOVE;
-    /* Flush outgoing first so any pending requests reach the compositor. */
-    if (wl_display_flush(st->w_display) < 0) {
-        log_err("wl_display_flush failed");
+    if (w->pfd.revents & (G_IO_HUP | G_IO_ERR)) {
+        log_err("wayland connection closed");
         request_shutdown(st, 1);
         return G_SOURCE_REMOVE;
     }
-    if (wl_display_prepare_read(st->w_display) == 0) {
-        wl_display_read_events(st->w_display);
-    }
-    if (wl_display_dispatch_pending(st->w_display) < 0) {
-        log_err("wl_display_dispatch failed");
-        request_shutdown(st, 1);
-        return G_SOURCE_REMOVE;
-    }
-    if (wl_display_get_error(st->w_display) != 0) {
-        log_err("wl_display fatal error");
+    if (wl_display_dispatch_pending(st->w_display) < 0 ||
+        wl_display_get_error(st->w_display) != 0) {
+        log_err("wayland dispatch failed (errno=%d)", errno);
         request_shutdown(st, 1);
         return G_SOURCE_REMOVE;
     }
@@ -830,14 +848,16 @@ static bool wl_attach_source(struct idled_state *st)
 {
     st->w_fd = wl_display_get_fd(st->w_display);
     if (st->w_fd < 0) return false;
-    GSource *src = g_source_new(&wayland_source_funcs, sizeof(GSource));
-    if (!src) return false;
-    g_source_set_callback(src, NULL, st, NULL);
-    st->w_source = src;
-    GPollFD pfd = { .fd = st->w_fd, .events = G_IO_IN | G_IO_HUP | G_IO_ERR, .revents = 0 };
-    g_source_add_poll(src, &pfd);
-    g_source_attach(src, NULL);
-    g_source_unref(src);   /* main loop owns it now */
+    struct wl_glib_source *w = (struct wl_glib_source *)
+        g_source_new(&wayland_source_funcs, sizeof(struct wl_glib_source));
+    if (!w) return false;
+    w->st = st;
+    w->pfd.fd = st->w_fd;
+    w->pfd.events = G_IO_IN | G_IO_HUP | G_IO_ERR;
+    g_source_add_poll(&w->base, &w->pfd);
+    st->w_source = &w->base;
+    g_source_attach(&w->base, NULL);
+    g_source_unref(&w->base);   /* the main context owns it now */
     return true;
 }
 
