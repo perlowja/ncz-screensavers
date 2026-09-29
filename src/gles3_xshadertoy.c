@@ -208,8 +208,7 @@ static const char *frag_preamble =
     "/* iSeed — four random floats, constant per run, differ every run.\n"
     " * Lets shaders pick their per-launch composition without reading\n"
     " * iTime (which would also drift the composition over the run).\n"
-    " * Generated once at init from a wall-clock+pid seed. */\n"
-    "uniform vec4 iSeed;\n";
+    " * Generated once at init from a wall-clock+pid seed. */\n";
 
 /* The `void main()` wrapper — appended AFTER the body so the
  * `mainImage` call resolves forward to the body. The body declares
