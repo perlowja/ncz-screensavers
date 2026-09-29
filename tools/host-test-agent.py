@@ -1865,7 +1865,9 @@ def phase_idle(results, checks, env, workdir, launcher_path, idled_path, no_dpms
 def phase_color(results, checks, env, workdir, launcher_path):
     shots = os.path.join(workdir, "shots")
     os.makedirs(shots, exist_ok=True)
-    ienv = _isolated_env(env)
+    # A fixed seed makes the scene identical between runs so only the color
+    # model can explain a difference between the modes.
+    ienv = _isolated_env(env, {"NCZ_BLACKHOLE_FIXED_SEED": "12345"})
     _cli(ienv, "config", "set", "verify-render", "false")
     stats = {}
     for mode in ("stylized", "kipthorne", "faithful"):
@@ -2089,6 +2091,11 @@ def run_phases(
         phase_env(results, checks_by_phase["env"], env)
     if "install" in phases:
         phase_install(results, checks_by_phase["install"], env, deb, pw, workdir)
+    if "hacks" in phases:
+        # Resolve now: the catalog on the host is only current once the package
+        # under test is installed (an older catalog may exist beforehand).
+        hack_ids = _resolve_hacks(os.environ.get("HT_HACKS_ARG", "all"))
+        _log(f"hack_ids resolved after install: {len(hack_ids)}")
     if "hacks" in phases:
         phase_hacks(
             results,
@@ -2336,6 +2343,7 @@ def main(argv: list[str] | None = None) -> int:
     _populate_host_facts(results)
 
     phases = [p.strip() for p in args.phases.split(",") if p.strip()]
+    os.environ["HT_HACKS_ARG"] = args.hacks
     hack_ids = _resolve_hacks(args.hacks)
     return run_phases(
         phases,
