@@ -5,15 +5,24 @@ Source: https://gitlab.com/ncz-os/ncz-screensavers
 Files: *
 Copyright: 2026 Jason Perlow and contributors
 License: GPL-2+
+Comment: PROJECT LICENSE UNDECIDED. meson.build declares GPL-2.0-or-later while
+ the repository LICENSE file is Apache-2.0; GPL-2+ is recorded here only to
+ match meson.build. See docs/CONSOLIDATION.md; the operator decides.
 
-Files: vendor/blackhole/*
+Files: vendor/blackhole/* src/gles3_blackhole.c
 Copyright: 2015 Otto Seiskari
  2026 Adriwin
+ 2026 Jason Perlow and contributors
 License: MIT
+Comment: Port of Adriwin06/black-hole (MIT); upstream license text in
+ vendor/blackhole-LICENSE.txt. The color-model work follows
+ hydrogendeuteride/BlackHoleRayTracer (MIT) in method only.
 
-Files: vendor/hyprsaver/*
+Files: vendor/hyprsaver/shaders/*
 Copyright: 2026 Mara Vexa
 License: MIT
+Comment: Upstream license in vendor/hyprsaver/LICENSE; individual shaders
+ carry no header of their own.
 
 Files: vendor/xshadertoy/*
 Copyright: the individual shader authors named in each file header
@@ -22,8 +31,14 @@ Comment: Each vendored shader declares its own license identifier in its
  header; the shipped set contains only MIT, CC0 and CC BY 3.0 shaders and
  original clean-room ports. See vendor/xshadertoy/PORTED.md.
 
-Files: vendor/xscreensaver/* src/xscreensaver_compat.h
+Files: src/voronoi.c src/projectiveplane.c src/klein.c src/hypertorus.c
+ src/cubestorm.c src/hexstrut.c src/crackberg.c src/cityflow.c
+ src/geodesic.c src/gravitywell.c src/noof.c src/gibson.c
 Copyright: 1992-2026 Jamie Zawinski <jwz@jwz.org> and the individual hack authors
+License: xscreensaver
+Comment: Ported classic hacks. Most files carry the notice below; crackberg.c
+ (Matus Telgarsky, 2005) carries only an authorship line and is distributed
+ in the xscreensaver collection under the same terms.
 License: xscreensaver
  Permission to use, copy, modify, distribute, and sell this software and its
  documentation for any purpose is hereby granted without fee, provided that
