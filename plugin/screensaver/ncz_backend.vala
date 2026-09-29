@@ -9,7 +9,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         "mode", "hack-id", "random-hacks", "hack-idle-delay", "cycle-delay", "lock-enabled",
         "lock-delay", "lock-on-suspend", "display-off-delay", "gpu-offload", "pool-gpu-class",
         "show-all-hacks", "render-scale-mode", "render-scale", "max-render-height",
-        "hack-options", "blackhole-color-mode"
+        "hack-options", "blackhole-color-mode", "verify-render"
     };
     private const string TIERS = "/usr/share/ncz-screensavers/tiers.tsv";
     private const string PRESETS = "/usr/share/ncz-screensavers/presets.tsv";
@@ -23,11 +23,13 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     private Gee.HashMap<string, string> expects = new Gee.HashMap<string, string> ();
     private string gpu_class_text = "";
     private bool tiers_loaded = false;
+    private int gpu_count = 0;
     private Gee.HashMap<string, string> issues = new Gee.HashMap<string, string> ();
 
     public NczScreensaverBackend () {
         settings = open (SCHEMA);
         if (settings != null && !has_all_keys (settings))
+            warning ("screensaver schema %s lacks required keys; page disabled", SCHEMA);
             settings = null;
         if (settings != null) {
             settings.changed.connect ((key) => {
@@ -159,6 +161,9 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         string name = cls == "" ? "Weak" : cls.substring (0, 1).up () + cls.substring (1);
         gpu_class_text = ms > 0 ? "%s (%.1f ms on the calibration test)".printf (name, ms) : name;
 
+        var gpus = launcher_json ("gpus");
+        gpu_count = (gpus != null && gpus.get_node_type () == Json.NodeType.ARRAY) ? (int) gpus.get_array ().get_length () : 0;
+
         var list = launcher_json ("list");
         if (list == null)
             return;
@@ -192,7 +197,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     }
 
     public Gee.List<ScreensaverHack> hacks () {
-        return catalog;
+        return catalog.read_only_view;
     }
 
     public string mode {
@@ -363,6 +368,21 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         set { settings.set_boolean ("show-all-hacks", value); }
     }
 
+    public bool verify_render {
+        get { return settings.get_boolean ("verify-render"); }
+        set { settings.set_boolean ("verify-render", value); }
+    }
+
+    public void recalibrate () {
+        try {
+            Process.spawn_async (null, { LAUNCHER, "calibrate", "--force" }, null,
+                                 SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL | SpawnFlags.STDERR_TO_DEV_NULL,
+                                 null, null);
+        } catch (SpawnError e) {
+            warning ("screensaver calibrate failed: %s", e.message);
+        }
+    }
+
     public string gpu_class_label {
         owned get { return gpu_class_text; }
     }
@@ -464,27 +484,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     }
 
     public bool gpu_offload_supported {
-        get {
-            string modules;
-            try {
-                FileUtils.get_contents ("/proc/modules", out modules);
-            } catch (FileError e) {
-                return false;
-            }
-            if (!modules.contains ("nvidia "))
-                return false;
-            var drivers = new Gee.HashSet<string> ();
-            for (int i = 0; i < 8; i++) {
-                string? target = null;
-                try {
-                    target = FileUtils.read_link ("/sys/class/drm/card%d/device/driver".printf (i));
-                } catch (FileError e) {
-                    continue;
-                }
-                drivers.add (Path.get_basename (target));
-            }
-            return drivers.size >= 2;
-        }
+        get { return gpu_count >= 2; }
     }
 
     public string gpu_offload {

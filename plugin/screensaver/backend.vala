@@ -45,6 +45,8 @@ public interface ScreensaverBackend : Object {
     public abstract bool show_all { get; set; }
     // Human-readable class of the display GPU, e.g. "Weak (46.5 ms on the calibration test)".
     public abstract string gpu_class_label { owned get; }
+    public abstract bool verify_render { get; set; }
+    public abstract void recalibrate ();
     // Empty when the hack has no known defect, else a short reason.
     public abstract string known_issue (string id);
     public abstract string pool_class { owned get; set; }

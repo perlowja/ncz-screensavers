@@ -85,11 +85,12 @@ public class ScreensaverSettings : Gtk.Box {
     private PreferencesGroup? flagged_group = null;
     private Box hack_box = new Box (Orientation.VERTICAL, 12);
     private SwitchRow? show_all_row = null;
+    private SwitchRow verify_row;
     private SelectionRow render_row;
     private SpinRow render_height_row;
-    private SwitchRow lock_row;
-    private SpinRow lock_delay_row;
-    private SwitchRow suspend_row;
+    private SwitchRow? lock_row = null;
+    private SpinRow? lock_delay_row = null;
+    private SwitchRow? suspend_row = null;
     private SpinRow display_row;
     private SelectionRow? color_row = null;
     private SelectionRow? gpu_row = null;
@@ -190,8 +191,20 @@ public class ScreensaverSettings : Gtk.Box {
         // Read-only: class of the graphics chip driving the display
         if (backend.gpu_class_label != "") {
             var info = new ActionRow ("Graphics chip class", backend.gpu_class_label);
+            var again = new Button.with_label ("Measure again");
+            again.valign = Align.CENTER;
+            again.tooltip_text = "Run the GPU speed test again (takes a few seconds)";
+            again.clicked.connect (() => backend.recalibrate ());
+            info.add_suffix (again);
             group.add_row (info);
         }
+
+        verify_row = new SwitchRow ("Detect black screensavers", "Skip a screensaver that draws only black");
+        verify_row.switch_btn.notify["active"].connect (() => {
+            if (!refreshing)
+                backend.verify_render = verify_row.switch_btn.active;
+        });
+        group.add_row (verify_row);
     }
 
     private void build_lock_group () {
@@ -272,7 +285,7 @@ public class ScreensaverSettings : Gtk.Box {
         var preview = new ActionRow ("Preview", "Runs the screensaver for 30 seconds");
         var button = new Button.with_label ("Preview");
         button.valign = Align.CENTER;
-        button.clicked.connect (() => backend.preview (backend.color_hack));
+        button.clicked.connect (() => start_preview (backend.color_hack));
         preview.add_suffix (button);
         group.add_row (preview);
     }
@@ -465,6 +478,8 @@ public class ScreensaverSettings : Gtk.Box {
     private void start_preview (string id) {
         var window = get_root () as Gtk.Window;
         if (!backend.is_flagged (id) || window == null || window.application == null) {
+            if (backend.is_flagged (id))
+                warning ("previewing a flagged screensaver without a confirmation window");
             backend.preview (id);
             return;
         }
@@ -518,6 +533,7 @@ public class ScreensaverSettings : Gtk.Box {
         render_height_row.spin_btn.value = backend.max_render_height;
         int pi = index_of (POOL_IDS, backend.pool_class);
         pool_row.current_value = POOL_LABELS[pi >= 0 ? pi : 0];
+        verify_row.switch_btn.active = backend.verify_render;
         start_row.spin_btn.value = minutes (backend.start_delay);
         rotate_row.spin_btn.value = minutes (backend.rotate_delay);
         if (backend.lock_supported) {
