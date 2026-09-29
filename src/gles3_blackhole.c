@@ -20,7 +20,7 @@ extern void ncz_harness_die(int code);
 #endif
 typedef struct {
  GLuint program,vbo;
- GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis;
+ GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis,color_mode;
  GLint palette_phase,palette_rate,palette_contrast,nebula_scheme;
  // Per-launch path-shape parameters (replaces the hardcoded curve
  // coefficients that were previously literals in disk_color's camera block).
@@ -71,6 +71,22 @@ static uint32_t seed(void){
  return t.tv_nsec^t.tv_sec^getpid();
 }
 static float rnd(uint32_t*s,float a,float b){*s^=*s<<13;*s^=*s>>17;*s^=*s<<5;return a+(b-a)*(float)(*s&0xffffffu)/16777215.f;}
+// NCZ_BLACKHOLE_COLORS selects the disk colour model:
+//   unset / "stylised" -> 0, our own palette (default)
+//   "kipthorne"        -> 1, blackbody only; Doppler and gravitational
+//                            shift OFF, as Thorne/Double Negative rendered
+//                            it for Interstellar (symmetric warm-white)
+//   "faithful"         -> 2, blackbody + redshift + Doppler + beaming
+static float ncz_blackhole_color_mode(void){
+    const char*c=getenv("NCZ_BLACKHOLE_COLORS");
+    if(!c||!*c) return 0.f;
+    if(!strcmp(c,"kipthorne")) return 1.f;
+    if(!strcmp(c,"faithful"))  return 2.f;
+    if(!strcmp(c,"stylised")||!strcmp(c,"stylized")) return 0.f;
+    fprintf(stderr,"[diag] blackhole: unknown NCZ_BLACKHOLE_COLORS=\"%s\" (want kipthorne|faithful|stylised); using stylised\n",c);
+    return 0.f;
+}
+
 static char*load(void){const char*p[]={"vendor/blackhole/blackhole.frag","../vendor/blackhole/blackhole.frag","../../vendor/blackhole/blackhole.frag","/usr/share/ncz-screensavers/shaders/blackhole.frag"};FILE*f=0;const char*u=0;for(unsigned i=0;i<4;i++)if((f=fopen(p[i],"rb"))){u=p[i];break;}if(!f){fprintf(stderr,"blackhole: cannot locate shader\n");return 0;}fseek(f,0,SEEK_END);long n=ftell(f);rewind(f);char*b=malloc(n+1);if(!b||fread(b,1,n,f)!=(size_t)n){free(b);fclose(f);return 0;}fclose(f);b[n]=0;fprintf(stderr,"[diag] blackhole shader=%s\n",u);return b;}
 static GLuint comp(GLenum t,const char*x){GLuint s=glCreateShader(t);glShaderSource(s,1,&x,0);glCompileShader(s);GLint ok=0;glGetShaderiv(s,GL_COMPILE_STATUS,&ok);if(!ok){char l[8192];glGetShaderInfoLog(s,sizeof l,0,l);fprintf(stderr,"blackhole compile: %s\n",l);glDeleteShader(s);return 0;}return s;}
 static void init_blackhole(ModeInfo*m){
@@ -98,7 +114,7 @@ static void init_blackhole(ModeInfo*m){
  glBufferData(GL_ARRAY_BUFFER,sizeof q,q,GL_STATIC_DRAW);
  glBindBuffer(GL_ARRAY_BUFFER,0);
 #define L(n) s->n=glGetUniformLocation(s->program,"u_"#n)
- L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);
+ L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);L(color_mode);
  L(palette_phase);L(palette_rate);L(palette_contrast);L(nebula_scheme);
  L(path_d_base);L(path_d_swing);L(path_d_harm_amp);L(path_d_harm_freq);
  L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
@@ -409,6 +425,7 @@ static void draw_blackhole(ModeInfo*m){
  glUniform1f(s->seed,s->v[0]);
  glUniform1f(s->radius,s->v[1]);
  glUniform1f(s->temperature,s->v[2]);
+    { float cm=ncz_blackhole_color_mode(); glUniform1f(s->color_mode,cm); }
  glUniform1f(s->density,s->v[3]);
  glUniform1f(s->rotation,s->v[4]);
  glUniform1f(s->inclination,s->v[5]);

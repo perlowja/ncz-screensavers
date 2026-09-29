@@ -7,6 +7,17 @@ uniform float u_time, u_seed, u_radius, u_temperature, u_density, u_rotation;
 uniform float u_inclination, u_orbit_rate, u_jet, u_star_density;
 uniform float u_camera_mode, u_palette, u_approach, u_periapsis;
 uniform float u_palette_phase, u_palette_rate, u_palette_contrast;
+// Disk colour model. 0 = stylised palette (default, our own art direction).
+// 1 = kipthorne: blackbody only, Doppler and gravitational shift deliberately
+//     OFF - the Interstellar/DNGR look Thorne and Double Negative rendered
+//     for the film, a symmetric warm-white disk.
+// 2 = faithful: blackbody with gravitational redshift AND relativistic
+//     Doppler folded into the observed temperature, plus beaming on
+//     brightness. Physically correct and visibly asymmetric.
+// Colour model derived from hydrogendeuteride/BlackHoleRayTracer (MIT).
+// The Planck curve is evaluated analytically rather than sampled from a
+// blackbody LUT texture, so no binary asset is required.
+uniform float u_color_mode;
 // Per-launch flight-path parameters. Drawn per-launch in C; replace the
 // previously-hardcoded curve coefficients so each run traces a distinct
 // path shape (not a rescaled version of one).
@@ -158,11 +169,31 @@ vec3 nebula(vec3 d){
  return .09*cloud*mix(cool,warm,warp)+.04*filaments*vec3(.65,.75,1.);
 }
 vec3 stars(vec3 d){
- vec2 uv=vec2(atan(d.z,d.x)/(2.*PI)+.5,asin(clamp(d.y,-1.,1.))/PI+.5);
- vec2 cell=floor(uv*vec2(720,360));
- float n=hash21(cell),s=smoothstep(1.-.0022*u_star_density,1.,n);
- vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(cell+7.));
- return c*s*s*(.65+.35*sin(u_seed+n*40.))*1.8+nebula(d);
+ // Star field hashed in DIRECTION space (equal-angle cube map), not on a
+ // longitude/latitude grid. The old 720x360 lat/long grid packs cells ever
+ // tighter toward the poles: a lensed image of a pole (bright grainy
+ // "searchlight" patch) and cells stretched into horizontal dashes elsewhere
+ // (reported on PEGASUS 2026-09-28 in all colour modes). Each cell now holds
+ // at most one round, softly falling-off star at a jittered position, so
+ // magnification by the lens enlarges a dot instead of a square cell.
+ vec3 ad=abs(d);
+ float m=max(ad.x,max(ad.y,ad.z));
+ vec2 fuv;float fid;
+ if(ad.x>=ad.y&&ad.x>=ad.z){fuv=d.yz/m;fid=d.x>0.?0.:1.;}
+ else if(ad.y>=ad.z){fuv=d.xz/m;fid=d.y>0.?2.:3.;}
+ else{fuv=d.xy/m;fid=d.z>0.?4.:5.;}
+ fuv=atan(fuv)*(4./PI);                       // equal-angle, [-1,1]
+ const float K=208.;                            // ~ same total cell count as 720x360
+ vec2 g=(fuv*.5+.5)*K;
+ vec2 cell=floor(g),f=fract(g);
+ vec2 hc=cell+vec2(fid*37.1,fid*91.7);
+ float n=hash21(hc);
+ float on=step(1.-.0022*u_star_density,n);
+ vec2 sp=vec2(hash21(hc+3.1),hash21(hc+8.7))*.6+.2;
+ float dist=length(f-sp);
+ float s=on*smoothstep(.34,.0,dist);
+ vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(hc+7.));
+ return c*s*s*(.65+.35*sin(u_seed+n*40.))*2.4+nebula(d);
 }
 // ---- Disk axis tilt ----
 // Build the world-space disk normal at the current time. Two contributions:
@@ -214,6 +245,20 @@ vec3 toDiskLocal(vec3 p,vec3 n){
  if(length(axis)<1e-5)return p;        // n ~ +Z: identity
  return p*c + cross(axis,p)*s + axis*dot(axis,p)*(1.-c);
 }
+// Analytic blackbody colour over ~1000K..40000K, approximating the Planck
+// locus in sRGB - the same curve a blackbody LUT texture bakes.
+vec3 blackbodyRGB(float kelvin){
+ float t=clamp(kelvin,1000.,40000.)/100.;
+ float r,g,b;
+ if(t<=66.) r=1.; else r=clamp(1.292936186*pow(t-60.,-0.1332047592),0.,1.);
+ if(t<=66.) g=clamp(0.3900815788*log(max(t,1.))-0.6318414438,0.,1.);
+ else       g=clamp(1.129890861*pow(t-60.,-0.0755148492),0.,1.);
+ if(t>=66.)      b=1.;
+ else if(t<=19.) b=0.;
+ else            b=clamp(0.5432067892*log(t-10.)-1.196254089,0.,1.);
+ return vec3(r,g,b);
+}
+
 vec3 disk_color(vec3 p,vec3 diskN,float drama){
  // Rotate into the disk's local frame (z = disk normal at this instant).
  // Everything below runs in plane-polar (r, a) where a is the orbital
@@ -244,20 +289,77 @@ vec3 disk_color(vec3 p,vec3 diskN,float drama){
  float radiusHue=(r-3.)*.012;
  float paletteT=clamp(heat*dop/grav,0.,1.)+bandHue+radiusHue;
  // A real disk-space hot sector also appears in the lensed disk images.
+ // Hot sector. Previously cos^4 at 0.65 amplitude, which rotated as a hard
+ // narrow lobe and read as a searchlight sweeping the disk (reported on
+ // PEGASUS 2026-09-28, visible in ALL colour modes). Widened to cos^2 and
+ // cut to 0.22 so it is a broad brightening rather than a spotlight.
  float sector=max(cos(a-(.22*u_time+.00001*u_seed)),0.);
- sector*=sector;sector*=sector;
- float boost=1.+.65*drama*sector*(1.-smoothstep(4.,8.,r));
- return palette(paletteT)*edge*(.32+1.2*n)*u_density*dop*dop*boost;
+ sector*=sector;
+ // The physical colour modes derive their asymmetry from Doppler beaming
+ // (dop) which is already applied; an artistic hot sector on top of that is
+ // double-counting, so it is stylised-only.
+ float sector_amp=(u_color_mode<0.5)?0.22:0.0;
+ float boost=1.+sector_amp*drama*sector*(1.-smoothstep(4.,8.,r));
+ vec3 tint; float bright=1.;
+ if(u_color_mode<0.5){
+  tint=palette(paletteT);              // stylised: unchanged, still default
+ } else {
+  // Map the existing heat term onto a physical disk temperature: inner disk
+  // hot and blue-white, outer edge cool and deep red.
+  float T=mix(1200.,9500.,clamp(heat,0.,1.));
+  if(u_color_mode>1.5){
+   // faithful: observed temperature is shifted by gravitational redshift
+   // (grav = sqrt(1-rs/r), already computed) and relativistic Doppler (dop).
+   // Beaming brightens the approaching side as dop^3.
+   T*=clamp(dop*grav,0.15,3.);
+   // The return below already carries *dop*dop. Beaming for surface
+   // brightness goes as delta^3, so contribute ONE more factor here, not
+   // three -- dop*dop*dop here made it delta^5 and read as a searchlight.
+   bright=clamp(dop,0.25,2.2);
+  }
+  // kipthorne falls through with no shift and no beaming: Thorne and Double
+  // Negative disabled both so the film disk reads symmetric.
+  tint=blackbodyRGB(T);
+ }
+ return tint*edge*(.32+1.2*n)*u_density*dop*dop*boost*bright;
 }
 // Jet picks up the palette so it tracks the rest of the scene instead of a
 // fixed blue. Sampled at a hot temperature so it sits at the bright stop.
-vec3 jet_color(float axis){
+vec3 jet_tint(){
  Stop s0,s1,s2,s3;paletteStops(u_palette,s0,s1,s2,s3);
  Stop hot=stopAHue(s2,s3,.85);
  float active_h=u_palette_phase+u_time*u_palette_rate*1.5;
  hot.h=fract(hot.h+active_h);
- vec3 c=hsl2rgb(vec3(hot.h,hot.s,hot.l));
- return c*smoothstep(.975,.997,axis);
+ vec3 c=hsl2rgb(vec3(hot.h,.9,.58));
+ // Physical colour modes: relativistic jets are non-thermal synchrotron
+ // emission, cool blue-white, not part of the blackbody disk palette.
+ return (u_color_mode<0.5)?c:vec3(.55,.72,1.);
+}
+// Two thin collimated beams along +-axis (the disk normal), rendered from the
+// ray's closest approach to the axis line (unlensed straight-ray approximation).
+// This replaces a screen-fixed cone test (smoothstep on |dot(ray,axis)|) that
+// painted a large ellipse wherever the view direction was within ~13 degrees of
+// the axis, textured by screen-space noise: the "searchlight with large dots"
+// artifact reported on PEGASUS 2026-09-28 in ALL colour modes.
+vec3 jet_glow(vec3 cam,vec3 ray,vec3 axis){
+ float b=dot(ray,axis);
+ float den=1.-b*b;
+ if(den<1e-4)return vec3(0.);
+ float pole=smoothstep(.02,.35,den);   // soften near pole-on views
+ float d=dot(ray,cam),e=dot(axis,cam);
+ float t=(b*e-d)/den;               // distance along the ray to closest approach
+ if(t<0.)return vec3(0.);
+ float sa=(e-b*d)/den;              // height along the jet axis at closest approach
+ float h=abs(sa);
+ if(h<3.2||h>60.)return vec3(0.);
+ vec3 q=cam+t*ray-sa*axis;
+ float w=.22+.07*h;                 // gently opening beam
+ float prof=exp(-dot(q,q)/(w*w));
+ // Knots streaming outward, smooth in beam-space (no screen-space blocks).
+ float knots=.55+.45*noise(vec2(h*.55-u_time*1.6*sign(sa),atan(q.y,q.x)*.0+u_seed*.01));
+ float fade=smoothstep(3.2,5.5,h)*exp(-h*.045);
+ float near=smoothstep(1.,7.,t);       // no hard cut where the closest approach passes the camera
+ return jet_tint()*prof*knots*fade*pole*near;
 }
 // Zero velocity and acceleration at each envelope endpoint.
 float ease5(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*t*(t*(t*6.-15.)+10.);}
@@ -419,7 +521,7 @@ void main(){
    }
   }
  if(!captured){vec3 d=length(pos-old)>1e-5?normalize(pos-old):ray;color+=trans*(stars(d)+vec3(.002,.003,.007));}
- if(u_jet>0.){float axis=abs(dot(ray,diskN));color+=u_jet*jet_color(axis)*(.45+.55*noise(p*45.+u_time*.2));}
+ if(u_jet>0.&&!captured){color+=trans*u_jet*1.2*jet_glow(cam,ray,diskN);}
  // Reinhard tonemap -> 1/2.2 gamma -> contrast toe + black point.
  // u_palette_contrast ~1.0 (gentle S-curve restoring Reinhard-flattened
  // contrast). 0.95-1.25 randomised per-launch.
