@@ -8,8 +8,10 @@ GLES3 programs in `src/classics_shader/cs_<hack>.c`; the other three (hypertorus
 projectiveplane) were already GLSL with retained buffers upstream and are kept as they are.
 
 Binary names, hack ids, `HACK_TABLE` symbols and packaging are unchanged (`<hack>_gles3`).
-The GL1 originals stay behind `-Dlegacy-classics=true` for one release, as
-`<hack>_legacy_gles3` (installed only in that configuration) for A/B comparison.
+The GL1 immediate-mode builds (`<hack>_legacy_gles3`) and the `-Dlegacy-classics` option were retired
+after the review round (operator decision 2026-09-29); the tables below keep their numbers as the
+historical baseline. The old GL1 sources stay in the tree because the xscreensaver-shim `_demo` build
+(dev only, not shipped) and other hacks still use them; see "Retiring the GL1 layer".
 
 ## How a port is built
 
@@ -46,7 +48,7 @@ The GL1 originals stay behind `-Dlegacy-classics=true` for one release, as
 
 ## Performance (before and after)
 
-Method: vsync-paced runs of 12 seconds under the exclusive host lock, no readback in the loop, numbers are the harness's own swap-to-swap statistics after the first 5 seconds (`[stats] steady`). 60 fps means the display refresh was met with the listed p95 frame interval; fps below 60 is 1000 / median. `legacy` is the GL1 build (`-Dlegacy-classics=true`), `classic` and `enhanced` are the ports. Raw rows: `docs/classics-shots/perf.tsv`.
+Method: vsync-paced runs of 12 seconds under the exclusive host lock, no readback in the loop, numbers are the harness's own swap-to-swap statistics after the first 5 seconds (`[stats] steady`). 60 fps means the display refresh was met with the listed p95 frame interval; fps below 60 is 1000 / median. `legacy` is the retired GL1 build (measured before retirement), `classic` and `enhanced` are the ports. Raw rows: `docs/classics-shots/perf.tsv`.
 
 Caveat: other test agents share these machines and do not all honor the lock. A run that overlapped another fullscreen window or a locked display stalls (no frame callbacks; the process ignores SIGTERM until killed); such runs were discarded and repeated.
 
@@ -246,5 +248,5 @@ is ok for everything that is instanced meshes or line art, marginal for fill-hea
 ## Packaging note
 
 New sources are built by the `classics_shader_ported` block in `meson.build`; no new runtime
-files and no new dependencies (shaders are embedded). `-Dlegacy-classics` defaults to false.
+files and no new dependencies (shaders are embedded).
 Suggested next package version: 0.5.0.

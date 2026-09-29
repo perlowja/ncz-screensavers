@@ -757,24 +757,18 @@ legacy_gles3_hacks = [
     {'name': 'crumbler',      'src': 'src/crumbler.c',       'extras': ['src/quickhull.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'cube21',        'src': 'src/cube21.c',         'extras': []},
     {'name': 'cubestack',     'src': 'src/cubestack.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-    {'name': 'cityflow',      'src': 'src/cityflow.c',       'extras': []},
     {'name': 'covid19',       'src': 'src/covid19.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-    {'name': 'crackberg',     'src': 'src/crackberg.c',      'extras': []},
     {'name': 'cubenetic',     'src': 'src/cubenetic.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
-    {'name': 'cubestorm',     'src': 'src/cubestorm.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'cubetwist',     'src': 'src/cubetwist.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'cubicgrid',     'src': 'src/cubicgrid.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'dangerball',    'src': 'src/dangerball.c',     'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
     {'name': 'discoball',     'src': 'src/discoball.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'energystream',  'src': 'src/energystream.c',   'extras': ['src/rotator.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
     {'name': 'gears',         'src': 'src/gears.c',          'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
-    {'name': 'geodesic',      'src': 'src/geodesic.c',       'extras': ['src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'glblur',        'src': 'src/glblur.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'glcells',       'src': 'src/glcells.c',        'extras': []},
     {'name': 'glknots',       'src': 'src/glknots.c',        'extras': ['src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
     {'name': 'glsnake',       'src': 'src/glsnake.c',        'extras': []},
-    {'name': 'gravitywell',   'src': 'src/gravitywell.c',    'extras': []},
-    {'name': 'hexstrut',      'src': 'src/hexstrut.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'hextrail',      'src': 'src/hextrail.c',       'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'highvoltage',   'src': 'src/highvoltage.c',    'extras': ['src/gllist.c', 'src/highvoltage_model.c', 'src/normals.c', 'src/tube.c']},
     {'name': 'hilbert',       'src': 'src/hilbert.c',        'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
@@ -789,7 +783,6 @@ legacy_gles3_hacks = [
     {'name': 'menger',        'src': 'src/menger.c',         'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'moebiusgears',  'src': 'src/moebiusgears.c',   'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'molecule',      'src': 'src/molecule.c',       'extras': ['src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
-    {'name': 'noof',          'src': 'src/noof.c',           'extras': ['src/pow2.c']},
     {'name': 'papercube',     'src': 'src/papercube.c',      'extras': ['src/rotator.c', 'src/yarandom.c']},
     {'name': 'peepers',       'src': 'src/peepers.c',        'extras': ['src/image_data_to_ximage.c', 'src/normals.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'polyhedra-gl',  'src': 'src/polyhedra-gl.c',   'extras': ['src/normals.c', 'src/polyhedra.c', 'src/rotator.c', 'src/teapot.c', 'src/yarandom.c'], 'c_args_extra': ['-DHAVE_JWZGLES'], 'table': 'polyhedra'},
@@ -800,11 +793,9 @@ legacy_gles3_hacks = [
     {'name': 'stonerview',    'src': 'src/stonerview.c',     'extras': ['src/stonerview-view.c', 'src/stonerview-move.c', 'src/stonerview-osc.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
     {'name': 'timetunnel',    'src': 'src/timetunnel.c',     'extras': ['src/image_data_to_ximage.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'tronbit',       'src': 'src/tronbit.c',        'extras': ['src/doubletime.c', 'src/gllist.c', 'src/rotator.c', 'src/sphere.c', 'src/tronbit_idle1.c', 'src/tronbit_idle2.c', 'src/tronbit_no.c', 'src/tronbit_yes.c', 'src/yarandom.c']},
-    {'name': 'voronoi',       'src': 'src/voronoi.c',        'extras': []},
     # Round 11 batch — alphabetical-by-name, 12 new native GLES3 ports
     {'name': 'flyingtoasters', 'src': 'src/flyingtoasters.c', 'extras': ['src/gllist.c', 'src/image_data_to_ximage.c', 'src/toast.c', 'src/toast2.c', 'src/toaster.c', 'src/toaster_base.c', 'src/toaster_handle.c', 'src/toaster_handle2.c', 'src/toaster_jet.c', 'src/toaster_knob.c', 'src/toaster_slots.c', 'src/toaster_wing.c', 'src/yarandom.c']},
     {'name': 'geodesicgears',  'src': 'src/geodesicgears.c',  'extras': ['src/involute.c', 'src/normals.c', 'src/rotator.c', 'src/tube.c', 'src/yarandom.c']},
-    {'name': 'gibson',         'src': 'src/gibson.c',         'extras': ['src/easing.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'glforestfire',   'src': 'src/glforestfire.c',   'extras': ['src/image_data_to_ximage.c'], 'c_args_extra': ['-DSTANDALONE']},
     {'name': 'glhanoi',        'src': 'src/glhanoi.c',        'extras': ['src/doubletime.c', 'src/rotator.c', 'src/yarandom.c']},
     {'name': 'gltext',         'src': 'src/gltext.c',         'extras': ['src/glut_stroke.c', 'src/glut_swidth.c', 'src/rotator.c', 'src/sphere.c', 'src/tube.c', 'src/yarandom.c']},
@@ -838,10 +829,10 @@ legacy_gles3_hacks = [
     {'name': 'flurry',         'src': 'src/flurry.c',         'extras': ['src/flurry-smoke.c', 'src/flurry-spark.c', 'src/flurry-star.c', 'src/flurry-texture.c', 'src/yarandom.c'], 'c_args_extra': ['-DSTANDALONE']},
 ]
 
-# Shader-engine ports of the xscreensaver classics (src/classics_shader/).
-# A ported hack keeps its <hack>_gles3 binary name; the GL1 immediate-mode
-# original is only built with -Dlegacy-classics=true, as <hack>_legacy_gles3,
-# for one release of A/B comparison.  See docs/CLASSICS-SHADER-PORT.md.
+# Shader-engine ports of the xscreensaver classics (src/classics_shader/), built
+# by the block at the end of this file.  The GL1 immediate-mode builds of these
+# nine hacks (and the -Dlegacy-classics option) were retired; see
+# docs/CLASSICS-SHADER-PORT.md.
 classics_shader_ported = ['voronoi', 'gravitywell', 'hexstrut', 'cubestorm', 'crackberg', 'cityflow', 'noof', 'geodesic', 'gibson']
 # extra vendored xscreensaver helper sources a port still needs (rotators, RNG)
 classics_shader_extras = {
@@ -850,16 +841,10 @@ classics_shader_extras = {
     'geodesic': ['src/rotator.c', 'src/yarandom.c'],
     'gibson': ['src/rotator.c', 'src/yarandom.c'],
 }
-legacy_classics = get_option('legacy-classics')
 
 foreach h : legacy_gles3_hacks
-    is_ported = classics_shader_ported.contains(h['name'])
-    if is_ported and not legacy_classics
-        continue
-    endif
-    legacy_bin = h['name'] + (is_ported ? '_legacy' : '') + '_gles3'
     executable(
-        legacy_bin,
+        h['name'] + '_gles3',
         files(common_gles3_sources + [
             'src/gles3_harness.c',
             h['src'],
@@ -879,7 +864,7 @@ foreach h : legacy_gles3_hacks
             # dict key overrides the default when they differ.
             '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
         ],
-        install: is_ported ? true : ncz_ship_bins.contains(h['name'] + '_gles3'), install_dir: ncz_libdir,
+        install: ncz_ship_bins.contains(h['name'] + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
