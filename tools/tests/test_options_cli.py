@@ -80,7 +80,12 @@ def test_json_schema_is_loaded_and_levels_default(mod):
 
 def test_options_command_output(mod, capsys):
     mod.load_settings = lambda: (dict(mod.DEFAULTS), True)
-    assert mod.cmd_options(type("A", (), {"hack": "toy_gles3", "json": True})()) == 0
+    assert (
+        mod.cmd_options(
+            type("A", (), {"hack": "toy_gles3", "json": True, "all": False})()
+        )
+        == 0
+    )
     out = json.loads(capsys.readouterr().out)
     assert (
         out["schema_version"] == 1

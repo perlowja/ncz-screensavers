@@ -1,3 +1,11 @@
+ncz-screensavers (0.7.2) unstable; urgency=medium
+
+  * ncz-screensaver options HACK|--all --json: option schema, values, scenes and seed for
+    front ends; options/<id>.json schemas and options/presets/<short>/<name>.json scenes
+    (docs/OPTIONS-SCHEMA.md).
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 20:00:00 -0400
+
 ncz-screensavers (0.7.1) unstable; urgency=medium
 
   * Suggests (not Recommends) ncz-screensavers-plugin so other distributions do not

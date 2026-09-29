@@ -376,13 +376,28 @@ public class ScreensaverSettings : Gtk.Box {
                 continue;
             var by_group = new Gee.HashMap<string, PreferencesGroup> ();
             var order = new Gee.ArrayList<string> ();
+            ExpanderRow? advanced = null;
             foreach (var option in options) {
+                if (option.advanced) {
+                    if (advanced == null)
+                        advanced = new ExpanderRow ("Advanced", "Fine tuning of the simulation");
+                    advanced.add_row (make_option_row (hack.id, option));
+                    continue;
+                }
                 if (!by_group.has_key (option.group_name)) {
                     by_group[option.group_name] = new PreferencesGroup ("%s - %s".printf (hack.title, option.group_name));
                     order.add (option.group_name);
                     append (by_group[option.group_name]);
                 }
                 by_group[option.group_name].add_row (make_option_row (hack.id, option));
+            }
+            if (advanced != null) {
+                if (order.is_empty) {
+                    by_group["Advanced"] = new PreferencesGroup ("%s - Advanced".printf (hack.title));
+                    order.add ("Advanced");
+                    append (by_group["Advanced"]);
+                }
+                by_group[order[0]].add_row (advanced);
             }
             var actions = new ActionRow ("%s options".printf (hack.title), "Changes apply the next time it starts");
             var reset = new Button.with_label ("Reset to defaults");
@@ -428,6 +443,24 @@ public class ScreensaverSettings : Gtk.Box {
             var row = new SpinRow (option.label, option.description, lo, hi, step, double.parse (current));
             if (is_float)
                 row.spin_btn.digits = 2;
+            if (option.name == "seed" && !is_float) {
+                var randomize = new Button.with_label ("Randomize");
+                randomize.valign = Align.CENTER;
+                randomize.tooltip_text = "Pick a new random seed";
+                randomize.clicked.connect (() => {
+                    row.spin_btn.value = Random.int_range (1, (int32) hi);
+                });
+                var copy = new Button.with_label ("Copy seed");
+                copy.valign = Align.CENTER;
+                copy.tooltip_text = "Copy the seed to the clipboard";
+                copy.clicked.connect (() => {
+                    var display = Gdk.Display.get_default ();
+                    if (display != null)
+                        display.get_clipboard ().set_text ("%d".printf ((int) row.spin_btn.value));
+                });
+                row.add_suffix (randomize);
+                row.add_suffix (copy);
+            }
             row.spin_btn.value_changed.connect (() => {
                 if (refreshing)
                     return;

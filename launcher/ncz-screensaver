@@ -2072,28 +2072,42 @@ def cmd_list_options(args):
     return 0
 
 
-def cmd_options(args):
-    """Everything a front end needs to draw the controls of one screensaver."""
-    settings, _ = load_settings()
-    stored = stored_options(settings).get(args.hack, {})
+def options_document(hack, settings):
+    stored = stored_options(settings).get(hack, {})
     rows = []
-    for r in load_option_schema(args.hack):
+    for r in load_option_schema(hack):
         row = dict(r)
         row["value"] = stored.get(r["name"], r["default"])
         row["level"] = option_level(r)
         rows.append(row)
-    out = {
+    return {
         "schema_version": 1,
-        "hack": args.hack,
+        "hack": hack,
         "options": rows,
-        "presets": load_presets(args.hack),
+        "presets": load_presets(hack),
         "preset_option": "preset" if any(r["name"] == "preset" for r in rows) else None,
         "seed_option": "seed" if any(r["name"] == "seed" for r in rows) else None,
     }
+
+
+def cmd_options(args):
+    """Everything a front end needs to draw the controls of one screensaver (or of all)."""
+    settings, _ = load_settings()
+    if args.all:
+        docs = {}
+        for r in load_catalog():
+            doc = options_document(r["id"], settings)
+            if doc["options"]:
+                docs[r["id"]] = doc
+        print(json.dumps({"schema_version": 1, "hacks": docs}))
+        return 0
+    if not args.hack:
+        raise SystemExit("options needs a screensaver id or --all")
+    out = options_document(args.hack, settings)
     if args.json:
         print(json.dumps(out))
     else:
-        for r in rows:
+        for r in out["options"]:
             print(f"{r['level']:<9} {r['group']:<12} {r['name']:<20} {r['value']}")
     return 0
 
@@ -2519,7 +2533,10 @@ def build_parser():
     s = sub.add_parser(
         "options", help="option schema, values and presets of one screensaver"
     )
-    s.add_argument("hack")
+    s.add_argument("hack", nargs="?")
+    s.add_argument(
+        "--all", action="store_true", help="every screensaver that has options"
+    )
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_options)
     s = sub.add_parser(

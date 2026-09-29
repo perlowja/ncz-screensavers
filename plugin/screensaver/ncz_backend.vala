@@ -12,8 +12,6 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         "hack-options", "blackhole-color-mode", "verify-render"
     };
     private const string TIERS = "/usr/share/ncz-screensavers/tiers.tsv";
-    private const string PRESETS = "/usr/share/ncz-screensavers/presets.tsv";
-    private const string OPTIONS_DIR = "/usr/share/ncz-screensavers/options";
     private const string LAUNCHER = "ncz-screensaver";
     private const string IDLED = "/usr/libexec/ncz-screensaver-idled";
 
@@ -119,9 +117,12 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     // Run the launcher and parse its JSON output; null when it cannot run.
     private static Json.Node? launcher_json (string sub) {
+        return launcher_json_cmd ({ LAUNCHER, sub, "--json" });
+    }
+
+    private static Json.Node? launcher_json_cmd (string[] argv) {
         try {
-            var proc = new Subprocess (SubprocessFlags.STDOUT_PIPE | SubprocessFlags.STDERR_SILENCE,
-                                       LAUNCHER, sub, "--json");
+            var proc = new Subprocess.newv (argv, SubprocessFlags.STDOUT_PIPE | SubprocessFlags.STDERR_SILENCE);
             string? out_text = null;
             var cancel = new Cancellable ();
             uint watchdog = Timeout.add_seconds (5, () => {
@@ -215,76 +216,112 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         set { settings.set_strv ("random-hacks", value); }
     }
 
+    // Option schema, values and scenes of one hack from the launcher, cached per hack
+    private Gee.HashMap<string, Gee.List<ScreensaverOption>> option_cache = new Gee.HashMap<string, Gee.List<ScreensaverOption>> ();
+    private Gee.HashMap<string, Gee.HashMap<string, string>> scene_title_to_id = new Gee.HashMap<string, Gee.HashMap<string, string>> ();
+    private Gee.HashMap<string, Gee.HashMap<string, string>> scene_id_to_title = new Gee.HashMap<string, Gee.HashMap<string, string>> ();
+    private const string NO_SCENE = "No scene (my own settings)";
+
+    private static string member_str (Json.Object o, string name) {
+        if (!o.has_member (name))
+            return "";
+        var n = o.get_member (name);
+        return n.get_node_type () == Json.NodeType.VALUE && n.get_value_type () == typeof (string) ? n.get_string () : "";
+    }
+
+    private bool options_loaded = false;
+
     public Gee.List<ScreensaverOption> options_for (string hack_id) {
+        if (!options_loaded) {
+            options_loaded = true;
+            var all = launcher_json_cmd ({ LAUNCHER, "options", "--all", "--json" });
+            if (all != null && all.get_node_type () == Json.NodeType.OBJECT && all.get_object ().has_member ("hacks")) {
+                var hacks_obj = all.get_object ().get_object_member ("hacks");
+                foreach (unowned string id in hacks_obj.get_members ())
+                    parse_options (id, hacks_obj.get_object_member (id));
+            }
+        }
+        if (!option_cache.has_key (hack_id))
+            option_cache[hack_id] = new Gee.ArrayList<ScreensaverOption> ();
+        return option_cache[hack_id];
+    }
+
+    private void parse_options (string hack_id, Json.Object doc) {
         var list = new Gee.ArrayList<ScreensaverOption> ();
-        string short_id = hack_id.has_suffix ("_gles3") ? hack_id.substring (0, hack_id.length - 6) : hack_id;
-        string data = null;
-        foreach (string stem in new string[] { hack_id, short_id }) {
-            try {
-                FileUtils.get_contents (Path.build_filename (OPTIONS_DIR, stem + ".tsv"), out data);
-                break;
-            } catch (FileError e) {
-                data = null;
-            }
+        option_cache[hack_id] = list;
+
+        var by_title = new Gee.HashMap<string, string> ();
+        var by_id = new Gee.HashMap<string, string> ();
+        var titles = new Gee.ArrayList<string> ();
+        titles.add (NO_SCENE);
+        by_title[NO_SCENE] = "";
+        by_id[""] = NO_SCENE;
+        if (doc.has_member ("presets") && doc.get_member ("presets").get_node_type () == Json.NodeType.ARRAY) {
+            doc.get_array_member ("presets").foreach_element ((arr, i, node) => {
+                if (node.get_node_type () != Json.NodeType.OBJECT)
+                    return;
+                var po = node.get_object ();
+                string id = member_str (po, "id");
+                string title = member_str (po, "title");
+                string acc = member_str (po, "accuracy");
+                if (id == "")
+                    return;
+                if (title == "")
+                    title = id;
+                if (acc != "")
+                    title = "%s (%s)".printf (title, acc);
+                titles.add (title);
+                by_title[title] = id;
+                by_id[id] = title;
+            });
         }
-        if (data == null)
-            return list;
-        foreach (unowned string line in data.split ("\n")) {
-            if (line == "" || line.has_prefix ("#"))
-                continue;
-            string[] f = line.split ("\t");
-            if (f.length < 9)
-                continue;
-            if (f[1] != "bool" && f[1] != "int" && f[1] != "float" && f[1] != "enum" && f[1] != "string")
-                continue;
-            string[] choices = f[5] == "" ? new string[0] : f[5].split (",");
-            string kind = f[1];
-            string label = f[6] == "" ? f[0] : f[6];
-            // A named-scene option becomes a list of the scenes that ship for this hack
-            if (f[0] == "preset" && kind == "string") {
-                var scenes = preset_ids (hack_id);
-                if (scenes.length > 0) {
-                    kind = "enum";
-                    choices = scenes;
-                    label = "Scene";
-                }
+        scene_title_to_id[hack_id] = by_title;
+        scene_id_to_title[hack_id] = by_id;
+
+        if (!doc.has_member ("options") || doc.get_member ("options").get_node_type () != Json.NodeType.ARRAY)
+            return;
+        doc.get_array_member ("options").foreach_element ((arr, i, node) => {
+            if (node.get_node_type () != Json.NodeType.OBJECT)
+                return;
+            var o = node.get_object ();
+            string name = member_str (o, "name");
+            string kind = member_str (o, "type");
+            string label = member_str (o, "label");
+            string dflt = member_str (o, "default");
+            string[] choices = new string[0];
+            if (o.has_member ("choices") && o.get_member ("choices").get_node_type () == Json.NodeType.ARRAY) {
+                o.get_array_member ("choices").foreach_element ((a2, j, cn) => {
+                    if (cn.get_node_type () == Json.NodeType.VALUE)
+                        choices += cn.get_string ();
+                });
             }
-            list.add (new ScreensaverOption (f[0], kind, f[2] == "" && kind == "enum" ? NO_SCENE : f[2], f[3], f[4], choices,
-                                             label, f[7], f[8] == "" ? "General" : f[8]));
-        }
-        return list;
+            if (name == "")
+                return;
+            if (name == "preset") {
+                if (titles.size < 2)
+                    return;
+                kind = "enum";
+                choices = titles.to_array ();
+                dflt = NO_SCENE;
+                label = "Scene";
+            }
+            list.add (new ScreensaverOption (name, kind, dflt, member_str (o, "min"), member_str (o, "max"), choices,
+                                             label == "" ? name : label, member_str (o, "description"),
+                                             member_str (o, "group") == "" ? "General" : member_str (o, "group"),
+                                             member_str (o, "level") == "advanced"));
+        });
+        return;
     }
 
     private Variant read_options () {
         return settings.get_value ("hack-options");
     }
 
-    private const string NO_SCENE = "No scene (my own settings)";
-
-    // Scene ids of a hack from presets.tsv, first entry the "no scene" choice.
-    private string[] preset_ids (string hack_id) {
-        string data;
-        try {
-            FileUtils.get_contents (PRESETS, out data);
-        } catch (FileError e) {
-            return new string[0];
-        }
-        var ids = new Gee.ArrayList<string> ();
-        ids.add (NO_SCENE);
-        foreach (unowned string line in data.split ("\n")) {
-            string[] f = line.split ("\t");
-            if (line.has_prefix ("#") || f.length < 5 || f[3] != hack_id)
-                continue;
-            string arg = f[4];
-            if (arg.has_prefix ("--preset="))
-                ids.add (arg.substring (9));
-        }
-        return ids.size > 1 ? ids.to_array () : new string[0];
-    }
-
     public string option_value (string hack_id, string name) {
         string v = raw_option_value (hack_id, name);
-        return (name == "preset" && v == "") ? NO_SCENE : v;
+        if (name == "preset" && scene_id_to_title.has_key (hack_id))
+            return scene_id_to_title[hack_id].has_key (v) ? scene_id_to_title[hack_id][v] : NO_SCENE;
+        return v;
     }
 
     private string raw_option_value (string hack_id, string name) {
@@ -301,7 +338,9 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     }
 
     public void set_option (string hack_id, string name, string value_in) {
-        string value = (name == "preset" && value_in == NO_SCENE) ? "" : value_in;
+        string value = value_in;
+        if (name == "preset" && scene_title_to_id.has_key (hack_id))
+            value = scene_title_to_id[hack_id].has_key (value_in) ? scene_title_to_id[hack_id][value_in] : "";
         var outer = new VariantBuilder (new VariantType ("a{sa{ss}}"));
         Variant all = read_options ();
         bool wrote = false;

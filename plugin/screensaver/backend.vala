@@ -18,11 +18,14 @@ public class ScreensaverOption : Object {
     public string label { get; construct; }
     public string description { get; construct; }
     public string group_name { get; construct; }
+    public bool advanced { get; construct; }
 
     public ScreensaverOption (string name, string kind, string default_value, string min_value, string max_value,
-                              string[] choices, string label, string description, string group_name) {
+                              string[] choices, string label, string description, string group_name,
+                              bool advanced = false) {
         Object (name: name, kind: kind, default_value: default_value, min_value: min_value, max_value: max_value,
-                choices: choices, label: label, description: description, group_name: group_name);
+                choices: choices, label: label, description: description, group_name: group_name,
+                advanced: advanced);
     }
 }
 
