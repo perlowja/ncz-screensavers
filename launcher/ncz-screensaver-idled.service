@@ -1,0 +1,18 @@
+[Unit]
+Description=NCZ screensaver idle timer (ext-idle-notify-v1)
+Documentation=file:///usr/share/doc/ncz-screensavers/LAUNCHER-DESIGN.md
+PartOf=graphical-session.target
+After=graphical-session.target
+Conflicts=ncz-idle-manager.service
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/ncz-screensaver-idled
+Restart=on-failure
+RestartSec=5
+# 78 = EX_CONFIG: the compositor lacks ext-idle-notify-v1 or the schema is missing.
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=graphical-session.target

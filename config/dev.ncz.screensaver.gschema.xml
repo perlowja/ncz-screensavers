@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NCZ-OS screensaver configuration. Superset of the schema the Singularity
+     screensaver-chooser plugin already uses: every pre-existing key keeps its
+     name, type and meaning. Read live by ncz-screensaver-idled and
+     ncz-screensaver; written by the chooser plugin and ncz-screensaver-settings. -->
+<schemalist>
+  <schema id="dev.ncz.screensaver" path="/dev/ncz/screensaver/">
+    <key name="mode" type="s">
+      <choices>
+        <choice value="off"/>
+        <choice value="one"/>
+        <choice value="random"/>
+        <choice value="playlist"/>
+      </choices>
+      <default>'off'</default>
+      <summary>Screensaver mode</summary>
+      <description>off: no animated screensaver (idle lock and display power-off still apply). one: always run hack-id. random: pick from random-hacks (empty means every hack in the catalog) and rotate every cycle-delay seconds. playlist: run the hacks in the playlist key in order, rotating every cycle-delay seconds.</description>
+    </key>
+    <key name="hack-id" type="s">
+      <default>'blackhole_gles3'</default>
+      <summary>Selected screensaver</summary>
+      <description>Catalog id of the hack used in mode "one".</description>
+    </key>
+    <key name="random-hacks" type="as">
+      <default>[]</default>
+      <summary>Random rotation set</summary>
+      <description>Catalog ids enabled for random rotation. An empty list means all hacks in the catalog.</description>
+    </key>
+    <key name="playlist" type="as">
+      <default>[]</default>
+      <summary>Playlist</summary>
+      <description>Ordered catalog ids used in mode "playlist".</description>
+    </key>
+    <key name="hack-idle-delay" type="i">
+      <range min="1" max="86400"/>
+      <default>300</default>
+      <summary>Idle delay</summary>
+      <description>Seconds of inactivity before the screensaver starts.</description>
+    </key>
+    <key name="cycle-delay" type="i">
+      <range min="5" max="86400"/>
+      <default>600</default>
+      <summary>Rotation interval</summary>
+      <description>Seconds each hack runs before the next one in random and playlist modes.</description>
+    </key>
+    <key name="lock-enabled" type="b">
+      <default>true</default>
+      <summary>Lock after screensaver</summary>
+      <description>Lock the screen after the idle period. With mode off the lock happens at hack-idle-delay.</description>
+    </key>
+    <key name="lock-delay" type="i">
+      <range min="0" max="86400"/>
+      <default>60</default>
+      <summary>Lock delay after screensaver</summary>
+      <description>Seconds after the screensaver starts before the screen locks.</description>
+    </key>
+    <key name="lock-on-suspend" type="b">
+      <default>true</default>
+      <summary>Lock on suspend</summary>
+      <description>Lock the screen when the system is about to suspend.</description>
+    </key>
+    <key name="display-off-delay" type="i">
+      <range min="0" max="86400"/>
+      <default>0</default>
+      <summary>Display off delay</summary>
+      <description>Seconds of inactivity before the displays are powered off (DPMS). 0 means never.</description>
+    </key>
+    <key name="blackhole-color-mode" type="s">
+      <default>'stylized'</default>
+      <summary>Black hole color mode</summary>
+      <description>Color model used by the black hole hack: stylized (default palette), kipthorne (blackbody temperature, no relativistic shift) or faithful (blackbody with Doppler and gravitational shift). Passed to the hack as NCZ_BLACKHOLE_COLORS; stylized leaves the variable unset.</description>
+    </key>
+    <key name="verify-render" type="b">
+      <default>true</default>
+      <summary>Detect black screensavers</summary>
+      <description>A few seconds after a hack starts, capture the screen; if it is entirely black treat the hack as failed and move on.</description>
+    </key>
+  </schema>
+</schemalist>
