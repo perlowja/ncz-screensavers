@@ -81,6 +81,42 @@ class EnvTests(unittest.TestCase):
         self.assertNotIn("NCZ_BLACKHOLE_COLORS", env)
         self.assertEqual(env["NCZ_SCREENSAVER_ACTIVE"], "1")
 
+    def test_gpu_offload_only_on_request(self):
+        base = {
+            "XDG_RUNTIME_DIR": "/x",
+            "DRI_PRIME": "1",
+            "__NV_PRIME_RENDER_OFFLOAD": "1",
+        }
+        off = ns.build_child_env(
+            "x_gles3", {"gpu-offload": "off"}, base, "/nonexistent"
+        )
+        for name in ns.OFFLOAD_VARS:
+            self.assertNotIn(name, off)
+        prime = ns.build_child_env(
+            "x_gles3",
+            {"gpu-offload": "prime"},
+            {"XDG_RUNTIME_DIR": "/x"},
+            "/nonexistent",
+        )
+        self.assertEqual(prime["__NV_PRIME_RENDER_OFFLOAD"], "1")
+        self.assertEqual(prime["__VK_LAYER_NV_optimus"], "NVIDIA_only")
+        self.assertNotIn("__EGL_VENDOR_LIBRARY_FILENAMES", prime)
+        self.assertNotIn("DRI_PRIME", prime)
+
+    def test_offload_vars_never_copied_from_compositor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = Path(tmp) / "7"
+            proc.mkdir()
+            (proc / "comm").write_text("labwc\n")
+            (proc / "environ").write_bytes(
+                b"__NV_PRIME_RENDER_OFFLOAD=1\0DRI_PRIME=1\0"
+            )
+            env = ns.build_child_env(
+                "x_gles3", {"gpu-offload": "off"}, {"XDG_RUNTIME_DIR": "/x"}, tmp
+            )
+        self.assertNotIn("__NV_PRIME_RENDER_OFFLOAD", env)
+        self.assertNotIn("DRI_PRIME", env)
+
     def test_compositor_gpu_env_import(self):
         with tempfile.TemporaryDirectory() as tmp:
             proc = Path(tmp) / "4242"

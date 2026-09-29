@@ -19,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-HOST_ORDER = ["chimera", "medusa", "pegasus", "o6n"]
+HOST_ORDER = ["chimera", "medusa", "pegasus", "pegasus-nvidia", "o6n"]
 PHASES = [
     "env",
     "install",
@@ -127,6 +127,10 @@ def main():
         s = d.get("summary", {})
         egl = (d.get("gpu") or {}).get("egl") or {}
         gpu = egl.get("gles_renderer") or (d.get("gpu") or {}).get("driver", "?")
+        if d.get("gpu_offload") == "prime":
+            hk = [x for x in d.get("hacks", []) if x.get("metrics", {}).get("renderer")]
+            if hk:
+                gpu = "offload to " + hk[0]["metrics"]["renderer"]
         pkg = (d.get("package") or {}).get("ncz-screensavers", "-")
         L.append(
             f"| {h} | {d.get('arch', '?')} | {esc(d.get('kernel', '?'))} | {esc(gpu)} | {pkg} | {s.get('pass', 0)} | {s.get('fail', 0)} | {s.get('skip', 0)} |"

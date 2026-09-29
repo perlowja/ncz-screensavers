@@ -27,6 +27,7 @@ hack_sel=all
 phases="env,install,hacks,launcher,idle,color,chooser"
 results=""
 no_dpms=0
+gpu_offload=
 keep=0
 dry=0
 
@@ -37,7 +38,7 @@ usage() {
 usage: host-test.sh [--host chimera|medusa|pegasus|o6n|all]... [--deb PATH]
        [--deb-amd64 PATH] [--deb-arm64 PATH] [--seconds N]
        [--hacks all|smoke|ID,ID] [--phases env,install,hacks,launcher,idle,color,chooser]
-       [--results DIR] [--no-dpms] [--keep-installed] [--dry-run]
+       [--results DIR] [--no-dpms] [--gpu-offload off|prime|auto] [--keep-installed] [--dry-run]
 EOF
 }
 
@@ -52,6 +53,7 @@ while [ $# -gt 0 ]; do
         --phases) phases="${2:?}"; shift 2 ;;
         --results) results="${2:?}"; shift 2 ;;
         --no-dpms) no_dpms=1; shift ;;
+        --gpu-offload) gpu_offload="${2:?}"; shift 2 ;;
         --keep-installed) keep=1; shift ;;
         --dry-run) dry=1; shift ;;
         -h|--help) usage; exit 0 ;;
@@ -103,6 +105,7 @@ run_host() {
     local args="--phases $phases --hacks $hack_sel --seconds $seconds --workdir \$HOME/ncz-host-test/results"
     [ -n "$deb" ] && args="$args --deb \$HOME/ncz-host-test/ncz-screensavers.deb"
     [ "$no_dpms" = 1 ] && args="$args --no-dpms"
+    [ -n "$gpu_offload" ] && args="$args --gpu-offload $gpu_offload"
     echo "[$h] running agent (phases=$phases)"
     # First stdin line carries the sudo secret (empty line = none).
     local pw="${HT_SUDO_PW:-}"

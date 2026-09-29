@@ -75,6 +75,16 @@
       <summary>Black hole color mode</summary>
       <description>Color model used by the black hole hack: stylized (default palette), kipthorne (blackbody temperature, no relativistic shift) or faithful (blackbody with Doppler and gravitational shift). Passed to the hack as NCZ_BLACKHOLE_COLORS; stylized leaves the variable unset.</description>
     </key>
+    <key name="gpu-offload" type="s">
+      <choices>
+        <choice value="off"/>
+        <choice value="auto"/>
+        <choice value="prime"/>
+      </choices>
+      <default>'off'</default>
+      <summary>GPU for screensavers</summary>
+      <description>off: hacks run on the GPU the compositor uses. prime: on hybrid-GPU laptops run each hack on the discrete NVIDIA GPU with per-process PRIME render offload (the compositor and the session are never touched). auto: prime when an NVIDIA driver is loaded next to another GPU, otherwise off.</description>
+    </key>
     <key name="verify-render" type="b">
       <default>true</default>
       <summary>Detect black screensavers</summary>

@@ -39,6 +39,7 @@ DEFAULTS = {
     "display-off-delay": 0,
     "blackhole-color-mode": "stylized",
     "verify-render": True,
+    "gpu-offload": "off",
 }
 MODES = ("off", "one", "random", "playlist")
 INT_RANGES = {
@@ -73,6 +74,13 @@ GPU_ENV_PREFIXES = (
     "GALLIUM_",
     "AMD_VULKAN",
 )
+OFFLOAD_VARS = (
+    "DRI_PRIME",
+    "__NV_PRIME_RENDER_OFFLOAD",
+    "__VK_LAYER_NV_optimus",
+    "__GLX_VENDOR_LIBRARY_NAME",
+)
+OFFLOAD_MODES = ("off", "auto", "prime")
 GPU_ENV_NEVER = ("DRI_PRIME", "__NV_PRIME_RENDER_OFFLOAD", "__VK_LAYER_NV_optimus")
 SECRET_WORDS = ("password", "token", "secret")
 
@@ -191,6 +199,8 @@ def write_setting(key, value):
 def validate_setting(key, value):
     if key not in DEFAULTS:
         raise SystemExit(f"unknown key {key}")
+    if key == "gpu-offload" and value not in OFFLOAD_MODES:
+        raise SystemExit(f"gpu-offload must be one of {', '.join(OFFLOAD_MODES)}")
     if key == "mode" and value not in MODES:
         raise SystemExit(f"mode must be one of {', '.join(MODES)}")
     if key in INT_RANGES:
@@ -316,6 +326,28 @@ def is_gpu_var(name):
     return name in GPU_ENV_EXACT or name.startswith(GPU_ENV_PREFIXES)
 
 
+def prime_available():
+    """True when an NVIDIA driver is loaded next to at least one other GPU."""
+    try:
+        if "nvidia" not in Path("/proc/modules").read_text():
+            return False
+    except OSError:
+        return False
+    drivers = set()
+    for card in Path("/sys/class/drm").glob("card[0-9]"):
+        link = card / "device" / "driver"
+        if link.is_symlink():
+            drivers.add(os.path.basename(os.readlink(link)))
+    return len(drivers) >= 2 and "nvidia" in drivers
+
+
+def offload_mode(settings):
+    mode = str(settings.get("gpu-offload", "off"))
+    if mode == "auto":
+        return "prime" if prime_available() else "off"
+    return mode if mode in OFFLOAD_MODES else "off"
+
+
 def build_child_env(hack_id, settings, base_env=None, proc_root=None):
     env = dict(os.environ if base_env is None else base_env)
     env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
@@ -341,6 +373,15 @@ def build_child_env(hack_id, settings, base_env=None, proc_root=None):
             env.pop("NCZ_BLACKHOLE_COLORS", None)
         else:
             env["NCZ_BLACKHOLE_COLORS"] = mode
+    # Offload is per hack process and only on request. NVIDIA documents
+    # __NV_PRIME_RENDER_OFFLOAD=1 alone for EGL (and the optimus layer for
+    # Vulkan); __EGL_VENDOR_LIBRARY_FILENAMES is never set, because pinning the
+    # vendor breaks Wayland compositors (labwc died that way on PEGASUS).
+    for name in OFFLOAD_VARS:
+        env.pop(name, None)
+    if offload_mode(settings) == "prime":
+        env["__NV_PRIME_RENDER_OFFLOAD"] = "1"
+        env["__VK_LAYER_NV_optimus"] = "NVIDIA_only"
     env["NCZ_SCREENSAVER_ACTIVE"] = "1"
     return env
 
@@ -953,6 +994,11 @@ def build_parser():
     s = sub.add_parser("set-mode", help="off, one, random or playlist")
     s.add_argument("mode", choices=MODES)
     s.set_defaults(fn=lambda a: cmd_set("mode", a.mode))
+    s = sub.add_parser(
+        "set-gpu", help="GPU for hacks: off, auto or prime (NVIDIA offload)"
+    )
+    s.add_argument("mode", choices=OFFLOAD_MODES)
+    s.set_defaults(fn=lambda a: cmd_set("gpu-offload", a.mode))
     s = sub.add_parser("set-color", help="black hole color mode")
     s.add_argument("mode")
     s.set_defaults(fn=cmd_set_color)

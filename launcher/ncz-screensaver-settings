@@ -66,6 +66,12 @@ MODE_LABEL = {
 }
 # Black hole color choices.
 COLOR_NICKS = ("stylized", "kipthorne", "faithful")
+GPU_NICKS = ("off", "prime", "auto")
+GPU_LABEL = {
+    "off": "Same GPU as the desktop",
+    "prime": "Discrete GPU (NVIDIA PRIME offload)",
+    "auto": "Automatic",
+}
 COLOR_LABEL = {
     "stylized": "Stylized",
     "kipthorne": "Kip Thorne (blackbody)",
@@ -186,6 +192,7 @@ def read_dump(settings: Gio.Settings, catalog_view: list[dict]) -> dict:
             for r in catalog_view
         ],
         "color": settings.get_string("blackhole-color-mode"),
+        "gpu_offload": settings.get_string("gpu-offload"),
     }
 
 
@@ -261,6 +268,7 @@ class ScreensaverWindow(Adw.ApplicationWindow):
         self._build_screensaver_group(page)
         self._build_lock_group(page)
         self._build_color_group(page)
+        self._build_gpu_group(page)
         self._build_verify_group(page)
         self._build_hack_groups(page)
 
@@ -354,6 +362,20 @@ class ScreensaverWindow(Adw.ApplicationWindow):
         preview_row.add_suffix(btn)
         preview_row.set_activatable_widget(btn)
         grp.add(preview_row)
+
+    def _build_gpu_group(self, page: Adw.PreferencesPage) -> None:
+        grp = Adw.PreferencesGroup.new()
+        grp.set_title("Graphics")
+        grp.set_description(
+            "Hybrid-GPU laptops: run the screensavers on the discrete GPU. "
+            "Only the screensaver process is offloaded; the desktop stays on its GPU."
+        )
+        page.add(grp)
+        self._gpu_row = Adw.ComboRow.new()
+        self._gpu_row.set_title("Screensaver GPU")
+        self._gpu_row.set_model(Gtk.StringList.new([GPU_LABEL[n] for n in GPU_NICKS]))
+        self._gpu_row.connect("notify::selected", self._on_gpu_changed)
+        grp.add(self._gpu_row)
 
     def _build_verify_group(self, page: Adw.PreferencesPage) -> None:
         grp = Adw.PreferencesGroup.new()
@@ -454,6 +476,7 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             "display-off-delay",
             "blackhole-color-mode",
             "verify-render",
+            "gpu-offload",
         ):
             self._settings.connect(f"changed::{key}", self._on_setting_changed)
 
@@ -478,6 +501,8 @@ class ScreensaverWindow(Adw.ApplicationWindow):
                 self._settings.get_int("display-off-delay") // 60
             )
             self._verify_row.set_active(self._settings.get_boolean("verify-render"))
+            cur = self._settings.get_string("gpu-offload")
+            self._gpu_row.set_selected(_safe_index(list(GPU_NICKS), cur))
             self._refresh_color_combo(self._settings.get_string("blackhole-color-mode"))
             self._refresh_pool_switches()
             self._refresh_radio()
@@ -575,6 +600,13 @@ class ScreensaverWindow(Adw.ApplicationWindow):
 
     def _on_display_off_changed(self, row: Adw.SpinRow) -> None:
         self._write_int_minutes("display-off-delay", row)
+
+    def _on_gpu_changed(self, row: Adw.ComboRow, pspec: GObject.ParamSpec) -> None:
+        if self._suppress_changed:
+            return
+        idx = row.get_selected()
+        if 0 <= idx < len(GPU_NICKS):
+            self._settings.set_string("gpu-offload", GPU_NICKS[idx])
 
     def _on_verify_changed(self, row: Adw.SwitchRow, pspec: GObject.ParamSpec) -> None:
         self._write_bool("verify-render", row, pspec)

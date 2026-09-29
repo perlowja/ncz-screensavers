@@ -614,6 +614,31 @@ _EVDEV.update({c: k for k, c in zip("zxcvbnm", range(44, 51))})
 _EVDEV.update({c: k for k, c in zip("1234567890", range(2, 12))})
 
 
+def _set_offload(env, mode):
+    """Set the real (dconf) gpu-offload key; returns the previous value."""
+    genv = dict(env, G_MESSAGES_DEBUG="")
+    old = (
+        subprocess.run(
+            ["gsettings", "get", "dev.ncz.screensaver", "gpu-offload"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=genv,
+            check=False,
+        )
+        .stdout.strip()
+        .strip("'")
+    )
+    subprocess.run(
+        ["gsettings", "set", "dev.ncz.screensaver", "gpu-offload", mode],
+        capture_output=True,
+        timeout=10,
+        env=genv,
+        check=False,
+    )
+    return old or "off"
+
+
 SINTY_SCHEMA_DIR = "/opt/singularity/share/glib-2.0/schemas"
 
 
@@ -1281,6 +1306,13 @@ def phase_hacks(
             "stop_seconds": round(stop_seconds, 2),
         }
         sub.update(metrics)
+        with contextlib.suppress(OSError):
+            log_text = pathlib.Path(_rt_dir(), HACK_LOG).read_text(errors="replace")[
+                -20000:
+            ]
+            hits = [ln for ln in log_text.splitlines() if ln.startswith("RENDERER=")]
+            if hits:
+                sub["renderer"] = hits[-1][len("RENDERER=") :]
 
         # Documented rule: a hack passes when it is healthy and moving and
         # either fills at least 15% of the pixels (the operator's gate) or,
@@ -1675,41 +1707,6 @@ def phase_launcher(results, checks, env, workdir, launcher_path):
         _record(checks, "pdeathsig", "fail", f"no state to kill: {exc}")
     _cli(ienv, "stop")
     _kill_hacks()
-
-    # Informational: a hack forced onto the NVIDIA EGL vendor (only when the
-    # driver is already loaded; nothing is installed and the variable is set
-    # for this one process only, never ambiently).
-    nv_json = "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
-    if (
-        os.path.exists(nv_json)
-        and "nvidia" in pathlib.Path("/proc/modules").read_text()
-    ):
-        nenv = _isolated_env(env, {"__EGL_VENDOR_LIBRARY_FILENAMES": nv_json})
-        _cli(nenv, "config", "set", "verify-render", "false")
-        _cli(nenv, "preview", "voronoi_gles3", "--seconds", "15")
-        ran = _wait_until(lambda: _status(nenv).get("running"), 3.0)
-        time.sleep(3.0)
-        alive = _status(nenv).get("running")
-        log_tail = ""
-        with contextlib.suppress(OSError):
-            log_tail = pathlib.Path(
-                _rt_dir(), "ncz-screensaver", "hack.log"
-            ).read_text()[-600:]
-        _cli(nenv, "stop")
-        _record(
-            checks,
-            "nvidia-egl-path",
-            "pass",
-            "informational: hack on the NVIDIA EGL vendor "
-            + ("ran" if alive else "did not run")
-            + (
-                "; eglGetPlatformDisplay failed on the Wayland compositor"
-                if "eglGetPlatformDisplay failed" in log_tail
-                else ""
-            ),
-            metrics={"started": ran is not None, "alive_after_3s": bool(alive)},
-        )
-        _kill_hacks()
 
 
 # ---------------------------------------------------------------------------
@@ -2304,6 +2301,154 @@ def phase_session(results, checks, env, workdir, pw):
             _greetd_login(user, pw)  # never leave the host at the greeter
 
 
+def _smi():
+    """(power W, temperature C) of the first NVIDIA GPU, or (None, None)."""
+    if not shutil.which("nvidia-smi"):
+        return None, None
+    out = subprocess.run(
+        [
+            "nvidia-smi",
+            "--query-gpu=power.draw,temperature.gpu",
+            "--format=csv,noheader,nounits",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    ).stdout.strip()
+    try:
+        w, t = [x.strip() for x in out.splitlines()[0].split(",")]
+        return float(w), float(t)
+    except (ValueError, IndexError):
+        return None, None
+
+
+@_guard
+def phase_gpu(results, checks, env, workdir, pw):
+    """Hybrid GPUs: per-process PRIME offload of a few hacks to the NVIDIA GPU
+    while the compositor stays on the integrated GPU."""
+    if "nvidia" not in pathlib.Path("/proc/modules").read_text() or not shutil.which(
+        "nvidia-smi"
+    ):
+        _record(checks, "gpu-offload", "skip", "no NVIDIA driver loaded")
+        return
+    # The compositor and the user manager must carry no offload variables.
+    comp_env = _compositor_env_all()
+    bad = sorted(
+        k
+        for k in comp_env
+        if k
+        in (
+            "__EGL_VENDOR_LIBRARY_FILENAMES",
+            "__NV_PRIME_RENDER_OFFLOAD",
+            "__GLX_VENDOR_LIBRARY_NAME",
+            "__VK_LAYER_NV_optimus",
+            "DRI_PRIME",
+        )
+    )
+    mgr = _systemctl(env, "show-environment").stdout
+    bad_mgr = [
+        ln.split("=")[0]
+        for ln in mgr.splitlines()
+        if ln.split("=")[0]
+        in (
+            "__EGL_VENDOR_LIBRARY_FILENAMES",
+            "__NV_PRIME_RENDER_OFFLOAD",
+            "__GLX_VENDOR_LIBRARY_NAME",
+            "__VK_LAYER_NV_optimus",
+            "DRI_PRIME",
+        )
+    ]
+    _record(
+        checks,
+        "compositor-env-clean",
+        "pass" if not bad and not bad_mgr else "fail",
+        f"labwc offload variables: {bad or 'none'}; systemd user manager: {bad_mgr or 'none'}",
+    )
+    default_eglinfo = _egl_info(env).get("gles_renderer", "?")
+    _record(
+        checks,
+        "default-renderer-is-igpu",
+        "pass" if "NVIDIA" not in default_eglinfo else "fail",
+        f"clients without offload get: {default_eglinfo}",
+    )
+    ienv = _isolated_env(env)
+    _cli(ienv, "config", "set", "verify-render", "false")
+    for mode in ("off", "prime"):
+        _cli(ienv, "set-gpu", mode)
+        for hid in (
+            "blackhole_gles3",
+            "hyprsaver_aurora_gles3",
+            "xshadertoy_alienbeacon_gles3",
+            "voronoi_gles3",
+        ):
+            _cli(ienv, "preview", hid, "--seconds", "20")
+            _wait_until(lambda: _status(ienv).get("running"), 5.0)
+            time.sleep(4.0)
+            frame = _grab_frame(env)
+            watts, temp = _smi()
+            renderer = ""
+            with contextlib.suppress(OSError):
+                lines = [
+                    ln
+                    for ln in pathlib.Path(_rt_dir(), HACK_LOG)
+                    .read_text(errors="replace")[-20000:]
+                    .splitlines()
+                    if ln.startswith("RENDERER=")
+                ]
+                renderer = lines[-1][9:] if lines else ""
+            cov = hti.coverage_fraction(frame[2]) if frame else 0.0
+            running = _status(ienv).get("running")
+            _cli(ienv, "stop")
+            want_nv = mode == "prime"
+            ok = running and cov >= 0.15 and (("NVIDIA" in renderer) == want_nv)
+            _record(
+                checks,
+                f"gpu-{mode}-{hid.replace('_gles3', '')}",
+                "pass" if ok else "fail",
+                f"renderer '{renderer}', coverage {cov:.2f}, GPU {watts} W {temp} C",
+                metrics={
+                    "renderer": renderer,
+                    "coverage": cov,
+                    "gpu_watts": watts,
+                    "gpu_temp_c": temp,
+                },
+            )
+    _cli(ienv, "set-gpu", "off")
+    comp_after = sorted(
+        k
+        for k in _compositor_env_all()
+        if k in ("__NV_PRIME_RENDER_OFFLOAD", "__EGL_VENDOR_LIBRARY_FILENAMES")
+    )
+    _record(
+        checks,
+        "compositor-untouched-after",
+        "pass" if not comp_after else "fail",
+        f"offload variables in labwc: {comp_after or 'none'}",
+    )
+
+
+def _compositor_env_all():
+    """Complete environment of the running compositor (names and values)."""
+    for entry in pathlib.Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            if (
+                entry / "comm"
+            ).read_text().strip() != "labwc" or entry.stat().st_uid != os.getuid():
+                continue
+            raw = (entry / "environ").read_bytes()
+        except OSError:
+            continue
+        return dict(
+            x.decode(errors="replace").split("=", 1)
+            for x in raw.split(b"\0")
+            if b"=" in x
+        )
+    return {}
+
+
 @_guard
 def phase_multioutput(results, checks, env, workdir, pw):
     """Two virtual outputs: run a private headless labwc next to the real
@@ -2706,6 +2851,10 @@ def run_phases(
 
     overall_fail = False
     sinty_before = _sinty_lock(env, "false")
+    offload_before = None
+    if os.environ.get("HT_GPU_OFFLOAD"):
+        offload_before = _set_offload(env, os.environ["HT_GPU_OFFLOAD"])
+        results["gpu_offload"] = os.environ["HT_GPU_OFFLOAD"]
     # The older swayidle based manager would lock the session in the middle of
     # a long run; pause it and restore it at the end.
     paused = []
@@ -2756,6 +2905,8 @@ def run_phases(
             no_dpms,
             pw,
         )
+    if "gpu" in phases:
+        phase_gpu(results, checks_by_phase["gpu"], env, workdir, pw)
     if "multioutput" in phases:
         phase_multioutput(results, checks_by_phase["multioutput"], env, workdir, pw)
     if "session" in phases:
@@ -2784,6 +2935,8 @@ def run_phases(
         _systemctl(env, "start", unit)
     if sinty_before is not None:
         _sinty_lock(env, sinty_before)
+    if offload_before is not None:
+        _set_offload(env, offload_before)
 
     # Write results.json after every phase ran. We always write so the
     # controller can rescue partial output if a later phase died hard.
@@ -2927,6 +3080,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Seconds per hack in the hacks phase (default: 8).",
     )
     p.add_argument(
+        "--gpu-offload",
+        choices=("off", "prime", "auto"),
+        default=None,
+        help="Set the real gpu-offload key for the whole run (restored afterwards).",
+    )
+    p.add_argument(
         "--no-dpms",
         action="store_true",
         help="Skip the DPMS sub-test in the idle phase.",
@@ -2986,6 +3145,8 @@ def main(argv: list[str] | None = None) -> int:
 
     phases = [p.strip() for p in args.phases.split(",") if p.strip()]
     os.environ["HT_HACKS_ARG"] = args.hacks
+    if args.gpu_offload:
+        os.environ["HT_GPU_OFFLOAD"] = args.gpu_offload
     hack_ids = _resolve_hacks(args.hacks)
     return run_phases(
         phases,
