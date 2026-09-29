@@ -36,14 +36,16 @@ int ncz_render_platform_cap(const char *r, int native_h) {
 }
 
 const char *ncz_gpu_class(const char *r, const char *env) {
-    if (env && (!strcmp(env, "weak") || !strcmp(env, "mid") || !strcmp(env, "strong"))) return env[0] == 'w' ? "weak" : env[0] == 'm' ? "mid" : "strong";
+    if (env && !strcasecmp(env, "weak")) return "weak";
+    if (env && !strcasecmp(env, "mid")) return "mid";
+    if (env && !strcasecmp(env, "strong")) return "strong";
     if (!r) return "mid";
     if (strcasestr(r, "intel") || strcasestr(r, "llvmpipe") || strcasestr(r, "softpipe") || strcasestr(r, "lavapipe")) return "weak";
-    if (strcasestr(r, "mali")) return "mid";
+    if (strcasestr(r, "mali") || strcasestr(r, "adreno") || strcasestr(r, "powervr") || strcasestr(r, "xclipse") || strcasestr(r, "apple")) return "mid";   /* mobile GPUs */
     return "strong";
 }
 
-static char g_render_renderer[256];
+static char g_render_renderer[512];
 void ncz_render_set_renderer(const char *r) { snprintf(g_render_renderer, sizeof g_render_renderer, "%s", r ? r : ""); }
 const char *ncz_gpu_class_current(void) {
     return ncz_gpu_class(g_render_renderer[0] ? g_render_renderer : NULL, getenv("NCZ_GPU_CLASS"));

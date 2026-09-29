@@ -52,6 +52,9 @@ int main(void) {
     CHECK(!strcmp(ncz_gpu_class("AMD Radeon Graphics (radeonsi, navi14)", NULL), "strong"));
     CHECK(!strcmp(ncz_gpu_class("NVIDIA GeForce RTX 2060/PCIe/SSE2", NULL), "strong"));
     CHECK(!strcmp(ncz_gpu_class("Mesa Intel(R) UHD Graphics 630", "strong"), "strong"));   /* launcher calibration wins */
+    CHECK(!strcmp(ncz_gpu_class("Mesa Intel(R) UHD Graphics 630", "STRONG"), "strong"));  /* case-insensitive */
+    CHECK(!strcmp(ncz_gpu_class("Adreno (TM) 740", NULL), "mid"));
+    CHECK(!strcmp(ncz_gpu_class(NULL, NULL), "mid"));
     CHECK(!strcmp(ncz_gpu_class("Mesa Intel(R) UHD Graphics 630", "bogus"), "weak"));      /* invalid override ignored */
     CHECK(ncz_render_step_down(1.0) == 0.75 && ncz_render_step_down(0.75) == 0.5 && ncz_render_step_down(0.5) == 0.35 && ncz_render_step_down(0.35) == 0.35);
 
