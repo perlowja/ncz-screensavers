@@ -60,6 +60,7 @@ uniform float u_orbit_e;
 // Argument of periapse (radians). The orbit's periapse direction;
 // rotates the swept arc around the focus. Drawn [0, 2pi] per launch.
 uniform float u_orbit_omega;
+uniform float u_max_steps;
 #define PI 3.14159265358979323846
 float hash21(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345+u_seed*.00001);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+1.),f.x),f.y);}
@@ -395,7 +396,7 @@ void main(){
  // to gate the 2.8..13 band. The radial dist is taken in world XY because
  // the disk normal can be non-+Z; in disk_color the point is rotated into
  // the disk-local frame and the actual polar coords (r,a) live there.
- for(int i=0;i<260;i++){
+ for(int i=0;i<int(u_max_steps);i++){
    float step=.04*(1.-.62*exp(-12.*(u-.667)*(u-.667)));
    du+=.5*(-u+1.5*u*u)*step;
    u+=du*step;
