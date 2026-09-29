@@ -1,0 +1,20 @@
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=94911 hash=cc4eba1576a87ac0 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5992057,37394,35219,36548,37919,37292,25478,17299,863,511,203,17,0,0,0,0
+[diag] hyprsaver[hyprsaver_geometry] frame=60 t=1.10s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=89436 hash=d1bf03907b4b5f89 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6013442,40686,38990,37540,36535,28721,14513,9456,619,229,69,0,0,0,0,0
+[diag] hyprsaver[hyprsaver_geometry] frame=120 t=2.21s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=93927 hash=f0e01af162f4642e gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6044190,51708,40102,34044,27901,13037,7464,2085,192,77,0,0,0,0,0,0
+[diag] hyprsaver[hyprsaver_geometry] frame=180 t=3.41s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=93104 hash=6a00b8f0fbb3b35a gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6098447,48980,32833,23923,10582,4313,1525,170,27,0,0,0,0,0,0,0
+[diag] hyprsaver[hyprsaver_geometry] frame=240 t=4.59s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=90299 hash=005cb8b49de9f25b gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6135570,49941,23257,9230,2276,458,65,3,0,0,0,0,0,0,0,0
+[diag] hyprsaver[hyprsaver_geometry] frame=300 t=5.84s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=89648 hash=c597abb06ce1cda3 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6142108,47690,20753,6231,3934,84,0,0,0,0,0,0,0,0,0,0

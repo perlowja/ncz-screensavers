@@ -1,0 +1,20 @@
+[diag] GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=62858 hash=12b824daee0bf651 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6100777,14307,11791,6360,9719,18008,10443,3775,11594,6602,1268,5186,9008,6620,3917,1425
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=471892 hash=61ec3f86b805f134 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5282249,112477,76164,46417,59587,57733,78784,73989,67198,44462,89182,61876,49747,59324,34214,27397
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=396796 hash=462d248557314cbb gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5469592,111258,53503,55850,46564,59803,62974,63628,38969,49442,37460,39078,57370,24878,30227,20204
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=169737 hash=ccdcc796e7ca35e7 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5902308,29064,26867,35874,33082,21667,19076,23015,16061,17052,18209,16285,26710,15924,13765,5841

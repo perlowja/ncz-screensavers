@@ -1,0 +1,20 @@
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=a92d34de7cc857c4 gl_error=0x0 srgb=off min_dark=(R5,G5,B5) p1=0 p5=0 hist[0..15]=6182665,10873,7247,5633,2963,1788,1680,1468,1422,1241,1100,1059,544,384,331,402
+[diag] hyprsaver[hyprsaver_bezier] frame=60 t=1.30s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=c46001772674c616 gl_error=0x0 srgb=off min_dark=(R5,G5,B5) p1=0 p5=0 hist[0..15]=6190977,8859,5479,3161,2648,2198,1351,1179,1084,949,800,581,519,459,286,270
+[diag] hyprsaver[hyprsaver_bezier] frame=120 t=2.64s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=492b8816a6585ba3 gl_error=0x0 srgb=off min_dark=(R5,G5,B5) p1=0 p5=0 hist[0..15]=6188213,9741,4353,3541,2942,2541,2298,1932,1226,731,733,677,655,562,533,122
+[diag] hyprsaver[hyprsaver_bezier] frame=180 t=4.17s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=1103d1d5dc8b299a gl_error=0x0 srgb=off min_dark=(R5,G5,B5) p1=0 p5=0 hist[0..15]=6185139,9683,5862,3894,3286,2805,1984,1694,1532,1450,974,739,706,569,252,231
+[diag] hyprsaver[hyprsaver_bezier] frame=240 t=5.77s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=51ef3ad8de656371 gl_error=0x0 srgb=off min_dark=(R5,G5,B5) p1=0 p5=0 hist[0..15]=6182809,10477,7135,5386,3035,2025,1719,1584,1463,1284,1234,1081,550,332,322,364

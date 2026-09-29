@@ -1,0 +1,7 @@
+Sep 29 00:54:25 ncz-684072 systemd[2374]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 00:54:26 ncz-684072 systemd[2374]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
+Sep 29 00:54:26 ncz-684072 systemd[2374]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 01:23:34 ncz-684072 systemd[2374]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 01:23:34 ncz-684072 systemd[2374]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
+Sep 29 01:23:34 ncz-684072 systemd[2374]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 01:40:54 ncz-684072 systemd[2374]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).

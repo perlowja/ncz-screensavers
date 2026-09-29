@@ -1175,7 +1175,11 @@ def phase_hacks(
             f"baseline_diff={metrics.get('baseline_diff', 0):.3f} "
             f"alive={alive} leftover={leftover}"
         )
-        if not passed and metrics.get("tile_coverage", 0.0) >= 0.25:
+        if (
+            not passed
+            and metrics.get("coverage", 0.0) < COVERAGE_GATE
+            and metrics.get("tile_coverage", 0.0) >= 0.25
+        ):
             detail += (
                 f" sparse-scene(tiles lit={metrics['tile_coverage']:.2f}):"
                 " content present but under the 15% pixel gate"

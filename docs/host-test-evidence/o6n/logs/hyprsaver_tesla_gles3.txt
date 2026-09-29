@@ -1,0 +1,20 @@
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2707396 nonblack=2707396 hash=a57a299c931c7d55 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7920261,122201,8693,5081,3844,2845,2539,2033,1976,1726,1564,1440,1401,1325,1236,44023
+[diag] hyprsaver[hyprsaver_tesla] frame=60 t=1.11s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2707396 nonblack=2707396 hash=957bb23958531a08 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7921809,121323,8553,4901,3854,2777,2508,2007,1918,1686,1555,1406,1378,1282,1269,43962
+[diag] hyprsaver[hyprsaver_tesla] frame=120 t=2.14s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2707396 nonblack=2707396 hash=48c1d111bb4b6944 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7926206,117072,8445,4995,3803,2791,2448,2051,1927,1717,1531,1426,1395,1266,1284,43831
+[diag] hyprsaver[hyprsaver_tesla] frame=180 t=3.19s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2707396 nonblack=2707396 hash=64cb4741276effa3 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7920539,121512,8459,4989,3674,2805,2434,1973,1900,1696,1543,1371,1379,1269,1243,45402
+[diag] hyprsaver[hyprsaver_tesla] frame=240 t=4.24s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2707396 nonblack=2707396 hash=f04637a4c7cee2b9 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7921291,121308,8604,5032,3825,2840,2449,2085,1928,1737,1565,1406,1381,1300,1299,44138
+[diag] hyprsaver[hyprsaver_tesla] frame=300 t=5.33s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2707396 nonblack=2707396 hash=0c221e0bfb35d8b7 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7922410,120275,8470,5088,3790,2821,2498,2061,1920,1767,1596,1420,1371,1296,1289,44116
+[diag] hyprsaver[hyprsaver_tesla] frame=360 t=6.39s
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2707396 nonblack=2707396 hash=ab7746a26d744faa gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=7922774,119657,8494,4891,3709,2806,2380,2001,1843,1737,1497,1390,1378,1264,1200,45167

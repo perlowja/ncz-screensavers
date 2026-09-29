@@ -104,3 +104,33 @@ plan without acting.
 
 ## 3. Out of scope (per operator)
 GPU probing/fidelity tiers, wayshade, ISO builds, kernel changes.
+
+## 4. As built and verified (2026-09-29)
+
+Files: `launcher/ncz-screensaver` (Python launcher and CLI), `launcher/ncz-screensaver-idled.c` (idle daemon),
+`launcher/ncz-screensaver-settings` (GTK4 and libadwaita chooser), `launcher/ncz-screensaver-idled.service`,
+`launcher/ncz-screensaver-run-compat` (old `--start/--stop/--preview` interface), `config/dev.ncz.screensaver.gschema.xml`,
+`debian/ncz-screensavers.postinst` (disables the older `ncz-idle-manager` user unit), `tools/host-test.sh` with
+`tools/host-test-agent.py`, `tools/wl_poke.py` (raw-wire Wayland client: virtual pointer, virtual keyboard, idle inhibitor,
+registry dump), `tools/gen-host-results-md.py`. Results: `docs/HOST-TEST-RESULTS.md`.
+
+Decisions confirmed or changed while building:
+
+- The daemon uses the plain `ext_idle_notification_v1` request, so idle inhibitors (proved with a `zwp_idle_inhibit_v1`
+  client) hold the saver off and DPMS uses `zwlr_output_power_v1` directly; neither swayidle nor wlopm is needed.
+- The hack environment matters: a systemd user service does not inherit the compositor's GPU variables (the O6N Mali
+  EGL vendor file and `LD_LIBRARY_PATH`), so the launcher copies them from the compositor's `/proc/PID/environ`
+  (never `DRI_PRIME` or NVIDIA offload variables, never names containing password, token or secret).
+- Stop protocol: SIGTERM to the hack's process group, 1 s grace, then SIGKILL (a hack blocked in `eglSwapBuffers`
+  behind a lock surface ignores SIGTERM on Mali). The launcher does not start a hack while a lock screen runs.
+- Lock chain: on the lock timer the daemon runs `ncz-screensaver stop`, waits for it, then the lock command
+  (`NCZ_LOCK_CMD`, `ncz-lock`, or `singularity-lockscreen`).
+- Multi-monitor: hacks bind one output; DPMS covers all outputs. Per-output hack instances need an output option in the
+  hack harness (open item for `src/`). All four test hosts have a single output, so this is untested.
+- Not done by design: GPU probing or fidelity tiers, wayshade.
+
+Bugs found by the harness and by adversarial review and fixed: alias-unsafe settings snapshot (crash at start), main loop
+never quitting on SIGTERM, missing stop on input resume, wrong `Inhibit` signature, dangling `GPollFD` and a busy
+`GSource` check, `xdg` and `wl_surface` opcodes and the invalid XKB keymap in the test client, PPM header parsing that
+ate whitespace-valued pixels (false zero coverage), destroyed `zwlr_output_power_v1` proxy kept in the array, unbalanced
+`wl_display_prepare_read`, leaked idle-notification data, and a hang on truncated PPM input in the black-frame guard.

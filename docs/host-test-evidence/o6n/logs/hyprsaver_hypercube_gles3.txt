@@ -1,0 +1,20 @@
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2707396 nonblack=2707396 hash=9f68728674f9f86d gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7808831,6233,7343,8020,9135,13298,12462,19730,33314,93446,13202,80313,10534,4925,1402,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=60 t=1.07s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2707396 nonblack=2707396 hash=16244a4aeee06a4f gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7786183,10047,15339,14750,27932,9558,11462,19265,17345,84385,37621,79519,5211,2396,1175,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=120 t=2.10s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2707396 nonblack=2707396 hash=fa4f7ceed2de5c2a gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7703040,10111,12346,14250,47182,11314,14021,16684,29433,115919,36107,99243,8063,3128,1347,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=180 t=3.18s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2707396 nonblack=2707396 hash=7ddf4d3d2568cbf1 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7796453,6608,7273,8036,8963,10722,12474,18346,28274,122519,12928,79472,5072,3896,1152,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=240 t=4.24s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2707396 nonblack=2707396 hash=b7e56f6cf876bdab gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7791078,8398,9847,11527,21273,34359,10136,12500,17330,92799,26868,78124,4145,2655,1149,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=300 t=5.30s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2707396 nonblack=2707396 hash=68e93e95ff827d9a gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7794688,7395,8576,9575,11108,14620,34990,15044,32958,77288,27943,75883,6355,4560,1205,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=360 t=6.37s
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2707396 nonblack=2707396 hash=7fcc3fbd5ee9e71d gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7821186,5687,6573,7184,8060,9201,11030,13908,25722,90996,24521,78339,8467,10061,1253,0

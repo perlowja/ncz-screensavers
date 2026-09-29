@@ -1,0 +1,20 @@
+[diag] gles3_harness: calling init...
+[diag] hyprsaver[hyprsaver_circuit] init: GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1, frag=circuit.frag, locs=time:5 res:6 mouse:-1 frame:-1 alpha:0 speed:1 zoom:-1 lutA:2 lutB:3 blend:4 palette_tex:1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=210286 hash=81b8b692c413a4ec gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5800139,82975,116510,36596,36154,69631,14090,10050,8732,7664,6275,5185,3656,2864,2905,17374
+[diag] hyprsaver[hyprsaver_circuit] frame=60 t=1.68s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=210941 hash=57b572b3e47c654a gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5801880,82990,114859,38895,38667,65624,12732,10698,10190,7659,6388,5231,3677,3066,2617,15627
+[diag] hyprsaver[hyprsaver_circuit] frame=120 t=3.47s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=210450 hash=948262f8f19d6f43 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5825342,78175,111384,37687,30406,66002,11015,9766,8704,6644,6268,4338,3490,2995,2670,15914
+[diag] hyprsaver[hyprsaver_circuit] frame=180 t=5.32s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=210906 hash=53eedb6e3800c7af gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=5827957,78062,114414,35896,29923,66202,9509,8728,7323,6494,6309,4362,3915,3051,3071,15584

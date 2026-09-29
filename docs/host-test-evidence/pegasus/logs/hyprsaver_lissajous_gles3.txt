@@ -1,0 +1,20 @@
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] hyprsaver[hyprsaver_lissajous] init: GL_VERSION=OpenGL ES 3.2 Mesa 26.1.6-1, frag=lissajous.frag, locs=time:5 res:6 mouse:-1 frame:-1 alpha:0 speed:1 zoom:-1 lutA:2 lutB:3 blend:4 palette_tex:1
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=92823 hash=55a31542ed3e33cd gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6171398,20128,14319,6655,3438,2917,1215,312,264,154,0,0,0,0,0,0
+[diag] hyprsaver[hyprsaver_lissajous] frame=60 t=2.58s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=114394 hash=59c1c779c5f83dec gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6168888,30191,18221,2322,698,250,110,96,24,0,0,0,0,0,0,0
+[diag] hyprsaver[hyprsaver_lissajous] frame=120 t=5.27s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=108884 hash=abe2b53926135ffa gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6163052,43511,12485,1478,274,0,0,0,0,0,0,0,0,0,0,0

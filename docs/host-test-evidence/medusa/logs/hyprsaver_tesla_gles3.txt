@@ -1,0 +1,20 @@
+[diag] frame #1
+[diag] frame #2
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=1474560 nonblack=1474560 hash=64313ef8ddcc66e4 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=4278805,90486,6113,3599,2594,1911,1712,1393,1299,1193,1060,918,934,863,826,29974
+[diag] hyprsaver[hyprsaver_tesla] frame=60 t=0.97s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=1474560 nonblack=1474560 hash=a43b68bdbcd61b8f gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=4195423,162193,7647,3877,2782,2065,1701,1322,1201,1088,956,840,822,722,730,40311
+[diag] hyprsaver[hyprsaver_tesla] frame=120 t=1.97s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=1474560 nonblack=1474560 hash=bb35d3b064fa625f gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=4198474,160423,7530,3769,2638,1913,1583,1248,1142,1043,948,796,791,690,700,39992
+[diag] hyprsaver[hyprsaver_tesla] frame=180 t=2.97s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=1474560 nonblack=1474560 hash=905df4464ccaadf4 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=4201965,157005,7504,3813,2702,1855,1632,1322,1167,1009,937,813,773,757,666,39760
+[diag] hyprsaver[hyprsaver_tesla] frame=240 t=3.97s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=1474560 nonblack=1474560 hash=3d8cb135a1de10e9 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=4227690,134024,6767,3625,2596,1866,1641,1265,1175,1008,884,830,771,714,711,38113
+[diag] hyprsaver[hyprsaver_tesla] frame=300 t=4.97s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=1474560 nonblack=1474560 hash=d022cd395bf7eefc gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=4200590,157988,7581,3846,2693,1936,1602,1319,1166,1048,962,813,753,726,664,39993

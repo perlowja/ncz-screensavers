@@ -1,0 +1,20 @@
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=b843c3068172944c gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5986737,4808,5566,6033,6971,7875,11515,14912,24077,66791,10077,60303,9552,4475,1108,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=60 t=0.97s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=5ad5d80f1168ee15 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5958948,6399,7983,10808,27549,6608,9175,9908,20279,73749,21166,61590,3982,1760,896,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=120 t=1.97s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=27754a7e2a70abd5 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5923632,8187,9921,14536,27135,8679,13742,11263,15470,73964,35756,70341,5016,2192,966,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=180 t=2.99s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=41a539ea38055b93 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5974674,4810,5552,6220,6749,7969,9656,13707,19798,92250,10013,60384,5119,3011,888,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=240 t=4.01s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=d98b8f261b354c84 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5956876,6054,6795,7696,9022,26195,11895,11165,27278,63699,22358,63454,5256,2168,889,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=300 t=5.06s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=dca4648927598140 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5982770,5474,7226,7228,10287,25819,7302,9364,12843,68361,20004,58112,2636,2485,889,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=360 t=6.07s
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=a9e6ae4ca4b47d69 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5966930,4927,5513,6144,6915,8034,9605,13926,19460,90503,18874,61682,4336,3073,878,0

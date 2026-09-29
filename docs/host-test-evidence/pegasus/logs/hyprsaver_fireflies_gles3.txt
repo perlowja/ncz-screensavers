@@ -1,0 +1,20 @@
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=272328 hash=17cedd82d2602c13 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6099570,53471,25762,14838,9133,6293,4132,2582,1720,1116,825,620,421,219,78,20
+[diag] hyprsaver[hyprsaver_fireflies] frame=60 t=0.98s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=273885 hash=4f2698428f0e2eb9 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6098542,53525,25868,15295,9690,6273,4057,2575,1721,1170,848,562,333,212,113,16
+[diag] hyprsaver[hyprsaver_fireflies] frame=120 t=1.98s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=275880 hash=8af13ae4a909de2e gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6096604,53512,26045,15377,9766,6819,4521,2750,1835,1253,787,575,389,309,212,46
+[diag] hyprsaver[hyprsaver_fireflies] frame=180 t=3.01s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=277915 hash=4ab95203529ca25c gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6093926,53629,26858,15758,9883,6654,4451,3028,2261,1436,987,750,574,341,196,68
+[diag] hyprsaver[hyprsaver_fireflies] frame=240 t=4.06s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=278629 hash=5df2feebd579d3ae gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6091258,54581,27039,15882,10326,7077,4453,3186,2195,1606,1140,895,620,300,180,62
+[diag] hyprsaver[hyprsaver_fireflies] frame=300 t=5.08s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=276198 hash=56ed5f7c198dda8a gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6097142,53160,25339,14983,9676,6453,4548,3241,2182,1440,970,692,476,322,143,33
+[diag] hyprsaver[hyprsaver_fireflies] frame=360 t=6.11s
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=272459 hash=3e5f2f0cbf670f70 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=6103498,50789,24539,14539,9168,6169,4188,2731,1845,1232,862,553,394,188,89,16

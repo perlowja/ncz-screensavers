@@ -1,0 +1,20 @@
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2707396 nonblack=148906 hash=1c91404f7b3e02c7 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7961551,52789,39588,36434,6120,3830,3301,3830,2228,3027,2897,992,983,1517,2394,707
+[diag] hyprsaver[hyprsaver_sonar] frame=60 t=1.01s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2707396 nonblack=155435 hash=459cb56203aeb9de gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7938919,81670,40537,29912,10493,6225,2259,2482,1501,2099,1443,904,1380,799,1427,138
+[diag] hyprsaver[hyprsaver_sonar] frame=120 t=2.02s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2707396 nonblack=145935 hash=d63033a659d3de7d gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7952060,91592,39867,20301,3732,3357,3745,1035,871,846,1296,685,748,1901,61,91
+[diag] hyprsaver[hyprsaver_sonar] frame=180 t=3.06s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2707396 nonblack=144342 hash=6a8759be6e12eb80 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7947936,94093,48460,8852,3256,2782,3779,3472,1182,1032,844,894,1153,2140,1389,924
+[diag] hyprsaver[hyprsaver_sonar] frame=240 t=4.12s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2707396 nonblack=146813 hash=081ff7bf585ffb9a gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7950313,85388,58082,8594,3588,4318,1760,2206,2545,1955,809,879,1590,31,32,98
+[diag] hyprsaver[hyprsaver_sonar] frame=300 t=5.21s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2707396 nonblack=145102 hash=a3ca659ea01e13c7 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7952514,80440,61586,6437,4789,3276,2602,2233,1978,1895,2750,1472,54,38,18,106
+[diag] hyprsaver[hyprsaver_sonar] frame=360 t=6.26s
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2707396 nonblack=135557 hash=8e2e12e19543ddb6 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=7951868,73179,59796,8666,5550,3675,2820,2346,1791,1549,1352,1398,1365,1402,892,4539

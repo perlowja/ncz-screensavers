@@ -1,0 +1,20 @@
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=21dc9e5992e44a92 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6051857,103812,7219,4228,3150,2310,2073,1690,1577,1401,1297,1126,1148,1061,1041,35810
+[diag] hyprsaver[hyprsaver_tesla] frame=60 t=0.98s
+[diag] frame #60
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=87334cb245223ebb gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6038285,113376,7463,4322,3100,2215,2026,1614,1511,1302,1214,1099,1023,908,928,40414
+[diag] hyprsaver[hyprsaver_tesla] frame=120 t=1.98s
+[diag] frame #120
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=609c0ebc6cc3b44a gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6044642,108059,7304,4137,3064,2162,1957,1615,1486,1250,1219,1057,1012,906,926,40004
+[diag] hyprsaver[hyprsaver_tesla] frame=180 t=3.00s
+[diag] frame #180
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=56d42ab21b0a4ac3 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6053842,102199,6992,4194,3010,2262,2062,1659,1562,1388,1255,1112,1107,982,969,36205
+[diag] hyprsaver[hyprsaver_tesla] frame=240 t=4.00s
+[diag] frame #240
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=b0347edb0a33458d gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6056805,100289,6904,4113,3019,2223,2029,1656,1503,1385,1255,1128,1091,970,1023,35407
+[diag] hyprsaver[hyprsaver_tesla] frame=300 t=5.05s
+[diag] frame #300
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=d4f9fe7256c4c4f6 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6055380,101317,7044,4115,3101,2253,2053,1679,1568,1394,1262,1100,1121,1031,1008,35374
+[diag] hyprsaver[hyprsaver_tesla] frame=360 t=6.08s
+[diag] frame #360
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=4c39a1818e86b839 gl_error=0x0 srgb=off min_dark=(R12,G7,B0) p1=0 p5=0 hist[0..15]=6039465,112831,7275,4118,3094,2286,1910,1554,1441,1323,1237,1078,1031,961,940,40256

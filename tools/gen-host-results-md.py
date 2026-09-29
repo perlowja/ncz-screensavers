@@ -59,6 +59,8 @@ def copy_evidence(src_dir, dest_dir, rel):
         out = dest_dir / sub
         out.mkdir(parents=True, exist_ok=True)
         for f in sorted(s.iterdir()):
+            if f.suffix == ".ppm":
+                continue  # raw analysis frames are not evidence
             if sub == "shots" and f.suffix == ".png" and conv:
                 target = out / (f.stem + ".jpg")
                 cmd = [conv, str(f), "-resize", "480x", "-quality", "60", str(target)]
@@ -82,6 +84,7 @@ def main():
     ap.add_argument("dirs", nargs="+")
     ap.add_argument("-o", "--output", required=True)
     ap.add_argument("--evidence-dir")
+    ap.add_argument("--notes", help="Markdown file inserted after the summary table")
     args = ap.parse_args()
     hosts = find_hosts(args.dirs)
     if not hosts:
@@ -122,6 +125,10 @@ def main():
             f"| {h} | {d.get('arch', '?')} | {esc(d.get('kernel', '?'))} | {esc(gpu)} | {pkg} | {s.get('pass', 0)} | {s.get('fail', 0)} | {s.get('skip', 0)} |"
         )
     L.append("")
+
+    if args.notes:
+        L.append(Path(args.notes).read_text().rstrip())
+        L.append("")
 
     # Matrix of hacks x hosts.
     ids = {}
