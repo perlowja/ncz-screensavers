@@ -211,7 +211,7 @@ software-renderer guard applies unchanged (verified on O6N: llvmpipe refused wit
 compositor's EGL environment is used). No port reads back pixels in its loop, all programs are
 compiled in `init`, and geometry buffers are only written through `glBufferSubData` rings.
 
-## Review record
+## Review record (first round)
 
 zoder (MiniMax-M3, no-tools, one file per prompt) reviewed every file. Findings were checked
 against the source; fixed: sampler precision in the shared shader head, scissor state and FBO
@@ -236,17 +236,85 @@ notes: in gravitywell and hexstrut the enhanced style is a refinement rather tha
 The `enhanced` voronoi costs a per-pixel loop over all sites and is therefore not a weak-class
 style.
 
-## Next batch (proposal, not started)
+## Formal review verdicts (final round)
 
-To be added from the ~170 upstream GL hacks after operator approval; each would follow the same
-recipe (retained geometry, instancing, no fixed-function emulation). Candidates that suit the weak
-class: `glschool`, `munch`, `cloudlife`, `discrete`, `thornbird`, `flame`, `coral`, `galaxy`,
-`raverhoop`, `lavalite` (metaballs), `atlantis`, `hextrail`. Cost estimate per hack: 0.5 to 1 day
-for the geometry-only ones, 1 to 2 days for the simulation-heavy ones; expected weak-class verdict
-is ok for everything that is instanced meshes or line art, marginal for fill-heavy 2D hacks.
+Operator rule: author, zoder review, fix, re-review to APPROVE. Reviewer: zoder, agent
+minimax-m3-cloud, model MiniMax-M3 (no tools), one file per prompt. Dates 2026-09-29/30. A run
+that timed out or produced no text was not counted. Every finding was checked against the source;
+the only real one in the final round was in gravitywell (division by zero in the star-depth sum,
+fixed in 6dc6fe7 by adding 1e-3 to the denominator; the re-review of the fixed file approved).
+Refuted in the final round: hexstrut "rotator degrees" (get_rotation returns fractions of a turn,
+the *360 is the original's), gibson "divisor 0 attribute is invalid" (divisor 0 is a per-vertex
+attribute).
+
+| File | Verdict | Final line of review |
+|---|---|---|
+| `cs_common.h` | APPROVE | `APPROVE` |
+| `cs_post.h` | APPROVE | `APPROVE` |
+| `cs_voronoi.c` | APPROVE | `APPROVE` |
+| `cs_gravitywell.c` | APPROVE (after 6dc6fe7) | `APPROVE` |
+| `cs_hexstrut.c` | APPROVE | `No real defects found. APPROVE` |
+| `cs_cubestorm.c` | APPROVE | `APPROVE` |
+| `cs_crackberg.c` | APPROVE | `No real defects found in the criteria you listed. APPROVE` |
+| `cs_cityflow.c` | APPROVE | `No defects found. APPROVE` |
+| `cs_noof.c` | APPROVE (two chunks, a and b) | `APPROVE` each |
+| `cs_geodesic.c` | APPROVE | `APPROVE` |
+| `cs_gibson.c` | APPROVE | `APPROVE` |
+
+Notes: the whole-file noof prompt timed out twice at 900 s, so it was reviewed in two chunks;
+the tydeus-slot agent is not configured on ACHILLES and codex escalation was not needed. The
+first gravitywell final-round run failed (no text captured) and was re-run to completion.
+The upstream Carsten Steger hacks (klein, hypertorus, projectiveplane) were only stripped of their
+dead GL1 functions (`*_ff`), not re-authored; that removal is verified by `nm` (no GL1 symbols).
+
+## Retiring the GL1 layer (version 0.6.0)
+
+Answer to "have we retired the need for the legacy engine and GL1?": yes for everything shipped.
+
+(a) Shipped binaries: none link the GL1 layer or gl4es. Of the 84 shipped binaries (blackhole, 35
+hyprsaver, 36 xshadertoy, 12 classics) `ldd` shows only libGLESv2, libEGL, Wayland and libc/libm;
+`nm -u` shows no `glBegin`, `glVertex*`, `glMatrixMode`, `glLight*`, `glu*` or `gl4es` symbols.
+Before the strip, 81 of the 84 already had no GL1 references; hypertorus, klein and
+projectiveplane referenced them through dead `*_ff` paths, which are now removed. `dpkg -c` of a
+`meson install` DESTDIR stage contains exactly these 84 hacks and no `libgl4es`, `libGL.so` or
+compat object. The deb itself is built by LEAD 1 (ACHILLES has no debhelper).
+
+(b) Hacks that still depended on it (all dropped from tree, package, chooser and docs): rubikblocks,
+topblock, tangram, glschool, fliptext, antinspect, antspotlight, beats, blinkbox, blocktube,
+bouncingcow, chompytower, crumbler, cube21, cubestack, covid19, cubenetic, cubetwist, cubicgrid,
+dangerball, discoball, energystream, gears, glblur, glcells, glknots, glsnake, hextrail,
+highvoltage, hilbert, hydrostat, hypnowheel, jigsaw, juggler3d, kaleidocycle, lament, lockward,
+mapscroller, menger, moebiusgears, molecule, papercube, peepers, polyhedra-gl, quasicrystal,
+spheremonics, splodesic, squirtorus, stonerview, timetunnel, tronbit, flyingtoasters,
+geodesicgears, glforestfire, glhanoi, gltext, handsy, kallisti, photopile, providence, unicrud,
+unknownpleasures, headroom, nakagin, raverhoop, razzledazzle, sballs, skulloop, skytentacles,
+splitflap, starwars, winduprobot, atlantis, flurry; plus boing, companion, etruscanvenus,
+romanboy, sphereeversion, wl-screenhack, gl4es_triangle, glmatrix_demo/glmatrix, the rss-sdl2
+tree, and the nine `_legacy_gles3` variants of the ported classics.
+
+(c) What retiring took (done): migrate the loader and diagnostic helpers to `ncz_gl.*` and
+`ncz_hack_shim.*`; strip the dead fixed-function code from klein, hypertorus and
+projectiveplane; delete `gles3_compat.{c,h}`, `xscreensaver_compat.c` (now the trimmed
+`ncz_hack_shim`), `src/gl4es_include/`, `src/GL/glu.h`, the X11 stubs, the 241-file GL1 hack
+source tree, `vendor/rss-sdl2-gles2-src`, `vendor/xscreensaver`, `tools/test-gluScaleImage*`,
+`validation/`; remove the meson options `gl4es`, `gl4es-lib-dir`, `xscreensaver-shim`,
+`legacy-classics` and the `debian/rules` flags. Old docs are kept in `docs/archive/gl1-era/`, the
+legacy-vs-port contact sheets and raw captures stay as history.
+
+Verification for the 12 classics: GL1-free by `nm -u` on each binary; clean builds on arm64 and
+amd64; gate (not black, moving, coverage) PASS on O6N (13 of 13 incl. blackhole), PEGASUS (12
+classics and blackhole, p95 at most 17 ms), MEDUSA (83 of 84; the one flake, bestill4-0, passed
+twice on rerun). Four xshadertoy shaders (alienbeacon, bestill2-0, bestill4-0, polarnight) are too
+slow on Mali and Intel to reach frame 60 in 5 s and report STATIC; they are shaders, not GL1.
+
+## Next batch
+
+The earlier proposal to port more GL hacks is withdrawn with the GL1 removal. Any future hack
+starts from the shader-engine recipe (retained geometry, instancing, no fixed-function emulation).
 
 ## Packaging note
 
-New sources are built by the `classics_shader_ported` block in `meson.build`; no new runtime
-files and no new dependencies (shaders are embedded).
-Suggested next package version: 0.5.0.
+Version 0.6.0 (`meson.build`, `debian/changelog`). New sources are built by the
+`classics_shader_ported` block in `meson.build`; no new runtime dependencies (shaders are
+embedded), and the build no longer needs gl4es. The ship set is 84 binaries. The cix-installer
+`hacks.tsv` must list exactly this set (branch `fix/screensaver-catalog-ship-set-2026-09-30`).
