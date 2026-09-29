@@ -106,7 +106,8 @@ def main():
     )
     L.append("")
     L.append(
-        "Gate for every hack: at least 15% of the frame lit (any channel above 16), frame-to-frame motion, the screen actually replaced"
+        "Gate for every hack: at least 15% of the frame lit (any channel above 16), frame-to-frame motion of at least 0.5% of pixels, "
+        "process alive at capture time and gone after `ncz-screensaver stop`. The difference from the desktop baseline is recorded but informational."
     )
     L.append(
         "(at least 10% of pixels differ from the desktop baseline), process alive at capture time and gone after `ncz-screensaver stop`."
