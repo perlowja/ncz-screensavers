@@ -1,3 +1,13 @@
+ncz-screensavers (0.3.0) unstable; urgency=medium
+
+  * Add the ncz-screensaver launcher, ncz-screensaver-idled idle daemon with
+    its systemd user unit, the GTK4 settings app and the desktop entry.
+  * blackhole-color-mode setting is exported to blackhole_gles3 as
+    NCZ_BLACKHOLE_COLORS by the launcher.
+  * Disable the older swayidle-based ncz-idle-manager user service on install.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 12:00:00 +0000
+
 ncz-screensavers (0.2.0) unstable; urgency=medium
 
   * Consolidated ship set of 84 hacks (Black Hole, 35 hyprsaver, 36
