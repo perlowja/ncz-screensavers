@@ -1063,6 +1063,10 @@ def _measure_coverage_motion(
     out["tile_coverage"] = hti.tile_coverage(bw, bh, b_buf)
     out["motion"] = hti.frame_diff_fraction(a_buf, b_buf)
     out["baseline_diff"] = hti.frame_diff_fraction(base_buf, b_buf)
+    vm = hti.visual_metrics(bw, bh, b_buf, a_buf)
+    out["visual_reasons"] = ",".join(hti.visual_verdict(vm))
+    for key in ("lit", "lit_colors", "lit_top1", "entropy", "moved_tiles"):
+        out["v_" + key] = vm[key]
     return out
 
 
@@ -1109,6 +1113,18 @@ def _sparse_floors():
                     with contextlib.suppress(ValueError):
                         floors[f[0]] = float(f[1])
     return floors
+
+
+def _known_issues():
+    """{hack id: (status, reason)} from the package's broken.tsv (empty if absent)."""
+    out = {}
+    with contextlib.suppress(OSError):
+        text = pathlib.Path("/usr/share/ncz-screensavers/broken.tsv").read_text()
+        for ln in text.splitlines():
+            f = ln.split("\t")
+            if ln.strip() and not ln.startswith("#") and len(f) >= 3:
+                out[f[0]] = (f[1], f[2])
+    return out
 
 
 def _display_probe(env):
@@ -1383,6 +1399,10 @@ def phase_hacks(
         if floor is not None:
             sub["sparse_floor"] = floor
         status = "pass" if passed else "fail"
+        known = _known_issues().get(hid)
+        if passed and metrics.get("visual_reasons"):
+            status = "review"
+            sub["visual_reasons"] = metrics["visual_reasons"]
         detail = (
             f"coverage={metrics.get('coverage', 0):.3f} "
             f"motion={metrics.get('motion', 0):.4f} "
@@ -1390,6 +1410,11 @@ def phase_hacks(
             f"alive={alive} leftover={leftover} "
             f"tiles={metrics.get('tile_coverage', 0):.2f} stop={stop_seconds:.2f}s"
         )
+        if status == "review":
+            detail += f" REVIEW (looks wrong: {metrics['visual_reasons']})"
+        if known:
+            detail += f" [listed {known[0]}: {known[1]}]"
+            sub["known_issue"] = known[0]
         if sub["sparse"]:
             detail += " SPARSE (passes via the tile rule only)"
         if not passed:
@@ -3328,6 +3353,8 @@ def _selftest() -> int:
     w, h, rgb = hti.parse_ppm(data)
     case("parse_ppm-dims", w == width and h == height, f"{w}x{h}")
     case("parse_ppm-len", len(rgb) == width * height * 3, f"{len(rgb)} bytes")
+    vm_flat = hti.visual_metrics(16, 16, bytes([0, 90, 160] * 256))
+    case("visual-flat-frame", "flat_fill" in hti.visual_verdict(vm_flat), str(vm_flat))
 
     cov = hti.coverage_fraction(rgb)
     case("coverage-uniform", abs(cov - 1.0) < 1e-9, f"coverage={cov:.3f}")

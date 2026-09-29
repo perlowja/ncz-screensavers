@@ -419,6 +419,30 @@ def load_tiers():
     return tiers
 
 
+def broken_path():
+    env = os.environ.get("NCZ_SCREENSAVER_BROKEN")
+    for cand in ([env] if env else []) + [
+        "/usr/share/ncz-screensavers/broken.tsv",
+        "/usr/share/ncz-screensaver-chooser/broken.tsv",
+    ]:
+        if cand and Path(cand).is_file():
+            return Path(cand)
+    return None
+
+
+def load_broken():
+    """{hack id: (status, reason)} for hacks with a known defect; empty when absent."""
+    path = broken_path()
+    out = {}
+    if path is None:
+        return out
+    for line in path.read_text().splitlines():
+        f = line.split("\t")
+        if len(f) >= 3 and not line.startswith("#") and f[1] in ("broken", "suspect"):
+            out[f[0]] = (f[1], f[2])
+    return out
+
+
 def offload_for(hack_id, settings, tiers=None):
     """True when this hack process should get PRIME render offload."""
     mode = str(settings.get("gpu-offload", "auto"))
@@ -444,6 +468,8 @@ def pool_class(settings):
 
 def filter_pool(ids, settings):
     """Drop discrete-tier hacks when the machine only suits integrated GPUs."""
+    known = load_broken()
+    ids = [i for i in ids if i not in known] or ids
     tiers = load_tiers()
     if not tiers or pool_class(settings) == "all":
         return ids
@@ -1230,6 +1256,7 @@ def cmd_list(args):
     settings, _ = load_settings()
     pool = settings["random-hacks"]
     tiers = load_tiers()
+    known = load_broken()
     rows = []
     for r in load_catalog():
         if args.group and r["group"] != args.group:
@@ -1238,6 +1265,8 @@ def cmd_list(args):
         row["installed"] = find_binary(r["id"]) is not None
         row["enabled"] = not pool or r["id"] in pool
         row["tier"] = tiers.get(r["id"], "discrete") if tiers else "unknown"
+        row["issue"] = known[r["id"]][0] if r["id"] in known else ""
+        row["issue_reason"] = known[r["id"]][1] if r["id"] in known else ""
         if args.enabled and not row["enabled"]:
             continue
         if args.installed and not row["installed"]:
@@ -1247,8 +1276,10 @@ def cmd_list(args):
         print(json.dumps(rows))
     else:
         for row in rows:
-            flags = ("I" if row["installed"] else "-") + (
-                "E" if row["enabled"] else "-"
+            flags = (
+                ("I" if row["installed"] else "-")
+                + ("E" if row["enabled"] else "-")
+                + ("!" if row["issue"] else "-")
             )
             print(
                 f"{flags} {row['tier']:<8} {row['id']:<40} {row['group']:<22} {row['title']}"

@@ -1,0 +1,8 @@
+# Hacks kept out of the random and playlist pools, the idle timer and the default chooser view.
+# Columns (tab separated): id, status, reason, date, tracking. status is broken (known defect)
+# or suspect (looks wrong, under review). Both are still runnable on request (start --hack,
+# preview, set-hack) and are shown with a known-issue badge. Remove the line when fixed.
+cityflow_gles3	broken	flat single-color polygons; glMaterialfv applied once per batch	2026-09-29	LEAD 11
+crackberg_gles3	suspect	material state may be wrong under the shader engine	2026-09-29	LEAD 11
+klein_gles3	suspect	large single-color areas, low color count	2026-09-29	LEAD 11
+voronoi_gles3	suspect	flat cells; may be faithful to the original hack	2026-09-29	LEAD 11

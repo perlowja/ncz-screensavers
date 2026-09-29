@@ -103,6 +103,28 @@ def main():
             bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
     if bad:
         raise SystemExit("sparse.tsv: " + "; ".join(bad))
+    broken = args.meson_build.parent / "assets" / "screensaver-chooser" / "broken.tsv"
+    if broken.exists():
+        bad = []
+        for n, line in enumerate(broken.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            cols = line.split("\t")
+            problem = None
+            if len(cols) != 5:
+                problem = "needs exactly 5 tab-separated columns"
+            elif cols[0] not in ships:
+                problem = "id is not in the ship set"
+            elif cols[1] not in ("broken", "suspect"):
+                problem = "status must be broken or suspect"
+            elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", cols[3]):
+                problem = "date must be YYYY-MM-DD"
+            elif not cols[2].strip():
+                problem = "empty reason"
+            if problem:
+                bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
+        if bad:
+            raise SystemExit("broken.tsv: " + "; ".join(bad))
     tiers = args.output.with_name("tiers.tsv")
     if not tiers.exists():
         tiers = args.meson_build.parent / "assets" / "screensaver-chooser" / "tiers.tsv"

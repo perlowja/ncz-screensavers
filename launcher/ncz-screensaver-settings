@@ -150,6 +150,28 @@ def load_catalog() -> list[dict]:
     return rows
 
 
+def load_broken() -> dict[str, tuple[str, str]]:
+    """{hack id: (status, reason)} from broken.tsv; empty when not installed."""
+    for path in (
+        os.environ.get("NCZ_SCREENSAVER_BROKEN", ""),
+        "/usr/share/ncz-screensavers/broken.tsv",
+        "/usr/share/ncz-screensaver-chooser/broken.tsv",
+    ):
+        if path and os.path.isfile(path):
+            out: dict[str, tuple[str, str]] = {}
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    fields = line.rstrip("\n").split("\t")
+                    if (
+                        len(fields) >= 3
+                        and not line.startswith("#")
+                        and fields[1] in ("broken", "suspect")
+                    ):
+                        out[fields[0]] = (fields[1], fields[2])
+            return out
+    return {}
+
+
 def load_tiers() -> dict[str, str]:
     """{hack id: "igpu"|"discrete"} from tiers.tsv; empty when not installed."""
     candidates = [
@@ -639,6 +661,7 @@ class ScreensaverWindow(Adw.ApplicationWindow):
 
         # Group by GPU tier when tiers.tsv is installed, else by catalog group.
         tiers = load_tiers()
+        known = load_broken()
         cat_order = {
             g: i for i, g in enumerate(dict.fromkeys(r["group"] for r in self._catalog))
         }
@@ -683,6 +706,16 @@ class ScreensaverWindow(Adw.ApplicationWindow):
                     badge.add_css_class("dim-label")
                     badge.set_valign(Gtk.Align.CENTER)
                     ar.add_suffix(badge)
+                if r["id"] in known:
+                    flag = Gtk.Label.new(
+                        "Known issue"
+                        if known[r["id"]][0] == "broken"
+                        else "Under review"
+                    )
+                    flag.add_css_class("warning")
+                    flag.set_valign(Gtk.Align.CENTER)
+                    flag.set_tooltip_text(known[r["id"]][1])
+                    ar.add_suffix(flag)
                 if not installed:
                     # Dim rows whose binary is missing; they cannot be previewed.
                     ar.add_css_class("dimmed")
