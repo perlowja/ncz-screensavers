@@ -614,6 +614,38 @@ _EVDEV.update({c: k for k, c in zip("zxcvbnm", range(44, 51))})
 _EVDEV.update({c: k for k, c in zip("1234567890", range(2, 12))})
 
 
+SINTY_SCHEMA_DIR = "/opt/singularity/share/glib-2.0/schemas"
+
+
+def _sinty_lock(env, value=None):
+    """Read (value None) or set Singularity's own dev.sinty.lockscreen
+    lock-enabled key, which locks the session after 5 minutes idle on its own
+    and would blank a long run. Returns the previous value or None."""
+    genv = dict(env, GSETTINGS_SCHEMA_DIR=SINTY_SCHEMA_DIR, G_MESSAGES_DEBUG="")
+    try:
+        old = subprocess.run(
+            ["gsettings", "get", "dev.sinty.lockscreen", "lock-enabled"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=genv,
+            check=False,
+        ).stdout.strip()
+        if old not in ("true", "false"):
+            return None
+        if value is not None and value != old:
+            subprocess.run(
+                ["gsettings", "set", "dev.sinty.lockscreen", "lock-enabled", value],
+                capture_output=True,
+                timeout=10,
+                env=genv,
+                check=False,
+            )
+        return old
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
 def _try_unlock(env, pw):
     """Unlock a locked test session by typing the account secret through a
     virtual keyboard. The secret only travels as evdev codes, never logged."""
@@ -2673,6 +2705,7 @@ def run_phases(
     _log(f"hack_ids: {hack_ids}")
 
     overall_fail = False
+    sinty_before = _sinty_lock(env, "false")
     # The older swayidle based manager would lock the session in the middle of
     # a long run; pause it and restore it at the end.
     paused = []
@@ -2749,6 +2782,8 @@ def run_phases(
 
     for unit in paused:
         _systemctl(env, "start", unit)
+    if sinty_before is not None:
+        _sinty_lock(env, sinty_before)
 
     # Write results.json after every phase ran. We always write so the
     # controller can rescue partial output if a later phase died hard.
