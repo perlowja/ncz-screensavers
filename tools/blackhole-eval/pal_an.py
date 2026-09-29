@@ -2,7 +2,7 @@ import sys,glob,os,itertools
 import numpy as np
 from PIL import Image
 root=sys.argv[1]; host=sys.argv[2]
-pals=["stylized","kipthorne","faithful","singularity","slingshot","whitehole"]
+pals=["stylized","kipthorne","faithful","singularity","slingshot","whitehole","eht"]
 def load(p):
     im=Image.open(p).convert("RGB").resize((384,240),Image.BOX)
     return np.asarray(im,dtype=float)/255.
