@@ -448,7 +448,7 @@ def is_our_process(pid):
     return b"ncz-screensaver" in cmdline
 
 
-def terminate_group(pgid, grace=2.0):
+def terminate_group(pgid, grace=1.0):
     with contextlib.suppress(OSError):
         os.killpg(pgid, signal.SIGTERM)
     deadline = time.monotonic() + grace
@@ -460,6 +460,20 @@ def terminate_group(pgid, grace=2.0):
         time.sleep(0.05)
     with contextlib.suppress(OSError):
         os.killpg(pgid, signal.SIGKILL)
+
+
+def session_locked():
+    """True while a screen locker owns the session (hacks would stall there)."""
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            cmd = (entry / "cmdline").read_bytes()
+        except OSError:
+            continue
+        if b"singularity-lockscreen" in cmd or cmd.startswith(b"swaylock"):
+            return True
+    return False
 
 
 def set_pdeathsig():
@@ -657,6 +671,11 @@ def cmd_start(args):
             return 1
     if settings["mode"] == "off" and not (args.force or args.hack):
         log("mode is off; nothing to start (use --force)")
+        return 0
+    if args.idle and session_locked():
+        # On some GPU stacks a hack blocks in eglSwapBuffers while the lock
+        # surface owns frame callbacks; never start one behind the lock.
+        log("session is locked; not starting")
         return 0
     rt = runtime_dir()
     if not args.foreground:
