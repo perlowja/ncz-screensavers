@@ -349,28 +349,34 @@ def build_child_env(hack_id, settings, base_env=None, proc_root=None):
 # Render check
 # --------------------------------------------------------------------------
 def frame_is_black(ppm):
-    """True when fewer than 0.5% of pixels of a binary PPM frame are lit."""
+    """True when fewer than 0.5% of pixels of a binary PPM frame are lit.
+
+    Malformed or truncated frames are never reported as black.
+    """
     try:
         tokens = []
         pos = 0
+        n = len(ppm)
         while len(tokens) < 4:
-            while ppm[pos : pos + 1].isspace():
+            while pos < n and ppm[pos : pos + 1].isspace():
                 pos += 1
+            if pos >= n:
+                return False
             if ppm[pos : pos + 1] == b"#":
                 pos = ppm.index(b"\n", pos) + 1
                 continue
             end = pos
-            while not ppm[end : end + 1].isspace():
+            while end < n and not ppm[end : end + 1].isspace():
                 end += 1
             tokens.append(ppm[pos:end])
             pos = end
-        pos += 1
+        pos += 1  # exactly one whitespace byte precedes the pixels
         if tokens[0] != b"P6":
             return False
         width, height = int(tokens[1]), int(tokens[2])
         pix = ppm[pos : pos + width * height * 3]
         total = width * height
-        if total == 0 or len(pix) < total * 3:
+        if total <= 0 or len(pix) < total * 3:
             return False
     except (ValueError, IndexError):
         return False

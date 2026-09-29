@@ -1,0 +1,36 @@
+#!/bin/sh
+# Checks ncz-screensaver-idled --dry-run plans against an isolated keyfile
+# GSettings backend. usage: test-idled-dryrun.sh /path/to/ncz-screensaver-idled
+set -eu
+BIN=${1:?usage: $0 IDLED_BINARY}
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+T=$(mktemp -d)
+trap 'rm -rf "$T"' EXIT
+mkdir -p "$T/schemas" "$T/cfg"
+cp "$ROOT/config/dev.ncz.screensaver.gschema.xml" "$T/schemas/"
+glib-compile-schemas "$T/schemas"
+export GSETTINGS_BACKEND=keyfile GSETTINGS_SCHEMA_DIR="$T/schemas" XDG_CONFIG_HOME="$T/cfg"
+S=dev.ncz.screensaver
+fail=0
+check() { # name expected-json
+    got=$("$BIN" --dry-run)
+    if [ "$got" = "$2" ]; then echo "PASS $1"; else echo "FAIL $1: got $got expected $2"; fail=1; fi
+}
+gsettings set $S hack-idle-delay 300
+gsettings set $S lock-delay 60
+check "mode off: lock at idle delay" '{"saver":null,"lock":300,"dpms":null,"lock_on_suspend":true}'
+gsettings set $S mode random
+check "mode random: saver then lock" '{"saver":300,"lock":360,"dpms":null,"lock_on_suspend":true}'
+gsettings set $S mode one
+gsettings set $S display-off-delay 900
+check "display off enabled" '{"saver":300,"lock":360,"dpms":900,"lock_on_suspend":true}'
+gsettings set $S lock-enabled false
+check "lock disabled" '{"saver":300,"lock":null,"dpms":900,"lock_on_suspend":false}'
+gsettings set $S mode off
+gsettings set $S display-off-delay 0
+check "everything off" '{"saver":null,"lock":null,"dpms":null,"lock_on_suspend":false}'
+# A missing display must fail cleanly (exit 78), not crash.
+rc=0
+env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET "$BIN" >/dev/null 2>&1 || rc=$?
+if [ "$rc" -eq 78 ]; then echo "PASS no display exits 78"; else echo "FAIL no display exit code $rc"; fail=1; fi
+exit $fail

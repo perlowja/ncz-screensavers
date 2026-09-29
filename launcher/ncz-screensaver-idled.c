@@ -489,8 +489,14 @@ static void output_power_mode(void *data, struct zwlr_output_power_v1 *p, uint32
 
 static void output_power_failed(void *data, struct zwlr_output_power_v1 *p)
 {
-    (void)data;
+    struct idled_state *st = data;
     log_warn("zwlr_output_power_v1 reported failed; destroying");
+    /* Forget the destroyed proxy so later DPMS calls never touch it. */
+    if (st->w_powers) {
+        struct output_power *arr = (struct output_power *)st->w_powers->data;
+        for (guint i = 0; i < st->w_powers->len; i++)
+            if (arr[i].power == p) arr[i].power = NULL;
+    }
     zwlr_output_power_v1_destroy(p);
 }
 
@@ -533,6 +539,7 @@ static void dpms_set_power(struct idled_state *st, bool on)
 static void drop_notif(struct ext_idle_notification_v1 **slot)
 {
     if (*slot) {
+        g_free(ext_idle_notification_v1_get_user_data(*slot)); /* role_data */
         ext_idle_notification_v1_destroy(*slot);
         *slot = NULL;
     }
@@ -543,6 +550,14 @@ static void destroy_all_notifs(struct idled_state *st)
     drop_notif(&st->w_saver_notif);
     drop_notif(&st->w_lock_notif);
     drop_notif(&st->w_dpms_notif);
+    if (st->saver_idled) {
+        /* A settings change while the saver runs: stop it; a new saver
+         * notification that is already idle restarts it with the new config. */
+        char *argv[] = { "ncz-screensaver", "stop", NULL };
+        g_spawn_async(NULL, argv, NULL,
+                      G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL,
+                      NULL, NULL, NULL, NULL);
+    }
     st->saver_idled = st->lock_idled = st->dpms_idled = false;
     /* Rebuilding notifications must not leave outputs powered off. */
     if (st->dpms_powered_off) dpms_set_power(st, true);
@@ -790,8 +805,11 @@ static gboolean wayland_source_prepare(GSource *src, gint *timeout)
     while (wl_display_prepare_read(d) != 0) {
         if (wl_display_dispatch_pending(d) < 0) return TRUE; /* dispatch reports it */
     }
+    if (wl_display_flush(d) < 0 && errno != EAGAIN) {
+        wl_display_cancel_read(d); /* balance the successful prepare_read */
+        return TRUE;
+    }
     w->reading = true;
-    if (wl_display_flush(d) < 0 && errno != EAGAIN) return TRUE;
     return FALSE;
 }
 
@@ -1181,6 +1199,13 @@ static void state_init(struct idled_state *st)
 
 static void state_teardown(struct idled_state *st)
 {
+    /* A saver started by this daemon must not outlive it: nothing would
+     * dismiss it any more. The stop is idempotent and bounded. */
+    if (st->saver_idled) {
+        char *argv[] = { "ncz-screensaver", "stop", NULL };
+        g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL |
+                     G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    }
     /* Restore outputs to ON, then destroy per-output power objects. */
     if (st->w_powers && st->w_powers->len > 0) {
         struct output_power *arr = (struct output_power *)st->w_powers->data;
@@ -1193,10 +1218,9 @@ static void state_teardown(struct idled_state *st)
         }
     }
     if (st->w_idle) {
-        if (st->w_saver_notif) ext_idle_notification_v1_destroy(st->w_saver_notif);
-        if (st->w_lock_notif)  ext_idle_notification_v1_destroy(st->w_lock_notif);
-        if (st->w_dpms_notif)  ext_idle_notification_v1_destroy(st->w_dpms_notif);
-        st->w_saver_notif = st->w_lock_notif = st->w_dpms_notif = NULL;
+        drop_notif(&st->w_saver_notif);
+        drop_notif(&st->w_lock_notif);
+        drop_notif(&st->w_dpms_notif);
         ext_idle_notifier_v1_destroy(st->w_idle);
         st->w_idle = NULL;
     }
