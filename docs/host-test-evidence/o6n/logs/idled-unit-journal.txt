@@ -1,20 +1,20 @@
-Sep 29 01:43:05 ncz-20e7bc systemd[1484]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
-Sep 29 02:21:13 ncz-20e7bc systemd[1484]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35061]: _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35061]: _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35061]: watch_fast: "/dev/ncz/screensaver/" (establishing: 0, active: 0)
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35061]: watch_established: "/dev/ncz/screensaver/" (establishing: 1)
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver-idled[35061]: ncz-screensaver-idled: info: SIGTERM/INT received, shutting down
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35061]: unwatch_fast: "/dev/ncz/screensaver/" (active: 1, establishing: 0)
-Sep 29 02:21:13 ncz-20e7bc systemd[1484]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
-Sep 29 02:21:13 ncz-20e7bc systemd[1484]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
-Sep 29 02:21:13 ncz-20e7bc systemd[1484]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35072]: _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35072]: _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35072]: watch_fast: "/dev/ncz/screensaver/" (establishing: 0, active: 0)
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35072]: watch_established: "/dev/ncz/screensaver/" (establishing: 1)
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver-idled[35072]: ncz-screensaver-idled: info: SIGTERM/INT received, shutting down
-Sep 29 02:21:13 ncz-20e7bc ncz-screensaver[35072]: unwatch_fast: "/dev/ncz/screensaver/" (active: 1, establishing: 0)
-Sep 29 02:21:13 ncz-20e7bc systemd[1484]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
 Sep 29 02:21:13 ncz-20e7bc systemd[1484]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
 Sep 29 02:41:50 ncz-20e7bc systemd[1484]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 02:41:50 ncz-20e7bc ncz-screensaver[42403]: _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
+Sep 29 02:41:50 ncz-20e7bc ncz-screensaver[42403]: _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
+Sep 29 02:41:50 ncz-20e7bc ncz-screensaver[42403]: watch_fast: "/dev/ncz/screensaver/" (establishing: 0, active: 0)
+Sep 29 02:41:50 ncz-20e7bc ncz-screensaver[42403]: watch_established: "/dev/ncz/screensaver/" (establishing: 1)
+Sep 29 02:41:50 ncz-20e7bc ncz-screensaver-idled[42403]: ncz-screensaver-idled: info: SIGTERM/INT received, shutting down
+Sep 29 02:41:50 ncz-20e7bc ncz-screensaver[42403]: unwatch_fast: "/dev/ncz/screensaver/" (active: 1, establishing: 0)
+Sep 29 02:41:50 ncz-20e7bc systemd[1484]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
+Sep 29 02:41:50 ncz-20e7bc systemd[1484]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 02:41:50 ncz-20e7bc systemd[1484]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 02:41:51 ncz-20e7bc ncz-screensaver[42414]: _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
+Sep 29 02:41:51 ncz-20e7bc ncz-screensaver[42414]: _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
+Sep 29 02:41:51 ncz-20e7bc ncz-screensaver[42414]: watch_fast: "/dev/ncz/screensaver/" (establishing: 0, active: 0)
+Sep 29 02:41:51 ncz-20e7bc ncz-screensaver[42414]: watch_established: "/dev/ncz/screensaver/" (establishing: 1)
+Sep 29 02:41:51 ncz-20e7bc ncz-screensaver-idled[42414]: ncz-screensaver-idled: info: SIGTERM/INT received, shutting down
+Sep 29 02:41:51 ncz-20e7bc ncz-screensaver[42414]: unwatch_fast: "/dev/ncz/screensaver/" (active: 1, establishing: 0)
+Sep 29 02:41:51 ncz-20e7bc systemd[1484]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
+Sep 29 02:41:51 ncz-20e7bc systemd[1484]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 03:05:54 ncz-20e7bc systemd[1484]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).

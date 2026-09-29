@@ -8,19 +8,21 @@ Gate for every hack: at least 15% of the frame lit (any channel above 16), frame
 
 | Host | Arch | Kernel | GPU / renderer | Package | Pass | Fail | Skip |
 |---|---|---|---|---|---|---|---|
-| chimera | amd64 | 7.2.8-3-t2-trixie | AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie) | 0.3.0 | 151 | 5 | 1 |
-| medusa | amd64 | 7.2.8-3-t2-trixie | AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie) | 0.2.0 | 151 | 5 | 1 |
-| pegasus | amd64 | 7.2.8-3-t2-trixie | Mesa Intel(R) UHD Graphics (CML GT2) | 0.2.0 | 151 | 5 | 1 |
-| o6n | arm64 | 7.2.8-sky1-ncz | Mali-G720-Immortalis | 0.3.0 | 149 | 8 | 1 |
+| chimera | amd64 | 7.2.8-3-t2-trixie | AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie) | 0.3.0 | 153 | 4 | 1 |
+| medusa | amd64 | 7.2.8-3-t2-trixie | AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie) | 0.3.0 | 153 | 4 | 1 |
+| pegasus | amd64 | 7.2.8-3-t2-trixie | Mesa Intel(R) UHD Graphics (CML GT2) | 0.3.0 | 153 | 5 | 1 |
+| o6n | arm64 | 7.2.8-sky1-ncz | Mali-G720-Immortalis | 0.3.0 | 151 | 6 | 1 |
 
-## Findings (run full5, package 0.3.0)
+## Findings (run full6, package 0.3.1)
 
-Everything except the items below passes on all four hosts: install (zero removals under `apt-get install -s`), launcher
-lifecycle, crash fallback, playlist rotation, idle timer, dismissal by pointer and key, idle inhibitor client, **fullscreen mpv
-holding the saver off and releasing it when closed (CHIMERA, MEDUSA, PEGASUS, O6N)**, live reconfiguration, lock chain,
-`loginctl lock-session` (logind `Session.Lock`) running the lock command, DPMS off/on, unit enabled for login and surviving a
-restart, settings app self-test and screenshot. Not run: suspend/resume (no physical access to wake the hosts; the code path
-shares the lock command exercised by `logind-lock-signal`).
+Everything except the hack rows listed below passes on all four hosts: install (zero removals under `apt-get install -s`),
+launcher lifecycle, crash fallback, playlist rotation, idle timer, dismissal by pointer and key, idle inhibitor client,
+**fullscreen mpv holding the saver off and releasing it when closed (CHIMERA, MEDUSA, PEGASUS, O6N)**, live reconfiguration,
+lock chain, `loginctl lock-session` (logind `Session.Lock`) running the lock command, DPMS off/on, unit enabled for login and
+surviving a restart, settings app self-test and screenshot, and the Black Hole color modes (stylized clearly distinct from
+kipthorne and faithful; kipthorne and faithful now distinct on all four hosts, chroma distance about 0.04).
+Not run: suspend/resume (no physical access to wake the hosts; the code path shares the lock command exercised by
+`logind-lock-signal`).
 
 **Pass rule for a hack** (documented two-metric rule, operator may veto): healthy (alive during capture, gone after stop) and
 moving (at least 0.5% of pixels change between frames) and either pixel coverage of at least 15% (the operator's gate) or
@@ -28,28 +30,27 @@ moving (at least 0.5% of pixels change between frames) and either pixel coverage
 sparse hack was inspected in its screenshot: circuit, fireflies, gridwave, snowfall, sonar, starfield show clear content;
 bezier and lissajous are very dim (faint dotted curves and dots) but present.
 
-| Host | Hacks passing | of which sparse | Failing |
-|---|---|---|---|
-| CHIMERA | 80/84 | 8 | geometry, hypercube, stonks, tesla |
-| MEDUSA | 80/84 | 8 | geometry, hypercube, stonks, tesla |
-| PEGASUS | 80/84 | 7 | cubestorm, geometry, hypercube, tesla |
-| O6N | 76/84 | 6 | cubestorm, geometry, gridwave, hypercube, lissajous, stonks, tesla, xshadertoy_goldenapollian |
+| Host | GPU | Hacks passing | of which sparse | Failing |
+|---|---|---|---|---|
+| CHIMERA | AMD Navi14 (radeonsi) | 80/84 | 8 | geometry, hypercube, stonks, tesla |
+| MEDUSA | AMD Navi14 (radeonsi) | 80/84 | 8 | geometry, hypercube, stonks, tesla |
+| PEGASUS | Intel CML GT2 (iris) | 79/84 | 8 | cubestorm, geometry, hypercube, stonks, tesla |
+| O6N | Mali-G720 | 78/84 | 7 | cubestorm, geometry, hypercube, lissajous, stonks, tesla |
 
-Details for the failures (tile coverage is in the hack tables):
-
-1. **hypercube, stonks, tesla and cubestorm are visibly fine but miss the 25% tile threshold narrowly** (tiles 13% to 23%):
-   a clean wireframe, a candlestick chart, a plasma ball and tangled cubes. The threshold is the operator's call; 15% would
-   admit all four. **geometry** (tiles 12% to 19%) is a nearly invisible dark rotating cube: treat as a hack-level brightness bug.
-2. **`xshadertoy_goldenapollian_gles3` does not run on the Mali GPU (O6N)**: `0:59: S0012: Global variable initializer must be
-   a constant expression` (`logs/xshadertoy_goldenapollian_gles3.txt`); Mesa on the x86 hosts accepts it. Fix in the hack (0.3.1).
-3. **Black hole `kipthorne` versus `faithful`** with a fixed seed: near-identical on the three x86 hosts (chroma distance
-   0.001 to 0.002), clearly different on O6N (0.125). `stylized` differs strongly from both everywhere.
-4. PEGASUS renders on the Intel iGPU (Mesa iris); the RTX 2060 path was not exercised (no driver was installed).
-5. **Dismissal latency**: 0.3.0 takes 1.1 to 1.3 s to stop a hack (median over 84 hacks) because the launcher probed the
-   process group while the exited leader was still an unreaped zombie and so always waited out the 1 s SIGTERM grace. Fixed on
-   `feat/launcher-ux` (reap the leader, then SIGKILL stragglers): 0.12 to 0.22 s on CHIMERA (smoke set). The 0.3.0 numbers in
-   the tables below are therefore stale; the next package run supersedes them.
-6. Harness hazard found on O6N: a session lock whose client dies leaves a permanently black screen with no lock process
+1. **hypercube, stonks, tesla and cubestorm are visibly fine but miss the 25% tile threshold** (tiles 13% to 23%): a clean
+   wireframe, a candlestick chart, a plasma ball and tangled cubes. A 15% tile threshold would admit all four; the
+   threshold is the operator's call. **geometry** (tiles 13% to 18%) is a nearly invisible dark rotating cube and
+   **lissajous** on O6N (tiles 23%) is a handful of faint dots: treat both as hack-level brightness bugs for the hack owner.
+2. Fixed since 0.3.0: `xshadertoy_goldenapollian_gles3` now runs on the Mali GPU; Black Hole kipthorne versus faithful are
+   distinct.
+3. PEGASUS renders on the Intel iGPU. The NVIDIA driver is loaded there (RTX 2060), so the harness also forces one hack onto
+   the NVIDIA EGL vendor for that process only: `eglGetPlatformDisplay failed` on the Wayland compositor, the hack does not
+   start, and the launcher gives up after three quick failures without hanging (informational check `nvidia-egl-path`).
+4. **Dismissal latency** (stop of a hack after `ncz-screensaver stop`): median 0.17 s on x86 and 0.35 s on O6N (worst 1.25 s
+   on O6N where a Mali hack blocked in `eglSwapBuffers` and needed the SIGKILL fallback). 0.3.0 took 1.1 to 1.3 s because the
+   exited group leader was not reaped before probing the group. Injected pointer motion to saver gone: 0.5 to 0.6 s including
+   the injection itself; injected key to saver gone: 0.05 to 0.2 s.
+5. Harness hazard found on O6N: a session lock whose client dies leaves a permanently black screen with no lock process
    running (labwc keeps the session locked). The agent now probes the display with a bright hack before timing anything and
    recovers by starting a fresh lock client and unlocking it through the virtual keyboard.
 
@@ -57,55 +58,55 @@ Details for the failures (tile coverage is in the hack tables):
 
 | Hack | Group | chimera | medusa | pegasus | o6n |
 |---|---|---|---|---|---|
-| `blackhole_gles3` | Black Hole Simulation | PASS 100% | PASS 96% | PASS 98% | PASS 91% |
+| `blackhole_gles3` | Black Hole Simulation | PASS 91% | PASS 95% | PASS 90% | PASS 93% |
 | `cityflow_gles3` | Classics | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `crackberg_gles3` | Classics | PASS 100% | PASS 100% | PASS 91% | PASS 100% |
-| `cubestorm_gles3` | Classics | PASS 18% | PASS 16% | **FAIL** | **FAIL** |
-| `geodesic_gles3` | Classics | PASS 44% | PASS 43% | PASS 41% | PASS 37% |
-| `gibson_gles3` | Classics | PASS 34% | PASS 35% | PASS 93% | PASS 40% |
-| `gravitywell_gles3` | Classics | PASS 30% | PASS 30% | PASS 27% | PASS 26% |
-| `hexstrut_gles3` | Classics | PASS 35% | PASS 35% | PASS 98% | PASS 33% |
-| `hypertorus_gles3` | Classics | PASS 30% | PASS 27% | PASS 27% | PASS 24% |
-| `klein_gles3` | Classics | PASS 69% | PASS 68% | PASS 53% | PASS 38% |
+| `crackberg_gles3` | Classics | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
+| `cubestorm_gles3` | Classics | PASS 18% | PASS 17% | **FAIL** | **FAIL** |
+| `geodesic_gles3` | Classics | PASS 43% | PASS 44% | PASS 39% | PASS 38% |
+| `gibson_gles3` | Classics | PASS 34% | PASS 34% | PASS 46% | PASS 39% |
+| `gravitywell_gles3` | Classics | PASS 27% | PASS 29% | PASS 30% | PASS 25% |
+| `hexstrut_gles3` | Classics | PASS 37% | PASS 35% | PASS 34% | PASS 33% |
+| `hypertorus_gles3` | Classics | PASS 29% | PASS 27% | PASS 24% | PASS 28% |
+| `klein_gles3` | Classics | PASS 36% | PASS 27% | PASS 34% | PASS 44% |
 | `noof_gles3` | Classics | PASS 77% | PASS 77% | PASS 73% | PASS 69% |
-| `projectiveplane_gles3` | Classics | PASS 30% | PASS 30% | PASS 25% | PASS 25% |
+| `projectiveplane_gles3` | Classics | PASS 30% | PASS 28% | PASS 26% | PASS 26% |
 | `voronoi_gles3` | Classics | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `hyprsaver_attitude_gles3` | hyprsaver | PASS 39% | PASS 39% | PASS 35% | PASS 35% |
 | `hyprsaver_aurora_gles3` | hyprsaver | PASS 84% | PASS 84% | PASS 84% | PASS 85% |
-| `hyprsaver_bezier_gles3` | hyprsaver | PASS sparse (tiles 32%) | PASS sparse (tiles 32%) | PASS sparse (tiles 33%) | PASS sparse (tiles 30%) |
-| `hyprsaver_blob_gles3` | hyprsaver | PASS 100% | PASS 100% | PASS 93% | PASS 100% |
+| `hyprsaver_bezier_gles3` | hyprsaver | PASS sparse (tiles 32%) | PASS sparse (tiles 32%) | PASS sparse (tiles 33%) | PASS sparse (tiles 29%) |
+| `hyprsaver_blob_gles3` | hyprsaver | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `hyprsaver_caustics_gles3` | hyprsaver | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `hyprsaver_circuit_gles3` | hyprsaver | PASS sparse (tiles 59%) | PASS sparse (tiles 59%) | PASS sparse (tiles 49%) | PASS sparse (tiles 42%) |
 | `hyprsaver_clouds_gles3` | hyprsaver | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `hyprsaver_donut_gles3` | hyprsaver | PASS 27% | PASS 27% | PASS 25% | PASS 25% |
-| `hyprsaver_fireflies_gles3` | hyprsaver | PASS sparse (tiles 73%) | PASS sparse (tiles 73%) | PASS 100% | PASS sparse (tiles 49%) |
+| `hyprsaver_fireflies_gles3` | hyprsaver | PASS sparse (tiles 73%) | PASS sparse (tiles 72%) | PASS sparse (tiles 55%) | PASS sparse (tiles 49%) |
 | `hyprsaver_flames_gles3` | hyprsaver | PASS 52% | PASS 52% | PASS 52% | PASS 54% |
 | `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS 63% | PASS 63% | PASS 56% | PASS 56% |
 | `hyprsaver_geometry_gles3` | hyprsaver | **FAIL** | **FAIL** | **FAIL** | **FAIL** |
-| `hyprsaver_gridwave_gles3` | hyprsaver | PASS sparse (tiles 33%) | PASS sparse (tiles 30%) | PASS sparse (tiles 28%) | **FAIL** |
+| `hyprsaver_gridwave_gles3` | hyprsaver | PASS sparse (tiles 33%) | PASS sparse (tiles 30%) | PASS sparse (tiles 27%) | PASS sparse (tiles 28%) |
 | `hyprsaver_hypercube_gles3` | hyprsaver | **FAIL** | **FAIL** | **FAIL** | **FAIL** |
-| `hyprsaver_julia_gles3` | hyprsaver | PASS 27% | PASS 27% | PASS 25% | PASS 26% |
+| `hyprsaver_julia_gles3` | hyprsaver | PASS 27% | PASS 27% | PASS 25% | PASS 25% |
 | `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `hyprsaver_lissajous_gles3` | hyprsaver | PASS sparse (tiles 31%) | PASS sparse (tiles 31%) | PASS sparse (tiles 26%) | **FAIL** |
-| `hyprsaver_marble_gles3` | hyprsaver | PASS 90% | PASS 90% | PASS 90% | PASS 89% |
+| `hyprsaver_lissajous_gles3` | hyprsaver | PASS sparse (tiles 31%) | PASS sparse (tiles 32%) | PASS sparse (tiles 25%) | **FAIL** |
+| `hyprsaver_marble_gles3` | hyprsaver | PASS 90% | PASS 90% | PASS 90% | PASS 88% |
 | `hyprsaver_matrix_gles3` | hyprsaver | PASS 30% | PASS 30% | PASS 30% | PASS 29% |
-| `hyprsaver_mobius_gles3` | hyprsaver | PASS 25% | PASS 26% | PASS 29% | PASS 31% |
+| `hyprsaver_mobius_gles3` | hyprsaver | PASS 25% | PASS 25% | PASS 29% | PASS 31% |
 | `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS 42% | PASS 42% | PASS 35% | PASS 34% |
 | `hyprsaver_planet_gles3` | hyprsaver | PASS 25% | PASS 25% | PASS 21% | PASS 22% |
-| `hyprsaver_plasma_gles3` | hyprsaver | PASS 92% | PASS 92% | PASS 89% | PASS 92% |
+| `hyprsaver_plasma_gles3` | hyprsaver | PASS 92% | PASS 92% | PASS 93% | PASS 92% |
 | `hyprsaver_shipburn_gles3` | hyprsaver | PASS 30% | PASS 30% | PASS 27% | PASS 26% |
 | `hyprsaver_snowfall_gles3` | hyprsaver | PASS sparse (tiles 58%) | PASS sparse (tiles 58%) | PASS sparse (tiles 48%) | PASS sparse (tiles 37%) |
-| `hyprsaver_sonar_gles3` | hyprsaver | PASS sparse (tiles 38%) | PASS sparse (tiles 38%) | PASS sparse (tiles 33%) | PASS sparse (tiles 29%) |
-| `hyprsaver_starfield_gles3` | hyprsaver | PASS sparse (tiles 60%) | PASS sparse (tiles 60%) | PASS sparse (tiles 61%) | PASS sparse (tiles 58%) |
-| `hyprsaver_stonks_gles3` | hyprsaver | **FAIL** | **FAIL** | PASS 98% | **FAIL** |
+| `hyprsaver_sonar_gles3` | hyprsaver | PASS sparse (tiles 38%) | PASS sparse (tiles 38%) | PASS sparse (tiles 32%) | PASS sparse (tiles 28%) |
+| `hyprsaver_starfield_gles3` | hyprsaver | PASS sparse (tiles 61%) | PASS sparse (tiles 58%) | PASS sparse (tiles 62%) | PASS sparse (tiles 58%) |
+| `hyprsaver_stonks_gles3` | hyprsaver | **FAIL** | **FAIL** | **FAIL** | **FAIL** |
 | `hyprsaver_temple_gles3` | hyprsaver | PASS 34% | PASS 33% | PASS 33% | PASS 30% |
 | `hyprsaver_terminal_gles3` | hyprsaver | PASS 22% | PASS 22% | PASS 18% | PASS 17% |
 | `hyprsaver_tesla_gles3` | hyprsaver | **FAIL** | **FAIL** | **FAIL** | **FAIL** |
 | `hyprsaver_tunnel_gles3` | hyprsaver | PASS 29% | PASS 29% | PASS 26% | PASS 26% |
-| `hyprsaver_voronoi_gles3` | hyprsaver | PASS 99% | PASS 99% | PASS 93% | PASS 98% |
+| `hyprsaver_voronoi_gles3` | hyprsaver | PASS 99% | PASS 99% | PASS 98% | PASS 98% |
 | `hyprsaver_waterfall_gles3` | hyprsaver | PASS 53% | PASS 53% | PASS 61% | PASS 43% |
 | `hyprsaver_wormhole_gles3` | hyprsaver | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 90% | PASS 100% |
+| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS 51% | PASS 51% | PASS 51% | PASS 49% |
 | `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS 78% | PASS 78% | PASS 77% | PASS 77% |
@@ -113,19 +114,19 @@ Details for the failures (tile coverage is in the hack tables):
 | `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS 79% | PASS 79% | PASS 78% | PASS 79% |
 | `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS 93% | PASS 93% | PASS 93% | PASS 93% |
-| `xshadertoy_darktransit_gles3` | xshadertoy | PASS 73% | PASS 73% | PASS 69% | PASS 69% |
-| `xshadertoy_downfall_gles3` | xshadertoy | PASS 70% | PASS 70% | PASS 59% | PASS 70% |
+| `xshadertoy_darktransit_gles3` | xshadertoy | PASS 73% | PASS 73% | PASS 69% | PASS 70% |
+| `xshadertoy_downfall_gles3` | xshadertoy | PASS 70% | PASS 70% | PASS 58% | PASS 70% |
 | `xshadertoy_elementalring_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_fluxcore_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | **FAIL** |
-| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS 87% | PASS 87% | PASS 85% | PASS 85% |
+| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 99% |
+| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS 87% | PASS 86% | PASS 85% | PASS 85% |
 | `xshadertoy_iridescence_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS 57% | PASS 57% | PASS 57% | PASS 57% |
+| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS 57% | PASS 57% | PASS 57% | PASS 56% |
 | `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS 91% | PASS 91% | PASS 92% | PASS 92% |
 | `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS 44% | PASS 45% | PASS 47% | PASS 44% |
-| `xshadertoy_noxfire_gles3` | xshadertoy | PASS 94% | PASS 93% | PASS 97% | PASS 87% |
+| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS 44% | PASS 45% | PASS 48% | PASS 46% |
+| `xshadertoy_noxfire_gles3` | xshadertoy | PASS 93% | PASS 93% | PASS 96% | PASS 87% |
 | `xshadertoy_polarnight_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_prococean_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_protophore_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
@@ -137,7 +138,7 @@ Details for the failures (tile coverage is in the hack tables):
 | `xshadertoy_stratus_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS 84% | PASS 84% | PASS 84% | PASS 84% |
 | `xshadertoy_topologica_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
-| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS 99% | PASS 99% | PASS 98% | PASS 99% |
+| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS 99% | PASS 99% | PASS 99% | PASS 99% |
 | `xshadertoy_trizm_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
 | `xshadertoy_universeball_gles3` | xshadertoy | PASS 100% | PASS 100% | PASS 100% | PASS 100% |
@@ -150,7 +151,7 @@ Details for the failures (tile coverage is in the hack tables):
 - GLES renderer: AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie); OpenGL ES 3.2 Mesa 26.1.6-1
 - Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "26.1.6-1", "ncz-screensavers": "0.3.0"}
 - Compositor: {"name": "labwc", "pid": 2140}
-- Started 2026-09-29T06:06:06Z, finished 2026-09-29T06:19:29Z
+- Started 2026-09-29T06:51:52Z, finished 2026-09-29T07:03:44Z
 
 ### chimera: env
 
@@ -214,35 +215,35 @@ Details for the failures (tile coverage is in the hack tables):
 | Check | Status | Detail |
 |---|---|---|
 | dry-run-plan | PASS | {"saver":6,"lock":null,"dpms":null,"lock_on_suspend":false} |
-| daemon-start | PASS | state={'pid': 57188, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790662618} |
+| daemon-start | PASS | state={'pid': 64242, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790665281} |
 | idle-fires-saver | PASS | saver started 6.1s after daemon start (timer 6s) |
-| idle-saver-visible | PASS | coverage=0.836 motion=0.528 |
-| dismiss-on-pointer | PASS | stopped 1.26s after injected motion (poke rc=0 ) |
+| idle-saver-visible | PASS | coverage=0.836 motion=0.525 |
+| dismiss-on-pointer | PASS | stopped 0.49s after injected motion (poke rc=0 ) |
 | state-returns-active | PASS | active |
-| dismiss-on-key | PASS | saver stopped 1.126954917999683s after key |
+| dismiss-on-key | PASS | saver stopped 0.054919784000958316s after key |
 | idle-inhibit-blocks | PASS | saver stayed off for 14 s while inhibited |
 | idle-inhibit-releases | PASS | saver started 6.1s after the inhibitor ended |
 | live-reconfigure | PASS | plan={'saver': 9, 'lock': None, 'dpms': None, 'lock_on_suspend': False} |
-| lock-chain | PASS | saver_start=6.1267043050029315 lock_marker=True saver_stopped_before_lock=True |
+| lock-chain | PASS | saver_start=6.160406764000072 lock_marker=True saver_stopped_before_lock=True |
 | logind-lock-signal | PASS | lock command ran 0.2s after loginctl lock-session |
 | suspend-resume | SKIP | not run: no physical access to wake the host; the PrepareForSleep path shares the lock code exercised above |
 | video-inhibit-blocks | PASS | saver stayed off for 14 s while mpv played fullscreen video |
-| video-inhibit-releases | PASS | saver started 6.1s after the player was closed |
+| video-inhibit-releases | PASS | saver started 6.2s after the player was closed |
 | dpms-off-on | PASS | display-off state=True, capture dark while off=True, back to active=True, lit after input=True |
 | outputs-enabled-after-tests | PASS | all outputs enabled |
 | systemd-unit | PASS | unit active [evidence](host-test-evidence/chimera/logs/idled-unit-journal.txt) |
 | unit-enabled-for-login | PASS | is-enabled=enabled, graphical-session.target.wants link=True |
-| unit-restart | PASS | state file after restart: {'pid': 58999, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790662735} |
+| unit-restart | PASS | state file after restart: {'pid': 65819, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790665394} |
 
 ### chimera: color
 
 | Check | Status | Detail |
 |---|---|---|
 | color-stylized | PASS | coverage=0.873 mean_rgb=(99,125,136) [evidence](host-test-evidence/chimera/shots/blackhole_stylized.jpg) |
-| color-kipthorne | PASS | coverage=0.872 mean_rgb=(139,130,132) [evidence](host-test-evidence/chimera/shots/blackhole_kipthorne.jpg) |
-| color-faithful | PASS | coverage=0.873 mean_rgb=(141,132,132) [evidence](host-test-evidence/chimera/shots/blackhole_faithful.jpg) |
-| color-stylized-distinct | PASS | stylized vs kipthorne: score 3.74 (chroma 0.075, brightness x1.12); stylized vs faithful: score 3.81 (chroma 0.076, brightness x1.13) |
-| color-physical-modes-distinct | FAIL | kipthorne vs faithful: score 0.08 (chroma 0.002, brightness x1.01) |
+| color-kipthorne | PASS | coverage=0.873 mean_rgb=(138,118,96) [evidence](host-test-evidence/chimera/shots/blackhole_kipthorne.jpg) |
+| color-faithful | PASS | coverage=0.872 mean_rgb=(117,105,105) [evidence](host-test-evidence/chimera/shots/blackhole_faithful.jpg) |
+| color-stylized-distinct | PASS | stylized vs kipthorne: score 5.79 (chroma 0.116, brightness x1.02); stylized vs faithful: score 4.24 (chroma 0.085, brightness x1.10) |
+| color-physical-modes-distinct | PASS | kipthorne vs faithful: score 1.85 (chroma 0.037, brightness x1.07) |
 | color-unknown-value | PASS | hack kept running with an unknown color value |
 
 ### chimera: chooser
@@ -250,104 +251,104 @@ Details for the failures (tile coverage is in the hack tables):
 | Check | Status | Detail |
 |---|---|---|
 | settings-dump | PASS | 84 catalog entries in --dump |
-| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:59206): Gsk-WARNING **: 02:19:23.054: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/chimera/logs/settings-selftest.txt) |
+| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:66027): Gsk-WARNING **: 03:03:38.541: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/chimera/logs/settings-selftest.txt) |
 | settings-screenshot | PASS | window alive=True; wrote /home/chimera/ncz-host-test/results/shots/settings.png [evidence](host-test-evidence/chimera/shots/settings.jpg) |
 
 ### chimera: hacks
 
 | Hack | Group | Result | Pixel coverage | Tile coverage | Motion | Stop (s) | Evidence |
 |---|---|---|---|---|---|---|---|
-| `blackhole_gles3` | Black Hole Simulation | PASS | 100% | 100% | 65% | 1.17 | [shot](host-test-evidence/chimera/shots/blackhole_gles3.jpg) |
-| `cityflow_gles3` | Classics | PASS | 100% | 100% | 2% | 1.13 | [shot](host-test-evidence/chimera/shots/cityflow_gles3.jpg) |
-| `crackberg_gles3` | Classics | PASS | 100% | 100% | 40% | 1.18 | [shot](host-test-evidence/chimera/shots/crackberg_gles3.jpg) |
-| `cubestorm_gles3` | Classics | PASS | 18% | 23% | 51% | 1.18 | [shot](host-test-evidence/chimera/shots/cubestorm_gles3.jpg) |
-| `geodesic_gles3` | Classics | PASS | 44% | 87% | 70% | 1.18 | [shot](host-test-evidence/chimera/shots/geodesic_gles3.jpg) |
-| `gibson_gles3` | Classics | PASS | 34% | 39% | 16% | 1.18 | [shot](host-test-evidence/chimera/shots/gibson_gles3.jpg) |
-| `gravitywell_gles3` | Classics | PASS | 30% | 49% | 33% | 1.17 | [shot](host-test-evidence/chimera/shots/gravitywell_gles3.jpg) |
-| `hexstrut_gles3` | Classics | PASS | 35% | 100% | 60% | 1.17 | [shot](host-test-evidence/chimera/shots/hexstrut_gles3.jpg) |
-| `hypertorus_gles3` | Classics | PASS | 30% | 44% | 43% | 1.17 | [shot](host-test-evidence/chimera/shots/hypertorus_gles3.jpg) |
-| `klein_gles3` | Classics | PASS | 69% | 86% | 78% | 1.23 | [shot](host-test-evidence/chimera/shots/klein_gles3.jpg) |
-| `noof_gles3` | Classics | PASS | 77% | 87% | 46% | 1.12 | [shot](host-test-evidence/chimera/shots/noof_gles3.jpg) |
-| `projectiveplane_gles3` | Classics | PASS | 30% | 40% | 34% | 1.18 | [shot](host-test-evidence/chimera/shots/projectiveplane_gles3.jpg) |
-| `voronoi_gles3` | Classics | PASS | 100% | 100% | 13% | 1.12 | [shot](host-test-evidence/chimera/shots/voronoi_gles3.jpg) |
-| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 39% | 46% | 4% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_attitude_gles3.jpg) |
-| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 84% | 88% | 58% | 1.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_aurora_gles3.jpg) |
-| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 32% | 5% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_bezier_gles3.jpg) |
-| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 46% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_blob_gles3.jpg) |
-| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_caustics_gles3.jpg) |
-| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 11% | 59% | 16% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_circuit_gles3.jpg) |
-| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 29% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_clouds_gles3.jpg) |
-| `hyprsaver_donut_gles3` | hyprsaver | PASS | 27% | 36% | 30% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_donut_gles3.jpg) |
-| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 5% | 73% | 10% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_fireflies_gles3.jpg) |
-| `hyprsaver_flames_gles3` | hyprsaver | PASS | 52% | 57% | 41% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_flames_gles3.jpg) |
-| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 63% | 68% | 58% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_fractaltrap_gles3.jpg) |
-| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 2% | 18% | 7% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_geometry_gles3.jpg) |
-| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 9% | 33% | 16% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_gridwave_gles3.jpg) |
-| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 7% | 22% | 13% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_hypercube_gles3.jpg) |
-| `hyprsaver_julia_gles3` | hyprsaver | PASS | 27% | 40% | 38% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_julia_gles3.jpg) |
-| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 56% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_kaleidoscope_gles3.jpg) |
-| `hyprsaver_lissajous_gles3` | hyprsaver | PASS (sparse) | 2% | 31% | 5% | 1.13 | [shot](host-test-evidence/chimera/shots/hyprsaver_lissajous_gles3.jpg) |
-| `hyprsaver_marble_gles3` | hyprsaver | PASS | 90% | 100% | 90% | 1.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_marble_gles3.jpg) |
-| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 30% | 88% | 51% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_matrix_gles3.jpg) |
-| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 25% | 28% | 26% | 1.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_mobius_gles3.jpg) |
-| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 42% | 83% | 27% | 1.13 | [shot](host-test-evidence/chimera/shots/hyprsaver_oscilloscope_gles3.jpg) |
-| `hyprsaver_planet_gles3` | hyprsaver | PASS | 25% | 81% | 21% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_planet_gles3.jpg) |
-| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 92% | 100% | 97% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_plasma_gles3.jpg) |
-| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 30% | 36% | 8% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_shipburn_gles3.jpg) |
-| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 3% | 58% | 5% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_snowfall_gles3.jpg) |
-| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 38% | 2% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_sonar_gles3.jpg) |
-| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 3% | 60% | 8% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_starfield_gles3.jpg) |
-| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 23% | 12% | 1.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_stonks_gles3.jpg) |
-| `hyprsaver_temple_gles3` | hyprsaver | PASS | 34% | 91% | 56% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_temple_gles3.jpg) |
-| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 22% | 58% | 36% | 1.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_terminal_gles3.jpg) |
-| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 7% | 20% | 7% | 1.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_tesla_gles3.jpg) |
-| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 29% | 39% | 28% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_tunnel_gles3.jpg) |
-| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 99% | 100% | 97% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_voronoi_gles3.jpg) |
-| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 53% | 73% | 56% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_waterfall_gles3.jpg) |
-| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 99% | 1.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_wormhole_gles3.jpg) |
-| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 76% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_alienbeacon_gles3.jpg) |
-| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 42% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_batteredplanet_gles3.jpg) |
-| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 51% | 59% | 35% | 1.18 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill0-0_gles3.jpg) |
-| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 78% | 85% | 23% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill1-0_gles3.jpg) |
-| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 99% | 100% | 69% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill2-0_gles3.jpg) |
-| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 79% | 85% | 65% | 1.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill3-0_gles3.jpg) |
-| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 88% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill4-0_gles3.jpg) |
-| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 97% | 26% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill5-0_gles3.jpg) |
-| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 73% | 86% | 68% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_darktransit_gles3.jpg) |
-| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 70% | 75% | 62% | 1.18 | [shot](host-test-evidence/chimera/shots/xshadertoy_downfall_gles3.jpg) |
-| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 86% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_elementalring_gles3.jpg) |
-| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 75% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_fluxcore_gles3.jpg) |
-| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 74% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
-| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 100% | 100% | 92% | 1.13 | [shot](host-test-evidence/chimera/shots/xshadertoy_goldenapollian_gles3.jpg) |
-| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 87% | 99% | 87% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_hexplasma_gles3.jpg) |
-| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 50% | 1.13 | [shot](host-test-evidence/chimera/shots/xshadertoy_iridescence_gles3.jpg) |
-| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 80% | 71% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
-| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 91% | 99% | 75% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_neongravity-1_gles3.jpg) |
-| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 33% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_neonhorizon_gles3.jpg) |
-| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 44% | 57% | 92% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_neontriangulator_gles3.jpg) |
-| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 94% | 100% | 94% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_noxfire_gles3.jpg) |
-| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 68% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_polarnight_gles3.jpg) |
-| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_prococean_gles3.jpg) |
-| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 59% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_protophore_gles3.jpg) |
-| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 75% | 87% | 39% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_rigrekt_gles3.jpg) |
-| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 68% | 72% | 29% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_selfreflect_gles3.jpg) |
-| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 52% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_skyline_gles3.jpg) |
-| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 99% | 67% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_stardome_gles3.jpg) |
-| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 38% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_starnest_gles3.jpg) |
-| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 12% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_stratus_gles3.jpg) |
-| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 98% | 90% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_stripeytorus_gles3.jpg) |
-| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 94% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_topologica_gles3.jpg) |
-| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 100% | 98% | 1.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_trainmandala_gles3.jpg) |
-| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 93% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_trizm_gles3.jpg) |
-| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 40% | 1.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_truchetzoom_gles3.jpg) |
-| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 51% | 1.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_universeball_gles3.jpg) |
+| `blackhole_gles3` | Black Hole Simulation | PASS | 91% | 94% | 34% | 0.22 | [shot](host-test-evidence/chimera/shots/blackhole_gles3.jpg) |
+| `cityflow_gles3` | Classics | PASS | 100% | 100% | 2% | 0.17 | [shot](host-test-evidence/chimera/shots/cityflow_gles3.jpg) |
+| `crackberg_gles3` | Classics | PASS | 100% | 100% | 39% | 0.18 | [shot](host-test-evidence/chimera/shots/crackberg_gles3.jpg) |
+| `cubestorm_gles3` | Classics | PASS | 18% | 24% | 51% | 0.23 | [shot](host-test-evidence/chimera/shots/cubestorm_gles3.jpg) |
+| `geodesic_gles3` | Classics | PASS | 43% | 86% | 70% | 0.22 | [shot](host-test-evidence/chimera/shots/geodesic_gles3.jpg) |
+| `gibson_gles3` | Classics | PASS | 34% | 39% | 16% | 0.23 | [shot](host-test-evidence/chimera/shots/gibson_gles3.jpg) |
+| `gravitywell_gles3` | Classics | PASS | 27% | 46% | 29% | 0.17 | [shot](host-test-evidence/chimera/shots/gravitywell_gles3.jpg) |
+| `hexstrut_gles3` | Classics | PASS | 37% | 100% | 61% | 0.22 | [shot](host-test-evidence/chimera/shots/hexstrut_gles3.jpg) |
+| `hypertorus_gles3` | Classics | PASS | 29% | 41% | 41% | 0.23 | [shot](host-test-evidence/chimera/shots/hypertorus_gles3.jpg) |
+| `klein_gles3` | Classics | PASS | 36% | 51% | 48% | 0.17 | [shot](host-test-evidence/chimera/shots/klein_gles3.jpg) |
+| `noof_gles3` | Classics | PASS | 77% | 87% | 46% | 0.22 | [shot](host-test-evidence/chimera/shots/noof_gles3.jpg) |
+| `projectiveplane_gles3` | Classics | PASS | 30% | 41% | 35% | 0.12 | [shot](host-test-evidence/chimera/shots/projectiveplane_gles3.jpg) |
+| `voronoi_gles3` | Classics | PASS | 100% | 100% | 52% | 0.22 | [shot](host-test-evidence/chimera/shots/voronoi_gles3.jpg) |
+| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 39% | 46% | 4% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_attitude_gles3.jpg) |
+| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 84% | 88% | 58% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_aurora_gles3.jpg) |
+| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 32% | 5% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_bezier_gles3.jpg) |
+| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 46% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_blob_gles3.jpg) |
+| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_caustics_gles3.jpg) |
+| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 11% | 59% | 16% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_circuit_gles3.jpg) |
+| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 29% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_clouds_gles3.jpg) |
+| `hyprsaver_donut_gles3` | hyprsaver | PASS | 27% | 36% | 30% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_donut_gles3.jpg) |
+| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 5% | 73% | 10% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_fireflies_gles3.jpg) |
+| `hyprsaver_flames_gles3` | hyprsaver | PASS | 52% | 57% | 41% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_flames_gles3.jpg) |
+| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 63% | 68% | 58% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_fractaltrap_gles3.jpg) |
+| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 3% | 18% | 7% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_geometry_gles3.jpg) |
+| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 9% | 33% | 16% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_gridwave_gles3.jpg) |
+| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 7% | 22% | 13% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_hypercube_gles3.jpg) |
+| `hyprsaver_julia_gles3` | hyprsaver | PASS | 27% | 40% | 38% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_julia_gles3.jpg) |
+| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 56% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_kaleidoscope_gles3.jpg) |
+| `hyprsaver_lissajous_gles3` | hyprsaver | PASS (sparse) | 2% | 31% | 5% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_lissajous_gles3.jpg) |
+| `hyprsaver_marble_gles3` | hyprsaver | PASS | 90% | 100% | 90% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_marble_gles3.jpg) |
+| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 30% | 88% | 51% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_matrix_gles3.jpg) |
+| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 25% | 28% | 25% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_mobius_gles3.jpg) |
+| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 42% | 83% | 27% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_oscilloscope_gles3.jpg) |
+| `hyprsaver_planet_gles3` | hyprsaver | PASS | 25% | 81% | 21% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_planet_gles3.jpg) |
+| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 92% | 100% | 97% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_plasma_gles3.jpg) |
+| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 30% | 36% | 8% | 0.18 | [shot](host-test-evidence/chimera/shots/hyprsaver_shipburn_gles3.jpg) |
+| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 3% | 58% | 5% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_snowfall_gles3.jpg) |
+| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 38% | 2% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_sonar_gles3.jpg) |
+| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 3% | 61% | 8% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_starfield_gles3.jpg) |
+| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 23% | 12% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_stonks_gles3.jpg) |
+| `hyprsaver_temple_gles3` | hyprsaver | PASS | 34% | 91% | 57% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_temple_gles3.jpg) |
+| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 22% | 58% | 36% | 0.18 | [shot](host-test-evidence/chimera/shots/hyprsaver_terminal_gles3.jpg) |
+| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 7% | 21% | 7% | 0.22 | [shot](host-test-evidence/chimera/shots/hyprsaver_tesla_gles3.jpg) |
+| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 29% | 39% | 28% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_tunnel_gles3.jpg) |
+| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 99% | 100% | 97% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_voronoi_gles3.jpg) |
+| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 53% | 73% | 57% | 0.12 | [shot](host-test-evidence/chimera/shots/hyprsaver_waterfall_gles3.jpg) |
+| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 99% | 0.17 | [shot](host-test-evidence/chimera/shots/hyprsaver_wormhole_gles3.jpg) |
+| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 76% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_alienbeacon_gles3.jpg) |
+| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 42% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_batteredplanet_gles3.jpg) |
+| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 51% | 59% | 35% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill0-0_gles3.jpg) |
+| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 78% | 85% | 23% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill1-0_gles3.jpg) |
+| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 99% | 100% | 69% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill2-0_gles3.jpg) |
+| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 79% | 85% | 67% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill3-0_gles3.jpg) |
+| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 88% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill4-0_gles3.jpg) |
+| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 97% | 25% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_bestill5-0_gles3.jpg) |
+| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 73% | 86% | 68% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_darktransit_gles3.jpg) |
+| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 70% | 75% | 64% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_downfall_gles3.jpg) |
+| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 87% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_elementalring_gles3.jpg) |
+| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 75% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_fluxcore_gles3.jpg) |
+| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 74% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
+| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 100% | 100% | 92% | 0.23 | [shot](host-test-evidence/chimera/shots/xshadertoy_goldenapollian_gles3.jpg) |
+| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 87% | 99% | 88% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_hexplasma_gles3.jpg) |
+| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 35% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_iridescence_gles3.jpg) |
+| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 80% | 70% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
+| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 91% | 99% | 75% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_neongravity-1_gles3.jpg) |
+| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 35% | 0.13 | [shot](host-test-evidence/chimera/shots/xshadertoy_neonhorizon_gles3.jpg) |
+| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 44% | 57% | 92% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_neontriangulator_gles3.jpg) |
+| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 93% | 99% | 95% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_noxfire_gles3.jpg) |
+| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 68% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_polarnight_gles3.jpg) |
+| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_prococean_gles3.jpg) |
+| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 60% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_protophore_gles3.jpg) |
+| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 75% | 87% | 39% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_rigrekt_gles3.jpg) |
+| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 68% | 72% | 29% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_selfreflect_gles3.jpg) |
+| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 52% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_skyline_gles3.jpg) |
+| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 99% | 67% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_stardome_gles3.jpg) |
+| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 38% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_starnest_gles3.jpg) |
+| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 35% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_stratus_gles3.jpg) |
+| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 98% | 89% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_stripeytorus_gles3.jpg) |
+| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 95% | 0.22 | [shot](host-test-evidence/chimera/shots/xshadertoy_topologica_gles3.jpg) |
+| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 100% | 98% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_trainmandala_gles3.jpg) |
+| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 93% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_trizm_gles3.jpg) |
+| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 40% | 0.17 | [shot](host-test-evidence/chimera/shots/xshadertoy_truchetzoom_gles3.jpg) |
+| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 51% | 0.12 | [shot](host-test-evidence/chimera/shots/xshadertoy_universeball_gles3.jpg) |
 
 Failures on chimera:
 
-- `hyprsaver_geometry_gles3`: coverage=0.024 motion=0.0721 baseline_diff=0.993 alive=True leftover=False tiles=0.18 stop=1.12s; log=hyprsaver_geometry_gles3.txt
-- `hyprsaver_hypercube_gles3`: coverage=0.071 motion=0.1289 baseline_diff=0.992 alive=True leftover=False tiles=0.23 stop=1.12s; log=hyprsaver_hypercube_gles3.txt
-- `hyprsaver_stonks_gles3`: coverage=0.062 motion=0.1199 baseline_diff=0.991 alive=True leftover=False tiles=0.23 stop=1.22s; log=hyprsaver_stonks_gles3.txt
-- `hyprsaver_tesla_gles3`: coverage=0.066 motion=0.0683 baseline_diff=0.969 alive=True leftover=False tiles=0.20 stop=1.12s; log=hyprsaver_tesla_gles3.txt
+- `hyprsaver_geometry_gles3`: coverage=0.025 motion=0.0732 baseline_diff=1.000 alive=True leftover=False tiles=0.18 stop=0.17s; log=hyprsaver_geometry_gles3.txt
+- `hyprsaver_hypercube_gles3`: coverage=0.071 motion=0.1289 baseline_diff=1.000 alive=True leftover=False tiles=0.22 stop=0.17s; log=hyprsaver_hypercube_gles3.txt
+- `hyprsaver_stonks_gles3`: coverage=0.062 motion=0.1205 baseline_diff=0.998 alive=True leftover=False tiles=0.23 stop=0.17s; log=hyprsaver_stonks_gles3.txt
+- `hyprsaver_tesla_gles3`: coverage=0.066 motion=0.0677 baseline_diff=0.999 alive=True leftover=False tiles=0.21 stop=0.22s; log=hyprsaver_tesla_gles3.txt
 
 ## medusa
 
@@ -355,9 +356,9 @@ Failures on chimera:
 - Display devices: 00:02.0 VGA compatible controller [0300]: Intel Corporation CoffeeLake-H GT2 [UHD Graphics 630] [8086:3e9b] 	Subsystem: Apple Inc. MacBookPro16,1 (16", 2019) [106b:019c] 	Kernel driver in use: i915 	Kernel modules: i915 03:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Navi 14 [Radeon RX 5500/5500M / Pro 5300/5300M/5500M] [1002:7340] (rev 43) 	Subsystem: Apple Inc. M
 - Kernel driver(s): i915, amdgpu
 - GLES renderer: AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie); OpenGL ES 3.2 Mesa 26.1.6-1
-- Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "26.1.6-1", "ncz-screensavers": "0.2.0"}
+- Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "26.1.6-1", "ncz-screensavers": "0.3.0"}
 - Compositor: {"name": "labwc", "pid": 2497}
-- Started 2026-09-29T06:06:06Z, finished 2026-09-29T06:19:41Z
+- Started 2026-09-29T06:51:52Z, finished 2026-09-29T07:03:57Z
 
 ### medusa: env
 
@@ -368,7 +369,7 @@ Failures on chimera:
 | lspci | PASS | lspci -nnk -d ::0300 returned data |
 | driver | PASS | kernel driver(s): i915, amdgpu |
 | egl-info | PASS | AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie) \| OpenGL ES 3.2 Mesa 26.1.6-1 |
-| package-ncz-screensavers | PASS | installed 0.2.0 |
+| package-ncz-screensavers | PASS | installed 0.3.0 |
 | wl-registry | PASS | 61 globals advertised |
 | global-ext_idle_notifier_v1 | PASS | advertised |
 | global-zwp_idle_inhibit_manager_v1 | PASS | advertised |
@@ -421,16 +422,16 @@ Failures on chimera:
 | Check | Status | Detail |
 |---|---|---|
 | dry-run-plan | PASS | {"saver":6,"lock":null,"dpms":null,"lock_on_suspend":false} |
-| daemon-start | PASS | state={'pid': 30011, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790662629} |
+| daemon-start | PASS | state={'pid': 36510, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790665292} |
 | idle-fires-saver | PASS | saver started 6.0s after daemon start (timer 6s) |
-| idle-saver-visible | PASS | coverage=0.835 motion=0.513 |
-| dismiss-on-pointer | PASS | stopped 1.14s after injected motion (poke rc=0 ) |
+| idle-saver-visible | PASS | coverage=0.836 motion=0.519 |
+| dismiss-on-pointer | PASS | stopped 0.51s after injected motion (poke rc=0 ) |
 | state-returns-active | PASS | active |
-| dismiss-on-key | PASS | saver stopped 1.1697856800001318s after key |
+| dismiss-on-key | PASS | saver stopped 0.06060189800336957s after key |
 | idle-inhibit-blocks | PASS | saver stayed off for 14 s while inhibited |
 | idle-inhibit-releases | PASS | saver started 6.3s after the inhibitor ended |
 | live-reconfigure | PASS | plan={'saver': 9, 'lock': None, 'dpms': None, 'lock_on_suspend': False} |
-| lock-chain | PASS | saver_start=6.032787324998935 lock_marker=True saver_stopped_before_lock=True |
+| lock-chain | PASS | saver_start=6.002869192998332 lock_marker=True saver_stopped_before_lock=True |
 | logind-lock-signal | PASS | lock command ran 0.2s after loginctl lock-session |
 | suspend-resume | SKIP | not run: no physical access to wake the host; the PrepareForSleep path shares the lock code exercised above |
 | video-inhibit-blocks | PASS | saver stayed off for 14 s while mpv played fullscreen video |
@@ -439,17 +440,17 @@ Failures on chimera:
 | outputs-enabled-after-tests | PASS | all outputs enabled |
 | systemd-unit | PASS | unit active [evidence](host-test-evidence/medusa/logs/idled-unit-journal.txt) |
 | unit-enabled-for-login | PASS | is-enabled=enabled, graphical-session.target.wants link=True |
-| unit-restart | PASS | state file after restart: {'pid': 31647, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790662746} |
+| unit-restart | PASS | state file after restart: {'pid': 38071, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790665406} |
 
 ### medusa: color
 
 | Check | Status | Detail |
 |---|---|---|
 | color-stylized | PASS | coverage=0.873 mean_rgb=(99,125,136) [evidence](host-test-evidence/medusa/shots/blackhole_stylized.jpg) |
-| color-kipthorne | PASS | coverage=0.873 mean_rgb=(139,130,132) [evidence](host-test-evidence/medusa/shots/blackhole_kipthorne.jpg) |
-| color-faithful | PASS | coverage=0.873 mean_rgb=(141,132,132) [evidence](host-test-evidence/medusa/shots/blackhole_faithful.jpg) |
-| color-stylized-distinct | PASS | stylized vs kipthorne: score 3.74 (chroma 0.075, brightness x1.12); stylized vs faithful: score 3.81 (chroma 0.076, brightness x1.13) |
-| color-physical-modes-distinct | FAIL | kipthorne vs faithful: score 0.08 (chroma 0.002, brightness x1.01) |
+| color-kipthorne | PASS | coverage=0.873 mean_rgb=(138,118,96) [evidence](host-test-evidence/medusa/shots/blackhole_kipthorne.jpg) |
+| color-faithful | PASS | coverage=0.872 mean_rgb=(117,105,105) [evidence](host-test-evidence/medusa/shots/blackhole_faithful.jpg) |
+| color-stylized-distinct | PASS | stylized vs kipthorne: score 5.80 (chroma 0.116, brightness x1.02); stylized vs faithful: score 4.25 (chroma 0.085, brightness x1.10) |
+| color-physical-modes-distinct | PASS | kipthorne vs faithful: score 1.85 (chroma 0.037, brightness x1.07) |
 | color-unknown-value | PASS | hack kept running with an unknown color value |
 
 ### medusa: chooser
@@ -457,104 +458,104 @@ Failures on chimera:
 | Check | Status | Detail |
 |---|---|---|
 | settings-dump | PASS | 84 catalog entries in --dump |
-| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:31854): Gsk-WARNING **: 02:19:35.023: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/medusa/logs/settings-selftest.txt) |
+| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:38274): Gsk-WARNING **: 03:03:51.156: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/medusa/logs/settings-selftest.txt) |
 | settings-screenshot | PASS | window alive=True; wrote /home/medusa/ncz-host-test/results/shots/settings.png [evidence](host-test-evidence/medusa/shots/settings.jpg) |
 
 ### medusa: hacks
 
 | Hack | Group | Result | Pixel coverage | Tile coverage | Motion | Stop (s) | Evidence |
 |---|---|---|---|---|---|---|---|
-| `blackhole_gles3` | Black Hole Simulation | PASS | 96% | 98% | 75% | 1.18 | [shot](host-test-evidence/medusa/shots/blackhole_gles3.jpg) |
-| `cityflow_gles3` | Classics | PASS | 100% | 100% | 2% | 1.18 | [shot](host-test-evidence/medusa/shots/cityflow_gles3.jpg) |
-| `crackberg_gles3` | Classics | PASS | 100% | 100% | 42% | 1.13 | [shot](host-test-evidence/medusa/shots/crackberg_gles3.jpg) |
-| `cubestorm_gles3` | Classics | PASS | 16% | 22% | 52% | 1.13 | [shot](host-test-evidence/medusa/shots/cubestorm_gles3.jpg) |
-| `geodesic_gles3` | Classics | PASS | 43% | 86% | 70% | 1.18 | [shot](host-test-evidence/medusa/shots/geodesic_gles3.jpg) |
-| `gibson_gles3` | Classics | PASS | 35% | 40% | 16% | 1.18 | [shot](host-test-evidence/medusa/shots/gibson_gles3.jpg) |
-| `gravitywell_gles3` | Classics | PASS | 30% | 52% | 32% | 1.13 | [shot](host-test-evidence/medusa/shots/gravitywell_gles3.jpg) |
-| `hexstrut_gles3` | Classics | PASS | 35% | 100% | 57% | 1.19 | [shot](host-test-evidence/medusa/shots/hexstrut_gles3.jpg) |
-| `hypertorus_gles3` | Classics | PASS | 27% | 39% | 41% | 1.23 | [shot](host-test-evidence/medusa/shots/hypertorus_gles3.jpg) |
-| `klein_gles3` | Classics | PASS | 68% | 80% | 82% | 1.18 | [shot](host-test-evidence/medusa/shots/klein_gles3.jpg) |
-| `noof_gles3` | Classics | PASS | 77% | 87% | 46% | 1.13 | [shot](host-test-evidence/medusa/shots/noof_gles3.jpg) |
-| `projectiveplane_gles3` | Classics | PASS | 30% | 40% | 35% | 1.14 | [shot](host-test-evidence/medusa/shots/projectiveplane_gles3.jpg) |
-| `voronoi_gles3` | Classics | PASS | 100% | 100% | 29% | 1.18 | [shot](host-test-evidence/medusa/shots/voronoi_gles3.jpg) |
-| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 39% | 46% | 4% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_attitude_gles3.jpg) |
-| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 84% | 88% | 59% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_aurora_gles3.jpg) |
-| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 32% | 5% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_bezier_gles3.jpg) |
-| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 46% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_blob_gles3.jpg) |
-| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_caustics_gles3.jpg) |
-| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 11% | 59% | 16% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_circuit_gles3.jpg) |
-| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 30% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_clouds_gles3.jpg) |
-| `hyprsaver_donut_gles3` | hyprsaver | PASS | 27% | 36% | 30% | 1.19 | [shot](host-test-evidence/medusa/shots/hyprsaver_donut_gles3.jpg) |
-| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 5% | 73% | 10% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_fireflies_gles3.jpg) |
-| `hyprsaver_flames_gles3` | hyprsaver | PASS | 52% | 57% | 41% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_flames_gles3.jpg) |
-| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 63% | 68% | 58% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_fractaltrap_gles3.jpg) |
-| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 3% | 19% | 7% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_geometry_gles3.jpg) |
-| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 8% | 30% | 16% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_gridwave_gles3.jpg) |
-| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 7% | 22% | 13% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_hypercube_gles3.jpg) |
-| `hyprsaver_julia_gles3` | hyprsaver | PASS | 27% | 40% | 38% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_julia_gles3.jpg) |
-| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 56% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_kaleidoscope_gles3.jpg) |
-| `hyprsaver_lissajous_gles3` | hyprsaver | PASS (sparse) | 2% | 31% | 5% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_lissajous_gles3.jpg) |
-| `hyprsaver_marble_gles3` | hyprsaver | PASS | 90% | 100% | 91% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_marble_gles3.jpg) |
-| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 30% | 88% | 51% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_matrix_gles3.jpg) |
-| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 26% | 29% | 26% | 1.14 | [shot](host-test-evidence/medusa/shots/hyprsaver_mobius_gles3.jpg) |
-| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 42% | 83% | 27% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_oscilloscope_gles3.jpg) |
-| `hyprsaver_planet_gles3` | hyprsaver | PASS | 25% | 81% | 21% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_planet_gles3.jpg) |
-| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 92% | 100% | 98% | 1.19 | [shot](host-test-evidence/medusa/shots/hyprsaver_plasma_gles3.jpg) |
-| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 30% | 36% | 8% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_shipburn_gles3.jpg) |
-| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 3% | 58% | 5% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_snowfall_gles3.jpg) |
-| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 38% | 2% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_sonar_gles3.jpg) |
-| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 3% | 60% | 8% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_starfield_gles3.jpg) |
-| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 23% | 12% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_stonks_gles3.jpg) |
-| `hyprsaver_temple_gles3` | hyprsaver | PASS | 33% | 92% | 56% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_temple_gles3.jpg) |
-| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 22% | 58% | 36% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_terminal_gles3.jpg) |
-| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 7% | 21% | 7% | 1.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_tesla_gles3.jpg) |
-| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 29% | 40% | 28% | 1.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_tunnel_gles3.jpg) |
-| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 99% | 100% | 97% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_voronoi_gles3.jpg) |
-| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 53% | 73% | 56% | 1.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_waterfall_gles3.jpg) |
-| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 98% | 1.14 | [shot](host-test-evidence/medusa/shots/hyprsaver_wormhole_gles3.jpg) |
-| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 77% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_alienbeacon_gles3.jpg) |
-| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 42% | 1.14 | [shot](host-test-evidence/medusa/shots/xshadertoy_batteredplanet_gles3.jpg) |
-| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 51% | 59% | 35% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill0-0_gles3.jpg) |
-| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 78% | 85% | 23% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill1-0_gles3.jpg) |
-| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 99% | 100% | 69% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill2-0_gles3.jpg) |
-| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 79% | 85% | 66% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill3-0_gles3.jpg) |
-| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 89% | 1.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill4-0_gles3.jpg) |
-| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 97% | 25% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill5-0_gles3.jpg) |
-| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 73% | 86% | 68% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_darktransit_gles3.jpg) |
-| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 70% | 75% | 60% | 1.19 | [shot](host-test-evidence/medusa/shots/xshadertoy_downfall_gles3.jpg) |
-| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 86% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_elementalring_gles3.jpg) |
-| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 75% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_fluxcore_gles3.jpg) |
-| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 74% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
-| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 100% | 100% | 91% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_goldenapollian_gles3.jpg) |
-| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 87% | 99% | 87% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_hexplasma_gles3.jpg) |
-| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 37% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_iridescence_gles3.jpg) |
-| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 80% | 71% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
-| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 91% | 99% | 75% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_neongravity-1_gles3.jpg) |
-| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 26% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_neonhorizon_gles3.jpg) |
-| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 45% | 58% | 93% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_neontriangulator_gles3.jpg) |
-| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 93% | 99% | 95% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_noxfire_gles3.jpg) |
-| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 68% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_polarnight_gles3.jpg) |
-| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 49% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_prococean_gles3.jpg) |
-| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 60% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_protophore_gles3.jpg) |
-| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 75% | 87% | 40% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_rigrekt_gles3.jpg) |
-| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 68% | 72% | 30% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_selfreflect_gles3.jpg) |
-| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 52% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_skyline_gles3.jpg) |
-| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 99% | 67% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_stardome_gles3.jpg) |
-| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 38% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_starnest_gles3.jpg) |
-| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 8% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_stratus_gles3.jpg) |
-| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 98% | 89% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_stripeytorus_gles3.jpg) |
-| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 95% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_topologica_gles3.jpg) |
-| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 100% | 98% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_trainmandala_gles3.jpg) |
-| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 93% | 1.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_trizm_gles3.jpg) |
-| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 40% | 1.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_truchetzoom_gles3.jpg) |
-| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 51% | 1.19 | [shot](host-test-evidence/medusa/shots/xshadertoy_universeball_gles3.jpg) |
+| `blackhole_gles3` | Black Hole Simulation | PASS | 95% | 97% | 86% | 0.18 | [shot](host-test-evidence/medusa/shots/blackhole_gles3.jpg) |
+| `cityflow_gles3` | Classics | PASS | 100% | 100% | 3% | 0.18 | [shot](host-test-evidence/medusa/shots/cityflow_gles3.jpg) |
+| `crackberg_gles3` | Classics | PASS | 100% | 100% | 42% | 0.24 | [shot](host-test-evidence/medusa/shots/crackberg_gles3.jpg) |
+| `cubestorm_gles3` | Classics | PASS | 17% | 23% | 51% | 0.18 | [shot](host-test-evidence/medusa/shots/cubestorm_gles3.jpg) |
+| `geodesic_gles3` | Classics | PASS | 44% | 87% | 69% | 0.18 | [shot](host-test-evidence/medusa/shots/geodesic_gles3.jpg) |
+| `gibson_gles3` | Classics | PASS | 34% | 39% | 16% | 0.18 | [shot](host-test-evidence/medusa/shots/gibson_gles3.jpg) |
+| `gravitywell_gles3` | Classics | PASS | 29% | 49% | 31% | 0.13 | [shot](host-test-evidence/medusa/shots/gravitywell_gles3.jpg) |
+| `hexstrut_gles3` | Classics | PASS | 35% | 100% | 57% | 0.18 | [shot](host-test-evidence/medusa/shots/hexstrut_gles3.jpg) |
+| `hypertorus_gles3` | Classics | PASS | 27% | 39% | 41% | 0.23 | [shot](host-test-evidence/medusa/shots/hypertorus_gles3.jpg) |
+| `klein_gles3` | Classics | PASS | 27% | 39% | 36% | 0.18 | [shot](host-test-evidence/medusa/shots/klein_gles3.jpg) |
+| `noof_gles3` | Classics | PASS | 77% | 87% | 46% | 0.23 | [shot](host-test-evidence/medusa/shots/noof_gles3.jpg) |
+| `projectiveplane_gles3` | Classics | PASS | 28% | 38% | 34% | 0.23 | [shot](host-test-evidence/medusa/shots/projectiveplane_gles3.jpg) |
+| `voronoi_gles3` | Classics | PASS | 100% | 100% | 30% | 0.18 | [shot](host-test-evidence/medusa/shots/voronoi_gles3.jpg) |
+| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 39% | 46% | 4% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_attitude_gles3.jpg) |
+| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 84% | 88% | 58% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_aurora_gles3.jpg) |
+| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 32% | 6% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_bezier_gles3.jpg) |
+| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 46% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_blob_gles3.jpg) |
+| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_caustics_gles3.jpg) |
+| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 11% | 59% | 16% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_circuit_gles3.jpg) |
+| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 30% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_clouds_gles3.jpg) |
+| `hyprsaver_donut_gles3` | hyprsaver | PASS | 27% | 36% | 30% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_donut_gles3.jpg) |
+| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 5% | 72% | 10% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_fireflies_gles3.jpg) |
+| `hyprsaver_flames_gles3` | hyprsaver | PASS | 52% | 57% | 41% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_flames_gles3.jpg) |
+| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 63% | 68% | 58% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_fractaltrap_gles3.jpg) |
+| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 2% | 19% | 7% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_geometry_gles3.jpg) |
+| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 8% | 30% | 14% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_gridwave_gles3.jpg) |
+| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 7% | 23% | 13% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_hypercube_gles3.jpg) |
+| `hyprsaver_julia_gles3` | hyprsaver | PASS | 27% | 40% | 38% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_julia_gles3.jpg) |
+| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 56% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_kaleidoscope_gles3.jpg) |
+| `hyprsaver_lissajous_gles3` | hyprsaver | PASS (sparse) | 2% | 32% | 5% | 0.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_lissajous_gles3.jpg) |
+| `hyprsaver_marble_gles3` | hyprsaver | PASS | 90% | 100% | 90% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_marble_gles3.jpg) |
+| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 30% | 88% | 51% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_matrix_gles3.jpg) |
+| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 25% | 28% | 26% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_mobius_gles3.jpg) |
+| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 42% | 83% | 27% | 0.14 | [shot](host-test-evidence/medusa/shots/hyprsaver_oscilloscope_gles3.jpg) |
+| `hyprsaver_planet_gles3` | hyprsaver | PASS | 25% | 81% | 21% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_planet_gles3.jpg) |
+| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 92% | 100% | 98% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_plasma_gles3.jpg) |
+| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 30% | 36% | 8% | 0.23 | [shot](host-test-evidence/medusa/shots/hyprsaver_shipburn_gles3.jpg) |
+| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 3% | 58% | 5% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_snowfall_gles3.jpg) |
+| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 38% | 2% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_sonar_gles3.jpg) |
+| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 3% | 58% | 8% | 0.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_starfield_gles3.jpg) |
+| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 23% | 12% | 0.13 | [shot](host-test-evidence/medusa/shots/hyprsaver_stonks_gles3.jpg) |
+| `hyprsaver_temple_gles3` | hyprsaver | PASS | 33% | 91% | 55% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_temple_gles3.jpg) |
+| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 22% | 58% | 36% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_terminal_gles3.jpg) |
+| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 7% | 21% | 7% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_tesla_gles3.jpg) |
+| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 29% | 39% | 28% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_tunnel_gles3.jpg) |
+| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 99% | 100% | 97% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_voronoi_gles3.jpg) |
+| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 53% | 73% | 56% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_waterfall_gles3.jpg) |
+| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 100% | 0.18 | [shot](host-test-evidence/medusa/shots/hyprsaver_wormhole_gles3.jpg) |
+| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 77% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_alienbeacon_gles3.jpg) |
+| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 42% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_batteredplanet_gles3.jpg) |
+| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 51% | 59% | 35% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill0-0_gles3.jpg) |
+| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 78% | 85% | 23% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill1-0_gles3.jpg) |
+| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 99% | 100% | 69% | 0.25 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill2-0_gles3.jpg) |
+| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 79% | 85% | 66% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill3-0_gles3.jpg) |
+| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 89% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill4-0_gles3.jpg) |
+| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 97% | 25% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_bestill5-0_gles3.jpg) |
+| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 73% | 86% | 67% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_darktransit_gles3.jpg) |
+| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 70% | 75% | 60% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_downfall_gles3.jpg) |
+| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 86% | 0.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_elementalring_gles3.jpg) |
+| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 75% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_fluxcore_gles3.jpg) |
+| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 74% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
+| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 100% | 100% | 92% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_goldenapollian_gles3.jpg) |
+| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 86% | 99% | 87% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_hexplasma_gles3.jpg) |
+| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 30% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_iridescence_gles3.jpg) |
+| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 80% | 71% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
+| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 91% | 99% | 75% | 0.19 | [shot](host-test-evidence/medusa/shots/xshadertoy_neongravity-1_gles3.jpg) |
+| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 21% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_neonhorizon_gles3.jpg) |
+| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 45% | 58% | 93% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_neontriangulator_gles3.jpg) |
+| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 93% | 99% | 95% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_noxfire_gles3.jpg) |
+| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 68% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_polarnight_gles3.jpg) |
+| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 49% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_prococean_gles3.jpg) |
+| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 60% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_protophore_gles3.jpg) |
+| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 75% | 87% | 40% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_rigrekt_gles3.jpg) |
+| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 68% | 72% | 29% | 0.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_selfreflect_gles3.jpg) |
+| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 52% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_skyline_gles3.jpg) |
+| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 99% | 68% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_stardome_gles3.jpg) |
+| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 38% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_starnest_gles3.jpg) |
+| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 22% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_stratus_gles3.jpg) |
+| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 98% | 90% | 0.23 | [shot](host-test-evidence/medusa/shots/xshadertoy_stripeytorus_gles3.jpg) |
+| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 95% | 0.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_topologica_gles3.jpg) |
+| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 100% | 98% | 0.13 | [shot](host-test-evidence/medusa/shots/xshadertoy_trainmandala_gles3.jpg) |
+| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 93% | 0.19 | [shot](host-test-evidence/medusa/shots/xshadertoy_trizm_gles3.jpg) |
+| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 40% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_truchetzoom_gles3.jpg) |
+| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 51% | 0.18 | [shot](host-test-evidence/medusa/shots/xshadertoy_universeball_gles3.jpg) |
 
 Failures on medusa:
 
-- `hyprsaver_geometry_gles3`: coverage=0.026 motion=0.0731 baseline_diff=0.998 alive=True leftover=False tiles=0.19 stop=1.18s; log=hyprsaver_geometry_gles3.txt
-- `hyprsaver_hypercube_gles3`: coverage=0.069 motion=0.1274 baseline_diff=0.999 alive=True leftover=False tiles=0.22 stop=1.18s; log=hyprsaver_hypercube_gles3.txt
-- `hyprsaver_stonks_gles3`: coverage=0.062 motion=0.1200 baseline_diff=0.999 alive=True leftover=False tiles=0.23 stop=1.18s; log=hyprsaver_stonks_gles3.txt
-- `hyprsaver_tesla_gles3`: coverage=0.066 motion=0.0680 baseline_diff=1.000 alive=True leftover=False tiles=0.21 stop=1.23s; log=hyprsaver_tesla_gles3.txt
+- `hyprsaver_geometry_gles3`: coverage=0.025 motion=0.0721 baseline_diff=0.927 alive=True leftover=False tiles=0.19 stop=0.23s; log=hyprsaver_geometry_gles3.txt
+- `hyprsaver_hypercube_gles3`: coverage=0.071 motion=0.1322 baseline_diff=0.927 alive=True leftover=False tiles=0.23 stop=0.18s; log=hyprsaver_hypercube_gles3.txt
+- `hyprsaver_stonks_gles3`: coverage=0.062 motion=0.1200 baseline_diff=0.934 alive=True leftover=False tiles=0.23 stop=0.13s; log=hyprsaver_stonks_gles3.txt
+- `hyprsaver_tesla_gles3`: coverage=0.065 motion=0.0683 baseline_diff=0.917 alive=True leftover=False tiles=0.21 stop=0.18s; log=hyprsaver_tesla_gles3.txt
 
 ## pegasus
 
@@ -562,9 +563,9 @@ Failures on medusa:
 - Display devices: 00:02.0 VGA compatible controller [0300]: Intel Corporation CometLake-H GT2 [UHD Graphics] [8086:9bc4] (rev 05) 	DeviceName: Second VGA 	Subsystem: ASUSTeK Computer Inc. Device [1043:1c5f] 	Kernel driver in use: i915 	Kernel modules: i915 01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] [10de:1f15] (rev a1) 	DeviceName: VGA 	Subsystem: ASUSTeK Computer 
 - Kernel driver(s): i915, nvidia
 - GLES renderer: Mesa Intel(R) UHD Graphics (CML GT2); OpenGL ES 3.2 Mesa 26.1.6-1
-- Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "26.1.6-1", "ncz-screensavers": "0.2.0"}
+- Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "26.1.6-1", "ncz-screensavers": "0.3.0"}
 - Compositor: {"name": "labwc", "pid": 1835}
-- Started 2026-09-29T06:06:06Z, finished 2026-09-29T06:20:34Z
+- Started 2026-09-29T06:51:52Z, finished 2026-09-29T07:04:54Z
 
 ### pegasus: env
 
@@ -575,7 +576,7 @@ Failures on medusa:
 | lspci | PASS | lspci -nnk -d ::0300 returned data |
 | driver | PASS | kernel driver(s): i915, nvidia |
 | egl-info | PASS | Mesa Intel(R) UHD Graphics (CML GT2) \| OpenGL ES 3.2 Mesa 26.1.6-1 |
-| package-ncz-screensavers | PASS | installed 0.2.0 |
+| package-ncz-screensavers | PASS | installed 0.3.0 |
 | wl-registry | PASS | 61 globals advertised |
 | global-ext_idle_notifier_v1 | PASS | advertised |
 | global-zwp_idle_inhibit_manager_v1 | PASS | advertised |
@@ -622,22 +623,23 @@ Failures on medusa:
 | config-set-hack | PASS | hack-id='klein_gles3' expected 'klein_gles3' |
 | config-set-color | PASS | blackhole-color-mode='kipthorne' expected 'kipthorne' |
 | pdeathsig | PASS | hack exited after the supervisor was killed |
+| nvidia-egl-path | PASS | informational: hack on the NVIDIA EGL vendor did not run; eglGetPlatformDisplay failed on the Wayland compositor |
 
 ### pegasus: idle
 
 | Check | Status | Detail |
 |---|---|---|
 | dry-run-plan | PASS | {"saver":6,"lock":null,"dpms":null,"lock_on_suspend":false} |
-| daemon-start | PASS | state={'pid': 52170, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790662681} |
+| daemon-start | PASS | state={'pid': 66289, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790665348} |
 | idle-fires-saver | PASS | saver started 6.1s after daemon start (timer 6s) |
-| idle-saver-visible | PASS | coverage=0.839 motion=0.519 |
-| dismiss-on-pointer | PASS | stopped 1.11s after injected motion (poke rc=0 ) |
+| idle-saver-visible | PASS | coverage=0.839 motion=0.520 |
+| dismiss-on-pointer | PASS | stopped 0.50s after injected motion (poke rc=0 ) |
 | state-returns-active | PASS | active |
-| dismiss-on-key | PASS | saver stopped 1.1110161680007877s after key |
+| dismiss-on-key | PASS | saver stopped 0.20881096200173488s after key |
 | idle-inhibit-blocks | PASS | saver stayed off for 14 s while inhibited |
-| idle-inhibit-releases | PASS | saver started 6.3s after the inhibitor ended |
+| idle-inhibit-releases | PASS | saver started 6.1s after the inhibitor ended |
 | live-reconfigure | PASS | plan={'saver': 9, 'lock': None, 'dpms': None, 'lock_on_suspend': False} |
-| lock-chain | PASS | saver_start=6.0600169870012905 lock_marker=True saver_stopped_before_lock=True |
+| lock-chain | PASS | saver_start=6.076985168001556 lock_marker=True saver_stopped_before_lock=True |
 | logind-lock-signal | PASS | lock command ran 0.2s after loginctl lock-session |
 | suspend-resume | SKIP | not run: no physical access to wake the host; the PrepareForSleep path shares the lock code exercised above |
 | video-inhibit-blocks | PASS | saver stayed off for 14 s while mpv played fullscreen video |
@@ -646,17 +648,17 @@ Failures on medusa:
 | outputs-enabled-after-tests | PASS | all outputs enabled |
 | systemd-unit | PASS | unit active [evidence](host-test-evidence/pegasus/logs/idled-unit-journal.txt) |
 | unit-enabled-for-login | PASS | is-enabled=enabled, graphical-session.target.wants link=True |
-| unit-restart | PASS | state file after restart: {'pid': 54209, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790662798} |
+| unit-restart | PASS | state file after restart: {'pid': 67918, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790665462} |
 
 ### pegasus: color
 
 | Check | Status | Detail |
 |---|---|---|
 | color-stylized | PASS | coverage=0.886 mean_rgb=(99,119,129) [evidence](host-test-evidence/pegasus/shots/blackhole_stylized.jpg) |
-| color-kipthorne | PASS | coverage=0.886 mean_rgb=(129,119,124) [evidence](host-test-evidence/pegasus/shots/blackhole_kipthorne.jpg) |
-| color-faithful | PASS | coverage=0.885 mean_rgb=(132,122,127) [evidence](host-test-evidence/pegasus/shots/blackhole_faithful.jpg) |
-| color-stylized-distinct | PASS | stylized vs kipthorne: score 3.24 (chroma 0.065, brightness x1.07); stylized vs faithful: score 3.20 (chroma 0.064, brightness x1.10) |
-| color-physical-modes-distinct | FAIL | kipthorne vs faithful: score 0.23 (chroma 0.001, brightness x1.02) |
+| color-kipthorne | PASS | coverage=0.885 mean_rgb=(126,106,92) [evidence](host-test-evidence/pegasus/shots/blackhole_kipthorne.jpg) |
+| color-faithful | PASS | coverage=0.885 mean_rgb=(111,100,106) [evidence](host-test-evidence/pegasus/shots/blackhole_faithful.jpg) |
+| color-stylized-distinct | PASS | stylized vs kipthorne: score 5.11 (chroma 0.102, brightness x1.07); stylized vs faithful: score 3.38 (chroma 0.068, brightness x1.09) |
+| color-physical-modes-distinct | PASS | kipthorne vs faithful: score 2.03 (chroma 0.041, brightness x1.02) |
 | color-unknown-value | PASS | hack kept running with an unknown color value |
 
 ### pegasus: chooser
@@ -664,104 +666,105 @@ Failures on medusa:
 | Check | Status | Detail |
 |---|---|---|
 | settings-dump | PASS | 84 catalog entries in --dump |
-| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:54526): Gsk-WARNING **: 02:20:28.535: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/pegasus/logs/settings-selftest.txt) |
+| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:68120): Gsk-WARNING **: 03:04:48.395: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/pegasus/logs/settings-selftest.txt) |
 | settings-screenshot | PASS | window alive=True; wrote /home/pegasus/ncz-host-test/results/shots/settings.png [evidence](host-test-evidence/pegasus/shots/settings.jpg) |
 
 ### pegasus: hacks
 
 | Hack | Group | Result | Pixel coverage | Tile coverage | Motion | Stop (s) | Evidence |
 |---|---|---|---|---|---|---|---|
-| `blackhole_gles3` | Black Hole Simulation | PASS | 98% | 99% | 84% | 1.12 | [shot](host-test-evidence/pegasus/shots/blackhole_gles3.jpg) |
-| `cityflow_gles3` | Classics | PASS | 100% | 100% | 2% | 1.12 | [shot](host-test-evidence/pegasus/shots/cityflow_gles3.jpg) |
-| `crackberg_gles3` | Classics | PASS | 91% | 95% | 94% | 1.17 | [shot](host-test-evidence/pegasus/shots/crackberg_gles3.jpg) |
-| `cubestorm_gles3` | Classics | FAIL | 14% | 18% | 47% | 1.12 | [shot](host-test-evidence/pegasus/shots/cubestorm_gles3.jpg) |
-| `geodesic_gles3` | Classics | PASS | 41% | 82% | 66% | 1.22 | [shot](host-test-evidence/pegasus/shots/geodesic_gles3.jpg) |
-| `gibson_gles3` | Classics | PASS | 93% | 96% | 95% | 1.17 | [shot](host-test-evidence/pegasus/shots/gibson_gles3.jpg) |
-| `gravitywell_gles3` | Classics | PASS | 27% | 48% | 30% | 1.17 | [shot](host-test-evidence/pegasus/shots/gravitywell_gles3.jpg) |
-| `hexstrut_gles3` | Classics | PASS | 98% | 99% | 98% | 1.22 | [shot](host-test-evidence/pegasus/shots/hexstrut_gles3.jpg) |
-| `hypertorus_gles3` | Classics | PASS | 27% | 35% | 38% | 1.17 | [shot](host-test-evidence/pegasus/shots/hypertorus_gles3.jpg) |
-| `klein_gles3` | Classics | PASS | 53% | 71% | 71% | 1.13 | [shot](host-test-evidence/pegasus/shots/klein_gles3.jpg) |
-| `noof_gles3` | Classics | PASS | 73% | 84% | 47% | 1.17 | [shot](host-test-evidence/pegasus/shots/noof_gles3.jpg) |
-| `projectiveplane_gles3` | Classics | PASS | 25% | 33% | 31% | 1.17 | [shot](host-test-evidence/pegasus/shots/projectiveplane_gles3.jpg) |
-| `voronoi_gles3` | Classics | PASS | 100% | 100% | 12% | 1.17 | [shot](host-test-evidence/pegasus/shots/voronoi_gles3.jpg) |
-| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 35% | 42% | 4% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_attitude_gles3.jpg) |
-| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 84% | 86% | 58% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_aurora_gles3.jpg) |
-| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 33% | 5% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_bezier_gles3.jpg) |
-| `hyprsaver_blob_gles3` | hyprsaver | PASS | 93% | 96% | 100% | 1.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_blob_gles3.jpg) |
-| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_caustics_gles3.jpg) |
-| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 11% | 49% | 16% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_circuit_gles3.jpg) |
-| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 28% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_clouds_gles3.jpg) |
-| `hyprsaver_donut_gles3` | hyprsaver | PASS | 25% | 31% | 27% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_donut_gles3.jpg) |
-| `hyprsaver_fireflies_gles3` | hyprsaver | PASS | 100% | 100% | 100% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_fireflies_gles3.jpg) |
-| `hyprsaver_flames_gles3` | hyprsaver | PASS | 52% | 58% | 41% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_flames_gles3.jpg) |
-| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 56% | 61% | 53% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_fractaltrap_gles3.jpg) |
-| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 2% | 14% | 6% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_geometry_gles3.jpg) |
-| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 9% | 28% | 15% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_gridwave_gles3.jpg) |
-| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 6% | 17% | 11% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_hypercube_gles3.jpg) |
-| `hyprsaver_julia_gles3` | hyprsaver | PASS | 25% | 35% | 36% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_julia_gles3.jpg) |
-| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 61% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_kaleidoscope_gles3.jpg) |
-| `hyprsaver_lissajous_gles3` | hyprsaver | PASS (sparse) | 2% | 26% | 3% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_lissajous_gles3.jpg) |
-| `hyprsaver_marble_gles3` | hyprsaver | PASS | 90% | 100% | 91% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_marble_gles3.jpg) |
-| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 30% | 93% | 49% | 1.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_matrix_gles3.jpg) |
-| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 29% | 33% | 30% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_mobius_gles3.jpg) |
-| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 35% | 74% | 25% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_oscilloscope_gles3.jpg) |
-| `hyprsaver_planet_gles3` | hyprsaver | PASS | 21% | 78% | 17% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_planet_gles3.jpg) |
-| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 89% | 94% | 99% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_plasma_gles3.jpg) |
-| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 27% | 34% | 8% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_shipburn_gles3.jpg) |
-| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 2% | 48% | 4% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_snowfall_gles3.jpg) |
-| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 33% | 2% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_sonar_gles3.jpg) |
-| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 3% | 61% | 9% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_starfield_gles3.jpg) |
-| `hyprsaver_stonks_gles3` | hyprsaver | PASS | 98% | 99% | 98% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_stonks_gles3.jpg) |
-| `hyprsaver_temple_gles3` | hyprsaver | PASS | 33% | 93% | 55% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_temple_gles3.jpg) |
-| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 18% | 46% | 30% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_terminal_gles3.jpg) |
-| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 5% | 15% | 6% | 1.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_tesla_gles3.jpg) |
-| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 26% | 34% | 26% | 1.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_tunnel_gles3.jpg) |
-| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 93% | 96% | 100% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_voronoi_gles3.jpg) |
-| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 61% | 75% | 58% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_waterfall_gles3.jpg) |
-| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 96% | 1.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_wormhole_gles3.jpg) |
-| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 90% | 95% | 100% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_alienbeacon_gles3.jpg) |
-| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 45% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_batteredplanet_gles3.jpg) |
-| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 51% | 60% | 36% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill0-0_gles3.jpg) |
-| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 77% | 85% | 23% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill1-0_gles3.jpg) |
-| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 99% | 99% | 71% | 1.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill2-0_gles3.jpg) |
-| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 78% | 85% | 64% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill3-0_gles3.jpg) |
-| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 89% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill4-0_gles3.jpg) |
-| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 97% | 22% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill5-0_gles3.jpg) |
-| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 69% | 74% | 68% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_darktransit_gles3.jpg) |
-| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 59% | 62% | 63% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_downfall_gles3.jpg) |
-| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 71% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_elementalring_gles3.jpg) |
-| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 78% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_fluxcore_gles3.jpg) |
-| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 76% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
-| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 100% | 100% | 90% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_goldenapollian_gles3.jpg) |
-| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 85% | 99% | 84% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_hexplasma_gles3.jpg) |
-| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 31% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_iridescence_gles3.jpg) |
-| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 78% | 68% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
-| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 92% | 100% | 75% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_neongravity-1_gles3.jpg) |
-| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 36% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_neonhorizon_gles3.jpg) |
-| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 47% | 58% | 92% | 1.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_neontriangulator_gles3.jpg) |
-| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 97% | 99% | 96% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_noxfire_gles3.jpg) |
-| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 76% | 1.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_polarnight_gles3.jpg) |
-| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_prococean_gles3.jpg) |
-| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 63% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_protophore_gles3.jpg) |
-| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 76% | 76% | 38% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_rigrekt_gles3.jpg) |
-| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 61% | 65% | 27% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_selfreflect_gles3.jpg) |
-| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 55% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_skyline_gles3.jpg) |
-| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 99% | 68% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_stardome_gles3.jpg) |
-| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 38% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_starnest_gles3.jpg) |
-| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 22% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_stratus_gles3.jpg) |
-| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 97% | 93% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_stripeytorus_gles3.jpg) |
-| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 94% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_topologica_gles3.jpg) |
-| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 98% | 100% | 98% | 1.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_trainmandala_gles3.jpg) |
-| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 95% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_trizm_gles3.jpg) |
-| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 42% | 1.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_truchetzoom_gles3.jpg) |
-| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 47% | 1.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_universeball_gles3.jpg) |
+| `blackhole_gles3` | Black Hole Simulation | PASS | 90% | 93% | 90% | 0.17 | [shot](host-test-evidence/pegasus/shots/blackhole_gles3.jpg) |
+| `cityflow_gles3` | Classics | PASS | 100% | 100% | 2% | 0.17 | [shot](host-test-evidence/pegasus/shots/cityflow_gles3.jpg) |
+| `crackberg_gles3` | Classics | PASS | 100% | 100% | 40% | 0.22 | [shot](host-test-evidence/pegasus/shots/crackberg_gles3.jpg) |
+| `cubestorm_gles3` | Classics | FAIL | 14% | 18% | 46% | 0.22 | [shot](host-test-evidence/pegasus/shots/cubestorm_gles3.jpg) |
+| `geodesic_gles3` | Classics | PASS | 39% | 80% | 66% | 0.22 | [shot](host-test-evidence/pegasus/shots/geodesic_gles3.jpg) |
+| `gibson_gles3` | Classics | PASS | 46% | 51% | 27% | 0.17 | [shot](host-test-evidence/pegasus/shots/gibson_gles3.jpg) |
+| `gravitywell_gles3` | Classics | PASS | 30% | 50% | 33% | 0.12 | [shot](host-test-evidence/pegasus/shots/gravitywell_gles3.jpg) |
+| `hexstrut_gles3` | Classics | PASS | 34% | 98% | 57% | 0.17 | [shot](host-test-evidence/pegasus/shots/hexstrut_gles3.jpg) |
+| `hypertorus_gles3` | Classics | PASS | 24% | 36% | 36% | 0.22 | [shot](host-test-evidence/pegasus/shots/hypertorus_gles3.jpg) |
+| `klein_gles3` | Classics | PASS | 34% | 48% | 79% | 0.12 | [shot](host-test-evidence/pegasus/shots/klein_gles3.jpg) |
+| `noof_gles3` | Classics | PASS | 73% | 84% | 47% | 0.22 | [shot](host-test-evidence/pegasus/shots/noof_gles3.jpg) |
+| `projectiveplane_gles3` | Classics | PASS | 26% | 34% | 30% | 0.17 | [shot](host-test-evidence/pegasus/shots/projectiveplane_gles3.jpg) |
+| `voronoi_gles3` | Classics | PASS | 100% | 100% | 6% | 0.17 | [shot](host-test-evidence/pegasus/shots/voronoi_gles3.jpg) |
+| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 35% | 42% | 4% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_attitude_gles3.jpg) |
+| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 84% | 86% | 58% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_aurora_gles3.jpg) |
+| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 33% | 5% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_bezier_gles3.jpg) |
+| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 41% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_blob_gles3.jpg) |
+| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_caustics_gles3.jpg) |
+| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 11% | 49% | 16% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_circuit_gles3.jpg) |
+| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 28% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_clouds_gles3.jpg) |
+| `hyprsaver_donut_gles3` | hyprsaver | PASS | 25% | 31% | 27% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_donut_gles3.jpg) |
+| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 4% | 55% | 10% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_fireflies_gles3.jpg) |
+| `hyprsaver_flames_gles3` | hyprsaver | PASS | 52% | 58% | 41% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_flames_gles3.jpg) |
+| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 56% | 61% | 53% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_fractaltrap_gles3.jpg) |
+| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 2% | 15% | 6% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_geometry_gles3.jpg) |
+| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 10% | 27% | 15% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_gridwave_gles3.jpg) |
+| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 6% | 16% | 11% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_hypercube_gles3.jpg) |
+| `hyprsaver_julia_gles3` | hyprsaver | PASS | 25% | 35% | 37% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_julia_gles3.jpg) |
+| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 61% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_kaleidoscope_gles3.jpg) |
+| `hyprsaver_lissajous_gles3` | hyprsaver | PASS (sparse) | 2% | 25% | 4% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_lissajous_gles3.jpg) |
+| `hyprsaver_marble_gles3` | hyprsaver | PASS | 90% | 100% | 91% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_marble_gles3.jpg) |
+| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 30% | 93% | 50% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_matrix_gles3.jpg) |
+| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 29% | 33% | 30% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_mobius_gles3.jpg) |
+| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 35% | 74% | 25% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_oscilloscope_gles3.jpg) |
+| `hyprsaver_planet_gles3` | hyprsaver | PASS | 21% | 78% | 17% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_planet_gles3.jpg) |
+| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 93% | 100% | 98% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_plasma_gles3.jpg) |
+| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 27% | 34% | 8% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_shipburn_gles3.jpg) |
+| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 2% | 48% | 4% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_snowfall_gles3.jpg) |
+| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 32% | 2% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_sonar_gles3.jpg) |
+| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 4% | 62% | 9% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_starfield_gles3.jpg) |
+| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 20% | 12% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_stonks_gles3.jpg) |
+| `hyprsaver_temple_gles3` | hyprsaver | PASS | 33% | 93% | 55% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_temple_gles3.jpg) |
+| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 18% | 46% | 30% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_terminal_gles3.jpg) |
+| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 5% | 15% | 6% | 0.22 | [shot](host-test-evidence/pegasus/shots/hyprsaver_tesla_gles3.jpg) |
+| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 26% | 35% | 26% | 0.12 | [shot](host-test-evidence/pegasus/shots/hyprsaver_tunnel_gles3.jpg) |
+| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 98% | 100% | 97% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_voronoi_gles3.jpg) |
+| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 61% | 75% | 58% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_waterfall_gles3.jpg) |
+| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 96% | 0.17 | [shot](host-test-evidence/pegasus/shots/hyprsaver_wormhole_gles3.jpg) |
+| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 85% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_alienbeacon_gles3.jpg) |
+| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 44% | 0.27 | [shot](host-test-evidence/pegasus/shots/xshadertoy_batteredplanet_gles3.jpg) |
+| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 51% | 60% | 36% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill0-0_gles3.jpg) |
+| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 77% | 85% | 23% | 0.27 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill1-0_gles3.jpg) |
+| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 99% | 99% | 71% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill2-0_gles3.jpg) |
+| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 78% | 86% | 63% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill3-0_gles3.jpg) |
+| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 89% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill4-0_gles3.jpg) |
+| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 98% | 22% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_bestill5-0_gles3.jpg) |
+| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 69% | 74% | 68% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_darktransit_gles3.jpg) |
+| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 58% | 62% | 62% | 0.37 | [shot](host-test-evidence/pegasus/shots/xshadertoy_downfall_gles3.jpg) |
+| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 71% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_elementalring_gles3.jpg) |
+| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 78% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_fluxcore_gles3.jpg) |
+| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 76% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
+| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 100% | 100% | 91% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_goldenapollian_gles3.jpg) |
+| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 85% | 99% | 83% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_hexplasma_gles3.jpg) |
+| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 47% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_iridescence_gles3.jpg) |
+| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 78% | 69% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
+| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 92% | 100% | 75% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_neongravity-1_gles3.jpg) |
+| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 31% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_neonhorizon_gles3.jpg) |
+| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 48% | 57% | 92% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_neontriangulator_gles3.jpg) |
+| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 96% | 99% | 96% | 0.27 | [shot](host-test-evidence/pegasus/shots/xshadertoy_noxfire_gles3.jpg) |
+| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 75% | 0.32 | [shot](host-test-evidence/pegasus/shots/xshadertoy_polarnight_gles3.jpg) |
+| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_prococean_gles3.jpg) |
+| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 63% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_protophore_gles3.jpg) |
+| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 76% | 76% | 38% | 0.27 | [shot](host-test-evidence/pegasus/shots/xshadertoy_rigrekt_gles3.jpg) |
+| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 61% | 65% | 27% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_selfreflect_gles3.jpg) |
+| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 55% | 0.32 | [shot](host-test-evidence/pegasus/shots/xshadertoy_skyline_gles3.jpg) |
+| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 99% | 69% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_stardome_gles3.jpg) |
+| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 38% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_starnest_gles3.jpg) |
+| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 22% | 0.17 | [shot](host-test-evidence/pegasus/shots/xshadertoy_stratus_gles3.jpg) |
+| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 97% | 93% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_stripeytorus_gles3.jpg) |
+| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 95% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_topologica_gles3.jpg) |
+| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 100% | 98% | 0.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_trainmandala_gles3.jpg) |
+| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 95% | 0.22 | [shot](host-test-evidence/pegasus/shots/xshadertoy_trizm_gles3.jpg) |
+| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 41% | 0.12 | [shot](host-test-evidence/pegasus/shots/xshadertoy_truchetzoom_gles3.jpg) |
+| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 47% | 0.32 | [shot](host-test-evidence/pegasus/shots/xshadertoy_universeball_gles3.jpg) |
 
 Failures on pegasus:
 
-- `cubestorm_gles3`: coverage=0.143 motion=0.4676 baseline_diff=0.998 alive=True leftover=False tiles=0.18 stop=1.12s; log=cubestorm_gles3.txt
-- `hyprsaver_geometry_gles3`: coverage=0.022 motion=0.0647 baseline_diff=0.998 alive=True leftover=False tiles=0.14 stop=1.12s; log=hyprsaver_geometry_gles3.txt
-- `hyprsaver_hypercube_gles3`: coverage=0.056 motion=0.1120 baseline_diff=0.998 alive=True leftover=False tiles=0.17 stop=1.17s; log=hyprsaver_hypercube_gles3.txt
-- `hyprsaver_tesla_gles3`: coverage=0.053 motion=0.0551 baseline_diff=0.995 alive=True leftover=False tiles=0.15 stop=1.17s; log=hyprsaver_tesla_gles3.txt
+- `cubestorm_gles3`: coverage=0.141 motion=0.4633 baseline_diff=0.995 alive=True leftover=False tiles=0.18 stop=0.22s; log=cubestorm_gles3.txt
+- `hyprsaver_geometry_gles3`: coverage=0.021 motion=0.0615 baseline_diff=0.995 alive=True leftover=False tiles=0.15 stop=0.17s; log=hyprsaver_geometry_gles3.txt
+- `hyprsaver_hypercube_gles3`: coverage=0.058 motion=0.1086 baseline_diff=0.994 alive=True leftover=False tiles=0.16 stop=0.17s; log=hyprsaver_hypercube_gles3.txt
+- `hyprsaver_stonks_gles3`: coverage=0.060 motion=0.1160 baseline_diff=0.994 alive=True leftover=False tiles=0.20 stop=0.17s; log=hyprsaver_stonks_gles3.txt
+- `hyprsaver_tesla_gles3`: coverage=0.053 motion=0.0557 baseline_diff=0.989 alive=True leftover=False tiles=0.15 stop=0.22s; log=hyprsaver_tesla_gles3.txt
 
 ## o6n
 
@@ -771,7 +774,7 @@ Failures on pegasus:
 - GLES renderer: Mali-G720-Immortalis; OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5
 - Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "", "ncz-screensavers": "0.3.0"}
 - Compositor: {"name": "labwc", "pid": 1640}
-- Started 2026-09-29T06:26:34Z, finished 2026-09-29T06:42:31Z
+- Started 2026-09-29T06:51:53Z, finished 2026-09-29T07:06:31Z
 
 ### o6n: env
 
@@ -835,16 +838,16 @@ Failures on pegasus:
 | Check | Status | Detail |
 |---|---|---|
 | dry-run-plan | PASS | {"saver":6,"lock":null,"dpms":null,"lock_on_suspend":false} |
-| daemon-start | PASS | state={'pid': 40619, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790663989} |
+| daemon-start | PASS | state={'pid': 46633, 'state': 'active', 'plan': {'saver': 6, 'lock': None, 'dpms': None, 'lock_on_suspend': False}, 'updated': 1790665436} |
 | idle-fires-saver | PASS | saver started 6.2s after daemon start (timer 6s) |
-| idle-saver-visible | PASS | coverage=0.845 motion=0.579 |
-| dismiss-on-pointer | PASS | stopped 1.27s after injected motion (poke rc=0 ) |
+| idle-saver-visible | PASS | coverage=0.845 motion=0.581 |
+| dismiss-on-pointer | PASS | stopped 0.60s after injected motion (poke rc=0 ) |
 | state-returns-active | PASS | active |
-| dismiss-on-key | PASS | saver stopped 1.1986661460032337s after key |
+| dismiss-on-key | PASS | saver stopped 0.12618707300134702s after key |
 | idle-inhibit-blocks | PASS | saver stayed off for 14 s while inhibited |
 | idle-inhibit-releases | PASS | saver started 6.5s after the inhibitor ended |
 | live-reconfigure | PASS | plan={'saver': 9, 'lock': None, 'dpms': None, 'lock_on_suspend': False} |
-| lock-chain | PASS | saver_start=6.183663256000727 lock_marker=True saver_stopped_before_lock=True |
+| lock-chain | PASS | saver_start=6.200566986000922 lock_marker=True saver_stopped_before_lock=True |
 | logind-lock-signal | PASS | lock command ran 0.2s after loginctl lock-session |
 | suspend-resume | SKIP | not run: no physical access to wake the host; the PrepareForSleep path shares the lock code exercised above |
 | video-inhibit-blocks | PASS | saver stayed off for 14 s while mpv played fullscreen video |
@@ -853,17 +856,17 @@ Failures on pegasus:
 | outputs-enabled-after-tests | PASS | all outputs enabled |
 | systemd-unit | PASS | unit active [evidence](host-test-evidence/o6n/logs/idled-unit-journal.txt) |
 | unit-enabled-for-login | PASS | is-enabled=enabled, graphical-session.target.wants link=True |
-| unit-restart | PASS | state file after restart: {'pid': 42414, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790664111} |
+| unit-restart | PASS | state file after restart: {'pid': 47946, 'state': 'active', 'plan': {'saver': None, 'lock': 300, 'dpms': None, 'lock_on_suspend': True}, 'updated': 1790665554} |
 
 ### o6n: color
 
 | Check | Status | Detail |
 |---|---|---|
-| color-stylized | PASS | coverage=0.932 mean_rgb=(90,87,75) [evidence](host-test-evidence/o6n/shots/blackhole_stylized.jpg) |
-| color-kipthorne | PASS | coverage=0.980 mean_rgb=(117,105,59) [evidence](host-test-evidence/o6n/shots/blackhole_kipthorne.jpg) |
-| color-faithful | PASS | coverage=0.847 mean_rgb=(104,90,122) [evidence](host-test-evidence/o6n/shots/blackhole_faithful.jpg) |
-| color-stylized-distinct | PASS | stylized vs kipthorne: score 3.40 (chroma 0.068, brightness x1.12); stylized vs faithful: score 3.22 (chroma 0.064, brightness x1.25) |
-| color-physical-modes-distinct | PASS | kipthorne vs faithful: score 6.24 (chroma 0.125, brightness x1.12) |
+| color-stylized | PASS | coverage=0.883 mean_rgb=(99,124,135) [evidence](host-test-evidence/o6n/shots/blackhole_stylized.jpg) |
+| color-kipthorne | PASS | coverage=0.883 mean_rgb=(136,117,96) [evidence](host-test-evidence/o6n/shots/blackhole_kipthorne.jpg) |
+| color-faithful | PASS | coverage=0.883 mean_rgb=(116,105,106) [evidence](host-test-evidence/o6n/shots/blackhole_faithful.jpg) |
+| color-stylized-distinct | PASS | stylized vs kipthorne: score 5.73 (chroma 0.115, brightness x1.03); stylized vs faithful: score 4.15 (chroma 0.083, brightness x1.09) |
+| color-physical-modes-distinct | PASS | kipthorne vs faithful: score 1.88 (chroma 0.038, brightness x1.06) |
 | color-unknown-value | PASS | hack kept running with an unknown color value |
 
 ### o6n: chooser
@@ -871,106 +874,104 @@ Failures on pegasus:
 | Check | Status | Detail |
 |---|---|---|
 | settings-dump | PASS | 84 catalog entries in --dump |
-| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:42636): Gsk-WARNING **: 02:42:24.198: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/o6n/logs/settings-selftest.txt) |
+| settings-self-test | PASS | rc=0, 6 checks, failures=[] , GTK_A11Y should be set to 'none'.  (process:48125): Gsk-WARNING **: 03:06:24.249: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence/o6n/logs/settings-selftest.txt) |
 | settings-screenshot | PASS | window alive=True; wrote /home/mini/ncz-host-test/results/shots/settings.png [evidence](host-test-evidence/o6n/shots/settings.jpg) |
 
 ### o6n: hacks
 
 | Hack | Group | Result | Pixel coverage | Tile coverage | Motion | Stop (s) | Evidence |
 |---|---|---|---|---|---|---|---|
-| `blackhole_gles3` | Black Hole Simulation | PASS | 91% | 94% | 64% | 1.26 | [shot](host-test-evidence/o6n/shots/blackhole_gles3.jpg) |
-| `cityflow_gles3` | Classics | PASS | 100% | 100% | 2% | 1.3 | [shot](host-test-evidence/o6n/shots/cityflow_gles3.jpg) |
-| `crackberg_gles3` | Classics | PASS | 100% | 100% | 38% | 1.18 | [shot](host-test-evidence/o6n/shots/crackberg_gles3.jpg) |
-| `cubestorm_gles3` | Classics | FAIL | 11% | 13% | 7% | 1.27 | [shot](host-test-evidence/o6n/shots/cubestorm_gles3.jpg) |
-| `geodesic_gles3` | Classics | PASS | 37% | 66% | 53% | 1.22 | [shot](host-test-evidence/o6n/shots/geodesic_gles3.jpg) |
-| `gibson_gles3` | Classics | PASS | 40% | 47% | 21% | 1.25 | [shot](host-test-evidence/o6n/shots/gibson_gles3.jpg) |
-| `gravitywell_gles3` | Classics | PASS | 26% | 50% | 31% | 1.25 | [shot](host-test-evidence/o6n/shots/gravitywell_gles3.jpg) |
-| `hexstrut_gles3` | Classics | PASS | 33% | 93% | 53% | 1.31 | [shot](host-test-evidence/o6n/shots/hexstrut_gles3.jpg) |
-| `hypertorus_gles3` | Classics | PASS | 24% | 33% | 37% | 1.24 | [shot](host-test-evidence/o6n/shots/hypertorus_gles3.jpg) |
-| `klein_gles3` | Classics | PASS | 38% | 48% | 47% | 1.26 | [shot](host-test-evidence/o6n/shots/klein_gles3.jpg) |
-| `noof_gles3` | Classics | PASS | 69% | 82% | 46% | 1.31 | [shot](host-test-evidence/o6n/shots/noof_gles3.jpg) |
-| `projectiveplane_gles3` | Classics | PASS | 25% | 31% | 32% | 1.26 | [shot](host-test-evidence/o6n/shots/projectiveplane_gles3.jpg) |
-| `voronoi_gles3` | Classics | PASS | 100% | 100% | 6% | 1.25 | [shot](host-test-evidence/o6n/shots/voronoi_gles3.jpg) |
-| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 35% | 39% | 4% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_attitude_gles3.jpg) |
-| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 85% | 85% | 62% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_aurora_gles3.jpg) |
-| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 30% | 4% | 1.19 | [shot](host-test-evidence/o6n/shots/hyprsaver_bezier_gles3.jpg) |
-| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 42% | 1.2 | [shot](host-test-evidence/o6n/shots/hyprsaver_blob_gles3.jpg) |
-| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 1.2 | [shot](host-test-evidence/o6n/shots/hyprsaver_caustics_gles3.jpg) |
-| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 10% | 42% | 17% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_circuit_gles3.jpg) |
-| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 33% | 1.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_clouds_gles3.jpg) |
-| `hyprsaver_donut_gles3` | hyprsaver | PASS | 25% | 30% | 28% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_donut_gles3.jpg) |
-| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 4% | 49% | 10% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_fireflies_gles3.jpg) |
-| `hyprsaver_flames_gles3` | hyprsaver | PASS | 54% | 61% | 38% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_flames_gles3.jpg) |
-| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 56% | 59% | 54% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_fractaltrap_gles3.jpg) |
-| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 2% | 12% | 6% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_geometry_gles3.jpg) |
-| `hyprsaver_gridwave_gles3` | hyprsaver | FAIL | 7% | 25% | 13% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_gridwave_gles3.jpg) |
-| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 5% | 15% | 12% | 1.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_hypercube_gles3.jpg) |
-| `hyprsaver_julia_gles3` | hyprsaver | PASS | 26% | 34% | 38% | 1.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_julia_gles3.jpg) |
-| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 44% | 1.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_kaleidoscope_gles3.jpg) |
-| `hyprsaver_lissajous_gles3` | hyprsaver | FAIL | 2% | 23% | 5% | 1.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_lissajous_gles3.jpg) |
-| `hyprsaver_marble_gles3` | hyprsaver | PASS | 89% | 100% | 91% | 1.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_marble_gles3.jpg) |
-| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 29% | 86% | 49% | 1.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_matrix_gles3.jpg) |
-| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 31% | 35% | 32% | 1.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_mobius_gles3.jpg) |
-| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 34% | 70% | 24% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_oscilloscope_gles3.jpg) |
-| `hyprsaver_planet_gles3` | hyprsaver | PASS | 22% | 73% | 19% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_planet_gles3.jpg) |
-| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 92% | 99% | 98% | 1.2 | [shot](host-test-evidence/o6n/shots/hyprsaver_plasma_gles3.jpg) |
-| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 26% | 31% | 8% | 1.2 | [shot](host-test-evidence/o6n/shots/hyprsaver_shipburn_gles3.jpg) |
-| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 2% | 37% | 3% | 1.2 | [shot](host-test-evidence/o6n/shots/hyprsaver_snowfall_gles3.jpg) |
-| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 29% | 2% | 1.24 | [shot](host-test-evidence/o6n/shots/hyprsaver_sonar_gles3.jpg) |
-| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 4% | 58% | 8% | 1.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_starfield_gles3.jpg) |
-| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 17% | 11% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_stonks_gles3.jpg) |
-| `hyprsaver_temple_gles3` | hyprsaver | PASS | 30% | 89% | 53% | 1.2 | [shot](host-test-evidence/o6n/shots/hyprsaver_temple_gles3.jpg) |
-| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 17% | 41% | 28% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_terminal_gles3.jpg) |
-| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 5% | 14% | 5% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_tesla_gles3.jpg) |
-| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 26% | 32% | 27% | 1.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_tunnel_gles3.jpg) |
-| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 98% | 100% | 96% | 1.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_voronoi_gles3.jpg) |
-| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 43% | 70% | 48% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_waterfall_gles3.jpg) |
-| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 95% | 1.21 | [shot](host-test-evidence/o6n/shots/hyprsaver_wormhole_gles3.jpg) |
-| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 77% | 1.31 | [shot](host-test-evidence/o6n/shots/xshadertoy_alienbeacon_gles3.jpg) |
-| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 47% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_batteredplanet_gles3.jpg) |
-| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 49% | 54% | 35% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill0-0_gles3.jpg) |
-| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 77% | 80% | 22% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill1-0_gles3.jpg) |
-| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 97% | 98% | 64% | 1.21 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill2-0_gles3.jpg) |
-| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 79% | 83% | 73% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill3-0_gles3.jpg) |
-| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 79% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill4-0_gles3.jpg) |
-| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 95% | 17% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill5-0_gles3.jpg) |
-| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 69% | 73% | 66% | 1.21 | [shot](host-test-evidence/o6n/shots/xshadertoy_darktransit_gles3.jpg) |
-| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 70% | 74% | 56% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_downfall_gles3.jpg) |
-| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 79% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_elementalring_gles3.jpg) |
-| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 57% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_fluxcore_gles3.jpg) |
-| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 78% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
-| `xshadertoy_goldenapollian_gles3` | xshadertoy | FAIL | 95% | 99% | 0% | 0.15 | [shot](host-test-evidence/o6n/shots/xshadertoy_goldenapollian_gles3.jpg) |
-| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 85% | 98% | 75% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_hexplasma_gles3.jpg) |
-| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 62% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_iridescence_gles3.jpg) |
-| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 57% | 75% | 68% | 1.21 | [shot](host-test-evidence/o6n/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
-| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 92% | 100% | 77% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_neongravity-1_gles3.jpg) |
-| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 23% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_neonhorizon_gles3.jpg) |
-| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 44% | 52% | 74% | 1.31 | [shot](host-test-evidence/o6n/shots/xshadertoy_neontriangulator_gles3.jpg) |
-| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 87% | 95% | 90% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_noxfire_gles3.jpg) |
-| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 73% | 1.3 | [shot](host-test-evidence/o6n/shots/xshadertoy_polarnight_gles3.jpg) |
-| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 47% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_prococean_gles3.jpg) |
-| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 66% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_protophore_gles3.jpg) |
-| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 76% | 75% | 40% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_rigrekt_gles3.jpg) |
-| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 61% | 65% | 27% | 1.26 | [shot](host-test-evidence/o6n/shots/xshadertoy_selfreflect_gles3.jpg) |
-| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 51% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_skyline_gles3.jpg) |
-| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 98% | 74% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_stardome_gles3.jpg) |
-| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 39% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_starnest_gles3.jpg) |
-| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 16% | 1.21 | [shot](host-test-evidence/o6n/shots/xshadertoy_stratus_gles3.jpg) |
-| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 95% | 95% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_stripeytorus_gles3.jpg) |
-| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 91% | 1.21 | [shot](host-test-evidence/o6n/shots/xshadertoy_topologica_gles3.jpg) |
-| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 99% | 98% | 1.21 | [shot](host-test-evidence/o6n/shots/xshadertoy_trainmandala_gles3.jpg) |
-| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 91% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_trizm_gles3.jpg) |
-| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 40% | 1.24 | [shot](host-test-evidence/o6n/shots/xshadertoy_truchetzoom_gles3.jpg) |
-| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 1.2 | [shot](host-test-evidence/o6n/shots/xshadertoy_universeball_gles3.jpg) |
+| `blackhole_gles3` | Black Hole Simulation | PASS | 93% | 96% | 89% | 0.41 | [shot](host-test-evidence/o6n/shots/blackhole_gles3.jpg) |
+| `cityflow_gles3` | Classics | PASS | 100% | 100% | 52% | 0.31 | [shot](host-test-evidence/o6n/shots/cityflow_gles3.jpg) |
+| `crackberg_gles3` | Classics | PASS | 100% | 100% | 36% | 0.32 | [shot](host-test-evidence/o6n/shots/crackberg_gles3.jpg) |
+| `cubestorm_gles3` | Classics | FAIL | 11% | 14% | 7% | 0.66 | [shot](host-test-evidence/o6n/shots/cubestorm_gles3.jpg) |
+| `geodesic_gles3` | Classics | PASS | 38% | 66% | 51% | 0.33 | [shot](host-test-evidence/o6n/shots/geodesic_gles3.jpg) |
+| `gibson_gles3` | Classics | PASS | 39% | 47% | 21% | 0.41 | [shot](host-test-evidence/o6n/shots/gibson_gles3.jpg) |
+| `gravitywell_gles3` | Classics | PASS | 25% | 46% | 27% | 0.3 | [shot](host-test-evidence/o6n/shots/gravitywell_gles3.jpg) |
+| `hexstrut_gles3` | Classics | PASS | 33% | 94% | 55% | 0.26 | [shot](host-test-evidence/o6n/shots/hexstrut_gles3.jpg) |
+| `hypertorus_gles3` | Classics | PASS | 28% | 34% | 36% | 0.3 | [shot](host-test-evidence/o6n/shots/hypertorus_gles3.jpg) |
+| `klein_gles3` | Classics | PASS | 44% | 62% | 64% | 0.31 | [shot](host-test-evidence/o6n/shots/klein_gles3.jpg) |
+| `noof_gles3` | Classics | PASS | 69% | 82% | 46% | 0.27 | [shot](host-test-evidence/o6n/shots/noof_gles3.jpg) |
+| `projectiveplane_gles3` | Classics | PASS | 26% | 33% | 33% | 0.31 | [shot](host-test-evidence/o6n/shots/projectiveplane_gles3.jpg) |
+| `voronoi_gles3` | Classics | PASS | 100% | 100% | 91% | 0.35 | [shot](host-test-evidence/o6n/shots/voronoi_gles3.jpg) |
+| `hyprsaver_attitude_gles3` | hyprsaver | PASS | 35% | 39% | 4% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_attitude_gles3.jpg) |
+| `hyprsaver_aurora_gles3` | hyprsaver | PASS | 85% | 85% | 62% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_aurora_gles3.jpg) |
+| `hyprsaver_bezier_gles3` | hyprsaver | PASS (sparse) | 3% | 29% | 5% | 0.4 | [shot](host-test-evidence/o6n/shots/hyprsaver_bezier_gles3.jpg) |
+| `hyprsaver_blob_gles3` | hyprsaver | PASS | 100% | 100% | 42% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_blob_gles3.jpg) |
+| `hyprsaver_caustics_gles3` | hyprsaver | PASS | 100% | 100% | 13% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_caustics_gles3.jpg) |
+| `hyprsaver_circuit_gles3` | hyprsaver | PASS (sparse) | 10% | 42% | 17% | 0.36 | [shot](host-test-evidence/o6n/shots/hyprsaver_circuit_gles3.jpg) |
+| `hyprsaver_clouds_gles3` | hyprsaver | PASS | 100% | 100% | 33% | 0.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_clouds_gles3.jpg) |
+| `hyprsaver_donut_gles3` | hyprsaver | PASS | 25% | 29% | 28% | 0.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_donut_gles3.jpg) |
+| `hyprsaver_fireflies_gles3` | hyprsaver | PASS (sparse) | 4% | 49% | 10% | 0.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_fireflies_gles3.jpg) |
+| `hyprsaver_flames_gles3` | hyprsaver | PASS | 54% | 61% | 38% | 0.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_flames_gles3.jpg) |
+| `hyprsaver_fractaltrap_gles3` | hyprsaver | PASS | 56% | 59% | 54% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_fractaltrap_gles3.jpg) |
+| `hyprsaver_geometry_gles3` | hyprsaver | FAIL | 2% | 13% | 6% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_geometry_gles3.jpg) |
+| `hyprsaver_gridwave_gles3` | hyprsaver | PASS (sparse) | 9% | 28% | 14% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_gridwave_gles3.jpg) |
+| `hyprsaver_hypercube_gles3` | hyprsaver | FAIL | 5% | 14% | 11% | 0.36 | [shot](host-test-evidence/o6n/shots/hyprsaver_hypercube_gles3.jpg) |
+| `hyprsaver_julia_gles3` | hyprsaver | PASS | 25% | 34% | 38% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_julia_gles3.jpg) |
+| `hyprsaver_kaleidoscope_gles3` | hyprsaver | PASS | 100% | 100% | 44% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_kaleidoscope_gles3.jpg) |
+| `hyprsaver_lissajous_gles3` | hyprsaver | FAIL | 2% | 23% | 5% | 0.96 | [shot](host-test-evidence/o6n/shots/hyprsaver_lissajous_gles3.jpg) |
+| `hyprsaver_marble_gles3` | hyprsaver | PASS | 88% | 100% | 92% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_marble_gles3.jpg) |
+| `hyprsaver_matrix_gles3` | hyprsaver | PASS | 29% | 86% | 49% | 0.36 | [shot](host-test-evidence/o6n/shots/hyprsaver_matrix_gles3.jpg) |
+| `hyprsaver_mobius_gles3` | hyprsaver | PASS | 31% | 35% | 32% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_mobius_gles3.jpg) |
+| `hyprsaver_oscilloscope_gles3` | hyprsaver | PASS | 34% | 69% | 24% | 0.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_oscilloscope_gles3.jpg) |
+| `hyprsaver_planet_gles3` | hyprsaver | PASS | 22% | 73% | 19% | 0.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_planet_gles3.jpg) |
+| `hyprsaver_plasma_gles3` | hyprsaver | PASS | 92% | 99% | 98% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_plasma_gles3.jpg) |
+| `hyprsaver_shipburn_gles3` | hyprsaver | PASS | 26% | 31% | 8% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_shipburn_gles3.jpg) |
+| `hyprsaver_snowfall_gles3` | hyprsaver | PASS (sparse) | 2% | 37% | 3% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_snowfall_gles3.jpg) |
+| `hyprsaver_sonar_gles3` | hyprsaver | PASS (sparse) | 4% | 28% | 2% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_sonar_gles3.jpg) |
+| `hyprsaver_starfield_gles3` | hyprsaver | PASS (sparse) | 4% | 58% | 8% | 0.25 | [shot](host-test-evidence/o6n/shots/hyprsaver_starfield_gles3.jpg) |
+| `hyprsaver_stonks_gles3` | hyprsaver | FAIL | 6% | 17% | 11% | 0.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_stonks_gles3.jpg) |
+| `hyprsaver_temple_gles3` | hyprsaver | PASS | 30% | 89% | 53% | 0.35 | [shot](host-test-evidence/o6n/shots/hyprsaver_temple_gles3.jpg) |
+| `hyprsaver_terminal_gles3` | hyprsaver | PASS | 17% | 41% | 28% | 0.31 | [shot](host-test-evidence/o6n/shots/hyprsaver_terminal_gles3.jpg) |
+| `hyprsaver_tesla_gles3` | hyprsaver | FAIL | 5% | 14% | 5% | 0.28 | [shot](host-test-evidence/o6n/shots/hyprsaver_tesla_gles3.jpg) |
+| `hyprsaver_tunnel_gles3` | hyprsaver | PASS | 26% | 32% | 27% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_tunnel_gles3.jpg) |
+| `hyprsaver_voronoi_gles3` | hyprsaver | PASS | 98% | 100% | 96% | 0.4 | [shot](host-test-evidence/o6n/shots/hyprsaver_voronoi_gles3.jpg) |
+| `hyprsaver_waterfall_gles3` | hyprsaver | PASS | 43% | 69% | 48% | 0.26 | [shot](host-test-evidence/o6n/shots/hyprsaver_waterfall_gles3.jpg) |
+| `hyprsaver_wormhole_gles3` | hyprsaver | PASS | 100% | 100% | 95% | 0.3 | [shot](host-test-evidence/o6n/shots/hyprsaver_wormhole_gles3.jpg) |
+| `xshadertoy_alienbeacon_gles3` | xshadertoy | PASS | 100% | 100% | 77% | 1.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_alienbeacon_gles3.jpg) |
+| `xshadertoy_batteredplanet_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 0.5 | [shot](host-test-evidence/o6n/shots/xshadertoy_batteredplanet_gles3.jpg) |
+| `xshadertoy_bestill0-0_gles3` | xshadertoy | PASS | 49% | 53% | 35% | 0.8 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill0-0_gles3.jpg) |
+| `xshadertoy_bestill1-0_gles3` | xshadertoy | PASS | 77% | 80% | 22% | 0.91 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill1-0_gles3.jpg) |
+| `xshadertoy_bestill2-0_gles3` | xshadertoy | PASS | 97% | 98% | 63% | 1.0 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill2-0_gles3.jpg) |
+| `xshadertoy_bestill3-0_gles3` | xshadertoy | PASS | 79% | 83% | 73% | 0.71 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill3-0_gles3.jpg) |
+| `xshadertoy_bestill4-0_gles3` | xshadertoy | PASS | 100% | 100% | 79% | 1.05 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill4-0_gles3.jpg) |
+| `xshadertoy_bestill5-0_gles3` | xshadertoy | PASS | 93% | 95% | 19% | 0.41 | [shot](host-test-evidence/o6n/shots/xshadertoy_bestill5-0_gles3.jpg) |
+| `xshadertoy_darktransit_gles3` | xshadertoy | PASS | 70% | 73% | 66% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_darktransit_gles3.jpg) |
+| `xshadertoy_downfall_gles3` | xshadertoy | PASS | 70% | 74% | 56% | 0.9 | [shot](host-test-evidence/o6n/shots/xshadertoy_downfall_gles3.jpg) |
+| `xshadertoy_elementalring_gles3` | xshadertoy | PASS | 100% | 100% | 73% | 0.3 | [shot](host-test-evidence/o6n/shots/xshadertoy_elementalring_gles3.jpg) |
+| `xshadertoy_fluxcore_gles3` | xshadertoy | PASS | 100% | 100% | 59% | 0.7 | [shot](host-test-evidence/o6n/shots/xshadertoy_fluxcore_gles3.jpg) |
+| `xshadertoy_gimbalharmonics_gles3` | xshadertoy | PASS | 100% | 100% | 78% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_gimbalharmonics_gles3.jpg) |
+| `xshadertoy_goldenapollian_gles3` | xshadertoy | PASS | 99% | 100% | 90% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_goldenapollian_gles3.jpg) |
+| `xshadertoy_hexplasma_gles3` | xshadertoy | PASS | 85% | 98% | 75% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_hexplasma_gles3.jpg) |
+| `xshadertoy_iridescence_gles3` | xshadertoy | PASS | 100% | 100% | 50% | 0.36 | [shot](host-test-evidence/o6n/shots/xshadertoy_iridescence_gles3.jpg) |
+| `xshadertoy_logarithmiccircles_gles3` | xshadertoy | PASS | 56% | 76% | 68% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_logarithmiccircles_gles3.jpg) |
+| `xshadertoy_neongravity-1_gles3` | xshadertoy | PASS | 92% | 100% | 78% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_neongravity-1_gles3.jpg) |
+| `xshadertoy_neonhorizon_gles3` | xshadertoy | PASS | 100% | 100% | 35% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_neonhorizon_gles3.jpg) |
+| `xshadertoy_neontriangulator_gles3` | xshadertoy | PASS | 46% | 54% | 73% | 0.25 | [shot](host-test-evidence/o6n/shots/xshadertoy_neontriangulator_gles3.jpg) |
+| `xshadertoy_noxfire_gles3` | xshadertoy | PASS | 87% | 95% | 89% | 0.85 | [shot](host-test-evidence/o6n/shots/xshadertoy_noxfire_gles3.jpg) |
+| `xshadertoy_polarnight_gles3` | xshadertoy | PASS | 100% | 100% | 73% | 0.8 | [shot](host-test-evidence/o6n/shots/xshadertoy_polarnight_gles3.jpg) |
+| `xshadertoy_prococean_gles3` | xshadertoy | PASS | 100% | 100% | 47% | 0.41 | [shot](host-test-evidence/o6n/shots/xshadertoy_prococean_gles3.jpg) |
+| `xshadertoy_protophore_gles3` | xshadertoy | PASS | 100% | 100% | 70% | 0.29 | [shot](host-test-evidence/o6n/shots/xshadertoy_protophore_gles3.jpg) |
+| `xshadertoy_rigrekt_gles3` | xshadertoy | PASS | 76% | 75% | 40% | 0.61 | [shot](host-test-evidence/o6n/shots/xshadertoy_rigrekt_gles3.jpg) |
+| `xshadertoy_selfreflect_gles3` | xshadertoy | PASS | 61% | 64% | 27% | 0.29 | [shot](host-test-evidence/o6n/shots/xshadertoy_selfreflect_gles3.jpg) |
+| `xshadertoy_skyline_gles3` | xshadertoy | PASS | 100% | 100% | 51% | 1.0 | [shot](host-test-evidence/o6n/shots/xshadertoy_skyline_gles3.jpg) |
+| `xshadertoy_stardome_gles3` | xshadertoy | PASS | 77% | 98% | 73% | 0.3 | [shot](host-test-evidence/o6n/shots/xshadertoy_stardome_gles3.jpg) |
+| `xshadertoy_starnest_gles3` | xshadertoy | PASS | 100% | 100% | 40% | 0.45 | [shot](host-test-evidence/o6n/shots/xshadertoy_starnest_gles3.jpg) |
+| `xshadertoy_stratus_gles3` | xshadertoy | PASS | 100% | 100% | 13% | 0.36 | [shot](host-test-evidence/o6n/shots/xshadertoy_stratus_gles3.jpg) |
+| `xshadertoy_stripeytorus_gles3` | xshadertoy | PASS | 84% | 95% | 95% | 0.35 | [shot](host-test-evidence/o6n/shots/xshadertoy_stripeytorus_gles3.jpg) |
+| `xshadertoy_topologica_gles3` | xshadertoy | PASS | 100% | 100% | 92% | 0.51 | [shot](host-test-evidence/o6n/shots/xshadertoy_topologica_gles3.jpg) |
+| `xshadertoy_trainmandala_gles3` | xshadertoy | PASS | 99% | 99% | 99% | 0.3 | [shot](host-test-evidence/o6n/shots/xshadertoy_trainmandala_gles3.jpg) |
+| `xshadertoy_trizm_gles3` | xshadertoy | PASS | 100% | 100% | 90% | 0.46 | [shot](host-test-evidence/o6n/shots/xshadertoy_trizm_gles3.jpg) |
+| `xshadertoy_truchetzoom_gles3` | xshadertoy | PASS | 100% | 100% | 41% | 0.31 | [shot](host-test-evidence/o6n/shots/xshadertoy_truchetzoom_gles3.jpg) |
+| `xshadertoy_universeball_gles3` | xshadertoy | PASS | 100% | 100% | 48% | 0.65 | [shot](host-test-evidence/o6n/shots/xshadertoy_universeball_gles3.jpg) |
 
 Failures on o6n:
 
-- `cubestorm_gles3`: coverage=0.106 motion=0.0726 baseline_diff=0.983 alive=True leftover=False tiles=0.13 stop=1.27s; log=cubestorm_gles3.txt
-- `hyprsaver_geometry_gles3`: coverage=0.021 motion=0.0621 baseline_diff=0.983 alive=True leftover=False tiles=0.12 stop=1.25s; log=hyprsaver_geometry_gles3.txt
-- `hyprsaver_gridwave_gles3`: coverage=0.070 motion=0.1253 baseline_diff=0.983 alive=True leftover=False tiles=0.25 stop=1.21s; log=hyprsaver_gridwave_gles3.txt
-- `hyprsaver_hypercube_gles3`: coverage=0.054 motion=0.1178 baseline_diff=0.946 alive=True leftover=False tiles=0.15 stop=1.30s; log=hyprsaver_hypercube_gles3.txt
-- `hyprsaver_lissajous_gles3`: coverage=0.022 motion=0.0491 baseline_diff=0.984 alive=True leftover=False tiles=0.23 stop=1.26s; log=hyprsaver_lissajous_gles3.txt
-- `hyprsaver_stonks_gles3`: coverage=0.057 motion=0.1127 baseline_diff=0.981 alive=True leftover=False tiles=0.17 stop=1.21s; log=hyprsaver_stonks_gles3.txt
-- `hyprsaver_tesla_gles3`: coverage=0.050 motion=0.0491 baseline_diff=0.983 alive=True leftover=False tiles=0.14 stop=1.25s; log=hyprsaver_tesla_gles3.txt
-- `xshadertoy_goldenapollian_gles3`: coverage=0.952 motion=0.0000 baseline_diff=0.001 alive=False leftover=False tiles=0.99 stop=0.15s; log=xshadertoy_goldenapollian_gles3.txt
+- `cubestorm_gles3`: coverage=0.110 motion=0.0669 baseline_diff=0.987 alive=True leftover=False tiles=0.14 stop=0.66s; log=cubestorm_gles3.txt
+- `hyprsaver_geometry_gles3`: coverage=0.023 motion=0.0635 baseline_diff=0.988 alive=True leftover=False tiles=0.13 stop=0.35s; log=hyprsaver_geometry_gles3.txt
+- `hyprsaver_hypercube_gles3`: coverage=0.049 motion=0.1087 baseline_diff=0.985 alive=True leftover=False tiles=0.14 stop=0.36s; log=hyprsaver_hypercube_gles3.txt
+- `hyprsaver_lissajous_gles3`: coverage=0.022 motion=0.0492 baseline_diff=0.986 alive=True leftover=False tiles=0.23 stop=0.96s; log=hyprsaver_lissajous_gles3.txt
+- `hyprsaver_stonks_gles3`: coverage=0.057 motion=0.1129 baseline_diff=0.990 alive=True leftover=False tiles=0.17 stop=0.26s; log=hyprsaver_stonks_gles3.txt
+- `hyprsaver_tesla_gles3`: coverage=0.050 motion=0.0497 baseline_diff=0.919 alive=True leftover=False tiles=0.14 stop=0.28s; log=hyprsaver_tesla_gles3.txt
 

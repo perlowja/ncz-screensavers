@@ -1,4 +1,4 @@
-[diag] framebuffer frame=360 pixels=2707396 nonblack=2707396 hash=7081859481f9f04d gl_error=0x0 srgb=off min_dark=(R23,G0,B0) p1=0 p5=0 hist[0..15]=1993486,181164,167528,280254,313842,268545,514026,1790191,115596,115044,92135,83787,93624,122120,159774,1831072
+[diag] framebuffer frame=360 pixels=2707396 nonblack=2707396 hash=94356d6db7eddc0f gl_error=0x0 srgb=off min_dark=(R24,G0,B0) p1=0 p5=0 hist[0..15]=1995843,182509,168402,278184,314513,268679,517345,1783322,113931,113814,92044,83834,95012,124603,160067,1830086
 [diag] colorspace_ext=EGL_KHR_gl_colorspace=yes client_ext='EGL_WL_bind_wayland_display EGL_NV_context_priority_realtime EGL_KHR_partial_update EGL_EXT_swap_buffers_with_damage EGL_KHR_swap_buffers_with_damage EGL_KHR_config_attribs EGL_KHR_image EGL_KHR_image_base EGL_KHR_fence_sync EGL_KHR_wait_sync EGL_KHR_gl_colorspace EGL_KHR_get_all_proc_addresses EGL_IMG_context_priority EGL_KHR_no_config_context EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_EXT_yuv_surface EGL_EXT_pixel_format_float EGL_ARM_pixmap_multisample_discard EGL_ANDROID_native_fence_sync EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_3D_image EGL_KHR_gl_renderbuffer_image EGL_KHR_create_context EGL_KHR_surfaceless_context EGL_KHR_gl_texture_cubemap_image EGL_EXT_image_gl_colorspace EGL_EXT_create_context_robustness'
 [diag] eglconfig RGBA=8/8/8/8 depth=24 stencil=0 rtype=0x45 colorspace=0x3038 buf_type=0x308e
 [diag] gles3_harness: EGL 1.5, GLES3 context live
@@ -17,4 +17,4 @@ GLSL=OpenGL ES GLSL ES 3.20
 [diag] frame #2
 [diag] frame #3
 [diag] frame #4
-[diag] framebuffer frame=4 pixels=2707396 nonblack=151493 hash=e57d09904b6cc297 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=8052957,39760,23965,3162,1443,576,145,124,56,0,0,0,0,0,0,0
+[diag] framebuffer frame=4 pixels=2707396 nonblack=151451 hash=66f693ec3cafb16a gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=8053027,39662,24025,3171,1414,565,144,124,56,0,0,0,0,0,0,0

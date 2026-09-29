@@ -5,8 +5,8 @@ PASS color-restore
 PASS idle-set
 PASS idle-restore
 
-(process:59206): Gdk-WARNING **: 02:19:22.949: Cannot get portal org.freedesktop.portal.Inhibit version: GDBus.Error:org.freedesktop.DBus.Error.InvalidArgs: No such interface “org.freedesktop.portal.Inhibit”
+(process:66027): Gdk-WARNING **: 03:03:38.432: Cannot get portal org.freedesktop.portal.Inhibit version: GDBus.Error:org.freedesktop.DBus.Error.InvalidArgs: No such interface “org.freedesktop.portal.Inhibit”
 
-(process:59206): Gtk-WARNING **: 02:19:22.993: Unable to acquire the address of the accessibility bus: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name is not activatable. If you are attempting to run GTK without a11y support, GTK_A11Y should be set to 'none'.
+(process:66027): Gtk-WARNING **: 03:03:38.477: Unable to acquire the address of the accessibility bus: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name is not activatable. If you are attempting to run GTK without a11y support, GTK_A11Y should be set to 'none'.
 
-(process:59206): Gsk-WARNING **: 02:19:23.054: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help
+(process:66027): Gsk-WARNING **: 03:03:38.541: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help
