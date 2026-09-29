@@ -1,0 +1,36 @@
+Source: ncz-screensavers
+Section: x11
+Priority: optional
+Maintainer: Jason Perlow <jperlow@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ libegl-dev,
+ libgles-dev,
+ libglib2.0-bin,
+ libpng-dev,
+ libwayland-bin,
+ libwayland-dev,
+ meson (>= 1.0),
+ ninja-build,
+ pkgconf,
+ python3,
+ wayland-protocols,
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://gitlab.com/ncz-os/ncz-screensavers
+
+Package: ncz-screensavers
+Architecture: amd64 arm64
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: native Wayland GLES3 screensavers for NCZ-OS
+ A set of 84 OpenGL ES 3 screensavers that run directly on Wayland through
+ wlr-layer-shell and EGL, with no X11 or Xwayland dependency: the Black Hole
+ simulation (with stylized, kipthorne and faithful color modes), hyprsaver and
+ Shadertoy-style shader hacks, and a dozen ported classic hacks.
+ .
+ The hack binaries are installed in /usr/lib/ncz-screensavers, their shaders
+ in /usr/share/ncz-screensavers/shaders, the chooser catalog in
+ /usr/share/ncz-screensaver-chooser/hacks.tsv and the dev.ncz.screensaver
+ GSettings schema in /usr/share/glib-2.0/schemas.

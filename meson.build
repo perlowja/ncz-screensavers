@@ -23,7 +23,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.1.0',
+    version: '0.2.0',
     license: 'GPL-2.0-or-later',
 )
 
@@ -1648,3 +1648,10 @@ install_data('assets/screensaver-chooser/hacks.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 install_data('config/dev.ncz.screensaver.gschema.xml',
              install_dir: get_option('prefix') / 'share' / 'glib-2.0' / 'schemas')
+
+# Launcher, idle timer and settings glue live in launcher/ (own meson.build,
+# maintained separately); pull them into the same install when present.
+fs = import('fs')
+if fs.is_dir('launcher') and fs.exists('launcher/meson.build')
+    subdir('launcher')
+endif

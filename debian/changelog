@@ -1,0 +1,10 @@
+ncz-screensavers (0.2.0) unstable; urgency=medium
+
+  * Consolidated ship set of 84 hacks (Black Hole, 35 hyprsaver, 36
+    xshadertoy, 12 classics) with install rules and chooser catalog.
+  * Black Hole: restore stylized/kipthorne/faithful color modes selected with
+    NCZ_BLACKHOLE_COLORS; replace the screen-space jet cone (large-dots
+    searchlight artifact) with collimated beams.
+  * Add the dev.ncz.screensaver GSettings schema with blackhole-color-mode.
+
+ -- Jason Perlow <jperlow@gmail.com>  Mon, 29 Sep 2026 00:00:00 +0000
