@@ -13,7 +13,7 @@
  * (hacks/glx/glsl-utils.c). Only edit: replaced
  *     #include "screenhackI.h"
  * with
- *     #include "xscreensaver_compat.h"
+ *     #include "ncz_hack_shim.h"
  * because screenhackI.h pulls in ~20 xscreensaver-private headers
  * (yarandom, grabclient, xft, fps, ...). glsl-utils.c itself only uses
  * `progname` (extern const char *) and `Bool`/`True`/`False` (typedef int,
@@ -29,7 +29,7 @@
  * glGetUniformLocation, ...) come from GLES3/gl32.h — that file's order
  * of inclusion is fine because glsl-utils.h itself pulls in our shim.
  */
-#include "xscreensaver_compat.h"
+#include "ncz_hack_shim.h"
 #include "glsl-utils.h"
 
 #include <math.h>

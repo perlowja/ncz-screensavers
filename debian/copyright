@@ -31,14 +31,38 @@ Comment: Each vendored shader declares its own license identifier in its
  header; the shipped set contains only MIT, CC0 and CC BY 3.0 shaders and
  original clean-room ports. See vendor/xshadertoy/PORTED.md.
 
-Files: src/voronoi.c src/projectiveplane.c src/klein.c src/hypertorus.c
- src/cubestorm.c src/hexstrut.c src/crackberg.c src/cityflow.c
- src/geodesic.c src/gravitywell.c src/noof.c src/gibson.c
+Files: src/projectiveplane.c src/klein.c src/hypertorus.c
 Copyright: 1992-2026 Jamie Zawinski <jwz@jwz.org> and the individual hack authors
 License: xscreensaver
-Comment: Ported classic hacks. Most files carry the notice below; crackberg.c
- (Matus Telgarsky, 2005) carries only an authorship line and is distributed
- in the xscreensaver collection under the same terms.
+Comment: Ported classic hacks (GLSL, retained buffers).
+
+Files: src/classics_shader/cs_voronoi.c src/classics_shader/cs_gravitywell.c
+ src/classics_shader/cs_hexstrut.c src/classics_shader/cs_cubestorm.c
+ src/classics_shader/cs_cityflow.c src/classics_shader/cs_geodesic.c
+ src/classics_shader/cs_gibson.c
+Copyright: 2003-2025 Jamie Zawinski <jwz@jwz.org>
+           2026 Jason Perlow <jperlow@gmail.com> (shader-engine port)
+License: xscreensaver and GPL-2+
+Comment: Ports of the xscreensaver hacks of the same names; the simulation follows
+ the original and keeps its permission notice. The GLES3 glue is GPL-2+.
+
+Files: src/classics_shader/cs_crackberg.c
+Copyright: 2005 Matus Telgarsky <catachresis@cmu.edu>
+           2026 Jason Perlow <jperlow@gmail.com> (shader-engine port)
+License: xscreensaver and GPL-2+
+Comment: The terrain generator, morph state machine, visibility walk and camera are
+ the unmodified upstream code; only the rendering is replaced.
+
+Files: src/classics_shader/cs_noof.c
+Copyright: 2004-2018 Bill Torzewski <billt@worksitez.com>
+           (ported to xscreensaver by Jamie Zawinski, 2004)
+           2026 Jason Perlow <jperlow@gmail.com> (shader-engine port)
+License: xscreensaver and GPL-2+
+
+Files: src/classics_shader/cs_common.h src/classics_shader/cs_post.h
+Copyright: 2026 Jason Perlow <jperlow@gmail.com>
+License: GPL-2+
+
 License: xscreensaver
  Permission to use, copy, modify, distribute, and sell this software and its
  documentation for any purpose is hereby granted without fee, provided that

@@ -38,8 +38,8 @@
 #include <stddef.h>
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
-#include "gles3_compat.h"
-#include "xscreensaver_compat.h"
+#include "ncz_gl.h"
+#include "ncz_hack_shim.h"
 #include "ncz_platform.h"
 
 #ifdef NCZ_GLES3_BUILD
@@ -541,7 +541,7 @@ static void draw_trail_decay(State *st) {
     glBindBuffer(GL_ARRAY_BUFFER, st->full_vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -640,7 +640,7 @@ static void draw_lines(State *st) {
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof (LineVert),
                           (void *)offsetof(LineVert, s));
 
-    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, vcount);
+    glDrawArrays(GL_TRIANGLES, 0, vcount);
 
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
@@ -698,7 +698,7 @@ static void draw_composite(State *st) {
     glBindBuffer(GL_ARRAY_BUFFER, st->full_vbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);

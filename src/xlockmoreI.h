@@ -6,5 +6,5 @@
  */
 #ifndef NCZ_XLOCKMOREI_H
 #define NCZ_XLOCKMOREI_H
-#include "xscreensaver_compat.h"
+#include "ncz_hack_shim.h"
 #endif

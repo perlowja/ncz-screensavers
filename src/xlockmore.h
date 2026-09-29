@@ -8,6 +8,6 @@
 #ifndef NCZ_XLOCKMORE_H
 #define NCZ_XLOCKMORE_H
 
-#include "xscreensaver_compat.h"
+#include "ncz_hack_shim.h"
 
 #endif /* NCZ_XLOCKMORE_H */
