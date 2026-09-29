@@ -1083,6 +1083,8 @@ def _rows_from_json(path, hack_id):
                     or f"NCZ_{short_name(hack_id).upper()}_{name.upper().replace('-', '_')}"
                 ),
                 "level": str(o.get("level", "")),
+                "choice_groups": o.get("choice_groups", []),
+                "choice_labels": o.get("choice_labels", {}),
             }
         )
     return rows

@@ -50,6 +50,15 @@ JSON presets.
 | `level` | no | `basic` or `advanced`; default `basic` for `preset`, `seed`, `palette`, `style`, `speed`, else `advanced` |
 | `env` | no | environment variable the hack reads; default `NCZ_<SHORTNAME>_<ID>` upper case, `-` becomes `_` |
 
+Long enums (a palette with about a hundred entries) may add two optional fields; `choices`
+stays the flat, validated list and unknown fields are ignored by older front ends:
+
+- `choice_groups`: `[{"label": "1960s", "choices": ["1960s-yellow-orange", ...]}, ...]`, shown
+  as sections or a two-level picker;
+- `choice_labels`: `{"lavalite-06": "Clear / Coral red"}`, readable names for ids.
+
+Put the default (for example `auto`, meaning drawn from the seed) first in `choices`.
+
 Conventions a front end relies on:
 
 - `preset` (string) names the scene. Its choices are the presets listed for the hack.
