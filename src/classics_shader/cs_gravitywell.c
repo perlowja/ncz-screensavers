@@ -76,6 +76,8 @@ static const ncz_opt_def GOPTS[] = {
      "Spacing between grid lines; larger means fewer lines (xscreensaver -grid-size).", "Density"},
     {"palette", NCZ_OPT_ENUM, "classic", 0, 0, "classic,aurora,amber,ice,ember,cycle", NULL, NULL, "Palette",
      "Line colors by depth. classic is the original green to red. cycle cross-fades between the palettes every 45 seconds.", "Look"},
+    {"fog", NCZ_OPT_FLOAT, "-1", -1, 4, NULL, NULL, NULL, "Fog",
+     "Distance fog density as a multiple of the original (xscreensaver uses 1). -1 = automatic: none for classic (the look this catalog has always shown), half for enhanced.", "Look"},
     CS_OPT_BLOOM, CS_OPT_AA,
 };
 const ncz_opt_def *ncz_hack_options(size_t *n, const char **prefix, const char **group) {
@@ -116,7 +118,7 @@ static void step_stars(gstate *s) {
 static const char *VS = CS_GLSL(
     uniform mat4 uMVP; uniform mat4 uMV; uniform vec2 uRes;
     uniform int uMode;            /* 0 grid lines along x, 1 grid lines along y, 2 foot circles */
-    uniform float uHalfW; uniform int uN; uniform float uStep; uniform float uLimY; uniform float uLimX; uniform float uGrid;
+    uniform float uHalfW; uniform float uFogK; uniform int uN; uniform float uStep; uniform float uLimY; uniform float uLimX; uniform float uGrid;
     uniform vec4 uS0[32];         /* x, y, mass, surface gravity */
     uniform vec4 uS1[32];         /* ri2, ro2, radius, depth */
     uniform vec3 uPalA; uniform vec3 uPalB; uniform vec3 uPalA2; uniform vec3 uPalB2; uniform float uPalMix;
@@ -165,7 +167,7 @@ static const char *VS = CS_GLSL(
         gl_Position = vec4(sp / (uRes * 0.5) * c1.w, c1.z, c1.w);
         vDist = side * hw;
         float eyeD = abs((uMV * vec4(m1, 1.0)).z);
-        vFog = exp(-pow(0.005 * eyeD, 2.0));
+        vFog = exp(-pow(0.005 * uFogK * eyeD, 2.0));
         vec3 col = ramp(m1.z);
         float hn = clamp(m1.z / 120.0, 0.0, 1.0);
         if (uEnh > 0.5) col *= (0.55 + 1.1 * hn) * uBright;
@@ -286,6 +288,7 @@ static void draw_gw(ModeInfo *mi) {
     glUniform3fv(glGetUniformLocation(s->prog, "uPalB2"), 1, pb2);
     glUniform1f(glGetUniformLocation(s->prog, "uPalMix"), pmix);
     glUniform1f(glGetUniformLocation(s->prog, "uEnh"), s->style ? 1.f : 0.f);
+    { float fg = (float)cs_opt_f("fog", -1); if (fg < 0) fg = s->style ? 0.5f : 0.0f; glUniform1f(glGetUniformLocation(s->prog, "uFogK"), fg); }
     glUniform1f(glGetUniformLocation(s->prog, "uBright"), 1.45f);
     glUniform1f(glGetUniformLocation(s->prog, "uAA"), (s->style ? s->aa : 1) ? 1.f : 0.f);
     float lw = (s->style ? 1.5f : 2.0f) * (s->h / 1080.0f); if (lw < 1.2f) lw = 1.2f;
