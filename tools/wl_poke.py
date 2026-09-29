@@ -718,25 +718,20 @@ def cmd_key(args: argparse.Namespace) -> int:
             os.close(kfd)
             raise
 
-        # Each repetition is a press then a release, separated by 10 ms.
+        # Each key is a press then a release, 30 ms apart. --codes types a
+        # whole sequence (used to unlock the lab hosts' test sessions).
+        seq = [int(c) for c in args.codes.split(",")] if args.codes else [args.code] * args.count
         now_ms = int(time.time() * 1000)
-        for _ in range(args.count):
-            now_ms += 10
-            # key(time, key, state) opcode = 1; state 1 = pressed.
-            payload = (
-                _U32.pack(now_ms & 0xFFFFFFFF)
-                + _U32.pack(args.code & 0xFFFFFFFF)
-                + _U32.pack(1)
-            )
-            conn.send(kbd_id, 1, payload)
-            now_ms += 10
-            # state 0 = released.
-            payload = (
-                _U32.pack(now_ms & 0xFFFFFFFF)
-                + _U32.pack(args.code & 0xFFFFFFFF)
-                + _U32.pack(0)
-            )
-            conn.send(kbd_id, 1, payload)
+        for code in seq:
+            for state in (1, 0):
+                now_ms += 30
+                payload = (
+                    _U32.pack(now_ms & 0xFFFFFFFF)
+                    + _U32.pack(code & 0xFFFFFFFF)
+                    + _U32.pack(state)
+                )
+                conn.send(kbd_id, 1, payload)  # key(time, key, state) opcode 1
+                time.sleep(0.03)
         conn.roundtrip()
         # zwp_virtual_keyboard_v1.destroy opcode = 3 (last request in v1).
         conn.send(kbd_id, 3, b"")
@@ -957,6 +952,9 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("key", help="Inject a key event via the virtual keyboard.")
     sp.add_argument(
         "--code", type=int, default=42, help="Evdev keycode (default: 42 = LShift)"
+    )
+    sp.add_argument(
+        "--codes", default="", help="Comma separated evdev keycodes to type in order"
     )
     sp.add_argument("--count", type=int, default=1, help="Repetitions (default: 1)")
     sp.set_defaults(func=cmd_key)

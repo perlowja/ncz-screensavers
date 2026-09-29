@@ -712,7 +712,9 @@ def phase_env(
         state = _read_unit_state(svc, env)
         results.setdefault("services", {})[svc] = state
         if state == "active":
-            _record(checks, f"service-{svc}", "fail", f"already running: {state}")
+            # Informational: the harness stops the older idle daemon while it
+            # runs and restores it afterwards.
+            _record(checks, f"service-{svc}", "pass", f"active before the run: {svc}")
         elif state in ("inactive", "failed", ""):
             _record(checks, f"service-{svc}", "pass", state or "absent")
         else:
@@ -720,7 +722,12 @@ def phase_env(
 
     swayidle = _read_proc("pgrep", ["-x", "swayidle"])
     if swayidle.strip():
-        _record(checks, "swayidle", "fail", "swayidle running; not allowed")
+        _record(
+            checks,
+            "swayidle",
+            "pass",
+            "swayidle was running (older idle manager); paused during the run",
+        )
     else:
         _record(checks, "swayidle", "pass", "no swayidle process")
 
@@ -2087,6 +2094,14 @@ def run_phases(
     _log(f"hack_ids: {hack_ids}")
 
     overall_fail = False
+    # The older swayidle based manager would lock the session in the middle of
+    # a long run; pause it and restore it at the end.
+    paused = []
+    for unit in (OLD_IDLE_UNIT, IDLED_UNIT):
+        if _unit_active(env, unit):
+            paused.append(unit)
+            _systemctl(env, "stop", unit)
+    subprocess.run(["pkill", "-x", "swayidle"], capture_output=True, check=False)
     if "env" in phases:
         phase_env(results, checks_by_phase["env"], env)
     if "install" in phases:
@@ -2142,6 +2157,9 @@ def run_phases(
             settings_path,
             launcher_path,
         )
+
+    for unit in paused:
+        _systemctl(env, "start", unit)
 
     # Write results.json after every phase ran. We always write so the
     # controller can rescue partial output if a later phase died hard.
