@@ -571,7 +571,7 @@ static int report_wanted(unsigned long idx) {
     static int dump = -1;
     if (dump < 0) {
         const char *f = getenv("NCZ_FRAME_DUMP");
-        dump = (f && *f) ? 1 : 0;
+        dump = (f && *f && strcmp(f, "0") != 0) ? 1 : 0;
     }
     if (dump && idx >= 60 && (idx % 60) == 0)
         return 1;
