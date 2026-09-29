@@ -134,3 +134,27 @@ never quitting on SIGTERM, missing stop on input resume, wrong `Inhibit` signatu
 `GSource` check, `xdg` and `wl_surface` opcodes and the invalid XKB keymap in the test client, PPM header parsing that
 ate whitespace-valued pixels (false zero coverage), destroyed `zwlr_output_power_v1` proxy kept in the array, unbalanced
 `wl_display_prepare_read`, leaked idle-notification data, and a hang on truncated PPM input in the black-frame guard.
+
+## 5. The display stays black: session locked, no lock process
+
+labwc keeps an `ext-session-lock-v1` session locked when the lock client dies without unlocking, so the screen stays
+black and nothing draws a prompt (`pgrep -f singularity-lockscreen` finds nothing). The idle daemon now restarts a lock
+command that exits abnormally (nonzero status or signal, up to 5 times, one second apart), which covers a crashing or killed
+locker. A clean exit means the user unlocked. Only the compositor's own locker is ever started for locking; the saver never
+locks by itself, and the harness recovers a blank display before timing anything.
+
+Recovery over ssh, without a reboot (any host, as the desktop user):
+
+```sh
+export XDG_RUNTIME_DIR=/run/user/$(id -u) WAYLAND_DISPLAY=wayland-0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus
+# 1. Take over the orphaned lock with a fresh client (the protocol allows it).
+setsid nohup /opt/singularity/bin/singularity-lockscreen >/tmp/lock.log 2>&1 </dev/null &
+# 2. Unlock it by typing the account password. From the keyboard, or through the virtual keyboard
+#    (evdev codes: q=16 w=17 e=18 r=19 t=20 y=21 u=22 i=23 o=24 p=25 a=30 s=31 d=32 f=33 g=34 h=35 j=36
+#    k=37 l=38 z=44 x=45 c=46 v=47 b=48 n=49 m=50, digits 1..9=2..10 and 0=11, Enter=28):
+python3 tools/wl_poke.py motion; python3 tools/wl_poke.py key --codes 50,23,49,23,28   # example: "mini" + Enter
+```
+
+If the compositor does not answer at all, `sudo systemctl restart greetd` ends the session and returns to the greeter
+(this closes every application). `wlr-randr --output NAME --off; wlr-randr --output NAME --on` re-enables a panel that a
+crashed DPMS client left off; the idle daemon also powers all outputs on when it exits.

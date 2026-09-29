@@ -1954,6 +1954,41 @@ def phase_idle(results, checks, env, workdir, launcher_path, idled_path, no_dpms
             if got is not None
             else f"no lock command after loginctl lock-session rc={ls.returncode} {ls.stderr[-100:]}",
         )
+        # A lock client that dies must be replaced, never left as a black screen.
+        _stop_idled(proc)
+        flaky = os.path.join(os.path.dirname(marker), "flaky.sh")
+        count = os.path.join(os.path.dirname(marker), "flaky.count")
+        pathlib.Path(count).unlink(missing_ok=True)
+        pathlib.Path(flaky).write_text(
+            f"#!/bin/sh\necho x >> {count}\n[ $(wc -l < {count}) -ge 2 ] && exit 0\nexit 3\n"
+        )
+        os.chmod(flaky, 0o755)
+        fenv = dict(ienv, NCZ_LOCK_CMD=flaky)
+        proc = _start_idled(fenv, os.path.join(logs, "idled-flaky.log"))
+        _wait_until(lambda: _idled_json().get("state") == "active", 4.0)
+        subprocess.run(
+            ["loginctl", "lock-session"],
+            capture_output=True,
+            timeout=10,
+            env=env,
+            check=False,
+        )
+        again = _wait_until(
+            lambda: (
+                os.path.exists(count)
+                and len(pathlib.Path(count).read_text().split()) >= 2
+            ),
+            8.0,
+        )
+        _record(
+            checks,
+            "lock-client-respawn",
+            "pass" if again is not None else "fail",
+            f"a lock client that exited with status 3 was restarted after {again:.1f}s"
+            if again is not None
+            else "no replacement lock client was started after the first one failed",
+        )
+        _stop_idled(proc)
         _record(
             checks,
             "suspend-resume",
@@ -2113,6 +2148,273 @@ def phase_idle(results, checks, env, workdir, launcher_path, idled_path, no_dpms
 # ---------------------------------------------------------------------------
 # Phase: color (black hole modes).
 # ---------------------------------------------------------------------------
+
+
+def _graphical_session():
+    """(session id, labwc pid) of the seat0 graphical session, or (None, 0)."""
+    out = subprocess.run(
+        ["loginctl", "list-sessions", "--no-legend"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    sid = None
+    for line in out.splitlines():
+        f = line.split()
+        if len(f) >= 4 and f[3] == "seat0":
+            sid = f[0]
+    return sid, _compositor_pid()[1]
+
+
+@_guard
+def phase_session(results, checks, env, workdir, pw):
+    """Scripted logout and login: restart greetd with a temporary initial
+    session for this user (restored afterwards), then check the new session."""
+    user = os.environ.get("USER") or pathlib.Path("/proc/self").owner()
+    cfg = "/etc/greetd/config.toml"
+    bak = cfg + ".ncz-ht.bak"
+    if not os.path.exists(cfg) or not pw:
+        _record(
+            checks,
+            "session-restart",
+            "skip",
+            "greetd config or sudo secret unavailable",
+        )
+        return
+    old_sid, old_pid = _graphical_session()
+    was_active = _unit_active(env, IDLED_UNIT)
+    script = (
+        f'cp -a {cfg} {bak} && printf \'\\n[initial_session]\\ncommand = "/usr/local/bin/ncz-singularity"\\n'
+        f'user = "{user}"\\n\' >> {cfg} && systemctl restart greetd'
+    )
+    restored = False
+    try:
+        r = _run_with_sudo(["sh", "-c", script], pw=pw, timeout=60.0)
+        if r.returncode != 0:
+            _record(
+                checks,
+                "session-restart",
+                "fail",
+                f"could not arrange autologin: {r.stderr[-200:]}",
+            )
+            return
+
+        def new_session():
+            sid, pid = _graphical_session()
+            return (
+                bool(sid)
+                and pid
+                and pid != old_pid
+                and pathlib.Path(_rt_dir(), "wayland-0").exists()
+            )
+
+        got = _wait_until(new_session, 90.0, step=1.0)
+        # Restore the greeter configuration right away; no restart needed.
+        _run_with_sudo(["sh", "-c", f"mv -f {bak} {cfg}"], pw=pw, timeout=20.0)
+        restored = True
+        sid, pid = _graphical_session()
+        _record(
+            checks,
+            "session-restart",
+            "pass" if got is not None else "fail",
+            f"seat0 session {old_sid} -> {sid}, compositor pid {old_pid} -> {pid} after {got or 0:.0f}s"
+            if got is not None
+            else "no new graphical session appeared within 90 s",
+        )
+        if got is None:
+            return
+        time.sleep(8.0)  # let the shell finish starting
+        up = _wait_until(lambda: _unit_active(env, IDLED_UNIT), 30.0, step=1.0)
+        _record(
+            checks,
+            "unit-autostart-after-login",
+            "pass" if up is not None else "fail",
+            f"{IDLED_UNIT} active {up:.0f}s after login (was active before: {was_active})"
+            if up is not None
+            else f"{IDLED_UNIT} did not start with the new session",
+        )
+        senv = _build_session_env()
+        ok = _display_probe(senv)
+        _record(
+            checks,
+            "saver-after-login",
+            "pass" if ok else "fail",
+            "a hack renders in the new session"
+            if ok
+            else "no hack visible after re-login",
+        )
+    finally:
+        if not restored:
+            _run_with_sudo(
+                ["sh", "-c", f"[ -f {bak} ] && mv -f {bak} {cfg}"], pw=pw, timeout=20.0
+            )
+
+
+@_guard
+def phase_multioutput(results, checks, env, workdir, pw):
+    """Two virtual outputs: run a private headless labwc next to the real
+    session and point the idle daemon and launcher at it."""
+    labwc = "/opt/singularity/bin/labwc"
+    if not os.path.exists(labwc):
+        _record(
+            checks,
+            "multioutput",
+            "skip",
+            "no labwc binary to start a headless compositor",
+        )
+        return
+    rt = _rt_dir()
+    before = set(glob.glob(os.path.join(rt, "wayland-*")))
+    cenv = {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "HOME": os.environ.get("HOME", "/tmp"),
+        "XDG_RUNTIME_DIR": rt,
+        "WLR_BACKENDS": "headless",
+        "WLR_HEADLESS_OUTPUTS": "2",
+        "WLR_LIBINPUT_NO_DEVICES": "1",
+    }
+    logs = os.path.join(workdir, "logs")
+    os.makedirs(logs, exist_ok=True)
+    with open(os.path.join(logs, "headless-labwc.log"), "wb") as lf:
+        comp = subprocess.Popen(
+            [labwc],
+            env=cenv,
+            stdout=lf,
+            stderr=lf,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    proc = None
+    try:
+
+        def new_socket():
+            new = [
+                p
+                for p in glob.glob(os.path.join(rt, "wayland-*"))
+                if not p.endswith(".lock") and p not in before
+            ]
+            return os.path.basename(new[0]) if new else None
+
+        _wait_until(lambda: new_socket() is not None, 10.0)
+        sock = new_socket()
+        if not sock:
+            _record(
+                checks,
+                "headless-compositor",
+                "skip",
+                "the headless labwc did not start (see logs/headless-labwc.log)",
+            )
+            return
+        nenv = _isolated_env(env, {"WAYLAND_DISPLAY": sock})
+        randr = subprocess.run(
+            ["wlr-randr"],
+            capture_output=True,
+            text=True,
+            env=nenv,
+            timeout=10,
+            check=False,
+        ).stdout
+        names = [
+            ln.split()[0] for ln in randr.splitlines() if ln and not ln.startswith(" ")
+        ]
+        _record(
+            checks,
+            "headless-outputs",
+            "pass" if len(names) >= 2 else "fail",
+            f"{sock} advertises outputs {names}",
+        )
+        if len(names) < 2:
+            return
+        for k, v in (
+            ("mode", "off"),
+            ("lock-enabled", "false"),
+            ("display-off-delay", "6"),
+            ("hack-idle-delay", "300"),
+        ):
+            _cli(nenv, "config", "set", k, v)
+        idlog = os.path.join(logs, "idled-headless.log")
+        proc = _start_idled(nenv, idlog)
+        _wait_until(
+            lambda: _idled_json().get("state") in ("active", "display-off"), 5.0
+        )
+        text = lambda: pathlib.Path(idlog).read_text(errors="replace")
+        bound = text().count("bound output power")
+        _record(
+            checks,
+            "idled-binds-every-output",
+            "pass" if bound >= 2 else "fail",
+            f"idled created output-power objects for {bound} outputs",
+        )
+        off = _wait_until(
+            lambda: text().count("output power mode event: mode=0") >= 2, 14.0
+        )
+        _record(
+            checks,
+            "dpms-all-outputs-off",
+            "pass" if off is not None else "fail",
+            "both outputs acknowledged power off"
+            if off is not None
+            else f"power-off acknowledged by {text().count('output power mode event: mode=0')} of {bound} outputs",
+        )
+        on_before = text().count("output power mode event: mode=1")
+        _poke(nenv, "motion")
+        on = _wait_until(
+            lambda: (
+                text().count("output power mode event: mode=1") >= on_before + 2
+                and _idled_json().get("state") == "active"
+            ),
+            6.0,
+        )
+        _record(
+            checks,
+            "dpms-all-outputs-on",
+            "pass" if on is not None else "fail",
+            f"state after input: {_idled_json().get('state')}",
+        )
+        _stop_idled(proc)
+        proc = None
+        # Where does a hack appear? Informational: current hacks bind one output.
+        _cli(nenv, "config", "set", "verify-render", "false")
+        _cli(nenv, "preview", "voronoi_gles3", "--seconds", "20")
+        running = _wait_until(lambda: _status(nenv).get("running"), 6.0)
+        time.sleep(3.0)
+        cov = {}
+        for name in names[:2]:
+            fd, path = tempfile.mkstemp(suffix=".ppm")
+            os.close(fd)
+            p = subprocess.run(
+                ["grim", "-o", name, "-s", "0.25", "-t", "ppm", path],
+                capture_output=True,
+                env=nenv,
+                timeout=15,
+                check=False,
+            )
+            if p.returncode == 0:
+                with contextlib.suppress(OSError, hti.PPMError):
+                    cov[name] = round(
+                        hti.coverage_fraction(
+                            hti.parse_ppm(pathlib.Path(path).read_bytes())[2]
+                        ),
+                        3,
+                    )
+            os.unlink(path)
+        _cli(nenv, "stop")
+        covered = [n for n, c in cov.items() if c > 0.5]
+        _record(
+            checks,
+            "hack-on-outputs",
+            "pass" if running is not None and covered else "fail",
+            f"informational: hack covers {covered or 'no output'} of {names[:2]}; coverage per output {cov} "
+            "(hacks bind a single output; per-output instances are an open item)",
+            metrics={"coverage": cov},
+        )
+    finally:
+        _stop_idled(proc)
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(os.getpgid(comp.pid), signal.SIGTERM)
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            comp.wait(timeout=5)
+        _cli(env, "stop")
 
 
 @_guard
@@ -2399,6 +2701,12 @@ def run_phases(
             no_dpms,
             pw,
         )
+    if "multioutput" in phases:
+        phase_multioutput(results, checks_by_phase["multioutput"], env, workdir, pw)
+    if "session" in phases:
+        results["_pw"] = pw
+        phase_session(results, checks_by_phase["session"], env, workdir, pw)
+        results.pop("_pw", None)
     if "color" in phases:
         phase_color(
             results,

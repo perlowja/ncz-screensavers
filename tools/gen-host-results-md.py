@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 HOST_ORDER = ["chimera", "medusa", "pegasus", "o6n"]
-PHASES = ["env", "install", "launcher", "idle", "color", "chooser"]
+PHASES = ["env", "install", "launcher", "idle", "multioutput", "session", "color", "chooser"]
 
 
 def find_hosts(dirs):

@@ -230,6 +230,7 @@ struct idled_state {
     GPid stop_pid;
     GPid lock_pid;
     guint lock_watch;
+    int   lock_restarts; /* consecutive abnormal lock client exits */
 
     /* logind */
     GDBusConnection *logind_conn;
@@ -407,6 +408,12 @@ static void on_child_exited(GPid pid, gint status, gpointer user_data)
     g_spawn_close_pid(pid);
 }
 
+static gboolean relock_cb(gpointer user_data)
+{
+    spawn_action_locked(user_data);
+    return G_SOURCE_REMOVE;
+}
+
 static void on_lock_child_exited(GPid pid, gint status, gpointer user_data)
 {
     struct idled_state *st = user_data;
@@ -416,6 +423,24 @@ static void on_lock_child_exited(GPid pid, gint status, gpointer user_data)
         st->lock_watch = 0;
     }
     g_spawn_close_pid(pid);
+    /* A lock client that dies without unlocking leaves the compositor locked
+     * with nobody to draw a prompt: a permanently black screen. A clean exit
+     * (status 0) means the user unlocked; anything else means the client
+     * crashed or was killed, so start a fresh one (the protocol lets a new
+     * client take over an orphaned lock). Bounded to avoid a crash loop. */
+    GError *err = NULL;
+    if (g_spawn_check_wait_status(status, &err)) {
+        st->lock_restarts = 0;
+        return;
+    }
+    log_warn("lock client ended abnormally (%s)", err->message);
+    g_clear_error(&err);
+    if (st->lock_restarts < 5) {
+        st->lock_restarts++;
+        g_timeout_add(1000, relock_cb, st);
+    } else {
+        log_err("lock client keeps failing; giving up after 5 restarts");
+    }
 }
 
 static char **build_lock_argv(struct idled_state *st, int *argc_out)
