@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Build assets/screensaver-chooser/tiers.tsv from host-test perf runs.
 
-usage: measure-tiers.py OUT.tsv --mali DIR --uhd630 DIR [--navi14 DIR] [--rtx2060 DIR] --commit SHA
+usage: measure-tiers.py OUT.tsv --uhd630 DIR [--uhd630-scaled DIR] --mali DIR
+                        [--navi14 DIR] [--rtx2060 DIR] --commit SHA
 
-Each DIR is a host-test.sh result directory (or its host subdirectory) from a run
-with the perf phase. Rule: a hack is tier "igpu" when it holds at least 30 fps
-with a p95 frame time of at most 40 ms on BOTH the Mali-G720 and the Intel UHD 630
-runs; everything else is "discrete". Columns: id, tier, then fps/p95_ms for
-mali_g720, intel_uhd630, amd_navi14, nvidia_rtx2060 ("-" when not measured),
-then "date commit".
+Each DIR is a host-test.sh result directory (or its host subdirectory) from a run with the
+perf phase. Rule (operator requirement: weak systems show what works well on them):
+  weak    the hack holds >= 30 fps with p95 frame time <= 40 ms on the Intel UHD 630 at its
+          DEFAULT render scale for the weak class: 0.5 for shader hacks (--uhd630-scaled),
+          native resolution for the others
+  mid     not weak, but the same holds on the Mali-G720 at its platform default
+  strong  everything else
+Columns (tab separated): id, min class, then fps/p95_ms for uhd630 (native), uhd630_scaled
+(render scale 0.5; equals native for hacks that ignore the scale), mali, navi14, rtx2060
+('-' when not measured), then "date commit". Missing or failed measurements count as not ok.
+Without --uhd630-scaled a shader hack must pass at native resolution to be weak (conservative).
 """
 
 import argparse
@@ -19,13 +25,12 @@ import sys
 
 MIN_FPS = 30.0
 MAX_P95_MS = 40.0
-COLUMNS = ("mali", "uhd630", "navi14", "rtx2060")
+SHADER_PREFIXES = ("hyprsaver_", "xshadertoy_", "blackhole_")
 
 
 def load(path):
     p = pathlib.Path(path)
-    cands = [p / "results.json", *sorted(p.glob("*/results.json"))]
-    for c in cands:
+    for c in [p / "results.json", *sorted(p.glob("*/results.json"))]:
         if c.is_file():
             return json.loads(c.read_text())["perf"]["hacks"]
     sys.exit(f"no results.json with perf data under {path}")
@@ -45,36 +50,57 @@ def ok(entry):
     )
 
 
+def classify(hid, native, scaled, mali):
+    """Minimum class for one hack from its three reference measurements."""
+    shader = hid.startswith(SHADER_PREFIXES)
+    weak_entry = scaled if (shader and scaled is not None) else native
+    if ok(weak_entry):
+        return "weak"
+    return "mid" if ok(mali) else "strong"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out", type=pathlib.Path)
-    ap.add_argument("--mali", required=True)
     ap.add_argument("--uhd630", required=True)
+    ap.add_argument("--uhd630-scaled")
+    ap.add_argument("--mali", required=True)
     ap.add_argument("--navi14")
     ap.add_argument("--rtx2060")
     ap.add_argument("--commit", required=True)
     args = ap.parse_args()
-    data = {
-        "mali": load(args.mali),
-        "uhd630": load(args.uhd630),
-        "navi14": load(args.navi14) if args.navi14 else {},
-        "rtx2060": load(args.rtx2060) if args.rtx2060 else {},
-    }
-    ids = sorted(set(data["mali"]) | set(data["uhd630"]))
+    native = load(args.uhd630)
+    scaled = load(args.uhd630_scaled) if args.uhd630_scaled else {}
+    mali = load(args.mali)
+    navi = load(args.navi14) if args.navi14 else {}
+    rtx = load(args.rtx2060) if args.rtx2060 else {}
+    ids = sorted(set(native) | set(mali))
     stamp = f"{datetime.datetime.now(tz=datetime.UTC).date().isoformat()} {args.commit}"
     lines = [
-        "# GPU tier per screensaver: igpu = at least 30 fps with p95 frame time up to 40 ms on BOTH the Mali-G720 and the",
-        "# Intel UHD 630 at native resolution; discrete = everything else. Columns (tab separated): id, tier, then fps/p95_ms",
-        "# for mali_g720, intel_uhd630, amd_navi14, nvidia_rtx2060 ('-' = not measured), then measured date and commit.",
-        "# Produced by tools/measure-tiers.py from host-test.sh perf runs. Consumed by the launcher and the settings UIs.",
+        "# Minimum GPU class per screensaver: weak = at least 30 fps with p95 <= 40 ms on the Intel UHD 630 at the weak-class",
+        "# default render scale (0.5 for shader hacks, native for the rest); mid = same on the Mali-G720; strong = the rest.",
+        "# Columns (tab separated): id, min class, fps/p95_ms on uhd630 native, uhd630 at scale 0.5, mali_g720, amd_navi14,",
+        "# nvidia_rtx2060 ('-' = not measured), then measured date and commit. Produced by tools/measure-tiers.py.",
+        "# An id may also be a preset row id from presets.tsv; unmeasured rows may be declared with '-' cells and 'declared DATE'.",
     ]
+    counts = {"weak": 0, "mid": 0, "strong": 0}
     for hid in ids:
-        good = ok(data["mali"].get(hid)) and ok(data["uhd630"].get(hid))
-        cells = [cell(data[c].get(hid)) for c in COLUMNS]
-        lines.append("\t".join([hid, "igpu" if good else "discrete", *cells, stamp]))
+        cls = classify(
+            hid, native.get(hid), scaled.get(hid) if scaled else None, mali.get(hid)
+        )
+        counts[cls] += 1
+        cells = [
+            cell(native.get(hid)),
+            cell(scaled.get(hid)) if scaled else "-",
+            cell(mali.get(hid)),
+            cell(navi.get(hid)),
+            cell(rtx.get(hid)),
+        ]
+        lines.append("\t".join([hid, cls, *cells, stamp]))
     args.out.write_text("\n".join(lines) + "\n")
-    igpu = sum(1 for ln in lines if "\tigpu\t" in ln)
-    print(f"{len(ids)} hacks: {igpu} igpu, {len(ids) - igpu} discrete -> {args.out}")
+    print(
+        f"{len(ids)} hacks: {counts['weak']} weak-ok, {counts['mid']} mid-ok, {counts['strong']} strong-only -> {args.out}"
+    )
 
 
 if __name__ == "__main__":

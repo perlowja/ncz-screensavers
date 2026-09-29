@@ -2563,7 +2563,7 @@ def _load_launcher():
 _FRAME_RE = re.compile(r"\[diag\] frame #(\d+)")
 
 
-def _measure_fps(mod, hid, mode, seconds, warmup=3.0):
+def _measure_fps(mod, hid, mode, seconds, warmup=3.0, scale="default"):
     """Run one hack directly and derive fps and p95 frame time from the
     "[diag] frame #N" progress lines (printed every 60 frames)."""
     binary = mod.find_binary(hid)
@@ -2578,6 +2578,11 @@ def _measure_fps(mod, hid, mode, seconds, warmup=3.0):
         settings["gpu-offload"] = "off"
         if mode.startswith("dri:"):
             extra["DRI_PRIME"] = mode[4:]
+    if scale != "default":
+        # native = fixed, no scaling, no cap; a number = fixed render scale, no cap
+        settings["render-scale-mode"] = "fixed"
+        settings["render-scale"] = 1.0 if scale == "native" else float(scale)
+        settings["max-render-height"] = 0
     env = mod.build_child_env(hid, settings)
     env.update(extra)
     proc = subprocess.Popen(
@@ -2643,9 +2648,16 @@ def phase_perf(results, checks, env, workdir, mode, seconds):
     perf = {}
     _cli(env, "stop")
     for hid in ids:
-        perf[hid] = _measure_fps(mod, hid, mode, seconds)
+        perf[hid] = _measure_fps(
+            mod, hid, mode, seconds, scale=os.environ.get("HT_PERF_SCALE", "default")
+        )
         _kill_hacks()
-    results["perf"] = {"mode": mode, "seconds": seconds, "hacks": perf}
+    results["perf"] = {
+        "mode": mode,
+        "scale": os.environ.get("HT_PERF_SCALE", "default"),
+        "seconds": seconds,
+        "hacks": perf,
+    }
     good = sum(1 for v in perf.values() if "fps" in v)
     _record(
         checks,
@@ -3450,6 +3462,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--perf-seconds", type=float, default=10.0)
     p.add_argument(
+        "--perf-scale",
+        default="default",
+        help="perf phase render scale: default (launcher), native, or a number",
+    )
+    p.add_argument(
         "--allow-panthor",
         action="store_true",
         help="run on an aarch64 board even when only panthor is loaded",
@@ -3518,6 +3535,7 @@ def main(argv: list[str] | None = None) -> int:
         os.environ["HT_ALLOW_PANTHOR"] = "1"
     os.environ["HT_PERF_MODE"] = args.perf_mode
     os.environ["HT_PERF_SECONDS"] = str(args.perf_seconds)
+    os.environ["HT_PERF_SCALE"] = args.perf_scale
     if args.gpu_offload:
         os.environ["HT_GPU_OFFLOAD"] = args.gpu_offload
     hack_ids = _resolve_hacks(args.hacks)
