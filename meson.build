@@ -23,7 +23,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.5.1',
+    version: '0.5.2',
     license: 'GPL-2.0-or-later',
 )
 
@@ -1657,6 +1657,10 @@ install_data('assets/screensaver-chooser/hacks.tsv',
 # the chooser plugin reads share/ncz-screensaver-chooser. Do not de-duplicate.
 install_subdir('assets/screensaver-chooser/options/presets/blackhole',
                install_dir: get_option('prefix') / 'share' / 'ncz-screensavers' / 'presets')
+install_data('assets/screensaver-chooser/render-hints.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/render-hints.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 install_data('assets/screensaver-chooser/presets.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('assets/screensaver-chooser/presets.tsv',

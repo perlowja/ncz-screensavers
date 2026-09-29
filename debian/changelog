@@ -1,3 +1,11 @@
+ncz-screensavers (0.5.2) unstable; urgency=medium
+
+  * render-hints.tsv: per-hack render scale (measured on Mali-G720) for the
+    shader hacks that miss 45 fps at native 1080p; render scale measurements
+    documented.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 22:00:00 +0000
+
 ncz-screensavers (0.5.1) unstable; urgency=medium
 
   * Black Hole shader: remove three spec-undefined GLSL operations (pow of a

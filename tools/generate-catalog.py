@@ -266,6 +266,21 @@ def main():
     if bad:
         raise SystemExit("sparse.tsv: " + "; ".join(bad))
     validate_options(args.meson_build.parent / "assets" / "screensaver-chooser" / "options", ships)
+    hints = args.meson_build.parent / "assets" / "screensaver-chooser" / "render-hints.tsv"
+    if hints.exists():
+        bad = []
+        for n, line in enumerate(hints.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            cols = line.split("\t")
+            try:
+                ok = len(cols) == 4 and cols[0] in ships and 0.25 <= float(cols[1]) <= 1.0 and float(cols[2]) >= 0
+            except ValueError:
+                ok = False
+            if not ok:
+                bad.append(f"line {n}: {line.strip()[:70]}")
+        if bad:
+            raise SystemExit("render-hints.tsv: " + "; ".join(bad))
     prows = build_presets(args.meson_build.parent, ships)
     if prows:
         args.output.with_name("presets.tsv").write_text(
