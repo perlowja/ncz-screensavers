@@ -177,7 +177,7 @@ vec3 stars(vec3 d){
  // at most one round, softly falling-off star at a jittered position, so
  // magnification by the lens enlarges a dot instead of a square cell.
  vec3 ad=abs(d);
- float m=max(ad.x,max(ad.y,ad.z));
+ float m=max(max(ad.x,max(ad.y,ad.z)),1e-6);
  vec2 fuv;float fid;
  if(ad.x>=ad.y&&ad.x>=ad.z){fuv=d.yz/m;fid=d.x>0.?0.:1.;}
  else if(ad.y>=ad.z){fuv=d.xz/m;fid=d.y>0.?2.:3.;}

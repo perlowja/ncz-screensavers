@@ -7,4 +7,4 @@ ncz-screensavers (0.2.0) unstable; urgency=medium
     searchlight artifact) with collimated beams.
   * Add the dev.ncz.screensaver GSettings schema with blackhole-color-mode.
 
- -- Jason Perlow <jperlow@gmail.com>  Mon, 29 Sep 2026 00:00:00 +0000
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 00:00:00 +0000

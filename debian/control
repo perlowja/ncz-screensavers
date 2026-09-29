@@ -24,6 +24,7 @@ Architecture: amd64 arm64
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
+ libglib2.0-0t64 | libglib2.0-0,
 Description: native Wayland GLES3 screensavers for NCZ-OS
  A set of 84 OpenGL ES 3 screensavers that run directly on Wayland through
  wlr-layer-shell and EGL, with no X11 or Xwayland dependency: the Black Hole

@@ -55,11 +55,6 @@ def main():
     ap.add_argument("output", type=pathlib.Path)
     args = ap.parse_args()
     src = args.meson_build.read_text()
-    all_targets = set(re.findall(r"['\"]([A-Za-z0-9_-]+_gles3)['\"]", src))
-    all_targets.update(
-        f"{n}_gles3" for n in re.findall(r"['\"]name['\"]\s*:\s*['\"]([A-Za-z0-9_-]+)['\"]", src))
-    for s in re.findall(r"^(?:hyprsaver|xshadertoy)_shaders\s*=", src, re.M):
-        pass
     ships = ship_list(src)
     order = {"Black Hole Simulation": 0, "hyprsaver": 1, "xshadertoy": 2, "Classics": 3}
     rows = []
