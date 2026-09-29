@@ -27,6 +27,15 @@ executable('ncz-screensaver-idled',
   install: true,
   install_dir: get_option('prefix') / get_option('libexecdir'))
 
+gl_deps = [dependency('egl'), dependency('glesv2'), dependency('dl'),
+           meson.get_compiler('c').find_library('m')]
+executable('ncz-screensaver-calibrate',
+  ['ncz-screensaver-calibrate.c'],
+  dependencies: gl_deps,
+  c_args: ['-D_GNU_SOURCE'],
+  install: true,
+  install_dir: get_option('prefix') / get_option('libexecdir') / 'ncz-screensavers')
+
 install_data('ncz-screensaver',
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x')

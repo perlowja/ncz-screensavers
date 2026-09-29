@@ -76,24 +76,26 @@
       <description>Color model used by the black hole hack: stylized (default palette), kipthorne (blackbody temperature, no relativistic shift) or faithful (blackbody with Doppler and gravitational shift). Passed to the hack as NCZ_BLACKHOLE_COLORS; stylized leaves the variable unset.</description>
     </key>
     <key name="gpu-offload" type="s">
-      <choices>
-        <choice value="off"/>
-        <choice value="auto"/>
-        <choice value="prime"/>
-      </choices>
       <default>'auto'</default>
       <summary>GPU for screensavers</summary>
-      <description>auto: on a hybrid-GPU laptop whose display GPU is not the NVIDIA one, hacks in the discrete tier run on the NVIDIA GPU with per-process PRIME render offload; nothing changes elsewhere. prime: offload every hack. off: hacks run on the GPU the compositor uses. The compositor and the session environment are never touched.</description>
+      <description>auto: hacks the display GPU can carry stay on it; heavier ones render on the fastest other GPU (NVIDIA offload variables or Mesa DRI_PRIME, per process only), except on battery. off: every hack renders on the GPU the compositor uses. prime: send every hack to the best other GPU. Or a GPU id such as pci-0000_01_00_0 (see ncz-screensaver gpus). The compositor and the session environment are never touched.</description>
     </key>
     <key name="pool-gpu-class" type="s">
       <choices>
         <choice value="auto"/>
-        <choice value="igpu-only"/>
+        <choice value="weak"/>
+        <choice value="mid"/>
         <choice value="all"/>
+        <choice value="igpu-only"/>
       </choices>
       <default>'auto'</default>
       <summary>Screensavers used in random and playlist mode</summary>
-      <description>igpu-only: only hacks that run well on integrated GPUs. all: every hack. auto: all when a discrete GPU renders the display or is used for offload, otherwise igpu-only.</description>
+      <description>weak: only screensavers measured to run well on weak graphics chips (about 20 ms or slower on the reference benchmark). mid: also those that need a mid-class GPU. all: every screensaver. auto: choose from the calibrated class of the GPU that renders the display, or all when a discrete GPU is used for offload. igpu-only is the old name of weak.</description>
+    </key>
+    <key name="show-all-hacks" type="b">
+      <default>false</default>
+      <summary>Show screensavers that may run poorly on this graphics chip</summary>
+      <description>The chooser lists screensavers that are flagged as too heavy for this GPU class in a separate group only when this is on. It does not change which screensavers random and playlist modes use.</description>
     </key>
     <key name="render-scale-mode" type="s">
       <choices>
