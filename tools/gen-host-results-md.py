@@ -134,7 +134,9 @@ def main():
         for hk in d.get("hacks", []):
             ids.setdefault(hk["id"], hk.get("group", ""))
     if ids:
-        L.append("## Hack matrix (coverage when passing)")
+        L.append(
+            "## Hack matrix (pixel coverage; sparse = passes only through the tile rule)"
+        )
         L.append("")
         L.append("| Hack | Group | " + " | ".join(data) + " |")
         L.append("|---|---|" + "---|" * len(data))
@@ -144,6 +146,10 @@ def main():
                 row = next((x for x in d.get("hacks", []) if x["id"] == hid), None)
                 if row is None:
                     cells.append("n/a")
+                elif row["status"] == "pass" and row["metrics"].get("sparse"):
+                    cells.append(
+                        f"PASS sparse (tiles {pct(row['metrics'].get('tile_coverage'))})"
+                    )
                 elif row["status"] == "pass":
                     cells.append(f"PASS {pct(row['metrics'].get('coverage'))}")
                 else:
@@ -193,9 +199,9 @@ def main():
             L.append(f"### {h}: hacks")
             L.append("")
             L.append(
-                "| Hack | Group | Result | Coverage | Motion | Screen replaced | Evidence |"
+                "| Hack | Group | Result | Pixel coverage | Tile coverage | Motion | Stop (s) | Evidence |"
             )
-            L.append("|---|---|---|---|---|---|---|")
+            L.append("|---|---|---|---|---|---|---|---|")
             for hk in sorted(hacks, key=lambda x: (x.get("group", ""), x["id"])):
                 m = hk.get("metrics", {})
                 ev = hk.get("evidence")
@@ -212,9 +218,10 @@ def main():
                     if key and key in evid.get(h, {})
                     else (esc(ev) if ev else "")
                 )
+                result = hk["status"].upper() + (" (sparse)" if m.get("sparse") else "")
                 L.append(
-                    f"| `{hk['id']}` | {esc(hk.get('group', ''))} | {hk['status'].upper()} | {pct(m.get('coverage'))} | "
-                    f"{pct(m.get('motion'))} | {pct(m.get('baseline_diff'))} | {link} |"
+                    f"| `{hk['id']}` | {esc(hk.get('group', ''))} | {result} | {pct(m.get('coverage'))} | "
+                    f"{pct(m.get('tile_coverage'))} | {pct(m.get('motion'))} | {m.get('stop_seconds', '-')} | {link} |"
                 )
             failed = [hk for hk in hacks if hk["status"] != "pass"]
             if failed:
