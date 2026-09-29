@@ -1004,6 +1004,37 @@ def _stop_with_launcher(launcher_path: str, env: dict[str, str]) -> tuple[bool, 
     return True, "ok"
 
 
+def _display_probe(env):
+    """True when a known bright hack is visible in a screenshot."""
+    _cli(env, "preview", "voronoi_gles3", "--seconds", "12")
+    _wait_until(lambda: _status(env).get("running"), 5.0)
+    time.sleep(2.5)
+    frame = _grab_frame(env)
+    _cli(env, "stop")
+    _wait_until(lambda: not _status(env).get("running"), 5.0)
+    return frame is not None and hti.coverage_fraction(frame[2]) > 0.5
+
+
+def _recover_display(env, pw):
+    """A session lock whose client died leaves the screen black with no lock
+    process running. Start a fresh lock client (the protocol lets it take over)
+    and unlock it through the virtual keyboard."""
+    locker = "/opt/singularity/bin/singularity-lockscreen"
+    if not os.path.exists(locker):
+        return False
+    if not _is_display_locked():
+        subprocess.Popen(
+            [locker],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        time.sleep(5.0)
+    return _try_unlock(env, pw)
+
+
 @_guard
 def phase_hacks(
     results: dict[str, Any],
@@ -1035,6 +1066,30 @@ def phase_hacks(
         CATALOG_FALLBACK,
     ]
     catalog = _read_catalog(catalog_paths)
+
+    if os.path.exists(os.path.join(HACK_BIN_DIR, "voronoi_gles3")):
+        alive = _display_probe(env)
+        if not alive:
+            recovered = _recover_display(env, results.get("_pw")) and _display_probe(
+                env
+            )
+            _record(
+                checks,
+                "display-alive",
+                "pass" if recovered else "fail",
+                "display was blank (orphaned session lock); recovered with a fresh lock client and unlock"
+                if recovered
+                else "display shows nothing even with a bright hack running; hack results would be meaningless",
+            )
+            if not recovered:
+                return
+        else:
+            _record(
+                checks,
+                "display-alive",
+                "pass",
+                "a probe hack is visible before the run",
+            )
 
     baseline_path = os.path.join(shots_dir, "_baseline.ppm")
     ok, detail = _capture_grim(baseline_path, 0.125, env)
@@ -2274,6 +2329,7 @@ def run_phases(
     if "install" in phases:
         phase_install(results, checks_by_phase["install"], env, deb, pw, workdir)
     if "hacks" in phases:
+        results["_pw"] = pw
         # Resolve now: the catalog on the host is only current once the package
         # under test is installed (an older catalog may exist beforehand).
         hack_ids = _resolve_hacks(os.environ.get("HT_HACKS_ARG", "all"))
@@ -2288,6 +2344,7 @@ def run_phases(
             seconds,
             launcher_path,
         )
+    results.pop("_pw", None)
     if "launcher" in phases:
         phase_launcher(
             results,
