@@ -1173,7 +1173,11 @@ def load_option_schema(hack_id):
     common = options_dir() / "_render.tsv"
     if is_shader_hack(hack_id) and common.is_file():
         have = {r["name"] for r in rows}
-        rows += [r for r in _read_schema_file(common, hack_id) if r["name"] not in have]
+        rows += [
+            {**r, "common": True}
+            for r in _read_schema_file(common, hack_id)
+            if r["name"] not in have
+        ]
     return rows
 
 
@@ -2097,7 +2101,7 @@ def cmd_options(args):
         docs = {}
         for r in load_catalog():
             doc = options_document(r["id"], settings)
-            if doc["options"]:
+            if any(not o.get("common") for o in doc["options"]):
                 docs[r["id"]] = doc
         print(json.dumps({"schema_version": 1, "hacks": docs}))
         return 0
