@@ -53,7 +53,9 @@ def parse_ppm(data: bytes) -> tuple[int, int, bytes]:
     height, pos = _read_int(data, pos)
     pos = _skip_ws_and_comments(data, pos)
     maxval, pos = _read_int(data, pos)
-    pos = _skip_ws_and_comments(data, pos)
+    # Exactly ONE whitespace byte separates the header from the pixels; any
+    # further whitespace-valued bytes (0x09-0x0d, 0x20) are pixel data.
+    pos += 1
     if pos >= len(data):
         raise PPMError("PPM header not terminated before payload")
     if maxval != 255:

@@ -31,6 +31,7 @@ import argparse
 import contextlib
 import dataclasses
 import datetime as _dt
+import glob
 import json
 import os
 import pathlib
@@ -454,6 +455,15 @@ def _driver_in_use() -> str:
         line = line.strip()
         if line.startswith("Kernel driver in use:"):
             drivers.append(line.split(":", 1)[1].strip())
+    if not drivers:
+        # Platform GPUs (for example the Sky1 Mali) have no PCI display device;
+        # read the DRM class devices instead.
+        for card in sorted(glob.glob("/sys/class/drm/card[0-9]")):
+            link = os.path.join(card, "device", "driver")
+            if os.path.islink(link):
+                drivers.append(
+                    f"{os.path.basename(os.readlink(link))} ({os.path.basename(card)})"
+                )
     return ", ".join(drivers)
 
 
@@ -1908,28 +1918,36 @@ def phase_color(results, checks, env, workdir, launcher_path):
         )
     _cli(ienv, "stop")
     if len(stats) == 3:
-        names = list(stats)
-        worst = 1.0
-        for i in range(3):
-            for j in range(i + 1, 3):
-                a, b = stats[names[i]], stats[names[j]]
-                d = hti.chromaticity_distance(a, b)
-                ratio = hti.brightness_ratio(sum(a), sum(b))
-                worst = min(
-                    worst,
-                    max(
-                        d / COLOR_CHROMA_MIN,
-                        abs(ratio - 1.0) / (COLOR_BRIGHTNESS_MIN - 1.0),
-                    ),
-                )
-        _record(
-            checks,
-            "color-modes-differ",
-            "pass" if worst >= 1.0 else "fail",
-            "every pair of modes differs visibly"
-            if worst >= 1.0
-            else f"two modes look identical (score {worst:.2f})",
-        )
+
+        def dist(m1, m2):
+            a, b = stats[m1], stats[m2]
+            d = hti.chromaticity_distance(a, b)
+            ratio = hti.brightness_ratio(sum(a), sum(b))
+            # 1.0 or more means visibly different by the harness thresholds.
+            score = max(
+                d / COLOR_CHROMA_MIN, abs(ratio - 1.0) / (COLOR_BRIGHTNESS_MIN - 1.0)
+            )
+            return score, d, ratio
+
+        for label, pairs in (
+            (
+                "color-stylized-distinct",
+                (("stylized", "kipthorne"), ("stylized", "faithful")),
+            ),
+            ("color-physical-modes-distinct", (("kipthorne", "faithful"),)),
+        ):
+            got = [(p, *dist(*p)) for p in pairs]
+            ok = all(g[1] >= 1.0 for g in got)
+            _record(
+                checks,
+                label,
+                "pass" if ok else "fail",
+                "; ".join(
+                    f"{p[0]} vs {p[1]}: score {sc:.2f} (chroma {d:.3f}, brightness x{r:.2f})"
+                    for p, sc, d, r in got
+                ),
+                metrics={f"{p[0]}-{p[1]}": sc for p, sc, _d, _r in got},
+            )
     # Unknown value: must warn and fall back, not crash.
     _cli(ienv, "config", "set", "blackhole-color-mode", "bogus")
     _cli(ienv, "preview", "blackhole_gles3", "--seconds", "12")

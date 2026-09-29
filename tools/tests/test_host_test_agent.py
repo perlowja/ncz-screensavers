@@ -215,3 +215,15 @@ class TestPerformance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PpmWhitespacePixelTest(unittest.TestCase):
+    """Pixel bytes equal to ASCII whitespace right after the header are data."""
+
+    def test_leading_whitespace_valued_pixels(self):
+        import host_test_image as hti
+
+        data = b"P6\n2 1\n255\n" + bytes([32, 9, 10, 0, 0, 0])
+        w, h, rgb = hti.parse_ppm(data)
+        self.assertEqual((w, h, len(rgb)), (2, 1, 6))
+        self.assertEqual(rgb[0], 32)
