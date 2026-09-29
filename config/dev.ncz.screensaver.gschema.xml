@@ -84,9 +84,45 @@
         <choice value="auto"/>
         <choice value="prime"/>
       </choices>
-      <default>'off'</default>
+      <default>'auto'</default>
       <summary>GPU for screensavers</summary>
-      <description>off: hacks run on the GPU the compositor uses. prime: on hybrid-GPU laptops run each hack on the discrete NVIDIA GPU with per-process PRIME render offload (the compositor and the session are never touched). auto: prime when an NVIDIA driver is loaded next to another GPU, otherwise off.</description>
+      <description>auto: on a hybrid-GPU laptop whose display GPU is not the NVIDIA one, hacks in the discrete tier run on the NVIDIA GPU with per-process PRIME render offload; nothing changes elsewhere. prime: offload every hack. off: hacks run on the GPU the compositor uses. The compositor and the session environment are never touched.</description>
+    </key>
+    <key name="pool-gpu-class" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="igpu-only"/>
+        <choice value="all"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Screensavers used in random and playlist mode</summary>
+      <description>igpu-only: only hacks that run well on integrated GPUs. all: every hack. auto: all when a discrete GPU renders the display or is used for offload, otherwise igpu-only.</description>
+    </key>
+    <key name="render-scale-mode" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="fixed"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Render quality mode</summary>
+      <description>auto: shader screensavers render at native resolution unless the platform data (render-defaults.tsv) caps the height, for example on a 4K panel driven by an integrated GPU. fixed: use render-scale and max-render-height exactly as set.</description>
+    </key>
+    <key name="render-scale" type="d">
+      <range min="0.25" max="1.0"/>
+      <default>1.0</default>
+      <summary>Render scale</summary>
+      <description>Fraction of the native resolution shader screensavers render at (passed as NCZ_RENDER_SCALE). Lower values reduce GPU load and stutter on high resolution screens.</description>
+    </key>
+    <key name="max-render-height" type="i">
+      <range min="0" max="8192"/>
+      <default>0</default>
+      <summary>Maximum render height</summary>
+      <description>Cap on the render height in pixels, 0 for none (passed as NCZ_MAX_RENDER_HEIGHT). A non-zero value overrides the platform default in auto mode.</description>
+    </key>
+    <key name="hack-options" type="a{sa{ss}}">
+      <default>{}</default>
+      <summary>Per-screensaver options</summary>
+      <description>Option values by screensaver id, validated against the schema in /usr/share/ncz-screensavers/options/ and passed to the screensaver process as environment variables. Absent means the screensaver's own defaults.</description>
     </key>
     <key name="verify-render" type="b">
       <default>true</default>

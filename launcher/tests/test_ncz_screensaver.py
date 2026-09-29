@@ -13,6 +13,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "launcher" / "ncz-screensaver"
@@ -136,6 +137,293 @@ class EnvTests(unittest.TestCase):
         self.assertNotIn("MY_TOKEN", env)
 
 
+def make_sysfs(root, cards):
+    """cards: list of (driver, connected, vram_bytes or None)."""
+    for i, (driver, connected, vram) in enumerate(cards):
+        card = Path(root) / "class" / "drm" / f"card{i}"
+        (card / "device").mkdir(parents=True)
+        drv = Path(root) / "drivers" / driver
+        drv.mkdir(parents=True, exist_ok=True)
+        (card / "device" / "driver").symlink_to(drv)
+        if vram is not None:
+            (card / "device" / "mem_info_vram_total").write_text(str(vram))
+        conn = Path(root) / "class" / "drm" / f"card{i}-eDP-1"
+        conn.mkdir(parents=True)
+        (conn / "status").write_text("connected\n" if connected else "disconnected\n")
+
+
+SCHEMA_ROWS = [
+    "palette\tenum\tstylized\t\t\tstylized,kipthorne,faithful,slingshot,singularity\tPalette\tColors\tGeneral\tNCZ_BLACKHOLE_PALETTE",
+    "spin\tfloat\t0.5\t0\t1\t\tSpin\tBlack hole spin\tPhysics\t",
+    "duration\tint\t0\t0\t3600\t\tDuration\tSeconds\tGeneral\t",
+    "beaming\tbool\ttrue\t\t\t\tBeaming\tDoppler beaming\tPhysics\t",
+    "title\tstring\t\t\t\t\tTitle\tText\tGeneral\t",
+]
+
+
+class HackOptionTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="ncz-opt-")
+        Path(self.tmp, "blackhole.tsv").write_text(
+            "\n".join(["# comment", *SCHEMA_ROWS]) + "\n"
+        )
+        os.environ["NCZ_SCREENSAVER_OPTIONS"] = self.tmp
+
+    def tearDown(self):
+        os.environ.pop("NCZ_SCREENSAVER_OPTIONS", None)
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_schema_and_derived_env_names(self):
+        rows = {r["name"]: r for r in ns.load_option_schema("blackhole_gles3")}
+        self.assertEqual(rows["palette"]["env"], "NCZ_BLACKHOLE_PALETTE")
+        self.assertEqual(rows["spin"]["env"], "NCZ_BLACKHOLE_SPIN")
+        self.assertEqual(
+            rows["palette"]["choices"],
+            ["stylized", "kipthorne", "faithful", "slingshot", "singularity"],
+        )
+        self.assertEqual(ns.load_option_schema("voronoi_gles3"), [])
+
+    def test_normalize(self):
+        rows = {r["name"]: r for r in ns.load_option_schema("blackhole_gles3")}
+        self.assertEqual(ns.normalize_option(rows["beaming"], "Yes"), "true")
+        self.assertEqual(ns.normalize_option(rows["duration"], "90"), "90")
+        self.assertEqual(ns.normalize_option(rows["spin"], "0.25"), "0.25")
+        for name, bad in (
+            ("palette", "neon"),
+            ("spin", "1.5"),
+            ("duration", "-1"),
+            ("beaming", "maybe"),
+            ("duration", "x"),
+        ):
+            with self.assertRaises(ValueError):
+                ns.normalize_option(rows[name], bad)
+
+    def test_env_passes_only_valid_schema_options(self):
+        settings = {
+            "hack-options": {
+                "blackhole_gles3": {"palette": "slingshot", "spin": "9", "bogus": "1"}
+            }
+        }
+        env = ns.hack_option_env("blackhole_gles3", settings)
+        self.assertEqual(env, {"NCZ_BLACKHOLE_PALETTE": "slingshot"})
+        self.assertEqual(ns.hack_option_env("voronoi_gles3", settings), {})
+
+    def test_overrides_beat_stored_and_legacy_color_fills_palette(self):
+        settings = {
+            "hack-options": {"blackhole_gles3": {"palette": "slingshot"}},
+            "blackhole-color-mode": "kipthorne",
+        }
+        env = ns.hack_option_env(
+            "blackhole_gles3", settings, {"palette": "singularity"}
+        )
+        self.assertEqual(env["NCZ_BLACKHOLE_PALETTE"], "singularity")
+        env = ns.hack_option_env(
+            "blackhole_gles3", {"blackhole-color-mode": "kipthorne"}
+        )
+        self.assertEqual(env["NCZ_BLACKHOLE_PALETTE"], "kipthorne")
+
+    def test_child_env_carries_options_only_for_that_process(self):
+        settings = {
+            "hack-options": {"blackhole_gles3": {"spin": "0.75"}},
+            "gpu-offload": "off",
+        }
+        env = ns.build_child_env(
+            "blackhole_gles3", settings, {"XDG_RUNTIME_DIR": "/x"}, "/nonexistent"
+        )
+        self.assertEqual(env["NCZ_BLACKHOLE_SPIN"], "0.75")
+        self.assertNotIn("NCZ_BLACKHOLE_SPIN", os.environ)
+
+    def test_gvariant_dict_roundtrip(self):
+        value = {"blackhole_gles3": {"palette": "slingshot", "spin": "0.5"}}
+        self.assertEqual(ns.parse_gvariant(ns.gvariant_text(value)), value)
+        self.assertEqual(ns.parse_gvariant(ns.gvariant_text({})), {})
+
+
+class RenderAndCacheTests(unittest.TestCase):
+    def test_render_env_shader_only_and_cap_from_platform(self):
+        with mock.patch.object(ns, "default_render_cap", return_value=1080):
+            self.assertEqual(
+                ns.render_env("blackhole_gles3", {"render-scale-mode": "auto"}),
+                {"NCZ_MAX_RENDER_HEIGHT": "1080"},
+            )
+            self.assertEqual(
+                ns.render_env("voronoi_gles3", {"render-scale-mode": "auto"}), {}
+            )
+            self.assertEqual(
+                ns.render_env(
+                    "xshadertoy_x_gles3",
+                    {"render-scale-mode": "auto", "max-render-height": 720},
+                ),
+                {"NCZ_MAX_RENDER_HEIGHT": "720"},
+            )
+
+    def test_render_env_fixed_scale_and_per_hack_override(self):
+        with mock.patch.object(ns, "default_render_cap", return_value=1080):
+            fixed = {
+                "render-scale-mode": "fixed",
+                "render-scale": 0.5,
+                "max-render-height": 0,
+            }
+            self.assertEqual(
+                ns.render_env("hyprsaver_a_gles3", fixed), {"NCZ_RENDER_SCALE": "0.50"}
+            )
+            over = dict(
+                fixed, **{"hack-options": {"voronoi_gles3": {"render-scale": "0.75"}}}
+            )
+            self.assertEqual(
+                ns.render_env("voronoi_gles3", over), {"NCZ_RENDER_SCALE": "0.75"}
+            )
+            self.assertEqual(ns.render_env("voronoi_gles3", fixed), {})
+
+    def test_default_cap_platform_and_igpu(self):
+        with mock.patch.object(
+            ns, "render_defaults", return_value={"sky1-arm64": 1080, "igpu-large": 1080}
+        ):
+            with mock.patch.object(ns, "platform_id", return_value="sky1-arm64"):
+                self.assertEqual(ns.default_render_cap(), 1080)
+            with mock.patch.object(ns, "platform_id", return_value="generic"):
+                with mock.patch.object(
+                    ns,
+                    "gpu_topology",
+                    return_value={
+                        "display_class": "integrated",
+                        "nvidia_offload": False,
+                    },
+                ):
+                    with mock.patch.object(ns, "native_height", return_value=2160):
+                        self.assertEqual(ns.default_render_cap(), 1080)
+                    with mock.patch.object(ns, "native_height", return_value=1080):
+                        self.assertEqual(ns.default_render_cap(), 0)
+                with mock.patch.object(
+                    ns,
+                    "gpu_topology",
+                    return_value={"display_class": "discrete", "nvidia_offload": False},
+                ), mock.patch.object(ns, "native_height", return_value=2160):
+                    self.assertEqual(ns.default_render_cap(), 0)
+
+    def test_shader_cache_enabled_and_persistent(self):
+        with tempfile.TemporaryDirectory() as home:
+            env = {
+                "HOME": home,
+                "MESA_SHADER_CACHE_DISABLE": "true",
+                "MESA_GLSL_CACHE_DISABLE": "1",
+            }
+            ns.shader_cache_env(env)
+            self.assertNotIn("MESA_SHADER_CACHE_DISABLE", env)
+            self.assertNotIn("MESA_GLSL_CACHE_DISABLE", env)
+            self.assertEqual(
+                env["MESA_SHADER_CACHE_DIR"], f"{home}/.cache/ncz-screensavers/mesa"
+            )
+            self.assertTrue(os.path.isdir(env["MESA_SHADER_CACHE_DIR"]))
+            keep = {"HOME": home, "MESA_SHADER_CACHE_DIR": "/x/cache"}
+            ns.shader_cache_env(keep)
+            self.assertEqual(keep["MESA_SHADER_CACHE_DIR"], "/x/cache")
+
+
+class GpuPolicyTests(unittest.TestCase):
+    def topo(self, cards):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_sysfs(tmp, cards)
+            os.environ["NCZ_SCREENSAVER_SYSFS"] = tmp
+            ns.gpu_topology.cache_clear()
+            try:
+                return ns.gpu_topology()
+            finally:
+                del os.environ["NCZ_SCREENSAVER_SYSFS"]
+                ns.gpu_topology.cache_clear()
+
+    def test_intel_display_with_nvidia_is_offload_capable(self):
+        t = self.topo([("i915", True, None), ("nvidia", False, None)])
+        self.assertEqual(t, {"display_class": "integrated", "nvidia_offload": True})
+
+    def test_nvidia_display_needs_no_offload(self):
+        t = self.topo([("nvidia", True, None)])
+        self.assertEqual(t, {"display_class": "discrete", "nvidia_offload": False})
+
+    def test_no_nvidia_no_offload(self):
+        self.assertFalse(
+            self.topo([("i915", True, None), ("amdgpu", False, 8 * 1024**3)])[
+                "nvidia_offload"
+            ]
+        )
+
+    def test_amd_vram_decides_class(self):
+        self.assertEqual(
+            self.topo([("amdgpu", True, 8 * 1024**3)])["display_class"], "discrete"
+        )
+        self.assertEqual(
+            self.topo([("amdgpu", True, 512 * 1024**2)])["display_class"], "integrated"
+        )
+
+    def test_offload_only_for_discrete_tier_in_auto(self):
+        ns.gpu_topology.cache_clear()
+        with mock.patch.object(
+            ns,
+            "gpu_topology",
+            return_value={"display_class": "integrated", "nvidia_offload": True},
+        ):
+            tiers = {"a": "igpu", "b": "discrete"}
+            self.assertFalse(ns.offload_for("a", {"gpu-offload": "auto"}, tiers))
+            self.assertTrue(ns.offload_for("b", {"gpu-offload": "auto"}, tiers))
+            self.assertTrue(ns.offload_for("a", {"gpu-offload": "prime"}, tiers))
+            self.assertFalse(ns.offload_for("b", {"gpu-offload": "off"}, tiers))
+        with mock.patch.object(
+            ns,
+            "gpu_topology",
+            return_value={"display_class": "integrated", "nvidia_offload": False},
+        ):
+            self.assertFalse(
+                ns.offload_for("b", {"gpu-offload": "auto"}, {"b": "discrete"})
+            )
+
+    def test_pool_filter(self):
+        tiers = {"a": "igpu", "b": "discrete"}
+        with mock.patch.object(ns, "load_tiers", return_value=tiers):
+            with mock.patch.object(
+                ns,
+                "gpu_topology",
+                return_value={"display_class": "integrated", "nvidia_offload": False},
+            ):
+                self.assertEqual(
+                    ns.filter_pool(["a", "b"], {"pool-gpu-class": "auto"}), ["a"]
+                )
+                self.assertEqual(
+                    ns.filter_pool(["a", "b"], {"pool-gpu-class": "all"}), ["a", "b"]
+                )
+                self.assertEqual(
+                    ns.filter_pool(["b"], {"pool-gpu-class": "auto"}), ["b"]
+                )
+            with mock.patch.object(
+                ns,
+                "gpu_topology",
+                return_value={"display_class": "discrete", "nvidia_offload": False},
+            ):
+                self.assertEqual(
+                    ns.filter_pool(["a", "b"], {"pool-gpu-class": "auto"}), ["a", "b"]
+                )
+            with mock.patch.object(
+                ns,
+                "gpu_topology",
+                return_value={"display_class": "integrated", "nvidia_offload": True},
+            ):
+                self.assertEqual(
+                    ns.filter_pool(
+                        ["a", "b"], {"pool-gpu-class": "auto", "gpu-offload": "auto"}
+                    ),
+                    ["a", "b"],
+                )
+                self.assertEqual(
+                    ns.filter_pool(
+                        ["a", "b"], {"pool-gpu-class": "auto", "gpu-offload": "off"}
+                    ),
+                    ["a"],
+                )
+        with mock.patch.object(ns, "load_tiers", return_value={}):
+            self.assertEqual(
+                ns.filter_pool(["a", "b"], {"pool-gpu-class": "igpu-only"}), ["a", "b"]
+            )
+
+
 @unittest.skipUnless(
     shutil.which("gsettings") and shutil.which("glib-compile-schemas"),
     "gsettings needed",
@@ -240,6 +528,28 @@ class LifecycleTests(unittest.TestCase):
                 seen.append(h)
             time.sleep(0.3)
         self.assertEqual(seen[:3], ["ok1", "ok2", "ok1"])
+
+    def test_option_commands(self):
+        opts = Path(self.tmp) / "options"
+        opts.mkdir()
+        (opts / "ok1.tsv").write_text("\n".join(SCHEMA_ROWS) + "\n")
+        self.env["NCZ_SCREENSAVER_OPTIONS"] = str(opts)
+        self.assertEqual(
+            self.cli("set-option", "ok1", "palette", "slingshot").returncode, 0
+        )
+        self.assertEqual(
+            self.cli("get-option", "ok1", "palette").stdout.strip(), "slingshot"
+        )
+        self.assertNotEqual(
+            self.cli("set-option", "ok1", "palette", "neon").returncode, 0
+        )
+        self.assertNotEqual(self.cli("set-option", "ok1", "nosuch", "1").returncode, 0)
+        rows = json.loads(self.cli("list-options", "ok1", "--json").stdout)
+        self.assertEqual({r["name"]: r["value"] for r in rows}["palette"], "slingshot")
+        self.assertEqual(self.cli("reset-options", "ok1").returncode, 0)
+        self.assertEqual(
+            self.cli("get-option", "ok1", "palette").stdout.strip(), "stylized"
+        )
 
     def test_config_validation(self):
         self.assertNotEqual(self.cli("set-timeout", "0").returncode, 0)
