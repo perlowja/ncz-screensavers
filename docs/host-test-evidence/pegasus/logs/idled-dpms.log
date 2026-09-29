@@ -1,10 +1,10 @@
 ncz-screensaver-idled: debug: bound wl_seat (advertised v9)
 ncz-screensaver-idled: debug: bound ext_idle_notifier_v1 v2
 ncz-screensaver-idled: debug: bound zwlr_output_power_manager_v1 v1
-ncz-screensaver-idled: debug: bound output power for wl_output=0x561844884ac0
+ncz-screensaver-idled: debug: bound output power for wl_output=0x56289b304b00
 ncz-screensaver-idled: debug: plan recomputed: saver=-1 lock=-1 dpms=12 lock_on_suspend=0
 ncz-screensaver-idled: debug: output power mode event: mode=1
-ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_354
+ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_3106
 ncz-screensaver-idled: debug: acquired sleep inhibitor fd=11
 ncz-screensaver-idled: debug: output power mode event: mode=0
 ncz-screensaver-idled: debug: output power mode event: mode=1

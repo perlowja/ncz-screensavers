@@ -1,22 +1,22 @@
 ncz-screensaver-idled: debug: bound wl_seat (advertised v9)
 ncz-screensaver-idled: debug: bound ext_idle_notifier_v1 v2
 ncz-screensaver-idled: debug: bound zwlr_output_power_manager_v1 v1
-ncz-screensaver-idled: debug: bound output power for wl_output=0x5575f34e5ef0
+ncz-screensaver-idled: debug: bound output power for wl_output=0x561f758caef0
 ncz-screensaver-idled: debug: plan recomputed: saver=6 lock=-1 dpms=-1 lock_on_suspend=0
 ncz-screensaver-idled: debug: output power mode event: mode=1
-ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_333
+ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_339
 ncz-screensaver-idled: debug: acquired sleep inhibitor fd=11
-ncz-screensaver-idled: debug: saver idled: spawn pid=21237
-ncz-screensaver-idled: debug: child pid=21237 exited status=0
-ncz-screensaver-idled: debug: saver resumed: spawn stop pid=21268
-ncz-screensaver-idled: debug: child pid=21268 exited status=0
-ncz-screensaver-idled: debug: saver idled: spawn pid=21399
-ncz-screensaver-idled: debug: child pid=21399 exited status=0
-ncz-screensaver-idled: debug: saver resumed: spawn stop pid=21432
-ncz-screensaver-idled: debug: child pid=21432 exited status=0
-ncz-screensaver-idled: debug: saver idled: spawn pid=21881
-ncz-screensaver-idled: debug: child pid=21881 exited status=0
-ncz-screensaver-idled: debug: saver resumed: spawn stop pid=21912
-ncz-screensaver-idled: debug: child pid=21912 exited status=0
+ncz-screensaver-idled: debug: saver idled: spawn pid=30133
+ncz-screensaver-idled: debug: child pid=30133 exited status=0
+ncz-screensaver-idled: debug: saver resumed: spawn stop pid=30163
+ncz-screensaver-idled: debug: child pid=30163 exited status=0
+ncz-screensaver-idled: debug: saver idled: spawn pid=30295
+ncz-screensaver-idled: debug: child pid=30295 exited status=0
+ncz-screensaver-idled: debug: saver resumed: spawn stop pid=30323
+ncz-screensaver-idled: debug: child pid=30323 exited status=0
+ncz-screensaver-idled: debug: saver idled: spawn pid=30775
+ncz-screensaver-idled: debug: child pid=30775 exited status=0
+ncz-screensaver-idled: debug: saver resumed: spawn stop pid=30807
+ncz-screensaver-idled: debug: child pid=30807 exited status=0
 ncz-screensaver-idled: debug: plan recomputed: saver=9 lock=-1 dpms=-1 lock_on_suspend=0
 ncz-screensaver-idled: info: SIGTERM/INT received, shutting down

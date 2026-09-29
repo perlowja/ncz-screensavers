@@ -5,3 +5,6 @@ Sep 29 01:24:24 ncz-470340 systemd[1737]: Started ncz-screensaver-idled.service 
 Sep 29 01:24:24 ncz-470340 systemd[1737]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
 Sep 29 01:24:24 ncz-470340 systemd[1737]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
 Sep 29 01:41:44 ncz-470340 systemd[1737]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 01:41:44 ncz-470340 systemd[1737]: Stopping ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1)...
+Sep 29 01:41:44 ncz-470340 systemd[1737]: Stopped ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).
+Sep 29 02:19:58 ncz-470340 systemd[1737]: Started ncz-screensaver-idled.service - NCZ screensaver idle timer (ext-idle-notify-v1).

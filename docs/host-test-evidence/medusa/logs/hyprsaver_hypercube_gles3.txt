@@ -2,19 +2,19 @@
 [diag] frame #2
 [diag] frame #3
 [diag] frame #4
-[diag] framebuffer frame=4 pixels=1474560 nonblack=1474560 hash=0444e0e52bbab181 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4239633,3861,4341,4783,5376,6202,9001,13137,17718,51993,7758,47623,7703,3655,896,0
+[diag] framebuffer frame=4 pixels=1474560 nonblack=1474560 hash=c1ea09255cdf6e8d gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4239563,4257,4549,4697,5219,6215,9116,12899,17715,51845,7584,47682,7764,3682,893,0
 [diag] hyprsaver[hyprsaver_hypercube] frame=60 t=0.96s
 [diag] frame #60
-[diag] framebuffer frame=60 pixels=1474560 nonblack=1474560 hash=ba081f3907f8cbed gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4216333,5493,6151,7700,22226,5612,6810,8387,15535,58809,16710,48683,3138,1396,697,0
+[diag] framebuffer frame=60 pixels=1474560 nonblack=1474560 hash=9abe612474e19fd3 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4216269,5312,6209,7647,22293,5655,6713,8511,15562,58858,16684,48744,3011,1517,695,0
 [diag] hyprsaver[hyprsaver_hypercube] frame=120 t=1.96s
 [diag] frame #120
-[diag] framebuffer frame=120 pixels=1474560 nonblack=1474560 hash=10a068772a99de2f gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4191953,6479,10428,8810,20892,10302,7150,8758,12068,57703,27833,54947,3866,1738,753,0
+[diag] framebuffer frame=120 pixels=1474560 nonblack=1474560 hash=2f235caef18cd464 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4192945,6392,10143,9271,20851,10002,7078,8736,12190,57202,27920,54583,3873,1739,755,0
 [diag] hyprsaver[hyprsaver_hypercube] frame=180 t=2.96s
 [diag] frame #180
-[diag] framebuffer frame=180 pixels=1474560 nonblack=1474560 hash=bbb448374806f76f gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4230341,3868,4337,4807,5377,6293,8889,9429,22603,58990,13561,47394,4674,2418,699,0
+[diag] framebuffer frame=180 pixels=1474560 nonblack=1474560 hash=cdedca1a1b4484de gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4230186,3801,4296,4786,5492,6330,8986,9431,22599,58885,13770,47385,4596,2444,693,0
 [diag] hyprsaver[hyprsaver_hypercube] frame=240 t=3.96s
 [diag] frame #240
-[diag] framebuffer frame=240 pixels=1474560 nonblack=1474560 hash=63c84575a80747e7 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4214632,4721,5306,6009,6982,9021,20510,9167,16374,53722,17726,50034,6969,1816,691,0
+[diag] framebuffer frame=240 pixels=1474560 nonblack=1474560 hash=b6910e8e69056068 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4214361,4585,5286,6006,6953,8965,20675,9219,16247,53952,17757,50157,7002,1812,703,0
 [diag] hyprsaver[hyprsaver_hypercube] frame=300 t=4.96s
 [diag] frame #300
-[diag] framebuffer frame=300 pixels=1474560 nonblack=1474560 hash=370694f7e073102c gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4237857,4814,5623,8813,8210,16369,5759,7045,9891,47206,22008,45233,1979,2168,705,0
+[diag] framebuffer frame=300 pixels=1474560 nonblack=1474560 hash=caf2f39667e491da gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=4237920,4765,5638,9132,8261,16090,5625,7130,9660,47513,21815,45256,2003,2179,693,0

@@ -1,20 +1,20 @@
 [diag] frame #4
-[diag] framebuffer frame=4 pixels=2707396 nonblack=2707396 hash=9f68728674f9f86d gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7808831,6233,7343,8020,9135,13298,12462,19730,33314,93446,13202,80313,10534,4925,1402,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=60 t=1.07s
+[diag] framebuffer frame=4 pixels=2707396 nonblack=2707396 hash=a26d2e7ad091ab7c gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7813212,6581,7132,8036,9011,10511,14912,19240,32342,89930,13281,79470,11812,5277,1441,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=60 t=1.03s
 [diag] frame #60
-[diag] framebuffer frame=60 pixels=2707396 nonblack=2707396 hash=16244a4aeee06a4f gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7786183,10047,15339,14750,27932,9558,11462,19265,17345,84385,37621,79519,5211,2396,1175,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=120 t=2.10s
+[diag] framebuffer frame=60 pixels=2707396 nonblack=2707396 hash=4075ae25a2ca043a gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7783817,9419,11323,17574,30090,9436,11191,20201,17626,85454,37233,80093,5204,2348,1179,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=120 t=2.08s
 [diag] frame #120
-[diag] framebuffer frame=120 pixels=2707396 nonblack=2707396 hash=fa4f7ceed2de5c2a gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7703040,10111,12346,14250,47182,11314,14021,16684,29433,115919,36107,99243,8063,3128,1347,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=180 t=3.18s
+[diag] framebuffer frame=120 pixels=2707396 nonblack=2707396 hash=afe597dda8dc8353 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7698596,10575,12089,14461,47790,11652,13823,17527,28508,118185,36324,100296,7899,3115,1348,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=180 t=3.15s
 [diag] frame #180
-[diag] framebuffer frame=180 pixels=2707396 nonblack=2707396 hash=7ddf4d3d2568cbf1 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7796453,6608,7273,8036,8963,10722,12474,18346,28274,122519,12928,79472,5072,3896,1152,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=240 t=4.24s
+[diag] framebuffer frame=180 pixels=2707396 nonblack=2707396 hash=ed367e7735611f4a gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7796699,6702,7393,7891,9008,10749,12337,18265,28264,122408,12955,79388,5082,3899,1148,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=240 t=4.22s
 [diag] frame #240
-[diag] framebuffer frame=240 pixels=2707396 nonblack=2707396 hash=b7e56f6cf876bdab gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7791078,8398,9847,11527,21273,34359,10136,12500,17330,92799,26868,78124,4145,2655,1149,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=300 t=5.30s
+[diag] framebuffer frame=240 pixels=2707396 nonblack=2707396 hash=4b0664e0e03d31d9 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7789325,8359,9604,11271,14490,42128,10261,12644,17524,93107,27000,78485,4216,2621,1153,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=300 t=5.32s
 [diag] frame #300
-[diag] framebuffer frame=300 pixels=2707396 nonblack=2707396 hash=68e93e95ff827d9a gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7794688,7395,8576,9575,11108,14620,34990,15044,32958,77288,27943,75883,6355,4560,1205,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=360 t=6.37s
+[diag] framebuffer frame=300 pixels=2707396 nonblack=2707396 hash=fdba2cdad706eff5 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7795271,7400,8310,9539,10937,14144,32157,17644,33479,76809,28081,75892,6525,4799,1201,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=360 t=6.35s
 [diag] frame #360
-[diag] framebuffer frame=360 pixels=2707396 nonblack=2707396 hash=7fcc3fbd5ee9e71d gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7821186,5687,6573,7184,8060,9201,11030,13908,25722,90996,24521,78339,8467,10061,1253,0
+[diag] framebuffer frame=360 pixels=2707396 nonblack=2707396 hash=1087ae2c8346646b gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=7813942,5764,6461,7138,8073,9303,11024,14022,25743,99634,25298,79568,7209,7836,1173,0

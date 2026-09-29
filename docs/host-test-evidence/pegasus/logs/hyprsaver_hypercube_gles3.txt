@@ -1,20 +1,20 @@
 [diag] frame #4
-[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=b843c3068172944c gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5986737,4808,5566,6033,6971,7875,11515,14912,24077,66791,10077,60303,9552,4475,1108,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=60 t=0.97s
+[diag] framebuffer frame=4 pixels=2073600 nonblack=2073600 hash=df9510090abd966c gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5981765,4842,5575,6250,6957,10103,9513,14981,25195,70911,10054,61395,8361,3822,1076,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=60 t=1.07s
 [diag] frame #60
-[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=5ad5d80f1168ee15 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5958948,6399,7983,10808,27549,6608,9175,9908,20279,73749,21166,61590,3982,1760,896,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=120 t=1.97s
+[diag] framebuffer frame=60 pixels=2073600 nonblack=2073600 hash=778657cca478b93d gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5963496,7722,11730,11455,21267,7284,8784,14642,13441,64563,28746,60955,3993,1820,902,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=120 t=2.07s
 [diag] frame #120
-[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=27754a7e2a70abd5 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5923632,8187,9921,14536,27135,8679,13742,11263,15470,73964,35756,70341,5016,2192,966,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=180 t=2.99s
+[diag] framebuffer frame=120 pixels=2073600 nonblack=2073600 hash=19a2c8e77cbdebb8 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5893456,8285,9534,11465,36712,9019,10635,18157,17186,91633,28029,77464,5919,2317,989,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=180 t=3.10s
 [diag] frame #180
-[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=41a539ea38055b93 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5974674,4810,5552,6220,6749,7969,9656,13707,19798,92250,10013,60384,5119,3011,888,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=240 t=4.01s
+[diag] framebuffer frame=180 pixels=2073600 nonblack=2073600 hash=7ba70cbdfdabd944 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5971662,5008,5857,6097,7280,7651,9769,12593,22777,93716,9676,60934,3930,2971,879,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=240 t=4.12s
 [diag] frame #240
-[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=d98b8f261b354c84 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5956876,6054,6795,7696,9022,26195,11895,11165,27278,63699,22358,63454,5256,2168,889,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=300 t=5.06s
+[diag] framebuffer frame=240 pixels=2073600 nonblack=2073600 hash=2f979304f62110cf gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5958987,6227,7068,8172,9897,26565,12103,15691,14268,72396,21366,61539,3661,1980,880,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=300 t=5.15s
 [diag] frame #300
-[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=dca4648927598140 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5982770,5474,7226,7228,10287,25819,7302,9364,12843,68361,20004,58112,2636,2485,889,0
-[diag] hyprsaver[hyprsaver_hypercube] frame=360 t=6.07s
+[diag] framebuffer frame=300 pixels=2073600 nonblack=2073600 hash=456117dfe2c49d14 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5972134,5981,6810,8106,10235,33253,7496,9464,12883,69020,20194,58834,3049,2456,885,0
+[diag] hyprsaver[hyprsaver_hypercube] frame=360 t=6.19s
 [diag] frame #360
-[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=a9e6ae4ca4b47d69 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5966930,4927,5513,6144,6915,8034,9605,13926,19460,90503,18874,61682,4336,3073,878,0
+[diag] framebuffer frame=360 pixels=2073600 nonblack=2073600 hash=39d487dcf0c7cca9 gl_error=0x0 srgb=off min_dark=(R1,G1,B5) p1=0 p5=0 hist[0..15]=5967657,5012,5431,6044,6980,7982,9479,11942,21762,91127,18272,61400,3641,3211,860,0
