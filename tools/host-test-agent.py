@@ -2181,6 +2181,14 @@ def phase_session(results, checks, env, workdir, pw):
     and shows the greeter; greetd_login.py then logs the user in again through
     the greetd IPC socket. Afterwards the idle daemon must have started by
     itself and a hack must render."""
+    if os.uname().machine == "aarch64":
+        _record(
+            checks,
+            "session-restart",
+            "skip",
+            "not run on the Sky1 board by policy (a failed re-login needs someone at the console)",
+        )
+        return
     user = os.environ.get("USER") or pathlib.Path("/proc/self").owner()
     if not pw or not glob.glob("/run/greetd*.sock"):
         _record(
