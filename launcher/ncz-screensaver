@@ -1050,6 +1050,112 @@ def _read_schema_file(path, hack_id):
     return rows
 
 
+BASIC_OPTIONS = ("preset", "seed", "palette", "style", "speed")
+OPTION_TYPES = ("bool", "int", "float", "enum", "string")
+
+
+def _rows_from_json(path, hack_id):
+    """Rows of options/<id>.json: {"options": [{"id"|"name", "type", "default", ...}]}."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return []
+    rows = []
+    for o in data.get("options", []) if isinstance(data, dict) else []:
+        name = str(o.get("name") or o.get("id") or "")
+        kind = str(o.get("type", ""))
+        if not name or kind not in OPTION_TYPES:
+            continue
+        rng = o.get("range") or [o.get("min", ""), o.get("max", "")]
+        rows.append(
+            {
+                "name": name,
+                "type": kind,
+                "default": str(o.get("default", "")),
+                "min": "" if rng[0] is None else str(rng[0]),
+                "max": "" if rng[1] is None else str(rng[1]),
+                "choices": [str(c) for c in o.get("choices", [])],
+                "label": str(o.get("label") or name),
+                "description": str(o.get("description", "")),
+                "group": str(o.get("group") or "General"),
+                "env": str(
+                    o.get("env")
+                    or f"NCZ_{short_name(hack_id).upper()}_{name.upper().replace('-', '_')}"
+                ),
+                "level": str(o.get("level", "")),
+            }
+        )
+    return rows
+
+
+def option_level(row):
+    """basic or advanced: the schema's level, else basic for the common keys."""
+    if row.get("level") in ("basic", "advanced"):
+        return row["level"]
+    return "basic" if row["name"] in BASIC_OPTIONS else "advanced"
+
+
+def load_presets(hack_id):
+    """Presets of a hack from presets.tsv: id, title, accuracy, description, min class."""
+    out = []
+    for cand in (
+        "/usr/share/ncz-screensavers/presets.tsv",
+        "/usr/share/ncz-screensaver-chooser/presets.tsv",
+    ):
+        p = Path(os.environ.get("NCZ_SCREENSAVER_PRESETS") or cand)
+        if not p.is_file():
+            continue
+        for line in p.read_text().splitlines():
+            f = line.split("\t")
+            if line.startswith("#") or len(f) < 7 or f[3] != hack_id:
+                continue
+            arg = f[4]
+            if not arg.startswith("--preset="):
+                continue
+            out.append(
+                {
+                    "id": arg[len("--preset=") :],
+                    "row_id": f[0],
+                    "title": f[1],
+                    "accuracy": f[5],
+                    "description": f[6],
+                    "min_class": f[7] if len(f) > 7 else "",
+                }
+            )
+        break
+    seen = {p["id"] for p in out}
+    base = options_dir() / "presets" / short_name(hack_id)
+    for f in sorted(base.glob("*.json")) if base.is_dir() else []:
+        try:
+            data = json.loads(f.read_text())
+        except (OSError, ValueError):
+            continue
+        if f.stem not in seen and isinstance(data, dict):
+            out.append(
+                {
+                    "id": f.stem,
+                    "row_id": f"{hack_id}--{f.stem}",
+                    "title": str(data.get("title") or f.stem),
+                    "accuracy": str(data.get("accuracy", "")),
+                    "description": str(data.get("description", "")),
+                    "min_class": str(data.get("min_class", "")),
+                }
+            )
+    return out
+
+
+def preset_values(hack_id, preset):
+    """Option values a JSON preset sets (options/presets/<hack>/<id>.json), else {}."""
+    if not preset or not ID_RE.match(preset):
+        return {}
+    path = options_dir() / "presets" / short_name(hack_id) / f"{preset}.json"
+    try:
+        vals = json.loads(path.read_text()).get("values", {})
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return {str(k): str(v) for k, v in vals.items()} if isinstance(vals, dict) else {}
+
+
 def load_option_schema(hack_id):
     """Rows of options/<hack>.tsv plus the common options/_render.tsv for shader hacks.
 
@@ -1057,9 +1163,12 @@ def load_option_schema(hack_id):
     """
     rows = []
     for stem in (hack_id, short_name(hack_id)):
-        path = options_dir() / f"{stem}.tsv"
-        if path.is_file():
-            rows = _read_schema_file(path, hack_id)
+        for ext, reader in ((".json", _rows_from_json), (".tsv", _read_schema_file)):
+            path = options_dir() / f"{stem}{ext}"
+            if path.is_file():
+                rows = reader(path, hack_id)
+                break
+        if rows:
             break
     common = options_dir() / "_render.tsv"
     if is_shader_hack(hack_id) and common.is_file():
@@ -1107,7 +1216,12 @@ def hack_option_env(hack_id, settings, overrides=None):
     schema = {r["name"]: r for r in load_option_schema(hack_id)}
     if not schema:
         return {}
-    values = dict((settings.get("hack-options") or {}).get(hack_id, {}))
+    stored = dict((settings.get("hack-options") or {}).get(hack_id, {}))
+    # precedence: JSON preset values < stored options < per-run overrides
+    values = preset_values(
+        hack_id, (overrides or {}).get("preset") or stored.get("preset")
+    )
+    values.update(stored)
     if "palette" in schema and "palette" not in values:
         legacy = str(settings.get("blackhole-color-mode", "stylized"))
         if hack_id == "blackhole_gles3" and legacy != "stylized":
@@ -1958,6 +2072,32 @@ def cmd_list_options(args):
     return 0
 
 
+def cmd_options(args):
+    """Everything a front end needs to draw the controls of one screensaver."""
+    settings, _ = load_settings()
+    stored = stored_options(settings).get(args.hack, {})
+    rows = []
+    for r in load_option_schema(args.hack):
+        row = dict(r)
+        row["value"] = stored.get(r["name"], r["default"])
+        row["level"] = option_level(r)
+        rows.append(row)
+    out = {
+        "schema_version": 1,
+        "hack": args.hack,
+        "options": rows,
+        "presets": load_presets(args.hack),
+        "preset_option": "preset" if any(r["name"] == "preset" for r in rows) else None,
+        "seed_option": "seed" if any(r["name"] == "seed" for r in rows) else None,
+    }
+    if args.json:
+        print(json.dumps(out))
+    else:
+        for r in rows:
+            print(f"{r['level']:<9} {r['group']:<12} {r['name']:<20} {r['value']}")
+    return 0
+
+
 def cmd_get_option(args):
     settings, _ = load_settings()
     schema = need_schema(args.hack)
@@ -2376,6 +2516,12 @@ def build_parser():
     s.add_argument("hack")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_plan)
+    s = sub.add_parser(
+        "options", help="option schema, values and presets of one screensaver"
+    )
+    s.add_argument("hack")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_options)
     s = sub.add_parser(
         "ensure-plugin", help="enable the Settings plugin once for this user"
     )
