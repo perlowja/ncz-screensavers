@@ -43,7 +43,9 @@ const effect effects[] = effect[](
   , effect(0.125, 1.0, 1.0, 0.0)
   , effect(0.125, 1.0, 0.0, 0.0)
   );
-effect current_effect = effects[5];
+// effects[5], written out: Mali rejects indexing a constant array in a global
+// initializer (S0012); the constructor form is a constant expression everywhere.
+effect current_effect = effect(0.125, 1.0, 0.0, 0.0);
 
 float hash(float co) {
   co += 100.0;

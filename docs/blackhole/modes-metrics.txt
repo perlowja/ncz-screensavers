@@ -1,0 +1,30 @@
+Black hole color modes, 2026-09-29. Columns in the screenshots: stylized, kipthorne, faithful.
+Metric: per-pixel chroma distance between kipthorne and faithful (chromaticity r,g,b normalized to sum 1) over the disk pixels; L/R = mean luminance left half / right half of the disk; chroma spread = summed per-channel std of chromaticity over the disk.
+
+== PEGASUS (Intel UHD 630, Mesa iris), seeds 7 13 21 34, frames 60 and 120
+seed 13 frame 0000003c px=28776 | per-pixel chroma dist kip-faith 0.079 stylized-kip 0.186 | L/R lum kip 1.17 faith 1.24 | L-R chroma kip 0.018 faith 0.014 | chroma spread kip 0.071 faith 0.128
+seed 13 frame 00000078 px=80497 | per-pixel chroma dist kip-faith 0.096 stylized-kip 0.360 | L/R lum kip 1.06 faith 1.44 | L-R chroma kip 0.055 faith 0.144 | chroma spread kip 0.072 faith 0.166
+seed 21 frame 0000003c px=78521 | per-pixel chroma dist kip-faith 0.101 stylized-kip 0.140 | L/R lum kip 0.97 faith 1.18 | L-R chroma kip 0.001 faith 0.038 | chroma spread kip 0.036 faith 0.166
+seed 21 frame 00000078 px=80116 | per-pixel chroma dist kip-faith 0.093 stylized-kip 0.056 | L/R lum kip 0.96 faith 1.09 | L-R chroma kip 0.002 faith 0.011 | chroma spread kip 0.035 faith 0.155
+seed 34 frame 0000003c px=58506 | per-pixel chroma dist kip-faith 0.099 stylized-kip 0.360 | L/R lum kip 0.93 faith 0.64 | L-R chroma kip 0.042 faith 0.132 | chroma spread kip 0.095 faith 0.165
+seed 34 frame 00000078 px=74046 | per-pixel chroma dist kip-faith 0.084 stylized-kip 0.384 | L/R lum kip 1.06 faith 1.25 | L-R chroma kip 0.045 faith 0.074 | chroma spread kip 0.078 faith 0.169
+seed 7 frame 0000003c px=79591 | per-pixel chroma dist kip-faith 0.169 stylized-kip 0.310 | L/R lum kip 0.97 faith 0.59 | L-R chroma kip 0.003 faith 0.216 | chroma spread kip 0.071 faith 0.239
+N=7 per-pixel chroma dist kip-faith min 0.079 mean 0.103
+
+== O6N (Mali-G720), seeds 7 13 21 34 55, frames 4 60 120
+seed 13 frame 00000004 px=11541 | per-pixel chroma dist kip-faith 0.107 stylized-kip 0.146 | L/R lum kip 0.94 faith 0.63 | L-R chroma kip 0.033 faith 0.152 | chroma spread kip 0.092 faith 0.177
+seed 13 frame 0000003c px=5462 | per-pixel chroma dist kip-faith 0.111 stylized-kip 0.182 | L/R lum kip 1.04 faith 1.04 | L-R chroma kip 0.009 faith 0.015 | chroma spread kip 0.085 faith 0.209
+seed 13 frame 00000078 px=71652 | per-pixel chroma dist kip-faith 0.070 stylized-kip 0.291 | L/R lum kip 1.11 faith 1.34 | L-R chroma kip 0.080 faith 0.138 | chroma spread kip 0.081 faith 0.147
+seed 21 frame 00000004 px=77768 | per-pixel chroma dist kip-faith 0.106 stylized-kip 0.176 | L/R lum kip 0.98 faith 1.26 | L-R chroma kip 0.002 faith 0.056 | chroma spread kip 0.036 faith 0.174
+seed 21 frame 0000003c px=78591 | per-pixel chroma dist kip-faith 0.103 stylized-kip 0.147 | L/R lum kip 0.97 faith 1.22 | L-R chroma kip 0.002 faith 0.047 | chroma spread kip 0.036 faith 0.169
+seed 21 frame 00000078 px=80061 | per-pixel chroma dist kip-faith 0.095 stylized-kip 0.099 | L/R lum kip 0.97 faith 1.14 | L-R chroma kip 0.002 faith 0.022 | chroma spread kip 0.035 faith 0.158
+seed 34 frame 00000004 px=70137 | per-pixel chroma dist kip-faith 0.121 stylized-kip 0.419 | L/R lum kip 1.07 faith 1.04 | L-R chroma kip 0.040 faith 0.015 | chroma spread kip 0.071 faith 0.123
+seed 34 frame 0000003c px=61408 | per-pixel chroma dist kip-faith 0.130 stylized-kip 0.363 | L/R lum kip 1.02 faith 0.71 | L-R chroma kip 0.018 faith 0.097 | chroma spread kip 0.083 faith 0.150
+seed 34 frame 00000078 px=13251 | per-pixel chroma dist kip-faith 0.116 stylized-kip 0.395 | L/R lum kip 0.89 faith 0.64 | L-R chroma kip 0.056 faith 0.096 | chroma spread kip 0.091 faith 0.220
+seed 55 frame 00000004 px=80750 | per-pixel chroma dist kip-faith 0.122 stylized-kip 0.211 | L/R lum kip 1.02 faith 2.35 | L-R chroma kip 0.025 faith 0.261 | chroma spread kip 0.040 faith 0.212
+seed 55 frame 0000003c px=78359 | per-pixel chroma dist kip-faith 0.118 stylized-kip 0.172 | L/R lum kip 1.03 faith 2.34 | L-R chroma kip 0.034 faith 0.257 | chroma spread kip 0.048 faith 0.213
+seed 55 frame 00000078 px=70706 | per-pixel chroma dist kip-faith 0.118 stylized-kip 0.145 | L/R lum kip 1.04 faith 2.38 | L-R chroma kip 0.033 faith 0.255 | chroma spread kip 0.047 faith 0.212
+seed 7 frame 00000004 px=92819 | per-pixel chroma dist kip-faith 0.132 stylized-kip 0.265 | L/R lum kip 1.06 faith 1.76 | L-R chroma kip 0.041 faith 0.203 | chroma spread kip 0.077 faith 0.232
+seed 7 frame 0000003c px=74526 | per-pixel chroma dist kip-faith 0.169 stylized-kip 0.260 | L/R lum kip 1.01 faith 0.68 | L-R chroma kip 0.007 faith 0.166 | chroma spread kip 0.062 faith 0.215
+seed 7 frame 00000078 px=65968 | per-pixel chroma dist kip-faith 0.099 stylized-kip 0.449 | L/R lum kip 0.92 faith 0.72 | L-R chroma kip 0.062 faith 0.125 | chroma spread kip 0.087 faith 0.182
+N=15 per-pixel chroma dist kip-faith min 0.070 mean 0.114

@@ -259,6 +259,9 @@ vec3 blackbodyRGB(float kelvin){
  return vec3(r,g,b);
 }
 
+// Saturation about luma. The analytic blackbody fit is pale in sRGB and the
+// tonemap pulls it further toward white, so the physical modes boost it.
+vec3 satBoost(vec3 c,float k){float l=dot(c,vec3(.299,.587,.114));return max(mix(vec3(l),c,k),vec3(0.));}
 vec3 disk_color(vec3 p,vec3 diskN,float drama){
  // Rotate into the disk's local frame (z = disk normal at this instant).
  // Everything below runs in plane-polar (r, a) where a is the orbital
@@ -300,28 +303,35 @@ vec3 disk_color(vec3 p,vec3 diskN,float drama){
  // double-counting, so it is stylised-only.
  float sector_amp=(u_color_mode<0.5)?0.22:0.0;
  float boost=1.+sector_amp*drama*sector*(1.-smoothstep(4.,8.,r));
- vec3 tint; float bright=1.;
+ vec3 tint; float bright=1.; float beam=dop*dop;
+ float hm=clamp(heat,0.,1.);
  if(u_color_mode<0.5){
   tint=palette(paletteT);              // stylised: unchanged, still default
+ } else if(u_color_mode<1.5){
+  // kipthorne: the Interstellar / Gargantua look. Blackbody disk in a narrow
+  // warm gold-to-white range, with NO Doppler shift, NO gravitational shift
+  // and NO beaming (Thorne and Double Negative switched all three off so the
+  // disk reads symmetric and cinematic). Fully rotation-symmetric.
+  tint=satBoost(blackbodyRGB(mix(1900.,4300.,hm)),1.4);
+  beam=1.;
+  bright=.85+.35*hm;
  } else {
-  // Map the existing heat term onto a physical disk temperature: inner disk
-  // hot and blue-white, outer edge cool and deep red.
-  float T=mix(1200.,9500.,clamp(heat,0.,1.));
-  if(u_color_mode>1.5){
-   // faithful: observed temperature is shifted by gravitational redshift
-   // (grav = sqrt(1-rs/r), already computed) and relativistic Doppler (dop).
-   // Beaming brightens the approaching side as dop^3.
-   T*=clamp(dop*grav,0.15,3.);
-   // The return below already carries *dop*dop. Beaming for surface
-   // brightness goes as delta^3, so contribute ONE more factor here, not
-   // three -- dop*dop*dop here made it delta^5 and read as a searchlight.
-   bright=clamp(dop,0.25,2.2);
-  }
-  // kipthorne falls through with no shift and no beaming: Thorne and Double
-  // Negative disabled both so the film disk reads symmetric.
-  tint=blackbodyRGB(T);
+  // faithful: the physically shifted disk. Circular-orbit speed for a
+  // Schwarzschild hole (rs=1, M=1/2): v^2 = M/(r-2M) = .5/(r-1). Line-of-sight
+  // Doppler factor D = sqrt(1-v^2)/(1-v*sin(a)) (sin(a)>0 = approaching side),
+  // times gravitational redshift sqrt(1-1/r). Observed temperature scales with
+  // g = D*grav; surface brightness scales as D^3 (relativistic beaming).
+  float v2=.5/max(r-1.,.6);
+  float v=sqrt(min(v2,.72));
+  float D=sqrt(1.-v*v)/max(1.-v*sin(a),.12);
+  float g=D*sqrt(max(1.-1./max(r,1.001),.02));
+  // Shift exponent 2: the plain linear shift is too subtle to read at a
+  // normal viewing inclination, so the color displacement is exaggerated.
+  tint=satBoost(blackbodyRGB(mix(3400.,10500.,hm)*clamp(g*g,.2,3.6)),2.4);
+  beam=1.;
+  bright=.42*clamp(D*D*D,.05,3.2);
  }
- return tint*edge*(.32+1.2*n)*u_density*dop*dop*boost*bright;
+ return tint*edge*(.32+1.2*n)*u_density*beam*boost*bright;
 }
 // Jet picks up the palette so it tracks the rest of the scene instead of a
 // fixed blue. Sampled at a hot temperature so it sits at the bright stop.
