@@ -1,6 +1,7 @@
-palette	enum	stylized			stylized,kipthorne,faithful,singularity,slingshot,whitehole	Palette	Color model. stylized: original art-directed palette. kipthorne: symmetric amber blackbody (Interstellar). faithful: Doppler and redshift shifted blackbody. singularity: strict monochrome white on black (Singularity desktop). slingshot: rust disk with a gold-white beamed arc. whitehole: icy teal and steel blue.	Look	NCZ_BLACKHOLE_PALETTE
+preset	string					Preset	Named bundle of options (see --list-presets): applied above the saved config file and below environment and command line. Empty = none.	Look	NCZ_BLACKHOLE_PRESET
+palette	enum	stylized			stylized,kipthorne,faithful,singularity,slingshot,whitehole,eht	Palette	Color model. stylized: original art-directed palette. kipthorne: symmetric amber blackbody (Interstellar). faithful: Doppler and redshift shifted blackbody. singularity: strict monochrome white on black (Singularity desktop). slingshot: rust disk with a gold-white beamed arc. whitehole: icy teal and steel blue. eht: Event Horizon Telescope false color (orange crescent).	Look	NCZ_BLACKHOLE_PALETTE
 palette-transition	float	8	0	120		Palette cross-fade (s)	Seconds to cross-fade when the palette changes (palette cycling). 0 switches instantly.	Look	NCZ_BLACKHOLE_PALETTE_TRANSITION
-cycle-palettes	string				stylized,kipthorne,faithful,singularity,slingshot,whitehole	Palette cycle list	Comma separated palettes to cycle through after the first one. Empty disables cycling.	Look	NCZ_BLACKHOLE_CYCLE_PALETTES
+cycle-palettes	string				stylized,kipthorne,faithful,singularity,slingshot,whitehole,eht	Palette cycle list	Comma separated palettes to cycle through after the first one. Empty disables cycling.	Look	NCZ_BLACKHOLE_CYCLE_PALETTES
 cycle-interval	float	90	5	3600		Cycle interval (s)	Seconds each palette stays before cross-fading to the next one in the cycle list.	Look	NCZ_BLACKHOLE_CYCLE_INTERVAL
 exposure	float	1	0.2	4		Exposure	Overall brightness multiplier applied before tone mapping.	Look	NCZ_BLACKHOLE_EXPOSURE
 disk-brightness	float	1	0.2	3		Disk brightness	Surface brightness of the accretion disk relative to the per-launch value.	Look	NCZ_BLACKHOLE_DISK_BRIGHTNESS
@@ -21,6 +22,10 @@ spin	float	0	0	0.998		Spin	Dimensionless spin a/M. Approximation: moves the inne
 rotation-speed	float	1	0	3		Disk rotation speed	Multiplier on the disk rotation rate.	Physics	NCZ_BLACKHOLE_ROTATION_SPEED
 precession	float	1	0	4		Disk precession	Multiplier on the disk's slow precession (auto camera path only).	Physics	NCZ_BLACKHOLE_PRECESSION
 temperature	float	1	0.3	1.6		Disk temperature	Multiplier on the disk heat, which shifts colors toward the hot end.	Physics	NCZ_BLACKHOLE_TEMPERATURE
+disk-outer	float	12	6	80		Disk outer radius	Outer radius of the accretion disk in Schwarzschild radii. Presets use large values for quasars.	Physics	NCZ_BLACKHOLE_DISK_OUTER
+jet-length	float	22.2	5	250		Jet length	Length scale of the polar jets in Schwarzschild radii (brightness falls off exponentially).	Physics	NCZ_BLACKHOLE_JET_LENGTH
+torus	float	0	0	1		Dusty torus	Opacity of a dusty torus ring around the disk (quasar look). Artistic straight-ray approximation.	Physics	NCZ_BLACKHOLE_TORUS
+companion	float	0	0	1		Companion star	Show a blue companion star and the gas stream it feeds the disk with (microquasar look). Artistic.	Physics	NCZ_BLACKHOLE_COMPANION
 lensing	bool	true				Gravitational lensing	Turn off to draw straight rays (debugging).	Physics	NCZ_BLACKHOLE_LENSING
 adaptive	bool	true				Adaptive quality	Measure frame times and lower the ray-step budget when frames miss the display refresh, with hysteresis (only when quality is auto). Resolution is controlled by the shared render-scale options.	System	NCZ_BLACKHOLE_ADAPTIVE
 quality	enum	auto			auto,low,medium,high,ultra	Quality	Ray-march step budget tier. auto picks by GPU and adapts to frame time.	System	NCZ_BLACKHOLE_QUALITY

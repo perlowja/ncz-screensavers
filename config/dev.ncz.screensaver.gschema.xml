@@ -11,6 +11,7 @@
     <value nick="singularity" value="3"/>
     <value nick="slingshot" value="4"/>
     <value nick="whitehole" value="5"/>
+    <value nick="eht" value="6"/>
   </enum>
   <schema id="dev.ncz.screensaver" path="/dev/ncz/screensaver/">
     <key name="mode" type="s">

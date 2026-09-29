@@ -36,5 +36,6 @@ int ncz_render_platform_cap(const char *r, int native_h) {
 double ncz_render_step_down(double scale) {
     if (scale > 0.80) return 0.75;
     if (scale > 0.55) return 0.5;
+    if (scale > 0.40) return 0.35;
     return scale;
 }

@@ -11,6 +11,7 @@
 
 static void warn(ncz_opts *o, const char *tag, const char *fmt, const char *a, const char *b, const char *c) {
     o->warnings++;
+    if (o->quiet) return;
     fprintf(stderr, "[opts] %s: ", tag ? tag : "option");
     fprintf(stderr, fmt, a ? a : "", b ? b : "", c ? c : "");
     fputc('\n', stderr);
@@ -253,6 +254,7 @@ int ncz_opts_apply_argv(ncz_opts *o, int argc, char **argv, const char *prog) {
         if (!a) continue;
         if (!strcmp(a, "--help") || !strcmp(a, "-h")) { flags |= 1; continue; }
         if (!strcmp(a, "--list-options")) { flags |= 2; continue; }
+        if (!strcmp(a, "--print-config")) { flags |= 16; continue; }
         if (strncmp(a, "--", 2) != 0) { warn(o, "command line", "unexpected argument '%.60s'%s%s", a, "", ""); flags |= 8; continue; }
         const char *name = a + 2, *eq = strchr(name, '=');
         size_t nl = eq ? (size_t)(eq - name) : strlen(name);
@@ -270,9 +272,10 @@ int ncz_opts_apply_argv(ncz_opts *o, int argc, char **argv, const char *prog) {
     return flags;
 }
 
-int ncz_opts_resolve(ncz_opts *o, const char *prefix, const char *group,
-                     const char *conf_path, int argc, char **argv, const char *prog,
-                     const char *(*getenv_fn)(const char *)) {
+int ncz_opts_resolve_preset(ncz_opts *o, const char *prefix, const char *group,
+                            const char *conf_path, const char *preset_path,
+                            const char *preset_tag, int argc, char **argv,
+                            const char *prog, const char *(*getenv_fn)(const char *)) {
     if (!getenv_fn) getenv_fn = sys_getenv;
     char path[512] = "";
     if (conf_path) snprintf(path, sizeof path, "%s", conf_path);
@@ -289,8 +292,15 @@ int ncz_opts_resolve(ncz_opts *o, const char *prefix, const char *group,
         }
     }
     if (*path) ncz_opts_apply_keyfile(o, path, group, "config file");
+    if (preset_path) ncz_opts_apply_keyfile(o, preset_path, group, preset_tag ? preset_tag : "preset");
     ncz_opts_apply_env(o, prefix, getenv_fn);
     return ncz_opts_apply_argv(o, argc, argv, prog);
+}
+
+int ncz_opts_resolve(ncz_opts *o, const char *prefix, const char *group,
+                     const char *conf_path, int argc, char **argv, const char *prog,
+                     const char *(*getenv_fn)(const char *)) {
+    return ncz_opts_resolve_preset(o, prefix, group, conf_path, NULL, NULL, argc, argv, prog, getenv_fn);
 }
 
 int ncz_opts_is_set(const ncz_opts *o, const char *name) {

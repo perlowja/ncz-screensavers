@@ -21,6 +21,7 @@
 #define NCZ_ARG_LIST            2
 #define NCZ_ARG_UNKNOWN_OPTION  4
 #define NCZ_ARG_STRAY_ARGUMENT  8
+#define NCZ_ARG_PRINT_CONFIG    16
 
 typedef enum {
     NCZ_OPT_BOOL,
@@ -51,7 +52,8 @@ typedef struct {
     size_t             n;
     char             (*val)[NCZ_OPT_VALMAX];
     unsigned char     *set;      /* 1 when the value came from a source, not the default */
-    int                warnings; /* number of warnings printed */
+    int                warnings; /* number of warnings issued */
+    int                quiet;    /* when set, warnings are counted but not printed */
 } ncz_opts;
 
 /* Validate `in` against `d`. On success writes the canonical form to out and
@@ -78,6 +80,14 @@ int  ncz_opts_resolve(ncz_opts *o, const char *prefix, const char *group,
                       const char *(*getenv_fn)(const char *));
 
 int         ncz_opts_is_set(const ncz_opts *o, const char *name);
+/* Like ncz_opts_resolve, with an optional preset key file applied after the
+ * user config file and before the environment (defaults < config < preset <
+ * environment < command line). */
+int  ncz_opts_resolve_preset(ncz_opts *o, const char *prefix, const char *group,
+                             const char *conf_path, const char *preset_path,
+                             const char *preset_tag, int argc, char **argv,
+                             const char *prog, const char *(*getenv_fn)(const char *));
+
 const char *ncz_opts_get(const ncz_opts *o, const char *name);
 double      ncz_opts_get_float(const ncz_opts *o, const char *name);
 long        ncz_opts_get_int(const ncz_opts *o, const char *name);

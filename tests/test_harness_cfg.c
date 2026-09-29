@@ -47,7 +47,7 @@ int main(void) {
     CHECK(ncz_render_platform_cap("Mesa Intel(R) UHD Graphics 630", 2160) == 1080);
     CHECK(ncz_render_platform_cap("Mesa Intel(R) UHD Graphics 630", 1080) == 0);
     CHECK(ncz_render_platform_cap("AMD Radeon Graphics (radeonsi, navi14)", 2160) == 0);
-    CHECK(ncz_render_step_down(1.0) == 0.75 && ncz_render_step_down(0.75) == 0.5 && ncz_render_step_down(0.5) == 0.5);
+    CHECK(ncz_render_step_down(1.0) == 0.75 && ncz_render_step_down(0.75) == 0.5 && ncz_render_step_down(0.5) == 0.35 && ncz_render_step_down(0.35) == 0.35);
 
     /* software renderer detection */
     CHECK(ncz_renderer_is_software("llvmpipe (LLVM 21.1.8, 128 bits)"));

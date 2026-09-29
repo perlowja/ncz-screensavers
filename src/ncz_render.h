@@ -18,7 +18,7 @@ int ncz_render_size(int nw, int nh, double scale, int max_h, int *rw, int *rh);
  * the native height exceeds 1440; everything else is unlimited (0). */
 int ncz_render_platform_cap(const char *gl_renderer, int native_h);
 
-/* Next step of the adaptive ladder 1.0 -> 0.75 -> 0.5 (below 0.5 stays). */
+/* Next step of the adaptive ladder 1.0 -> 0.75 -> 0.5 -> 0.35 (0.35 stays). */
 double ncz_render_step_down(double scale);
 
 #endif

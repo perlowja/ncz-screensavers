@@ -8,13 +8,15 @@
 #define BLACKHOLE_OPTS_H
 #include "ncz_options.h"
 
-#define BH_PALETTES "stylized,kipthorne,faithful,singularity,slingshot,whitehole"
+#define BH_PALETTES "stylized,kipthorne,faithful,singularity,slingshot,whitehole,eht"
 #define BH_FLYBYS   "auto,orbit,slow-orbit,equatorial,polar,plunge,slingshot,drift,random"
 
 static const ncz_opt_def BH_OPTS[] = {
  /* name, type, default, min, max, choices, aliases, env_alias, label, description, group */
+ {"preset", NCZ_OPT_STRING, "", 0, 0, "", "", NULL,
+  "Preset", "Named bundle of options (see --list-presets): applied above the saved config file and below environment and command line. Empty = none.", "Look"},
  {"palette", NCZ_OPT_ENUM, "stylized", 0, 0, BH_PALETTES, "stylised=stylized", "NCZ_BLACKHOLE_COLORS",
-  "Palette", "Color model. stylized: original art-directed palette. kipthorne: symmetric amber blackbody (Interstellar). faithful: Doppler and redshift shifted blackbody. singularity: strict monochrome white on black (Singularity desktop). slingshot: rust disk with a gold-white beamed arc. whitehole: icy teal and steel blue.", "Look"},
+  "Palette", "Color model. stylized: original art-directed palette. kipthorne: symmetric amber blackbody (Interstellar). faithful: Doppler and redshift shifted blackbody. singularity: strict monochrome white on black (Singularity desktop). slingshot: rust disk with a gold-white beamed arc. whitehole: icy teal and steel blue. eht: Event Horizon Telescope false color (orange crescent).", "Look"},
  {"palette-transition", NCZ_OPT_FLOAT, "8", 0, 120, "", "", NULL,
   "Palette cross-fade (s)", "Seconds to cross-fade when the palette changes (palette cycling). 0 switches instantly.", "Look"},
  {"cycle-palettes", NCZ_OPT_LIST, "", 0, 0, BH_PALETTES, "stylised=stylized", NULL,
@@ -59,6 +61,14 @@ static const ncz_opt_def BH_OPTS[] = {
   "Disk precession", "Multiplier on the disk's slow precession (auto camera path only).", "Physics"},
  {"temperature", NCZ_OPT_FLOAT, "1", 0.3, 1.6, "", "", NULL,
   "Disk temperature", "Multiplier on the disk heat, which shifts colors toward the hot end.", "Physics"},
+ {"disk-outer", NCZ_OPT_FLOAT, "12", 6, 80, "", "", NULL,
+  "Disk outer radius", "Outer radius of the accretion disk in Schwarzschild radii. Presets use large values for quasars.", "Physics"},
+ {"jet-length", NCZ_OPT_FLOAT, "22.2", 5, 250, "", "", NULL,
+  "Jet length", "Length scale of the polar jets in Schwarzschild radii (brightness falls off exponentially).", "Physics"},
+ {"torus", NCZ_OPT_FLOAT, "0", 0, 1, "", "", NULL,
+  "Dusty torus", "Opacity of a dusty torus ring around the disk (quasar look). Artistic straight-ray approximation.", "Physics"},
+ {"companion", NCZ_OPT_FLOAT, "0", 0, 1, "", "", NULL,
+  "Companion star", "Show a blue companion star and the gas stream it feeds the disk with (microquasar look). Artistic.", "Physics"},
  {"lensing", NCZ_OPT_BOOL, "true", 0, 0, "", "", NULL,
   "Gravitational lensing", "Turn off to draw straight rays (debugging).", "Physics"},
  {"adaptive", NCZ_OPT_BOOL, "true", 0, 0, "", "", NULL,

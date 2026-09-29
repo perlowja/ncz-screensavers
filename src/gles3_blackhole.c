@@ -25,7 +25,7 @@ extern void ncz_harness_die(int code);
 typedef struct {
  GLuint program,vbo;
  GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis;
- GLint pal_a,pal_b,pal_mix,spin,isco,exposure,beaming,bloom,fringe,lensing,nebula_amt,hot_sector,fade,flyby,fly_t,fly_var,dmin,dmax,incl;
+ GLint pal_a,pal_b,pal_mix,spin,isco,exposure,beaming,bloom,fringe,lensing,nebula_amt,hot_sector,fade,disk_out,jet_len,torus,torus_r,comp,flyby,fly_t,fly_var,dmin,dmax,incl;
  GLint palette_phase,palette_rate,palette_contrast,nebula_scheme;
  // Per-launch path-shape parameters (replaces the hardcoded curve
  // coefficients that were previously literals in disk_color's camera block).
@@ -80,7 +80,7 @@ typedef struct {
  int pal_seq[16],npal;
  int flyby;                    /* 0 auto, 1..7 types, 8 random */
  double interval,ptrans,speed,dmin,dmax,duration;
- float incl,spin,exposure,beaming,bloom,fringe,nebula,hot,lensing;
+ float incl,spin,exposure,beaming,bloom,fringe,nebula,hot,lensing,disk_out,jet_len,torus,comp;
  int adaptive;
  uint32_t seed;
 } BhOpts;
@@ -91,7 +91,7 @@ const ncz_opt_def *ncz_hack_options(size_t *n,const char **prefix,const char **g
 }
 static const ncz_opts *g_op;static int g_o_ready;static BhOpts g_b;
 #define g_o (*g_op)
-static int pal_id(const char*n){static const char*t[]={"stylized","kipthorne","faithful","singularity","slingshot","whitehole"};for(int i=0;i<6;i++)if(!strcmp(n,t[i]))return i;return 0;}
+static int pal_id(const char*n){static const char*t[]={"stylized","kipthorne","faithful","singularity","slingshot","whitehole","eht"};for(int i=0;i<7;i++)if(!strcmp(n,t[i]))return i;return 0;}
 static int fly_id(const char*n){static const char*t[]={"auto","orbit","slow-orbit","equatorial","polar","plunge","slingshot","drift","random"};for(int i=0;i<9;i++)if(!strcmp(n,t[i]))return i;return 0;}
 static void bh_resolve(void){
  if(g_o_ready)return;
@@ -109,7 +109,9 @@ static void bh_resolve(void){
  b->spin=(float)ncz_opts_get_float(&g_o,"spin");b->exposure=(float)ncz_opts_get_float(&g_o,"exposure");
  b->beaming=(float)ncz_opts_get_float(&g_o,"beaming");b->bloom=(float)ncz_opts_get_float(&g_o,"bloom");
  b->fringe=(float)ncz_opts_get_float(&g_o,"fringe");b->nebula=(float)ncz_opts_get_float(&g_o,"nebula");
- b->hot=(float)ncz_opts_get_float(&g_o,"hot-sector");b->lensing=ncz_opts_get_bool(&g_o,"lensing")?1.f:0.f;
+ b->hot=(float)ncz_opts_get_float(&g_o,"hot-sector");
+ b->disk_out=(float)ncz_opts_get_float(&g_o,"disk-outer");b->jet_len=(float)ncz_opts_get_float(&g_o,"jet-length");
+ b->torus=(float)ncz_opts_get_float(&g_o,"torus");b->comp=(float)ncz_opts_get_float(&g_o,"companion");b->lensing=ncz_opts_get_bool(&g_o,"lensing")?1.f:0.f;
  b->seed=(uint32_t)strtoul(ncz_opts_get(&g_o,"seed"),NULL,0);
  b->adaptive=ncz_opts_get_bool(&g_o,"adaptive")&&!strcmp(ncz_opts_get(&g_o,"quality"),"auto");
 }
@@ -142,6 +144,7 @@ static void bh_frame_uniforms(State*s,double t,double treal){
  glUniform1f(s->spin,b->spin);glUniform1f(s->isco,3.f-1.4f*b->spin);
  glUniform1f(s->exposure,b->exposure);glUniform1f(s->beaming,b->beaming);
  glUniform1f(s->bloom,b->bloom);glUniform1f(s->fringe,b->fringe);
+ glUniform1f(s->disk_out,b->disk_out);glUniform1f(s->jet_len,b->jet_len);glUniform1f(s->torus,b->torus);glUniform1f(s->torus_r,b->disk_out*2.6f);glUniform1f(s->comp,b->comp);
  glUniform1f(s->lensing,b->lensing);glUniform1f(s->nebula_amt,b->nebula);glUniform1f(s->hot_sector,b->hot);
  float fade=1.f,flyid=0.f,flyt=0.f,flyv=0.f;double dmin=6,dmax=20;
  if(b->flyby){
@@ -190,7 +193,7 @@ static void init_blackhole(ModeInfo*m){
  glBufferData(GL_ARRAY_BUFFER,sizeof q,q,GL_STATIC_DRAW);
  glBindBuffer(GL_ARRAY_BUFFER,0);
 #define L(n) s->n=glGetUniformLocation(s->program,"u_"#n)
- L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);L(pal_a);L(pal_b);L(pal_mix);L(spin);L(isco);L(exposure);L(beaming);L(bloom);L(fringe);L(lensing);L(nebula_amt);L(hot_sector);L(fade);L(flyby);L(fly_t);L(fly_var);L(dmin);L(dmax);L(incl);
+ L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);L(pal_a);L(pal_b);L(pal_mix);L(spin);L(isco);L(exposure);L(beaming);L(bloom);L(fringe);L(lensing);L(nebula_amt);L(hot_sector);L(disk_out);L(jet_len);L(torus);L(torus_r);L(comp);L(fade);L(flyby);L(fly_t);L(fly_var);L(dmin);L(dmax);L(incl);
  L(palette_phase);L(palette_rate);L(palette_contrast);L(nebula_scheme);
  L(path_d_base);L(path_d_swing);L(path_d_harm_amp);L(path_d_harm_freq);
  L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
