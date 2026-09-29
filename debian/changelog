@@ -1,3 +1,12 @@
+ncz-screensavers (0.3.1) unstable; urgency=medium
+
+  * Black Hole: kipthorne (symmetric amber, no shifts) and faithful (Doppler,
+    redshift and beaming; blue-white approaching side, dim red-orange receding
+    side) are now clearly distinct.
+  * xshadertoy goldenapollian: legal on Mali (global initializer fixed).
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 13:00:00 +0000
+
 ncz-screensavers (0.3.0) unstable; urgency=medium
 
   * Add the ncz-screensaver launcher, ncz-screensaver-idled idle daemon with
