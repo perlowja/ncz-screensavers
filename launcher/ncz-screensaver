@@ -1,0 +1,941 @@
+#!/usr/bin/python3
+"""ncz-screensaver - launcher, supervisor and CLI for the NCZ-OS screensavers.
+
+The idle daemon (ncz-screensaver-idled) runs `ncz-screensaver start --idle`
+when the seat goes idle and `ncz-screensaver stop` on input.  This program
+picks a hack from the dev.ncz.screensaver settings, runs it in its own process
+group, rotates it, benches hacks that crash or render black, and stops it
+cleanly.  See docs/LAUNCHER-DESIGN.md.  Standard library only.
+"""
+
+import argparse
+import ast
+import contextlib
+import ctypes
+import errno
+import fcntl
+import json
+import os
+import random
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+SCHEMA = "dev.ncz.screensaver"
+DEFAULTS = {
+    "mode": "off",
+    "hack-id": "blackhole_gles3",
+    "random-hacks": [],
+    "playlist": [],
+    "hack-idle-delay": 300,
+    "cycle-delay": 600,
+    "lock-enabled": True,
+    "lock-delay": 60,
+    "lock-on-suspend": True,
+    "display-off-delay": 0,
+    "blackhole-color-mode": "stylized",
+    "verify-render": True,
+}
+MODES = ("off", "one", "random", "playlist")
+INT_RANGES = {
+    "hack-idle-delay": (1, 86400),
+    "cycle-delay": (5, 86400),
+    "lock-delay": (0, 86400),
+    "display-off-delay": (0, 86400),
+}
+ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+WORD_RE = re.compile(r"^[a-z0-9_-]+$")
+EARLY_EXIT_SECONDS = 3.0
+MAX_CONSECUTIVE_FAILURES = 3
+BENCH_SECONDS = 24 * 3600
+COMPOSITOR_COMMS = (
+    "labwc",
+    "singularity-deskto",
+    "sway",
+    "hyprland",
+    "kwin_wayland",
+    "gnome-shell",
+)
+GPU_ENV_EXACT = ("LD_LIBRARY_PATH",)
+GPU_ENV_PREFIXES = (
+    "__EGL",
+    "__GLX",
+    "EGL_",
+    "MESA_",
+    "LIBGL_",
+    "GBM_",
+    "VK_",
+    "NCZ_GPU",
+    "GALLIUM_",
+    "AMD_VULKAN",
+)
+GPU_ENV_NEVER = ("DRI_PRIME", "__NV_PRIME_RENDER_OFFLOAD", "__VK_LAYER_NV_optimus")
+SECRET_WORDS = ("password", "token", "secret")
+
+
+def log(msg):
+    print(f"ncz-screensaver: {msg}", file=sys.stderr, flush=True)
+
+
+# --------------------------------------------------------------------------
+# Paths
+# --------------------------------------------------------------------------
+def runtime_dir():
+    base = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    path = Path(base) / "ncz-screensaver"
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return path
+
+
+def state_dir():
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local/state")
+    path = Path(base) / "ncz-screensaver"
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return path
+
+
+def atomic_write(path, text):
+    tmp = Path(f"{path}.{os.getpid()}.tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def read_json(path, default=None):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return default
+
+
+# --------------------------------------------------------------------------
+# GSettings access through the gsettings CLI
+# --------------------------------------------------------------------------
+def parse_gvariant(text):
+    """Parse the GVariant text forms that dev.ncz.screensaver uses."""
+    text = text.strip()
+    if text.startswith("@as"):
+        text = text[3:].strip()
+    if text == "true":
+        return True
+    if text == "false":
+        return False
+    text = text.removeprefix("uint32 ")
+    return ast.literal_eval(text)
+
+
+def gsettings_env():
+    env = dict(os.environ)
+    env["G_MESSAGES_DEBUG"] = ""
+    return env
+
+
+def load_settings():
+    """Return (settings dict, schema_available)."""
+    values = dict(DEFAULTS)
+    if not shutil.which("gsettings"):
+        return values, False
+    try:
+        proc = subprocess.run(
+            ["gsettings", "list-recursively", SCHEMA],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            env=gsettings_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return values, False
+    if proc.returncode != 0:
+        return values, False
+    for line in proc.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) != 3 or parts[0] != SCHEMA:
+            continue
+        try:
+            values[parts[1]] = parse_gvariant(parts[2])
+        except (ValueError, SyntaxError):
+            continue
+    return values, True
+
+
+def gvariant_text(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(repr(str(v)) for v in value) + "]"
+    return str(value)
+
+
+def write_setting(key, value):
+    _, ok = load_settings()
+    if not ok:
+        raise SystemExit(f"schema {SCHEMA} is not available; cannot write settings")
+    proc = subprocess.run(
+        ["gsettings", "set", SCHEMA, key, gvariant_text(value)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+        env=gsettings_env(),
+    )
+    if proc.returncode != 0:
+        raise SystemExit(f"gsettings set {key} failed: {proc.stderr.strip()}")
+
+
+def validate_setting(key, value):
+    if key not in DEFAULTS:
+        raise SystemExit(f"unknown key {key}")
+    if key == "mode" and value not in MODES:
+        raise SystemExit(f"mode must be one of {', '.join(MODES)}")
+    if key in INT_RANGES:
+        lo, hi = INT_RANGES[key]
+        if not isinstance(value, int) or not lo <= value <= hi:
+            raise SystemExit(f"{key} must be an integer in [{lo}, {hi}]")
+    if key in ("random-hacks", "playlist"):
+        for item in value:
+            if not ID_RE.match(item):
+                raise SystemExit(f"invalid hack id {item!r}")
+    if key == "hack-id" and not ID_RE.match(str(value)):
+        raise SystemExit(f"invalid hack id {value!r}")
+
+
+def coerce_value(key, text):
+    default = DEFAULTS[key]
+    if isinstance(default, bool):
+        if text.lower() in ("true", "1", "yes", "on"):
+            return True
+        if text.lower() in ("false", "0", "no", "off"):
+            return False
+        raise SystemExit(f"{key} expects true or false")
+    if isinstance(default, int):
+        try:
+            return int(text)
+        except ValueError:
+            raise SystemExit(f"{key} expects an integer") from None
+    if isinstance(default, list):
+        parts = re.split(r"[,\s]+", text.strip("[]"))
+        return [x.strip("'\"") for x in parts if x.strip("'\"")]
+    return text
+
+
+# --------------------------------------------------------------------------
+# Catalog and binaries
+# --------------------------------------------------------------------------
+def catalog_path():
+    env = os.environ.get("NCZ_SCREENSAVER_CATALOG")
+    candidates = [env] if env else []
+    candidates += [
+        "/usr/share/ncz-screensavers/hacks.tsv",
+        "/usr/share/ncz-screensaver-chooser/hacks.tsv",
+    ]
+    for cand in candidates:
+        if cand and Path(cand).is_file():
+            return Path(cand)
+    return None
+
+
+def load_catalog():
+    path = catalog_path()
+    rows = []
+    if path is None:
+        return rows
+    for line in path.read_text().splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        fields = line.split("\t")
+        if len(fields) >= 3 and ID_RE.match(fields[0]):
+            rows.append({"id": fields[0], "title": fields[1], "group": fields[2]})
+    return rows
+
+
+def hack_dirs():
+    env = os.environ.get("NCZ_SCREENSAVER_DIRS")
+    if env:
+        return [d for d in env.split(":") if d]
+    return [
+        "/usr/lib/ncz-screensavers",
+        "/usr/libexec/ncz-screensavers",
+        "/opt/ncz-screensavers/bin",
+    ]
+
+
+def find_binary(hack_id):
+    if not ID_RE.match(hack_id):
+        return None
+    for d in hack_dirs():
+        cand = Path(d) / hack_id
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+    return None
+
+
+def known_id(hack_id, catalog):
+    if os.environ.get("NCZ_SCREENSAVER_ALLOW_UNLISTED") == "1":
+        return bool(ID_RE.match(hack_id))
+    return any(r["id"] == hack_id for r in catalog)
+
+
+# --------------------------------------------------------------------------
+# Environment for the hack process
+# --------------------------------------------------------------------------
+def find_compositor_environ(proc_root=None):
+    root = Path(proc_root or os.environ.get("NCZ_SCREENSAVER_PROC_ROOT", "/proc"))
+    uid = os.getuid()
+    try:
+        entries = [p for p in root.iterdir() if p.name.isdigit()]
+    except OSError:
+        return {}
+    for entry in sorted(entries, key=lambda p: int(p.name)):
+        try:
+            if entry.stat().st_uid != uid:
+                continue
+            comm = (entry / "comm").read_text().strip()
+            if comm not in COMPOSITOR_COMMS:
+                continue
+            raw = (entry / "environ").read_bytes()
+        except OSError:
+            continue
+        env = {}
+        for item in raw.split(b"\0"):
+            key, sep, val = item.partition(b"=")
+            if sep:
+                env[key.decode(errors="replace")] = val.decode(errors="replace")
+        return env
+    return {}
+
+
+def is_gpu_var(name):
+    if name in GPU_ENV_NEVER:
+        return False
+    return name in GPU_ENV_EXACT or name.startswith(GPU_ENV_PREFIXES)
+
+
+def build_child_env(hack_id, settings, base_env=None, proc_root=None):
+    env = dict(os.environ if base_env is None else base_env)
+    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    if "WAYLAND_DISPLAY" not in env:
+        rd = Path(env["XDG_RUNTIME_DIR"])
+        socks = sorted(
+            p.name for p in rd.glob("wayland-*") if not p.name.endswith(".lock")
+        )
+        if socks:
+            env["WAYLAND_DISPLAY"] = "wayland-0" if "wayland-0" in socks else socks[0]
+    for name, val in find_compositor_environ(proc_root).items():
+        if is_gpu_var(name) and name not in env:
+            env[name] = val
+    for name in list(env):
+        if any(w in name.lower() for w in SECRET_WORDS):
+            del env[name]
+    if hack_id == "blackhole_gles3":
+        keep = os.environ.get("NCZ_SCREENSAVER_KEEP_ENV") == "1"
+        mode = str(settings.get("blackhole-color-mode", "stylized"))
+        if keep and "NCZ_BLACKHOLE_COLORS" in env:
+            pass
+        elif mode == "stylized":
+            env.pop("NCZ_BLACKHOLE_COLORS", None)
+        else:
+            env["NCZ_BLACKHOLE_COLORS"] = mode
+    env["NCZ_SCREENSAVER_ACTIVE"] = "1"
+    return env
+
+
+# --------------------------------------------------------------------------
+# Render check
+# --------------------------------------------------------------------------
+def frame_is_black(ppm):
+    """True when fewer than 0.5% of pixels of a binary PPM frame are lit."""
+    try:
+        tokens = []
+        pos = 0
+        while len(tokens) < 4:
+            while ppm[pos : pos + 1].isspace():
+                pos += 1
+            if ppm[pos : pos + 1] == b"#":
+                pos = ppm.index(b"\n", pos) + 1
+                continue
+            end = pos
+            while not ppm[end : end + 1].isspace():
+                end += 1
+            tokens.append(ppm[pos:end])
+            pos = end
+        pos += 1
+        if tokens[0] != b"P6":
+            return False
+        width, height = int(tokens[1]), int(tokens[2])
+        pix = ppm[pos : pos + width * height * 3]
+        total = width * height
+        if total == 0 or len(pix) < total * 3:
+            return False
+    except (ValueError, IndexError):
+        return False
+    lit = sum(
+        1
+        for r, g, b in zip(pix[0::3], pix[1::3], pix[2::3], strict=False)
+        if max(r, g, b) > 16
+    )
+    return lit / total < 0.005
+
+
+def grab_frame_is_black(env):
+    grim = shutil.which("grim")
+    if not grim:
+        return False
+    try:
+        proc = subprocess.run(
+            [grim, "-t", "ppm", "-s", "0.05", "-"],
+            capture_output=True,
+            timeout=10,
+            check=False,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if proc.returncode != 0:
+        return False
+    return frame_is_black(proc.stdout)
+
+
+# --------------------------------------------------------------------------
+# Failure ledger
+# --------------------------------------------------------------------------
+class Failures:
+    def __init__(self):
+        self.path = state_dir() / "failures.json"
+        self.data = read_json(self.path, {})
+
+    def save(self):
+        atomic_write(self.path, json.dumps(self.data))
+
+    def benched(self, hack_id):
+        return self.data.get(hack_id, {}).get("benched_until", 0) > time.time()
+
+    def fail(self, hack_id):
+        entry = self.data.setdefault(hack_id, {"consecutive": 0, "benched_until": 0})
+        entry["consecutive"] += 1
+        if entry["consecutive"] >= MAX_CONSECUTIVE_FAILURES:
+            entry["benched_until"] = time.time() + BENCH_SECONDS
+            log(f"benching {hack_id} for 24 h after {entry['consecutive']} failures")
+        self.save()
+
+    def ok(self, hack_id):
+        if hack_id in self.data:
+            del self.data[hack_id]
+            self.save()
+
+
+# --------------------------------------------------------------------------
+# Process helpers
+# --------------------------------------------------------------------------
+def pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except OSError as exc:
+        return exc.errno == errno.EPERM
+    return True
+
+
+def is_our_process(pid):
+    try:
+        cmdline = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return False
+    return b"ncz-screensaver" in cmdline
+
+
+def terminate_group(pgid, grace=2.0):
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, signal.SIGTERM)
+    deadline = time.monotonic() + grace
+    while time.monotonic() < deadline:
+        try:
+            os.killpg(pgid, 0)
+        except OSError:
+            return
+        time.sleep(0.05)
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, signal.SIGKILL)
+
+
+def set_pdeathsig():
+    with contextlib.suppress(Exception):
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(1, signal.SIGTERM)
+
+
+# --------------------------------------------------------------------------
+# Supervisor
+# --------------------------------------------------------------------------
+class Supervisor:
+    def __init__(self, args, settings, catalog):
+        self.args = args
+        self.settings = settings
+        self.catalog = catalog
+        self.failures = Failures()
+        self.rt = runtime_dir()
+        self.child = None
+        self.child_hack = None
+        self.stop_requested = False
+        self.last_hack = None
+        self.playlist_index = 0
+        self.session_failures = 0
+        self.mode = "one" if args.hack else settings["mode"]
+        self.min_cycle = 1 if os.environ.get("NCZ_SCREENSAVER_MIN_CYCLE") else 5
+
+    def write_state(self, rotates_at=None):
+        child = self.child
+        state = {
+            "pid": os.getpid(),
+            "hack": self.child_hack,
+            "child_pid": child.pid if child else None,
+            "pgid": child.pid if child else None,
+            "started": self.started_wall,
+            "mode": self.mode,
+            "rotates_at": rotates_at,
+        }
+        atomic_write(self.rt / "state.json", json.dumps(state))
+
+    def installed(self, ids):
+        return [i for i in ids if ID_RE.match(i) and find_binary(i)]
+
+    def pick(self):
+        s = self.settings
+        if self.args.hack:
+            return self.args.hack
+        if self.mode == "one":
+            return s["hack-id"]
+        if self.mode == "playlist":
+            ids = self.installed(s["playlist"])
+            if not ids:
+                return None
+            hack = ids[self.playlist_index % len(ids)]
+            self.playlist_index += 1
+            return hack
+        pool = s["random-hacks"] or [r["id"] for r in self.catalog]
+        pool = [i for i in self.installed(pool) if not self.failures.benched(i)]
+        if len(pool) > 1 and self.last_hack in pool:
+            pool.remove(self.last_hack)
+        return random.choice(pool) if pool else None
+
+    def launch(self, hack_id):
+        binary = find_binary(hack_id)
+        if not binary:
+            log(f"{hack_id}: no executable found")
+            return None
+        env = build_child_env(hack_id, self.settings)
+        logf = open(self.rt / "hack.log", "ab")  # noqa: SIM115 - handed to the child
+        try:
+            child = subprocess.Popen(
+                [binary],
+                env=env,
+                stdout=logf,
+                stderr=logf,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+                preexec_fn=set_pdeathsig,  # noqa: PLW1509 - start_new_session is set
+            )
+        finally:
+            logf.close()
+        return child
+
+    def stop_child(self):
+        if self.child is not None:
+            terminate_group(self.child.pid)
+            with contextlib.suppress(Exception):
+                self.child.wait(timeout=1)
+            self.child = None
+            self.child_hack = None
+
+    def run_one(self, hack_id, deadline):
+        """Run one hack until it ends, rotation is due or a stop arrives.
+
+        Returns "failed", "rotate", "ended" or "stop".
+        """
+        self.child = self.launch(hack_id)
+        if self.child is None:
+            self.failures.fail(hack_id)
+            return "failed"
+        self.child_hack = hack_id
+        self.last_hack = hack_id
+        began = time.monotonic()
+        cycle = None
+        if not self.args.hack and self.mode in ("random", "playlist"):
+            cycle = max(self.min_cycle, int(self.settings["cycle-delay"]))
+        rotates_at = time.time() + cycle if cycle else None
+        self.write_state(rotates_at)
+        verify_at = began + float(os.environ.get("NCZ_SCREENSAVER_VERIFY_DELAY", "4"))
+        verified = not self.settings.get("verify-render", True)
+        cleared = False
+        while True:
+            if self.stop_requested:
+                return "stop"
+            now = time.monotonic()
+            if deadline is not None and now >= deadline:
+                self.stop_requested = True
+                return "stop"
+            code = self.child.poll()
+            if code is not None:
+                self.child = None
+                if code == 0 and now - began >= EARLY_EXIT_SECONDS:
+                    return "ended"  # the hack quit by itself, e.g. a key press
+                log(f"{hack_id} exited early or abnormally with status {code}")
+                self.failures.fail(hack_id)
+                return "failed"
+            if not cleared and now - began >= EARLY_EXIT_SECONDS:
+                self.failures.ok(hack_id)
+                cleared = True
+            if not verified and now >= verify_at:
+                verified = True
+                if grab_frame_is_black(build_child_env(hack_id, self.settings)):
+                    log(f"{hack_id} rendered an all-black frame")
+                    self.failures.fail(hack_id)
+                    self.stop_child()
+                    return "failed"
+            if cycle and now - began >= cycle:
+                return "rotate"
+            time.sleep(0.1)
+
+    def run(self):
+        self.started_wall = time.time()
+        deadline = time.monotonic() + self.args.seconds if self.args.seconds else None
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            signal.signal(sig, lambda *_: setattr(self, "stop_requested", True))
+        try:
+            while not self.stop_requested:
+                hack = self.pick()
+                if not hack:
+                    log("no runnable hack available")
+                    return 1
+                result = self.run_one(hack, deadline)
+                self.stop_child()
+                if result == "failed":
+                    self.session_failures += 1
+                    if self.session_failures >= MAX_CONSECUTIVE_FAILURES:
+                        log("giving up after 3 consecutive failures")
+                        return 1
+                elif result == "ended":
+                    return 0
+                else:
+                    self.session_failures = 0
+            return 0
+        finally:
+            self.stop_child()
+            with contextlib.suppress(OSError):
+                (self.rt / "state.json").unlink()
+
+
+# --------------------------------------------------------------------------
+# Commands
+# --------------------------------------------------------------------------
+def read_state():
+    """Return state.json when its supervisor is alive, else clean it up."""
+    path = runtime_dir() / "state.json"
+    state = read_json(path)
+    if not state:
+        return None
+    pid = state.get("pid")
+    if isinstance(pid, int) and pid_alive(pid) and is_our_process(pid):
+        return state
+    with contextlib.suppress(OSError):
+        path.unlink()
+    return None
+
+
+def cmd_start(args):
+    settings, _ = load_settings()
+    catalog = load_catalog()
+    if args.hack:
+        if not ID_RE.match(args.hack) or not known_id(args.hack, catalog):
+            log(f"unknown hack {args.hack}")
+            return 1
+        if not find_binary(args.hack):
+            log(f"{args.hack} is not installed")
+            return 1
+    if settings["mode"] == "off" and not (args.force or args.hack):
+        log("mode is off; nothing to start (use --force)")
+        return 0
+    rt = runtime_dir()
+    if not args.foreground:
+        if read_state():
+            print("already running")
+            return 0
+        logpath = rt / "launcher.log"
+        with contextlib.suppress(OSError):
+            if logpath.stat().st_size > 200 * 1024:
+                logpath.write_bytes(logpath.read_bytes()[-200 * 1024 :])
+        cmd = [sys.argv[0], "start", "--foreground"]
+        for flag, on in (("--idle", args.idle), ("--force", args.force)):
+            if on:
+                cmd.append(flag)
+        if args.hack:
+            cmd += ["--hack", args.hack]
+        if args.seconds:
+            cmd += ["--seconds", str(args.seconds)]
+        with open(logpath, "ab") as lf:
+            child = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=lf,
+                stderr=lf,
+                start_new_session=True,
+            )
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            state = read_json(rt / "state.json")
+            if state and state.get("pid") == child.pid:
+                return 0
+            code = child.poll()
+            if code is not None:
+                return 0 if code == 0 else code
+            time.sleep(0.05)
+        return 0
+    lock_fd = os.open(rt / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("already running")
+        return 0
+    return Supervisor(args, settings, catalog).run()
+
+
+def cmd_stop(_args):
+    state = read_state()
+    if not state:
+        return 0
+    pid = state["pid"]
+    with contextlib.suppress(OSError):
+        os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if not pid_alive(pid):
+            return 0
+        time.sleep(0.05)
+    log("supervisor did not exit; killing")
+    with contextlib.suppress(OSError):
+        os.kill(pid, signal.SIGKILL)
+    pgid = state.get("pgid")
+    if isinstance(pgid, int) and pgid > 1:
+        with contextlib.suppress(OSError):
+            os.killpg(pgid, signal.SIGKILL)
+    with contextlib.suppress(OSError):
+        (runtime_dir() / "state.json").unlink()
+    return 0
+
+
+def idled_info():
+    info = read_json(runtime_dir() / "idled.json")
+    if info and isinstance(info.get("pid"), int) and pid_alive(info["pid"]):
+        return info
+    return None
+
+
+def cmd_status(args):
+    settings, _ = load_settings()
+    state = read_state()
+    out = {
+        "running": bool(state),
+        "hack": state.get("hack") if state else None,
+        "pid": state.get("pid") if state else None,
+        "uptime": round(time.time() - state["started"], 1) if state else None,
+        "mode": settings["mode"],
+        "idled": idled_info(),
+    }
+    if args.json:
+        print(json.dumps(out))
+    elif state:
+        print(
+            f"running {out['hack']} (supervisor pid {out['pid']}, up {out['uptime']}s)"
+        )
+    else:
+        print("not running")
+    return 0 if state else 3
+
+
+def cmd_list(args):
+    settings, _ = load_settings()
+    pool = settings["random-hacks"]
+    rows = []
+    for r in load_catalog():
+        if args.group and r["group"] != args.group:
+            continue
+        row = dict(r)
+        row["installed"] = find_binary(r["id"]) is not None
+        row["enabled"] = not pool or r["id"] in pool
+        if args.enabled and not row["enabled"]:
+            continue
+        if args.installed and not row["installed"]:
+            continue
+        rows.append(row)
+    if args.json:
+        print(json.dumps(rows))
+    else:
+        for row in rows:
+            flags = ("I" if row["installed"] else "-") + (
+                "E" if row["enabled"] else "-"
+            )
+            print(f"{flags} {row['id']:<40} {row['group']:<22} {row['title']}")
+    return 0
+
+
+def cmd_preview(args):
+    cmd_stop(args)
+    args.idle = False
+    args.force = True
+    args.foreground = False
+    return cmd_start(args)
+
+
+def cmd_set(key, value):
+    validate_setting(key, value)
+    write_setting(key, value)
+    return 0
+
+
+def cmd_set_hack(args):
+    if not known_id(args.id, load_catalog()):
+        raise SystemExit(f"unknown hack {args.id}")
+    cmd_set("hack-id", args.id)
+    return cmd_set("mode", "one")
+
+
+def cmd_set_color(args):
+    if not WORD_RE.match(args.mode):
+        raise SystemExit("color mode must be a lowercase word")
+    if args.mode not in ("stylized", "kipthorne", "faithful"):
+        log(f"warning: {args.mode} may not be a known color mode")
+    return cmd_set("blackhole-color-mode", args.mode)
+
+
+def cmd_enable_disable(args, enable):
+    if not args.id:
+        return cmd_set("mode", "random" if enable else "off")
+    settings, _ = load_settings()
+    catalog_ids = [r["id"] for r in load_catalog()]
+    if not known_id(args.id, load_catalog()):
+        raise SystemExit(f"unknown hack {args.id}")
+    pool = list(settings["random-hacks"] or catalog_ids)
+    if enable and args.id not in pool:
+        pool.append(args.id)
+    if not enable and args.id in pool:
+        pool.remove(args.id)
+    if sorted(pool) == sorted(catalog_ids):
+        pool = []
+    return cmd_set("random-hacks", pool)
+
+
+def cmd_config(args):
+    settings, ok = load_settings()
+    if args.action == "dump":
+        print(json.dumps(settings))
+    elif args.action == "get":
+        if args.key not in settings:
+            raise SystemExit(f"unknown key {args.key}")
+        print(json.dumps(settings[args.key]))
+    else:
+        if args.key is None or args.value is None:
+            raise SystemExit("config set needs KEY VALUE")
+        if args.key not in DEFAULTS:
+            raise SystemExit(f"unknown key {args.key}")
+        return cmd_set(args.key, coerce_value(args.key, args.value))
+    if not ok and args.action != "set":
+        log("schema not available; showing built-in defaults")
+    return 0
+
+
+def cmd_doctor(_args):
+    settings, schema_ok = load_settings()
+    catalog = load_catalog()
+    per_group = {}
+    for r in catalog:
+        g = per_group.setdefault(r["group"], [0, 0])
+        g[0] += 1
+        g[1] += find_binary(r["id"]) is not None
+    rd = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    print(
+        json.dumps(
+            {
+                "schema": schema_ok,
+                "catalog_rows": len(catalog),
+                "installed_by_group": {
+                    k: {"catalog": v[0], "installed": v[1]}
+                    for k, v in per_group.items()
+                },
+                "wayland_sockets": sorted(
+                    p.name
+                    for p in Path(rd).glob("wayland-*")
+                    if not p.name.endswith(".lock")
+                ),
+                "grim": bool(shutil.which("grim")),
+                "idled_running": idled_info() is not None,
+                "mode": settings["mode"],
+            },
+            indent=1,
+        )
+    )
+    return 0
+
+
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="ncz-screensaver", description="NCZ-OS screensaver launcher"
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("start", help="start the screensaver")
+    s.add_argument("--idle", action="store_true", help="started by the idle daemon")
+    s.add_argument("--hack", help="run this catalog id")
+    s.add_argument("--seconds", type=int, help="stop the session after N seconds")
+    s.add_argument("--force", action="store_true", help="ignore mode off")
+    s.add_argument("--foreground", action="store_true", help="do not detach")
+    s.set_defaults(fn=cmd_start)
+    s = sub.add_parser("stop", help="stop the screensaver")
+    s.set_defaults(fn=cmd_stop)
+    s = sub.add_parser("status", help="show state")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_status)
+    s = sub.add_parser("list", help="list catalog hacks")
+    s.add_argument("--group")
+    s.add_argument("--enabled", action="store_true")
+    s.add_argument("--installed", action="store_true")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_list)
+    s = sub.add_parser("preview", help="run one hack for a while")
+    s.add_argument("hack")
+    s.add_argument("--seconds", type=int, default=15)
+    s.set_defaults(fn=cmd_preview)
+    s = sub.add_parser("set-timeout", help="idle seconds before the screensaver")
+    s.add_argument("seconds", type=int)
+    s.set_defaults(fn=lambda a: cmd_set("hack-idle-delay", a.seconds))
+    s = sub.add_parser("set-hack", help="use one hack (mode one)")
+    s.add_argument("id")
+    s.set_defaults(fn=cmd_set_hack)
+    s = sub.add_parser("set-mode", help="off, one, random or playlist")
+    s.add_argument("mode", choices=MODES)
+    s.set_defaults(fn=lambda a: cmd_set("mode", a.mode))
+    s = sub.add_parser("set-color", help="black hole color mode")
+    s.add_argument("mode")
+    s.set_defaults(fn=cmd_set_color)
+    for name, flag in (("enable", True), ("disable", False)):
+        s = sub.add_parser(name, help=f"{name} random mode or one hack in the pool")
+        s.add_argument("id", nargs="?")
+        s.set_defaults(fn=lambda a, f=flag: cmd_enable_disable(a, f))
+    s = sub.add_parser("config", help="get/set/dump raw settings")
+    s.add_argument("action", choices=("get", "set", "dump"))
+    s.add_argument("key", nargs="?")
+    s.add_argument("value", nargs="?")
+    s.set_defaults(fn=cmd_config)
+    s = sub.add_parser("doctor", help="environment checks")
+    s.set_defaults(fn=cmd_doctor)
+    return p
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
+    return args.fn(args) or 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
