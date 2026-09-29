@@ -200,6 +200,32 @@ Copyright: 2026 Jason Perlow <jperlow@gmail.com>
 License: GPL-2+
 ```
 
+## Gates
+
+`--dump-schema` works without a display; every port passes the frame checks of the harness (not
+black, moving, coverage). Measured lit-pixel coverage on MEDUSA, classic / enhanced (mean over the
+run): voronoi 100/100 %, crackberg 100/100, cityflow 100/100, noof 60/83, gibson 54/50, geodesic 46/48,
+hexstrut 33/38, gravitywell 24/19, cubestorm 18/15 (cubestorm is already on the sparse list). The
+software-renderer guard applies unchanged (verified on O6N: llvmpipe refused with exit 3 until the
+compositor's EGL environment is used). No port reads back pixels in its loop, all programs are
+compiled in `init`, and geometry buffers are only written through `glBufferSubData` rings.
+
+## Review record
+
+zoder (MiniMax-M3, no-tools, one file per prompt) reviewed every file. Findings were checked
+against the source; fixed: sampler precision in the shared shader head, scissor state and FBO
+completeness re-check after resize in `cs_post.h`, guarded block index and star program in
+voronoi, an off-by-one segment that drew one foot-circle arc twice in gravitywell, a leaked mesh
+on a failed program build in cubestorm, a degenerate-bounds divide in cityflow. Refuted (with
+reason): "apex depth inverted" and "cone scaled in pixel space" in voronoi (glOrtho(0,1,1,0,-1,1)
+maps the apex to the near plane and the original scales the cone to 10 in the same normalized
+space), "option key aa" (the macro registers `antialias`), "NPOT textures with REPEAT and mipmaps
+are incomplete" and "body VAO needs a divisor" in gibson (ES 3.0 allows NPOT mipmapped repeat
+textures, and the body draws through `gl_InstanceID`), "solid mode draws 3 of 4 sub-triangles"
+in geodesic (each sub-triangle is its own instance), and the dead store in the stellated morph
+(it is upstream's code). State left enabled at the end of a draw call is intentional: the
+harness draws one hack per process.
+
 ## Fidelity review
 
 Contact sheets (legacy GL1 build, `classic`, `enhanced`; three timestamps each, same colormap

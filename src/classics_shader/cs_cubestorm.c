@@ -166,7 +166,7 @@ static void init_cubestorm(ModeInfo *mi) {
     new_colors(s);
     build_mesh(s);
     s->prog = cs_program(VS, FS, "cubestorm");
-    if (!s->prog) return;
+    if (!s->prog) { free(g_mesh); g_mesh = NULL; return; }
     glGenVertexArrays(1, &s->vao); glBindVertexArray(s->vao);
     glGenBuffers(1, &s->vbo_mesh); glBindBuffer(GL_ARRAY_BUFFER, s->vbo_mesh);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * s->nverts, g_mesh, GL_STATIC_DRAW); free(g_mesh);

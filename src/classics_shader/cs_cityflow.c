@@ -111,8 +111,10 @@ static void animate(cstate *s) {
     move_waves(s);
     for (int i = 0; i < s->ncubes; i++) {
         cube *c = &s->cubes[i];
-        float fx = (c->x - s->min_x) / (s->max_x - s->min_x);
-        float fy = (c->y - s->min_y) / (s->max_y - s->min_y);
+        float dxr = s->max_x - s->min_x, dyr = s->max_y - s->min_y;
+        if (dxr < 1e-6f) dxr = 1; if (dyr < 1e-6f) dyr = 1;
+        float fx = (c->x - s->min_x) / dxr;
+        float fy = (c->y - s->min_y) / dyr;
         int x = (int)(TEX * fx) % TEX, y = (int)(TEX * fy) % TEX;
         float v = interference_point(s, x, y, s->style);
         if (!s->style) v = (float)(unsigned char)(int)v;
