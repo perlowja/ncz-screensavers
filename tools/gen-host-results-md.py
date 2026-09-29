@@ -109,8 +109,6 @@ def main():
         "Gate for every hack: at least 15% of the frame lit (any channel above 16), frame-to-frame motion of at least 0.5% of pixels, "
         "process alive at capture time and gone after `ncz-screensaver stop`. The difference from the desktop baseline is recorded but informational."
     )
-    L.append(
-    )
     L.append("")
     L.append("## Summary")
     L.append("")
