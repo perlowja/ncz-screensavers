@@ -27,8 +27,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <GLES3/gl32.h>
-#include "gles3_compat.h"
-#include "xscreensaver_compat.h"
+#include "ncz_gl.h"
+#include "ncz_hack_shim.h"
 #include "ncz_options.h"
 #include "ncz_harness_cfg.h"
 #include "ncz_platform.h"

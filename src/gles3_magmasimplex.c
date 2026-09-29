@@ -66,8 +66,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <GLES3/gl32.h>
-#include "gles3_compat.h"
-#include "xscreensaver_compat.h"
+#include "ncz_gl.h"
+#include "ncz_hack_shim.h"
 #ifdef NCZ_GLES3_BUILD
 extern void ncz_harness_die(int code);
 #endif
@@ -465,7 +465,7 @@ static void draw_quad(State *s){
   glBindBuffer(GL_ARRAY_BUFFER, s->vbo);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-  ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
   glDisableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

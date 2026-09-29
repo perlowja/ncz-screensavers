@@ -67,8 +67,8 @@
 
 #include <GLES3/gl32.h>
 
-#include "gles3_compat.h"
-#include "xscreensaver_compat.h"
+#include "ncz_gl.h"
+#include "ncz_hack_shim.h"
 
 /* Resolved at compile time by -DSHADER_FILE=...frag / -DHACK_PREFIX=...
  * in meson.build's `hyprsaver_shaders` foreach. Defaults are picked so
@@ -846,7 +846,7 @@ hyprsaver_draw(ModeInfo *mi) {
     /* The compat layer's glDrawArrays shim handles GL1 client arrays and
      * silently ignores VBO draws. Use its native GLES entry point here. */
     glDisable(GL_DEPTH_TEST);
-    ncz_gles3_draw_arrays(GL_TRIANGLES, 0, 6);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
