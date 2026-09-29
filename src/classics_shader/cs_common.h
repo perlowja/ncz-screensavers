@@ -214,7 +214,7 @@ static void cs_gl_check(const char *where) {
 /* Shader helpers                                                      */
 /* ------------------------------------------------------------------ */
 
-static const char *CS_GLSL_HEAD = "#version 300 es\nprecision highp float;\nprecision highp int;\n";
+static const char *CS_GLSL_HEAD = "#version 300 es\nprecision highp float;\nprecision highp int;\nprecision highp sampler2D;\n";
 
 static GLuint cs_compile(GLenum type, const char *src, const char *what) {
     GLuint sh = glCreateShader(type);

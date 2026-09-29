@@ -132,6 +132,12 @@ static void cs_post_resize(cs_post *p, int w, int h) {
     if (!p->ok || (w == p->w && h == p->h)) return;
     p->w = w; p->h = h; p->bw = (w + 3) / 4; p->bh = (h + 3) / 4;
     cs_post_alloc(p);
+    GLuint f[3] = { p->fbo, p->bfbo[0], p->bfbo[1] };
+    for (int i = 0; i < 3; i++) {                       /* a resize that leaves an FBO incomplete must not go on drawing black */
+        glBindFramebuffer(GL_FRAMEBUFFER, f[i]);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) p->ok = 0;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 static void cs_post_begin(cs_post *p) {
     glBindFramebuffer(GL_FRAMEBUFFER, p->fbo);
@@ -140,7 +146,7 @@ static void cs_post_begin(cs_post *p) {
 }
 /* glow: strength (0 = skip glow passes), exposure, vignette 0..1, aa 0/1, tone 0/1 */
 static void cs_post_end(cs_post *p, float glow, float exposure, float vig, int aa, int tone) {
-    glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE); glDisable(GL_SCISSOR_TEST);
     glBindVertexArray(p->vao);
     if (glow > 0.001f) {
         glViewport(0, 0, p->bw, p->bh);

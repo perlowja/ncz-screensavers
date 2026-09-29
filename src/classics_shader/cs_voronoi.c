@@ -297,7 +297,7 @@ static void init_voronoi(ModeInfo *mi) {
         if (!s->prog_cells) s->style = 0;                      /* fall back, already logged */
         else {
             GLuint bi = glGetUniformBlockIndex(s->prog_cells, "Sites");
-            glUniformBlockBinding(s->prog_cells, bi, 0);
+            if (bi != GL_INVALID_INDEX) glUniformBlockBinding(s->prog_cells, bi, 0); else s->style = 0;
             s->u_cells_res = glGetUniformLocation(s->prog_cells, "uRes");
             s->u_cells_n = glGetUniformLocation(s->prog_cells, "uN");
         }
@@ -364,7 +364,7 @@ static void draw_voronoi(ModeInfo *mi) {
         glBindVertexArray(s->vao_cone);
         if (n > 0) glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 66, n);
     }
-    if (s->point_size > 0 && n > 0) {
+    if (s->point_size > 0 && n > 0 && s->prog_star) {
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glUseProgram(s->prog_star);

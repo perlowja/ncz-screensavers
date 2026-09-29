@@ -303,7 +303,7 @@ static void draw_gw(ModeInfo *mi) {
     glUniform1i(glGetUniformLocation(s->prog, "uMode"), 1);
     glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, nv_b, s->rows_b);
     glUniform1i(glGetUniformLocation(s->prog, "uMode"), 2);
-    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 34 * 2, s->nstars);
+    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 33 * 2, s->nstars);      /* 32 segments close the loop */
     glBindVertexArray(0);
     glDisable(GL_BLEND);
     if (enh) cs_post_end(&s->post, s->bloom * 0.9f, 1.2f, 0.55f, s->aa, 0);
