@@ -553,7 +553,9 @@ void ncz_gles3_draw_arrays(GLenum mode, GLint first, GLsizei count);
  * period; it is invisible at startup); the periodic ones run only when
  * NCZ_DIAG_FRAMEBUFFER is set to something other than "0". period must be > 0.
  */
+/* 1 when NCZ_DIAG_FRAMEBUFFER is set to anything but "0" (cached). */
 int ncz_diag_periodic_samples(void);
+/* Whether to run a diagnostic pixel readback on this frame (see above). */
 static inline int ncz_diag_sample_frame(unsigned long frame, unsigned long period) {
     if (frame == 4)
         return 1;

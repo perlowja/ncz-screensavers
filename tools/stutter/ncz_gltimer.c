@@ -43,20 +43,21 @@ static void flush_all(void)
 static void onsig(int n)
 {
     (void)n;
-    flush_all();
-    _exit(0);
+    _exit(0); /* streams are line-buffered: nothing to flush, and fflush is not async-signal-safe */
 }
 
 __attribute__((constructor)) static void init(void)
 {
     const char *p = getenv("NCZ_GLTIMER_OUT"), *s = getenv("NCZ_GLTIMER_SLOW_MS");
     char path[512];
-    if (s) slow_ms = atof(s);
+    if (s && atof(s) >= 0.5) slow_ms = atof(s);
     if (p) {
         snprintf(path, sizeof path, "%s.frames", p);
         fr = fopen(path, "w");
         snprintf(path, sizeof path, "%s.events", p);
         ev = fopen(path, "w");
+        if (fr) setvbuf(fr, NULL, _IOLBF, 0);
+        if (ev) setvbuf(ev, NULL, _IOLBF, 0);
     }
     signal(SIGINT, onsig);
     signal(SIGTERM, onsig);
@@ -79,7 +80,7 @@ EGLBoolean eglSwapBuffers(EGLDisplay d, EGLSurface s)
     double b = now_ms();
     if (last_swap >= 0 && fr) {
         fprintf(fr, "%.2f %.3f %.3f\n", a - t0, a - last_swap, b - a);
-        if (++nframes % 120 == 0) flush_all();
+        nframes++;
     }
     last_swap = a;
     slow("eglSwapBuffers", a, b - a);

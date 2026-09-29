@@ -21,7 +21,7 @@ class NoPeriodicReadback(unittest.TestCase):
             for i, line in enumerate(lines):
                 if "glReadPixels" not in line:
                     continue
-                window = "\n".join(lines[max(0, i - 8):i])
+                window = "\n".join(lines[max(0, i - 8):i + 1])
                 if PERIODIC.search(window) and "ncz_diag_sample_frame" not in window \
                         and "report_wanted" not in window:
                     offenders.append("%s:%d" % (path.name, i + 1))
