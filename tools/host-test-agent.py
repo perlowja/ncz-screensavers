@@ -1644,6 +1644,41 @@ def phase_launcher(results, checks, env, workdir, launcher_path):
     _cli(ienv, "stop")
     _kill_hacks()
 
+    # Informational: a hack forced onto the NVIDIA EGL vendor (only when the
+    # driver is already loaded; nothing is installed and the variable is set
+    # for this one process only, never ambiently).
+    nv_json = "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
+    if (
+        os.path.exists(nv_json)
+        and "nvidia" in pathlib.Path("/proc/modules").read_text()
+    ):
+        nenv = _isolated_env(env, {"__EGL_VENDOR_LIBRARY_FILENAMES": nv_json})
+        _cli(nenv, "config", "set", "verify-render", "false")
+        _cli(nenv, "preview", "voronoi_gles3", "--seconds", "15")
+        ran = _wait_until(lambda: _status(nenv).get("running"), 3.0)
+        time.sleep(3.0)
+        alive = _status(nenv).get("running")
+        log_tail = ""
+        with contextlib.suppress(OSError):
+            log_tail = pathlib.Path(
+                _rt_dir(), "ncz-screensaver", "hack.log"
+            ).read_text()[-600:]
+        _cli(nenv, "stop")
+        _record(
+            checks,
+            "nvidia-egl-path",
+            "pass",
+            "informational: hack on the NVIDIA EGL vendor "
+            + ("ran" if alive else "did not run")
+            + (
+                "; eglGetPlatformDisplay failed on the Wayland compositor"
+                if "eglGetPlatformDisplay failed" in log_tail
+                else ""
+            ),
+            metrics={"started": ran is not None, "alive_after_3s": bool(alive)},
+        )
+        _kill_hacks()
+
 
 # ---------------------------------------------------------------------------
 # Phase: idle (daemon, input dismissal, inhibit, lock chain, DPMS, unit).
