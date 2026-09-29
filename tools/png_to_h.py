@@ -21,8 +21,10 @@ This file intentionally stays tiny — it is invoked from a meson
 `custom_target()` in `meson.build` for any hack that needs a PNG
 embedded at build time.
 """
+
 import sys
 import os
+
 
 def main(argv):
     if len(argv) != 4:
@@ -46,7 +48,7 @@ def main(argv):
     # under the 80-column limit and parses unambiguously as integer
     # literals.
     for i in range(0, len(data), 12):
-        chunk = data[i:i+12]
+        chunk = data[i : i + 12]
         bytes_str = ",".join("0x%02x" % b for b in chunk)
         lines.append("    %s," % bytes_str)
     lines.append("};")

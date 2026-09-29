@@ -322,8 +322,11 @@ static void notif_dispatch_resumed(struct idled_state *st, enum notif_role r)
 {
     switch (r) {
     case ROLE_SAVER:
+        /* The start command detaches and has already exited, so its pid says
+         * nothing about whether a saver is running: always ask the launcher to
+         * stop (idempotent). */
         st->saver_idled = false;
-        if (st->saver_pid > 0) {
+        {
             char *argv[] = { "ncz-screensaver", "stop", NULL };
             GError *err = NULL;
             GPid pid = -1;
@@ -551,9 +554,13 @@ static void plan_apply(struct idled_state *st, const struct idled_settings *s)
 {
     /* Save the snapshot and recompute the plan (also written to the state
      * file later). */
-    settings_clear(&st->cur_settings);
-    st->cur_settings = *s;
-    st->cur_plan = plan_compute(s);
+    /* s may alias st->cur_settings (reload paths) or be a fresh snapshot whose
+     * strings are handed over to the state. */
+    struct idled_settings snapshot = *s;
+    if (s != &st->cur_settings)
+        settings_clear(&st->cur_settings);
+    st->cur_settings = snapshot;
+    st->cur_plan = plan_compute(&st->cur_settings);
     log_debug("plan recomputed: saver=%d lock=%d dpms=%d lock_on_suspend=%d",
               st->cur_plan.saver, st->cur_plan.lock,
               st->cur_plan.dpms, st->cur_plan.lock_on_suspend);
@@ -950,8 +957,8 @@ static void logind_acquire_inhibit(struct idled_state *st)
         st->logind_inhibit_fd_raw = -1;
     }
     GUnixFDList *fds = g_unix_fd_list_new();
-    GVariant *args = g_variant_new("(sss)",
-        "sleep", "NCZ screensaver", "Lock the screen before sleep");
+    GVariant *args = g_variant_new("(ssss)",
+        "sleep", "NCZ screensaver", "Lock the screen before sleep", "delay");
     /* Signature: connection, bus_name, object_path, interface, method, args,
      * reply_type, flags, timeout_msec, fd_list, cancellable, callback, data. */
     g_dbus_connection_call_with_unix_fd_list(
@@ -1096,7 +1103,7 @@ static gboolean on_signal_hup(gpointer user_data)
     log_info("SIGHUP received, reloading settings");
     settings_load(st->gsettings, &st->cur_settings);
     plan_apply(st, &st->cur_settings);
-    return G_SOURCE_REMOVE;
+    return G_SOURCE_CONTINUE;
 }
 
 static gboolean on_settings_changed_debounced(gpointer user_data)
@@ -1117,19 +1124,14 @@ static void on_settings_changed(GSettings *settings, const char *key, gpointer u
     st->settings_debounce = g_timeout_add(300, on_settings_changed_debounced, st);
 }
 
-static gboolean on_shutdown_idle(gpointer user_data)
-{
-    (void)user_data;
-    return G_SOURCE_REMOVE;
-}
+static GMainLoop *g_loop;
 
 static void request_shutdown(struct idled_state *st, int code)
 {
     if (st->_shutdown) return;
     st->_shutdown = TRUE;
     st->_exit_code = code;
-    /* Wake the main loop; an idle source will be removed by GMainLoop. */
-    g_main_context_wakeup(NULL);
+    if (g_loop) g_main_loop_quit(g_loop);
 }
 
 /* ------------------------------------------------------------------------- *
@@ -1179,12 +1181,12 @@ static void state_teardown(struct idled_state *st)
     if (st->logind_cancellable)        g_object_unref(st->logind_cancellable);
     if (st->logind_conn)               g_object_unref(st->logind_conn);
     g_free(st->logind_session_path);
+    state_file_remove(st);
     g_free(st->state_file_path);
     g_free(st->_state_label);
     settings_clear(&st->cur_settings);
     if (st->gsettings) g_object_unref(st->gsettings);
     if (st->settings_debounce) g_source_remove(st->settings_debounce);
-    state_file_remove(st);
 }
 
 /* ------------------------------------------------------------------------- *
@@ -1311,16 +1313,16 @@ int main(int argc, char **argv)
 
     logind_init(&st);
 
-    settings_load(st.gsettings, &st.cur_settings);
-    plan_apply(&st, &st.cur_settings);
+    struct idled_settings first = {0};
+    settings_load(st.gsettings, &first);
+    plan_apply(&st, &first); /* takes ownership of the strings in first */
     state_file_update(&st);
 
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
-    /* Periodic wakeup is not strictly needed: the wayland source, signal
-     * handlers and the GSettings debounce keep the loop busy. We add a 0-idle
-     * source so request_shutdown()'s wakeup has a teardown hook. */
-    g_idle_add(on_shutdown_idle, &st);
+    g_loop = loop;
+    if (st._shutdown) g_main_loop_quit(loop);
     g_main_loop_run(loop);
+    g_loop = NULL;
     g_main_loop_unref(loop);
 
     int exit_code = st._exit_code;

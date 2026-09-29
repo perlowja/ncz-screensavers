@@ -13,7 +13,7 @@ which avoids constructing per-pixel tuples.
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 # Number of channels in a P6 (binary) PPM frame.
 _PPM_CHANNELS = 3
@@ -99,7 +99,9 @@ def _skip_ws_and_comments(data: bytes, pos: int) -> int:
     return pos
 
 
-def _iter_channel_triples(buf: bytes, step: int = _PPM_CHANNELS) -> Iterable[tuple[int, int, int]]:
+def _iter_channel_triples(
+    buf: bytes, step: int = _PPM_CHANNELS
+) -> Iterable[tuple[int, int, int]]:
     """Yield ``(r, g, b)`` triples from a flat RGB byte buffer.
 
     Operates on a buffer view (``memoryview``) so we don't allocate a list of

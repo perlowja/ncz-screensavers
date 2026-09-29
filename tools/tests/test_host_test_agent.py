@@ -20,7 +20,7 @@ _TOOLS = Path(__file__).resolve().parent.parent
 if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
-import host_test_image as hti  # noqa: E402  (path tweak above)
+import host_test_image as hti
 
 
 def _make_ppm(width: int, height: int, pixels: list[tuple[int, int, int]]) -> bytes:

@@ -34,13 +34,15 @@ human-readable protocol trace to stderr.
 from __future__ import annotations
 
 import argparse
+import array
 import json
 import os
 import socket
 import struct
 import sys
 import time
-from typing import Any, Callable, Iterable
+from collections.abc import Callable, Iterable
+from typing import Any
 
 # Native byte order -- Wayland is endian-sensitive. x86_64 and aarch64 (the
 # only build targets) are both little-endian, but we stay explicit so the
@@ -153,7 +155,9 @@ def pack_header(object_id: int, opcode: int, size: int) -> bytes:
         raise ValueError("Wayland messages are at least 8 bytes")
     if opcode < 0 or opcode > 0xFFFF:
         raise ValueError(f"opcode out of range: {opcode}")
-    return _HEADER.pack(object_id & 0xFFFFFFFF, ((size & 0xFFFF) << 16) | (opcode & 0xFFFF))
+    return _HEADER.pack(
+        object_id & 0xFFFFFFFF, ((size & 0xFFFF) << 16) | (opcode & 0xFFFF)
+    )
 
 
 def unpack_header(buf: bytes) -> tuple[int, int, int]:
@@ -164,9 +168,7 @@ def unpack_header(buf: bytes) -> tuple[int, int, int]:
     return object_id, size, opcode
 
 
-def encode_request(
-    object_id: int, opcode: int, payload: bytes = b""
-) -> bytes:
+def encode_request(object_id: int, opcode: int, payload: bytes = b"") -> bytes:
     """Build a complete request message (header + payload) ready for send."""
     size = _HEADER.size + len(payload)
     return pack_header(object_id, opcode, size) + payload
@@ -296,7 +298,7 @@ class Connection:
         if fds:
             self._sock.sendmsg(
                 [msg],
-                [(socket.SOL_SOCKET, socket.SCM_RIGHTS, list(fds))],
+                [(socket.SOL_SOCKET, socket.SCM_RIGHTS, array.array("i", fds))],
             )
             self._trace("sendmsg", object_id, opcode, fds=list(fds))
         else:
@@ -343,12 +345,12 @@ class Connection:
         assert self._sock is not None
         try:
             self._recv_more(8)
-        except socket.timeout:
+        except TimeoutError:
             return None
         object_id, size, opcode = unpack_header(bytes(self._recv_buf[:8]))
         try:
             self._recv_more(size)
-        except socket.timeout:
+        except TimeoutError:
             return None
         payload = bytes(self._recv_buf[8:size])
         self._consume(size)
@@ -418,7 +420,7 @@ class Connection:
             if done["fired"]:
                 break
             if time.monotonic() > deadline:
-                raise socket.timeout("wl_display.roundtrip timed out after 5 s")
+                raise TimeoutError("wl_display.roundtrip timed out after 5 s")
         self._event_handlers.pop(cb_id, None)
 
     # ------------------------------------------------------------------
@@ -498,12 +500,12 @@ def find_socket_path(display: str | None = None, runtime: str | None = None) -> 
 # included in the size we send, per the xkb spec (keymaps are NUL-terminated
 # text).
 XKB_KEYMAP_TEXT = (
-    'xkb_keymap {'
+    "xkb_keymap {"
     ' xkb_keycodes { include "evdev+aliases(qwerty)"; };'
     ' xkb_types { include "complete"; };'
     ' xkb_compat { include "complete"; };'
     ' xkb_symbols { include "pc+us"; };'
-    ' };'
+    " };"
     "\x00"
 )
 
@@ -643,8 +645,8 @@ def cmd_motion(args: argparse.Namespace) -> int:
                     + _U32.pack(wl_fixed_from_int(args.dy))
                 )
                 conn.send(pointer_id, 0, payload)
-                # frame() opcode = 1
-                conn.send(pointer_id, 1, b"")
+                # frame() opcode = 4
+                conn.send(pointer_id, 4, b"")
                 if args.verbose:
                     sys.stderr.write(
                         f"[wl_poke] motion dx={args.dx} dy={args.dy} i={i + 1}/{args.count}\n"
@@ -655,11 +657,11 @@ def cmd_motion(args: argparse.Namespace) -> int:
             # before we destroy the pointer.
             conn.roundtrip()
         finally:
-            # zwlr_virtual_pointer_v1.destroy opcode = 2
-            conn.send(pointer_id, 2, b"")
-            # zwlr_virtual_pointer_manager_v1.destroy opcode = 0 (since=1)
+            # zwlr_virtual_pointer_v1.destroy opcode = 8
+            conn.send(pointer_id, 8, b"")
+            # zwlr_virtual_pointer_manager_v1.destroy opcode = 2 (since v1)
             if mgr_id:
-                conn.send(mgr_id, 0, b"")
+                conn.send(mgr_id, 2, b"")
     finally:
         conn.close()
     return 0
@@ -775,7 +777,9 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
 
         xdg_surface_id = conn.alloc_id()
         # xdg_wm_base.get_xdg_surface(new_id, surface) opcode = 2
-        payload = _U32.pack(xdg_surface_id & 0xFFFFFFFF) + _U32.pack(surface_id & 0xFFFFFFFF)
+        payload = _U32.pack(xdg_surface_id & 0xFFFFFFFF) + _U32.pack(
+            surface_id & 0xFFFFFFFF
+        )
         conn.send(wm_id, 2, payload)
 
         xdg_toplevel_id = conn.alloc_id()
@@ -871,9 +875,8 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
             inhibitor_id = conn.alloc_id()
             # zwp_idle_inhibit_manager_v1.create_inhibitor(new_id, surface)
             # opcode = 0
-            payload = (
-                _U32.pack(inhibitor_id & 0xFFFFFFFF)
-                + _U32.pack(surface_id & 0xFFFFFFFF)
+            payload = _U32.pack(inhibitor_id & 0xFFFFFFFF) + _U32.pack(
+                surface_id & 0xFFFFFFFF
             )
             conn.send(inhibit_mgr_id, 0, payload)
             sys.stdout.write("inhibitor active\n")
@@ -887,9 +890,7 @@ def cmd_inhibit(args: argparse.Namespace) -> int:
                 if pending_serials:
                     for serial in pending_serials:
                         # ack_configure opcode = 4.
-                        conn.send(
-                            xdg_surface_id, 4, _U32.pack(serial & 0xFFFFFFFF)
-                        )
+                        conn.send(xdg_surface_id, 4, _U32.pack(serial & 0xFFFFFFFF))
                     pending_serials.clear()
                 # Sleep the smaller of 100 ms or the time left; small enough
                 # to answer pings promptly, large enough to avoid a busy loop.
@@ -938,7 +939,9 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("motion", help="Inject relative pointer motion.")
     sp.add_argument("--dx", type=int, default=7, help="X displacement (default: 7)")
     sp.add_argument("--dy", type=int, default=3, help="Y displacement (default: 3)")
-    sp.add_argument("--count", type=int, default=3, help="Number of events (default: 3)")
+    sp.add_argument(
+        "--count", type=int, default=3, help="Number of events (default: 3)"
+    )
     sp.add_argument(
         "--interval",
         type=float,

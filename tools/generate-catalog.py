@@ -5,14 +5,24 @@ The single source of truth is the `ncz_ship_bins` list in meson.build (the
 same list that decides which executables are installed). Columns:
 id, display name, category, group.
 """
+
 import argparse
 import pathlib
 import re
 
 CLASSICS = {
-    "voronoi", "projectiveplane", "klein", "hypertorus", "cubestorm",
-    "hexstrut", "crackberg", "cityflow", "geodesic", "gravitywell",
-    "noof", "gibson",
+    "voronoi",
+    "projectiveplane",
+    "klein",
+    "hypertorus",
+    "cubestorm",
+    "hexstrut",
+    "crackberg",
+    "cityflow",
+    "geodesic",
+    "gravitywell",
+    "noof",
+    "gibson",
 }
 TITLES = {
     "blackhole": "Black Hole",
@@ -43,7 +53,7 @@ def classify(target):
         return stem, "Black Hole Simulation"
     for prefix in ("hyprsaver", "xshadertoy"):
         if stem.startswith(prefix + "_"):
-            return stem[len(prefix) + 1:], prefix
+            return stem[len(prefix) + 1 :], prefix
     if stem in CLASSICS:
         return stem, "Classics"
     raise SystemExit(f"unclassified ship entry: {target}")
@@ -62,7 +72,9 @@ def main():
         stem, group = classify(t)
         rows.append((order[group], t, title(stem), group))
     rows.sort(key=lambda r: (r[0], r[1]))
-    lines = ["# Generated from meson.build (ncz_ship_bins) by tools/generate-catalog.py"]
+    lines = [
+        "# Generated from meson.build (ncz_ship_bins) by tools/generate-catalog.py"
+    ]
     lines += [f"{t}\t{name}\t{g}\t{g}" for _, t, name, g in rows]
     args.output.write_text("\n".join(lines) + "\n")
     counts = {}

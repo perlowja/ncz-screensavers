@@ -28,8 +28,7 @@ import unittest
 # Make the tools/ directory importable regardless of where unittest is run.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
-import wl_poke  # noqa: E402  -- import after sys.path mutation is intentional
-
+import wl_poke
 
 # ---------------------------------------------------------------------------
 # Pure wire helpers.
@@ -229,7 +228,7 @@ class FakeServer:
                 while len(buf) < 8:
                     try:
                         chunk = sock.recv(4096)
-                    except socket.timeout:
+                    except TimeoutError:
                         continue
                     if not chunk:
                         return
@@ -240,7 +239,7 @@ class FakeServer:
                 while len(buf) < size:
                     try:
                         chunk = sock.recv(4096)
-                    except socket.timeout:
+                    except TimeoutError:
                         continue
                     if not chunk:
                         return
@@ -266,8 +265,10 @@ class FakeServer:
             return
 
     def _send_global(self, name: int, interface: str, version: int) -> None:
-        payload = struct.pack("<I", name) + wl_poke.pack_string(interface) + struct.pack(
-            "<I", version
+        payload = (
+            struct.pack("<I", name)
+            + wl_poke.pack_string(interface)
+            + struct.pack("<I", version)
         )
         # wl_registry id=2, event=0 (global).
         msg = wl_poke.encode_request(2, 0, payload)
@@ -360,7 +361,9 @@ class ErrorPathTests(unittest.TestCase):
         # Build a synthetic wl_display.error event: object_id(u32) +
         # code(u32) + message(string). The Connection should raise
         # WaylandError when it dispatches this.
-        payload = struct.pack("<I", 0x42) + struct.pack("<I", 7) + wl_poke.pack_string("boom")
+        payload = (
+            struct.pack("<I", 0x42) + struct.pack("<I", 7) + wl_poke.pack_string("boom")
+        )
         conn = wl_poke.Connection("/nonexistent")
         # Bypass connect(); install a fake sock to feed the message.
         import socket as _socket

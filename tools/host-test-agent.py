@@ -258,7 +258,9 @@ def _compositor_env() -> dict[str, str]:
                 continue
             cmdline = (entry / "cmdline").read_bytes().split(b"\x00")
             comm = (entry / "comm").read_text().strip()
-            argv0 = (cmdline[0].decode() if cmdline and cmdline[0] else "").split("/")[-1]
+            argv0 = (cmdline[0].decode() if cmdline and cmdline[0] else "").split("/")[
+                -1
+            ]
             if not (comm == "labwc" or argv0 == "labwc"):
                 continue
             env_bytes = (entry / "environ").read_bytes()
@@ -465,7 +467,12 @@ def _egl_info() -> dict[str, str]:
         text = proc.stdout.decode("utf-8", errors="replace")
         for line in text.splitlines():
             low = line.lower()
-            if "renderer" in low or "vendor" in low or "version" in low or "client apis" in low:
+            if (
+                "renderer" in low
+                or "vendor" in low
+                or "version" in low
+                or "client apis" in low
+            ):
                 out[line.strip()] = ""
         if out:
             out["__source"] = cmd[0]
@@ -504,7 +511,9 @@ def _dpkg_versions(packages: Iterable[str]) -> dict[str, str]:
     if not pkgs:
         return out
     try:
-        proc = _run(["dpkg-query", "-W", "-f=${Package}\t${Version}\n", *pkgs], timeout=10.0)
+        proc = _run(
+            ["dpkg-query", "-W", "-f=${Package}\t${Version}\n", *pkgs], timeout=10.0
+        )
     except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
         return out
     for line in proc.stdout.decode("utf-8", errors="replace").splitlines():
@@ -571,7 +580,9 @@ def _read_unit_state(unit: str, env: dict[str, str]) -> str:
     return proc.stdout.decode("utf-8", errors="replace").strip()
 
 
-def phase_env(results: dict[str, Any], checks: list[Check], env: dict[str, str]) -> None:
+def phase_env(
+    results: dict[str, Any], checks: list[Check], env: dict[str, str]
+) -> None:
     """Record host facts into ``results`` and the env-phase ``checks``."""
     gpu: dict[str, Any] = {}
 
@@ -610,7 +621,9 @@ def phase_env(results: dict[str, Any], checks: list[Check], env: dict[str, str])
                 gpu["gl"] = gl
                 _record(checks, "egl-info", "pass", "fallback: hack stderr GL renderer")
             else:
-                _record(checks, "egl-info", "skip", "no EGL tool, hack stderr uninformative")
+                _record(
+                    checks, "egl-info", "skip", "no EGL tool, hack stderr uninformative"
+                )
         else:
             _record(checks, "egl-info", "skip", "no EGL tool and no blackhole_gles3")
 
@@ -641,9 +654,7 @@ def phase_env(results: dict[str, Any], checks: list[Check], env: dict[str, str])
         )
 
     globals_ = _wl_globals()
-    results["wayland_globals"] = [
-        f"{g['interface']} v{g['version']}" for g in globals_
-    ]
+    results["wayland_globals"] = [f"{g['interface']} v{g['version']}" for g in globals_]
     if globals_:
         _record(checks, "wl-registry", "pass", f"{len(globals_)} globals advertised")
         expected = [
@@ -711,7 +722,9 @@ def phase_install(
     try:
         shutil.copyfile(deb_path, remote_deb)
     except OSError as exc:
-        _record(checks, "install-copy", "fail", f"copy {deb_path} -> {remote_deb}: {exc}")
+        _record(
+            checks, "install-copy", "fail", f"copy {deb_path} -> {remote_deb}: {exc}"
+        )
         return
     _record(checks, "install-copy", "pass", f"copied to {remote_deb}")
 
@@ -749,7 +762,13 @@ def phase_install(
     # Step 2: real install with sudo.
     try:
         proc = _run_with_sudo(
-            ["DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", f"./{remote_deb}"],
+            [
+                "DEBIAN_FRONTEND=noninteractive",
+                "apt-get",
+                "install",
+                "-y",
+                f"./{remote_deb}",
+            ],
             pw=pw,
             timeout=180.0,
             env=env,
@@ -798,7 +817,9 @@ def phase_install(
         if os.path.exists(path):
             _record(checks, f"file-{os.path.basename(path)}", "pass", path)
         else:
-            _record(checks, f"file-{os.path.basename(path)}", "fail", f"missing: {path}")
+            _record(
+                checks, f"file-{os.path.basename(path)}", "fail", f"missing: {path}"
+            )
 
     # gsettings schema compiled?
     try:
@@ -832,9 +853,7 @@ def phase_install(
     ]
     catalog = _read_catalog(catalog_paths)
     catalog_ids = sorted(catalog.keys())
-    installed_ids = sorted(
-        pathlib.Path(p).stem for p in installed_hacks
-    )
+    installed_ids = sorted(pathlib.Path(p).stem for p in installed_hacks)
     metrics = {
         "installed_hacks": len(installed_ids),
         "catalog_hacks": len(catalog_ids),
@@ -995,7 +1014,13 @@ def phase_hacks(
         if launcher_available:
             try:
                 proc_hack = subprocess.Popen(
-                    [launcher_path, "preview", hid, "--seconds", str(int(seconds + PREVIEW_EXTRA_SECONDS))],
+                    [
+                        launcher_path,
+                        "preview",
+                        hid,
+                        "--seconds",
+                        str(int(seconds + PREVIEW_EXTRA_SECONDS)),
+                    ],
                     env=env,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -1052,7 +1077,11 @@ def phase_hacks(
         png_ok, _ = _screenshot_to_png(frame_b, png_path, env, 0.25)
 
         alive = _hack_alive(binary)
-        metrics = _measure_coverage_motion(frame_a, frame_b, baseline_path) if (ok_a and ok_b) else {}
+        metrics = (
+            _measure_coverage_motion(frame_a, frame_b, baseline_path)
+            if (ok_a and ok_b)
+            else {}
+        )
         evidence_short = os.path.basename(png_path) if png_ok else None
 
         # Stop the hack. Prefer the launcher so it tears down its supervisor
@@ -1106,7 +1135,11 @@ def phase_hacks(
             log = os.path.join("/run/user", str(os.getuid()), HACK_LOG)
             if os.path.exists(log):
                 try:
-                    tail = pathlib.Path(log).read_text(encoding="utf-8", errors="replace").splitlines()
+                    tail = (
+                        pathlib.Path(log)
+                        .read_text(encoding="utf-8", errors="replace")
+                        .splitlines()
+                    )
                     tail_text = "\n".join(tail[-20:])
                     log_dst = os.path.join(logs_dir, f"{hid}.txt")
                     pathlib.Path(log_dst).write_text(tail_text + "\n", encoding="utf-8")
@@ -1226,7 +1259,12 @@ def phase_launcher(
     try:
         proc = _launcher_cmd(launcher_path, ["status", "--json"], ienv, timeout=5.0)
         st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+    except (
+        FileNotFoundError,
+        OSError,
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+    ) as exc:
         st = {}
         _record(checks, "launcher-status", "fail", str(exc))
     if st.get("running") is True:
@@ -1304,9 +1342,7 @@ def phase_launcher(
     except OSError:
         pass
     cfg_dir = ienv["XDG_CONFIG_HOME"]
-    settings_path = os.path.join(
-        cfg_dir, "dev.ncz", "screensaver", "settings.keyfile"
-    )
+    settings_path = os.path.join(cfg_dir, "dev.ncz", "screensaver", "settings.keyfile")
     pathlib.Path(settings_path).write_text(
         "\n".join(
             [
@@ -1333,7 +1369,9 @@ def phase_launcher(
     deadline = time.monotonic() + 12.0
     alive_real = False
     while time.monotonic() < deadline:
-        if _hack_alive(real_link) or _hack_alive(os.path.join(HACK_BIN_DIR, "blackhole_gles3")):
+        if _hack_alive(real_link) or _hack_alive(
+            os.path.join(HACK_BIN_DIR, "blackhole_gles3")
+        ):
             alive_real = True
             break
         time.sleep(0.3)
@@ -1448,7 +1486,12 @@ def phase_launcher(
                 launcher_path, ["config", "dump"], round_env, timeout=5.0
             )
             cfg = json.loads(dump.stdout.decode("utf-8", errors="replace"))
-        except (FileNotFoundError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        except (
+            FileNotFoundError,
+            OSError,
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+        ) as exc:
             _record(checks, f"set-{setter}-readback", "fail", str(exc))
             continue
         if cfg.get(getter) == value:
@@ -1610,9 +1653,7 @@ def phase_idle(
     # hack-idle-delay=6, lock-enabled=false, display-off-delay=0.
     ienv = _isolated_config_env()
     cfg_dir = ienv["XDG_CONFIG_HOME"]
-    settings_path = os.path.join(
-        cfg_dir, "dev.ncz", "screensaver", "settings.keyfile"
-    )
+    settings_path = os.path.join(cfg_dir, "dev.ncz", "screensaver", "settings.keyfile")
     pathlib.Path(settings_path).write_text(
         "\n".join(
             [
@@ -1657,8 +1698,14 @@ def phase_idle(
         )
         time.sleep(1.5)
         if daemon.poll() is not None:
-            output = daemon.stdout.read().decode("utf-8", errors="replace") if daemon.stdout else ""
-            _record(checks, "idled-start", "fail", f"exited immediately: {output[:200]}")
+            output = (
+                daemon.stdout.read().decode("utf-8", errors="replace")
+                if daemon.stdout
+                else ""
+            )
+            _record(
+                checks, "idled-start", "fail", f"exited immediately: {output[:200]}"
+            )
             return
         _record(checks, "idled-start", "pass", f"pid={daemon.pid}")
 
@@ -1731,9 +1778,16 @@ def phase_idle(
             deadline = time.monotonic() + DISMISS_DEADLINE
             while time.monotonic() < deadline:
                 try:
-                    proc = _run([launcher_path, "status", "--json"], timeout=4.0, env=ienv)
+                    proc = _run(
+                        [launcher_path, "status", "--json"], timeout=4.0, env=ienv
+                    )
                     st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-                except (FileNotFoundError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+                except (
+                    FileNotFoundError,
+                    OSError,
+                    subprocess.TimeoutExpired,
+                    json.JSONDecodeError,
+                ):
                     st = {}
                 if not st.get("running"):
                     stopped = True
@@ -1768,9 +1822,16 @@ def phase_idle(
                 deadline = time.monotonic() + DISMISS_DEADLINE
                 while time.monotonic() < deadline:
                     try:
-                        proc = _run([launcher_path, "status", "--json"], timeout=4.0, env=ienv)
+                        proc = _run(
+                            [launcher_path, "status", "--json"], timeout=4.0, env=ienv
+                        )
                         st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-                    except (FileNotFoundError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+                    except (
+                        FileNotFoundError,
+                        OSError,
+                        subprocess.TimeoutExpired,
+                        json.JSONDecodeError,
+                    ):
                         st = {}
                     if not st.get("running"):
                         stopped = True
@@ -1920,10 +1981,7 @@ def phase_idle(
         marker2 = os.path.join(lock_dir, "marker2.txt")
         lock_script = os.path.join(lock_dir, "lock.sh")
         pathlib.Path(lock_script).write_text(
-            "#!/bin/sh\n"
-            f"touch {marker}\n"
-            "sleep 1\n"
-            f"touch {marker2}\n",
+            f"#!/bin/sh\ntouch {marker}\nsleep 1\ntouch {marker2}\n",
             encoding="utf-8",
         )
         os.chmod(lock_script, 0o755)
@@ -1986,9 +2044,16 @@ def phase_idle(
             # Saver must be stopped by the lock chain.
             time.sleep(2.0)
             try:
-                proc = _run([launcher_path, "status", "--json"], timeout=4.0, env=lock_env)
+                proc = _run(
+                    [launcher_path, "status", "--json"], timeout=4.0, env=lock_env
+                )
                 st = json.loads(proc.stdout.decode("utf-8", errors="replace"))
-            except (FileNotFoundError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+            except (
+                FileNotFoundError,
+                OSError,
+                subprocess.TimeoutExpired,
+                json.JSONDecodeError,
+            ):
                 st = {}
             if not st.get("running"):
                 _record(
@@ -2236,9 +2301,7 @@ def phase_color(
         return
     ienv = _isolated_config_env()
     cfg_dir = ienv["XDG_CONFIG_HOME"]
-    settings_path = os.path.join(
-        cfg_dir, "dev.ncz", "screensaver", "settings.keyfile"
-    )
+    settings_path = os.path.join(cfg_dir, "dev.ncz", "screensaver", "settings.keyfile")
     pathlib.Path(settings_path).write_text(
         "\n".join(
             [
@@ -2425,7 +2488,9 @@ def phase_chooser(
         out = proc.stdout.decode("utf-8", errors="replace")
         err = proc.stderr.decode("utf-8", errors="replace")
         log_path = os.path.join(workdir, "logs", "chooser_selftest.txt")
-        pathlib.Path(log_path).write_text(out + "\n--- stderr ---\n" + err, encoding="utf-8")
+        pathlib.Path(log_path).write_text(
+            out + "\n--- stderr ---\n" + err, encoding="utf-8"
+        )
         pass_count = sum(1 for line in out.splitlines() if "PASS" in line)
         fail_count = sum(1 for line in out.splitlines() if "FAIL" in line)
         if fail_count == 0 and pass_count > 0:
@@ -2556,9 +2621,7 @@ def run_phases(
     checks_by_phase: dict[str, list[Check]] = {p: [] for p in phases}
 
     # Locate the catalog and the binaries the phases need.
-    catalog_env = catalog_override or os.environ.get(
-        "HT_CATALOG", CATALOG_PATH_DEFAULT
-    )
+    catalog_env = catalog_override or os.environ.get("HT_CATALOG", CATALOG_PATH_DEFAULT)
     os.environ["HT_CATALOG"] = catalog_env
     launcher_path = "/usr/bin/ncz-screensaver"
     idled_path = "/usr/libexec/ncz-screensaver-idled"
@@ -2566,9 +2629,7 @@ def run_phases(
 
     # Re-establish the XDG vars so subprocesses inherit the session env.
     os.environ.setdefault("WAYLAND_DISPLAY", "wayland-0")
-    runtime_dir = (
-        os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
-    )
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
     os.environ["XDG_RUNTIME_DIR"] = runtime_dir
     dbus_addr = os.environ.get(
         "DBUS_SESSION_BUS_ADDRESS", f"unix:path={runtime_dir}/bus"
@@ -2582,9 +2643,7 @@ def run_phases(
     if "env" in phases:
         phase_env(results, checks_by_phase["env"], env)
     if "install" in phases:
-        phase_install(
-            results, checks_by_phase["install"], env, deb, pw, workdir
-        )
+        phase_install(results, checks_by_phase["install"], env, deb, pw, workdir)
     if "hacks" in phases:
         phase_hacks(
             results,
@@ -2634,9 +2693,7 @@ def run_phases(
 
     # Write results.json after every phase ran. We always write so the
     # controller can rescue partial output if a later phase died hard.
-    _write_results(
-        os.path.join(workdir, "results.json"), results, checks_by_phase
-    )
+    _write_results(os.path.join(workdir, "results.json"), results, checks_by_phase)
 
     for phase, checks in checks_by_phase.items():
         for c in checks:
@@ -2656,12 +2713,9 @@ def _populate_host_facts(results: dict[str, Any]) -> None:
     results["started"] = _now_iso()
     results["host"] = socket.gethostname()
     results["arch"] = (
-        _read_proc("dpkg", ["--print-architecture"]).strip()
-        or os.uname().machine
+        _read_proc("dpkg", ["--print-architecture"]).strip() or os.uname().machine
     )
-    results["kernel"] = (
-        _read_proc("uname", ["-r"]).strip() or os.uname().release
-    )
+    results["kernel"] = _read_proc("uname", ["-r"]).strip() or os.uname().release
     results["os_release"] = _read_os_release()
 
 
@@ -2742,7 +2796,11 @@ def _selftest() -> int:
     _, _, buf = hti.parse_ppm(big_ppm)
     cov_big = hti.coverage_fraction(buf)
     elapsed = time.monotonic() - t0
-    case("perf-parse-coverage", elapsed < 1.0, f"480x270 in {elapsed:.3f}s (cov={cov_big:.3f})")
+    case(
+        "perf-parse-coverage",
+        elapsed < 1.0,
+        f"480x270 in {elapsed:.3f}s (cov={cov_big:.3f})",
+    )
 
     print(f"PASS total: {6 + 1 + 1 + 1 + 1 + 1 + 1 - failures}/{7}")
     return 0 if failures == 0 else 1
@@ -2798,7 +2856,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _resolve_hacks(arg: str) -> list[str]:
-    catalog_paths = [os.environ.get("HT_CATALOG", CATALOG_PATH_DEFAULT), CATALOG_FALLBACK]
+    catalog_paths = [
+        os.environ.get("HT_CATALOG", CATALOG_PATH_DEFAULT),
+        CATALOG_FALLBACK,
+    ]
     catalog = _read_catalog(catalog_paths)
     if arg == "all":
         return sorted(catalog.keys())
