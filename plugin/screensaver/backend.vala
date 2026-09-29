@@ -66,4 +66,6 @@ public interface ScreensaverBackend : Object {
     public abstract void preview (string id);
     public abstract void stop_preview ();
     public signal void changed ();
+    // The set of flagged screensavers changed (GPU offload or pool setting)
+    public signal void flags_changed ();
 }

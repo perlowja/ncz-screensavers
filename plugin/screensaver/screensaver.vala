@@ -64,7 +64,7 @@ public class ScreensaverSettings : Gtk.Box {
     private const string[] MODE_IDS = { "off", "one", "random" };
     private const string[] MODE_LABELS = { "Off", "One screensaver", "Random rotation" };
     private const string[] GPU_IDS = { "auto", "prime", "off" };
-    private const string[] GPU_LABELS = { "Automatic (heavy screensavers on the discrete GPU)", "Always the discrete GPU", "Same GPU as the desktop" };
+    private const string[] GPU_LABELS = { "Automatic (discrete on AC)", "Always the discrete GPU", "Same GPU as the desktop" };
     private const string[] RENDER_IDS = { "auto", "high", "balanced", "fast", "custom" };
     private const string[] RENDER_LABELS = { "Auto (recommended)", "High (native resolution)", "Balanced (75%)", "Fast (50%, 1080p cap)", "Custom" };
     private const string[] POOL_IDS = { "auto", "weak", "mid", "all" };
@@ -83,6 +83,7 @@ public class ScreensaverSettings : Gtk.Box {
     private SpinRow rotate_row;
     private SelectionRow pool_row;
     private PreferencesGroup? flagged_group = null;
+    private Box hack_box = new Box (Orientation.VERTICAL, 12);
     private SwitchRow? show_all_row = null;
     private SelectionRow render_row;
     private SpinRow render_height_row;
@@ -113,9 +114,11 @@ public class ScreensaverSettings : Gtk.Box {
             build_color_group ();
         if (backend.gpu_offload_supported)
             build_gpu_group ();
+        append (hack_box);
         build_hack_groups ();
         build_option_groups ();
 
+        backend.flags_changed.connect (rebuild_hack_groups);
         backend.changed.connect (refresh);
         refresh ();
     }
@@ -195,7 +198,7 @@ public class ScreensaverSettings : Gtk.Box {
         var group = new PreferencesGroup ("Lock screen");
         append (group);
 
-        lock_row = new SwitchRow ("Lock when idle");
+        lock_row = new SwitchRow ("Lock after the screensaver");
         lock_row.switch_btn.notify["active"].connect (() => {
             if (!refreshing)
                 backend.lock_enabled = lock_row.switch_btn.active;
@@ -203,7 +206,7 @@ public class ScreensaverSettings : Gtk.Box {
         });
         group.add_row (lock_row);
 
-        lock_delay_row = new SpinRow ("Lock after (minutes)", "Idle time before the screen locks", 1, 240, 1, 5);
+        lock_delay_row = new SpinRow ("Lock after (minutes)", "Minutes after the screensaver starts; 0 locks at once", 0, 240, 1, 1);
         lock_delay_row.spin_btn.value_changed.connect (() => {
             if (!refreshing)
                 backend.lock_delay = (int) lock_delay_row.spin_btn.value * 60;
@@ -289,6 +292,21 @@ public class ScreensaverSettings : Gtk.Box {
         group.add_row (gpu_row);
     }
 
+    // The flagged set depends on the GPU offload and pool settings: lay the list out again.
+    private void rebuild_hack_groups () {
+        Widget? child = hack_box.get_first_child ();
+        while (child != null) {
+            Widget? next = child.get_next_sibling ();
+            hack_box.remove (child);
+            child = next;
+        }
+        pool_rows.clear ();
+        show_all_row = null;
+        flagged_group = null;
+        build_hack_groups ();
+        refresh ();
+    }
+
     private void build_hack_groups () {
         var group_order = new Gee.ArrayList<string> ();
         foreach (var hack in backend.hacks ()) {
@@ -315,12 +333,12 @@ public class ScreensaverSettings : Gtk.Box {
             });
             var switch_group = new PreferencesGroup ();
             switch_group.add_row (show_all_row);
-            append (switch_group);
+            hack_box.append (switch_group);
 
             var good = new PreferencesGroup ("Works well on this graphics chip", "Screensavers used in random mode");
             flagged_group = new PreferencesGroup ("May run poorly on this graphics chip", "Screensavers used in random mode");
-            append (good);
-            append (flagged_group);
+            hack_box.append (good);
+            hack_box.append (flagged_group);
             foreach (var hack in sorted)
                 add_hack_row (backend.is_flagged (hack.id) ? flagged_group : good, hack);
             return;
@@ -332,7 +350,7 @@ public class ScreensaverSettings : Gtk.Box {
             if (group == null) {
                 group = new PreferencesGroup (hack.group_name, "Screensavers used in random mode");
                 by_title[hack.group_name] = group;
-                append (group);
+                hack_box.append (group);
             }
             add_hack_row (group, hack);
         }
@@ -453,7 +471,6 @@ public class ScreensaverSettings : Gtk.Box {
         var dialog = new ConfirmDialog (window.application, "Preview anyway?", "dialog-warning-symbolic",
                                         warning_text (id).replace ("\u26a0 ", "This screensaver may run poorly here: "),
                                         "Preview");
-        dialog.set_secondary ("Cancel");
         dialog.transient_for = window;
         dialog.response.connect ((r) => {
             if (r == ConfirmDialog.Response.PRIMARY)

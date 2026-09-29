@@ -4,7 +4,6 @@ public ScreensaverBackend create_screensaver_backend () {
 
 public class NczScreensaverBackend : Object, ScreensaverBackend {
     private const string SCHEMA = "dev.ncz.screensaver";
-    private const string LOCK_SCHEMA = "dev.sinty.lockscreen";
     private const string CATALOG = "/usr/share/ncz-screensavers/hacks.tsv";
     private const string TIERS = "/usr/share/ncz-screensavers/tiers.tsv";
     private const string OPTIONS_DIR = "/usr/share/ncz-screensavers/options";
@@ -12,7 +11,6 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     private const string IDLED = "/usr/libexec/ncz-screensaver-idled";
 
     private Settings? settings;
-    private Settings? lock_settings;
     private Gee.ArrayList<ScreensaverHack> catalog = new Gee.ArrayList<ScreensaverHack> ();
     private Gee.HashSet<string> flagged_ids = new Gee.HashSet<string> ();
     private Gee.HashMap<string, string> expects = new Gee.HashMap<string, string> ();
@@ -22,16 +20,19 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public NczScreensaverBackend () {
         settings = open (SCHEMA);
-        lock_settings = open (LOCK_SCHEMA);
         if (settings != null) {
-            settings.changed.connect (() => changed ());
+            settings.changed.connect ((key) => {
+                if (key == "gpu-offload" || key == "pool-gpu-class") {
+                    load_launcher_state ();
+                    flags_changed ();
+                }
+                changed ();
+            });
             load_catalog ();
             load_tiers ();
             load_launcher_state ();
             load_issues ();
         }
-        if (lock_settings != null)
-            lock_settings.changed.connect (() => changed ());
     }
 
     private static Settings? open (string schema) {
@@ -104,7 +105,8 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
                                        LAUNCHER, sub, "--json");
             string? out_text = null;
             proc.communicate_utf8 (null, null, out out_text, null);
-            if (!proc.get_successful () || out_text == null)
+            // `status` exits 3 when no screensaver is running; the JSON is valid anyway
+            if (out_text == null)
                 return null;
             var parser = new Json.Parser ();
             parser.load_from_data (out_text);
@@ -116,6 +118,8 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     // Read flagged hacks and the display GPU class from the launcher.
     private void load_launcher_state () {
+        flagged_ids.clear ();
+        expects.clear ();
         string cls = "weak";
         double ms = 0;
         var status = launcher_json ("status");
@@ -216,7 +220,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         Variant? inner = read_options ().lookup_value (hack_id, new VariantType ("a{ss}"));
         if (inner != null) {
             string? value = null;
-            if (inner.lookup ("{ss}", name, out value) && value != null)
+            if (inner.lookup (name, "s", out value) && value != null)
                 return value;
         }
         foreach (var option in options_for (hack_id))
@@ -352,22 +356,22 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     }
 
     public bool lock_supported {
-        get { return lock_settings != null; }
+        get { return settings != null; }
     }
 
     public bool lock_enabled {
-        get { return lock_settings.get_boolean ("lock-enabled"); }
-        set { lock_settings.set_boolean ("lock-enabled", value); }
+        get { return settings.get_boolean ("lock-enabled"); }
+        set { settings.set_boolean ("lock-enabled", value); }
     }
 
     public int lock_delay {
-        get { return lock_settings.get_int ("idle-delay"); }
-        set { lock_settings.set_int ("idle-delay", value); }
+        get { return settings.get_int ("lock-delay"); }
+        set { settings.set_int ("lock-delay", value); }
     }
 
     public bool lock_on_suspend {
-        get { return lock_settings.get_boolean ("lock-on-suspend"); }
-        set { lock_settings.set_boolean ("lock-on-suspend", value); }
+        get { return settings.get_boolean ("lock-on-suspend"); }
+        set { settings.set_boolean ("lock-on-suspend", value); }
     }
 
     public int display_off_delay {

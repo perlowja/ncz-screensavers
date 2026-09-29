@@ -28,6 +28,7 @@ frames and exits; it never needs a real Wayland session.
 from __future__ import annotations
 
 import argparse
+import atexit
 import contextlib
 import dataclasses
 import datetime as _dt
@@ -3751,6 +3752,8 @@ def run_phases(
     if os.environ.get("HT_GPU_OFFLOAD") and offload_before is None:
         # The key only exists once the package under test is installed.
         offload_before = _set_offload(env, os.environ["HT_GPU_OFFLOAD"])
+        # restore even when a phase crashes or the run is stopped
+        atexit.register(_set_offload, env, offload_before)
         results["gpu_offload"] = os.environ["HT_GPU_OFFLOAD"]
     if "hacks" in phases:
         results["_pw"] = pw

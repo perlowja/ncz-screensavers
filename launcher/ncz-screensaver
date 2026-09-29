@@ -542,7 +542,11 @@ def expectation(hack_id, cls, rows=None):
     fps = _fps_cell(cell)
     if fps is None:
         # a measured row without a number: too slow to print two frame-counter lines
-        return f"under 6 fps on {chip}" if row.get("measured") and row["min"] != "weak" else ""
+        return (
+            f"under 6 fps on {chip}"
+            if row.get("measured") and row["min"] != "weak"
+            else ""
+        )
     return f"about {fps:.0f} fps on {chip}"
 
 
@@ -828,7 +832,10 @@ def gpu_class(settings, gpu=None, run=True, force=False):
         and not force
         and entry.get("renderer") == ident.get("renderer")
         and entry.get("version") == ident.get("version")
-        and (entry.get("source") == "calibration" or time.time() < entry.get("retry_after", 0))
+        and (
+            entry.get("source") == "calibration"
+            or time.time() < entry.get("retry_after", 0)
+        )
     ):
         return entry
     code, res = _calibrator_json([], env, 90)
@@ -845,7 +852,9 @@ def gpu_class(settings, gpu=None, run=True, force=False):
     else:
         entry = fallback_entry(ident.get("renderer", ""), gpu)
         entry["version"] = ident.get("version", "")
-        entry["retry_after"] = time.time() + 3600  # the benchmark failed: try again later
+        entry["retry_after"] = (
+            time.time() + 3600
+        )  # the benchmark failed: try again later
     if gpu:
         entry["gpu"] = gpu["id"]
         entry["driver"] = gpu["driver"]
@@ -1838,7 +1847,7 @@ def cmd_list(args):
     tier_rows = load_tier_rows()
     tiers = {k: v["min"] for k, v in tier_rows.items()}
     known = load_broken()
-    syscls = system_class(settings)
+    syscls = pool_class(settings)  # the best class the pools may use
     rows = []
     for r in load_catalog():
         if args.group and r["group"] != args.group:
