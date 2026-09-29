@@ -23,9 +23,103 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.1.0',
+    version: '0.2.0',
     license: 'GPL-2.0-or-later',
 )
+
+# ---------------------------------------------------------------------------
+# Ship set (operator-ratified 2026-09-29) — the ONLY executables that are
+# installed into the ncz-screensavers package. Everything else in this file
+# builds for development/validation only (install: false).
+# ---------------------------------------------------------------------------
+ncz_libdir = get_option('prefix') / 'lib' / 'ncz-screensavers'
+ncz_datadir = get_option('prefix') / 'share' / 'ncz-screensavers'
+ncz_ship_bins = [
+    'blackhole_gles3',
+    'hyprsaver_attitude_gles3',
+    'hyprsaver_aurora_gles3',
+    'hyprsaver_bezier_gles3',
+    'hyprsaver_blob_gles3',
+    'hyprsaver_caustics_gles3',
+    'hyprsaver_circuit_gles3',
+    'hyprsaver_clouds_gles3',
+    'hyprsaver_donut_gles3',
+    'hyprsaver_fireflies_gles3',
+    'hyprsaver_flames_gles3',
+    'hyprsaver_fractaltrap_gles3',
+    'hyprsaver_geometry_gles3',
+    'hyprsaver_gridwave_gles3',
+    'hyprsaver_hypercube_gles3',
+    'hyprsaver_julia_gles3',
+    'hyprsaver_kaleidoscope_gles3',
+    'hyprsaver_lissajous_gles3',
+    'hyprsaver_marble_gles3',
+    'hyprsaver_matrix_gles3',
+    'hyprsaver_mobius_gles3',
+    'hyprsaver_oscilloscope_gles3',
+    'hyprsaver_planet_gles3',
+    'hyprsaver_plasma_gles3',
+    'hyprsaver_shipburn_gles3',
+    'hyprsaver_snowfall_gles3',
+    'hyprsaver_sonar_gles3',
+    'hyprsaver_starfield_gles3',
+    'hyprsaver_stonks_gles3',
+    'hyprsaver_temple_gles3',
+    'hyprsaver_terminal_gles3',
+    'hyprsaver_tesla_gles3',
+    'hyprsaver_tunnel_gles3',
+    'hyprsaver_voronoi_gles3',
+    'hyprsaver_waterfall_gles3',
+    'hyprsaver_wormhole_gles3',
+    'xshadertoy_alienbeacon_gles3',
+    'xshadertoy_batteredplanet_gles3',
+    'xshadertoy_bestill0-0_gles3',
+    'xshadertoy_bestill1-0_gles3',
+    'xshadertoy_bestill2-0_gles3',
+    'xshadertoy_bestill3-0_gles3',
+    'xshadertoy_bestill4-0_gles3',
+    'xshadertoy_bestill5-0_gles3',
+    'xshadertoy_iridescence_gles3',
+    'xshadertoy_darktransit_gles3',
+    'xshadertoy_downfall_gles3',
+    'xshadertoy_stratus_gles3',
+    'xshadertoy_elementalring_gles3',
+    'xshadertoy_fluxcore_gles3',
+    'xshadertoy_gimbalharmonics_gles3',
+    'xshadertoy_goldenapollian_gles3',
+    'xshadertoy_hexplasma_gles3',
+    'xshadertoy_logarithmiccircles_gles3',
+    'xshadertoy_neongravity-1_gles3',
+    'xshadertoy_neontriangulator_gles3',
+    'xshadertoy_noxfire_gles3',
+    'xshadertoy_polarnight_gles3',
+    'xshadertoy_prococean_gles3',
+    'xshadertoy_protophore_gles3',
+    'xshadertoy_rigrekt_gles3',
+    'xshadertoy_selfreflect_gles3',
+    'xshadertoy_skyline_gles3',
+    'xshadertoy_stardome_gles3',
+    'xshadertoy_starnest_gles3',
+    'xshadertoy_stripeytorus_gles3',
+    'xshadertoy_neonhorizon_gles3',
+    'xshadertoy_topologica_gles3',
+    'xshadertoy_trainmandala_gles3',
+    'xshadertoy_trizm_gles3',
+    'xshadertoy_truchetzoom_gles3',
+    'xshadertoy_universeball_gles3',
+    'voronoi_gles3',
+    'projectiveplane_gles3',
+    'klein_gles3',
+    'hypertorus_gles3',
+    'cubestorm_gles3',
+    'hexstrut_gles3',
+    'crackberg_gles3',
+    'cityflow_gles3',
+    'geodesic_gles3',
+    'gravitywell_gles3',
+    'noof_gles3',
+    'gibson_gles3',
+]
 
 # ---------------------------------------------------------------------------
 # Build options — see `meson configure` for the full list.
@@ -238,9 +332,10 @@ executable(
         dep_wayland_egl,
         dep_egl,
         dep_glesv2,
+        dep_m,
     ],
     c_args: common_c_args,
-    install: false,
+    install: ncz_ship_bins.contains('wl-screenhack'), install_dir: ncz_libdir,
 )
 
 # ---------------------------------------------------------------------------
@@ -289,7 +384,7 @@ if opt_gl4es
         ],
         build_rpath: gl4es_dir + ':$ORIGIN/gl4es',
         c_args: common_c_args,
-        install: false,
+        install: ncz_ship_bins.contains('gl4es_triangle'), install_dir: ncz_libdir,
     )
 endif
 
@@ -361,7 +456,7 @@ if opt_xscreensaver
         # warnings; relax the strictness for the whole executable.
         # The compat shim and harness stay warning-clean under -Wall -Wextra.
         c_args: vendored_c_args,
-        install: false,
+        install: ncz_ship_bins.contains('glmatrix_demo'), install_dir: ncz_libdir,
     )
 
     # -----------------------------------------------------------------------
@@ -500,7 +595,7 @@ if opt_xscreensaver
             c_args: vendored_c_args + h.get('c_args', []) + [
                 '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
             ],
-            install: false,
+            install: ncz_ship_bins.contains(h['name'] + '_demo'), install_dir: ncz_libdir,
         )
     endforeach
 
@@ -529,6 +624,7 @@ common_gles3_sources = [
     'src/xscreensaver_compat.c',
     'src/gles3_compat.c',
     'src/ncz_platform.c',
+    'src/ncz_gpu_tier.c',
 ]
 # GLES3-native pilots need -DNCZ_GLES3_BUILD=1 so that the glu*
 # helpers in xscreensaver_compat.c compile to empty stubs (they
@@ -581,7 +677,7 @@ executable(
         # via XSCREENSAVER_MODULE_2.
         '-DHACK_TABLE=gles3boing_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('boing_gles3'), install_dir: ncz_libdir,
 )
 
 # Companion — gllist VBO conversion pilot. Loads 3 pre-baked
@@ -610,7 +706,7 @@ executable(
     c_args: gles3_native_c_args + [
         '-DHACK_TABLE=gles3companioncube_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('companion_gles3'), install_dir: ncz_libdir,
 )
 
 # -----------------------------------------------------------------------
@@ -757,7 +853,7 @@ foreach h : legacy_gles3_hacks
             # dict key overrides the default when they differ.
             '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(h.get('table', h['name'])),
         ],
-        install: false,
+        install: ncz_ship_bins.contains(h['name'] + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -781,26 +877,33 @@ hyprsaver_shaders = [
 
 # Absolute runtime asset directory matches both loaders, including builds
 # configured with the default /usr/local prefix. DESTDIR staging still works.
-shader_install_dir = '/usr/share/ncz-screensavers/shaders'
+shader_install_dir = ncz_datadir / 'shaders'
 install_data('vendor/blackhole/blackhole.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
+# Shaders of non-ship hacks are installed only with -Dinstall-extras=true
+# (development installs); the ncz-screensavers package ships the ratified set.
+install_extras = get_option('install-extras')
+if install_extras
 install_data('vendor/magmasimplex/magmasimplex.frag', install_dir: shader_install_dir,
              install_tag: 'runtime-shaders')
-foreach ms_shader : [
+endif
+foreach ms_shader : install_extras ? [
   'render', 'sim_zero', 'sim_advect_v', 'sim_advect_t', 'sim_advect_p',
   'sim_advect_h', 'sim_buoyancy', 'sim_project', 'sim_heat',
   'sim_phase', 'sim_init_seed',
   'sim3d_advect_v', 'sim3d_advect_t', 'sim3d_advect_p', 'sim3d_advect_h',
   'sim3d_buoyancy', 'sim3d_project', 'sim3d_heat', 'sim3d_phase',
   'sim3d_init_seed',
-]
+] : []
     install_data('vendor/magmasimplex/' + ms_shader + '.frag',
                  install_dir: shader_install_dir + '/magmasimplex',
                  install_tag: 'runtime-shaders')
 endforeach
 foreach s : hyprsaver_shaders
-    install_data('vendor/hyprsaver/shaders/' + s + '.frag',
-                 install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+    if ncz_ship_bins.contains('hyprsaver_' + s + '_gles3')
+        install_data('vendor/hyprsaver/shaders/' + s + '.frag',
+                     install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+    endif
     executable(
         'hyprsaver_' + s + '_gles3',
         files(common_gles3_sources + [
@@ -815,7 +918,7 @@ foreach s : hyprsaver_shaders
             '-DHACK_PREFIX=hyprsaver_@0@'.format(s),
             '-DHACK_TABLE=hyprsaver_@0@_xscreensaver_function_table'.format(s),
         ],
-        install: false,
+        install: ncz_ship_bins.contains('hyprsaver_' + s + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -860,8 +963,10 @@ xshadertoy_shaders = [
 # so it is useful for GPU-tier benchmarking and unusable as a screensaver.
 
 foreach s : xshadertoy_shaders
-    install_data('vendor/xshadertoy/glsl/' + s + '.glsl',
-                 install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+    if ncz_ship_bins.contains('xshadertoy_' + s + '_gles3')
+        install_data('vendor/xshadertoy/glsl/' + s + '.glsl',
+                     install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+    endif
     # Hyphen-to-underscore substitution for the C identifier stem.
     # The shader basenames `bestill0-0`..`bestill5-0`, `neongravity-0`
     # and `neongravity-1` carry hyphens which are illegal in C
@@ -882,7 +987,7 @@ foreach s : xshadertoy_shaders
             '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
             '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
         ],
-        install: false,
+        install: ncz_ship_bins.contains('xshadertoy_' + s + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -945,14 +1050,16 @@ foreach s : jurassicaquarium_shaders
             '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
             '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
         ],
-        install: false,
+        install: ncz_ship_bins.contains('xshadertoy_' + s + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
 foreach s : wave2_materia_shaders
-    install_data('vendor/wave2-materia/glsl/' + s + '.glsl',
-                 install_dir: shader_install_dir,
-                 install_tag: 'runtime-shaders')
+    if install_extras
+        install_data('vendor/wave2-materia/glsl/' + s + '.glsl',
+                     install_dir: shader_install_dir,
+                     install_tag: 'runtime-shaders')
+    endif
     s_id = s.replace('-', '_')
     executable(
         'xshadertoy_' + s + '_gles3',
@@ -968,7 +1075,7 @@ foreach s : wave2_materia_shaders
             '-DHACK_PREFIX_ID=xshadertoy_@0@'.format(s_id),
             '-DHACK_TABLE=xshadertoy_@0@_xscreensaver_function_table'.format(s_id),
         ],
-        install: false,
+        install: ncz_ship_bins.contains('xshadertoy_' + s + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -1033,9 +1140,11 @@ assert(gles3_transitions_list.length() == 125,
        'gles3_transitions_list must contain exactly 125 transitions')
 
 foreach t : gles3_transitions_list
-    install_data('vendor/gl-transitions/transitions/' + t + '.glsl',
-                 install_dir: shader_install_dir,
-                 install_tag: 'runtime-shaders')
+    if install_extras
+        install_data('vendor/gl-transitions/transitions/' + t + '.glsl',
+                     install_dir: shader_install_dir,
+                     install_tag: 'runtime-shaders')
+    endif
     # Hyphens in upstream basenames (`coord-from-in`,
     # `directional-easing`, `scale-in`) break C identifiers — the
     # driver .c uses HACK_PREFIX for the display name and
@@ -1056,7 +1165,7 @@ foreach t : gles3_transitions_list
             '-DHACK_PREFIX_ID=gles3_transition_@0@'.format(t_id),
             '-DHACK_TABLE=gles3_transition_@0@_xscreensaver_function_table'.format(t_id),
         ],
-        install: false,
+        install: ncz_ship_bins.contains('gles3_transition_' + t + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -1073,7 +1182,7 @@ executable(
     c_args: gles3_native_c_args + [
         '-DSTANDALONE',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('gles3_transitions_smoke'), install_dir: ncz_libdir,
 )
 
 # Headless smoke tester for xshadertoy-format fragment shaders under
@@ -1088,7 +1197,7 @@ executable(
     include_directories: inc,
     dependencies: common_gles3_deps,
     c_args: gles3_native_c_args,
-    install: false,
+    install: ncz_ship_bins.contains('gles3_xshadertoy_smoke'), install_dir: ncz_libdir,
 )
 
 # -----------------------------------------------------------------------
@@ -1125,7 +1234,7 @@ executable(
     c_args: gles3_native_c_args + [
         '-DHACK_TABLE=blackhole_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('blackhole_gles3'), install_dir: ncz_libdir,
 )
 
 # Round 18 — magmasimplex: rename + full rewrite of the lavafield
@@ -1166,7 +1275,7 @@ executable(
     c_args: gles3_native_c_args + [
         '-DHACK_TABLE=magmasimplex_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('magmasimplex_gles3'), install_dir: ncz_libdir,
 )
 
 # Round 19 — genxvectorcade: psychedelic vector-arcade journey. The
@@ -1189,8 +1298,10 @@ executable(
 # buffer is intentionally half-resolution: full-resolution on Intel
 # UHD nearly doubled per-frame cost (measured on PEGASUS 2026-09-25)
 # and trails are intentionally soft.
+if install_extras
 install_data('vendor/genxvectorcade/genxvectorcade.frag',
              install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+endif
 executable(
     'genxvectorcade_gles3',
     files(common_gles3_sources + [
@@ -1203,7 +1314,7 @@ executable(
     c_args: gles3_native_c_args + [
         '-DHACK_TABLE=genxvectorcade_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('genxvectorcade_gles3'), install_dir: ncz_libdir,
 )
 
 
@@ -1222,10 +1333,12 @@ executable(
 # install_data rule below ensures the binary works when launched
 # from / — the cwd-relative-only path was a real ship-blocker on
 # the flagship blackhole hack).
+if install_extras
 install_data('vendor/neonspacewar/composite.frag',
              install_dir: shader_install_dir, install_tag: 'runtime-shaders')
 install_data('vendor/neonspacewar/lines.frag',
              install_dir: shader_install_dir, install_tag: 'runtime-shaders')
+endif
 executable(
     'neonspacewar_gles3',
     files(common_gles3_sources + [
@@ -1237,7 +1350,7 @@ executable(
     c_args: gles3_native_c_args + [
         '-DHACK_TABLE=neonspacewar_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('neonspacewar_gles3'), install_dir: ncz_libdir,
 )
 
 
@@ -1295,7 +1408,7 @@ executable(
     c_args: upstream_gles3_c_args + [
         '-DHACK_TABLE=etruscanvenus_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('etruscanvenus_gles3'), install_dir: ncz_libdir,
 )
 
 # Hypertorus — thickened torus surface with Phong shading
@@ -1310,7 +1423,7 @@ executable(
     c_args: upstream_gles3_c_args + [
         '-DHACK_TABLE=hypertorus_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('hypertorus_gles3'), install_dir: ncz_libdir,
 )
 
 # Klein — Klein bottle immersion
@@ -1325,7 +1438,7 @@ executable(
     c_args: upstream_gles3_c_args + [
         '-DHACK_TABLE=klein_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('klein_gles3'), install_dir: ncz_libdir,
 )
 
 # Projectiveplane — real projective plane immersion
@@ -1340,7 +1453,7 @@ executable(
     c_args: upstream_gles3_c_args + [
         '-DHACK_TABLE=projectiveplane_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('projectiveplane_gles3'), install_dir: ncz_libdir,
 )
 
 # Romanboy — Roman and Boy surfaces (doubly-covered projective plane)
@@ -1355,7 +1468,7 @@ executable(
     c_args: upstream_gles3_c_args + [
         '-DHACK_TABLE=romanboy_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('romanboy_gles3'), install_dir: ncz_libdir,
 )
 
 # Sphereeversion — sphere turned inside out via homotopy. The single
@@ -1383,7 +1496,7 @@ executable(
     c_args: upstream_gles3_c_args + [
         '-DHACK_TABLE=sphereeversion_xscreensaver_function_table',
     ],
-    install: false,
+    install: ncz_ship_bins.contains('sphereeversion_gles3'), install_dir: ncz_libdir,
 )
 
 
@@ -1526,3 +1639,19 @@ run_target(
         'echo "Configured _gles3 binaries: $count"; ' +
         'if [ "$count" -lt 80 ]; then echo "ERROR: expected at least 80 _gles3 binaries, got $count"; exit 1; fi'],
 )
+
+# ---------------------------------------------------------------------------
+# Chooser catalogue + GSettings schema (dev.ncz.screensaver).
+# hacks.tsv is generated from ncz_ship_bins by tools/generate-catalog.py.
+# ---------------------------------------------------------------------------
+install_data('assets/screensaver-chooser/hacks.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data('config/dev.ncz.screensaver.gschema.xml',
+             install_dir: get_option('prefix') / 'share' / 'glib-2.0' / 'schemas')
+
+# Launcher, idle timer and settings glue live in launcher/ (own meson.build,
+# maintained separately); pull them into the same install when present.
+fs = import('fs')
+if fs.is_dir('launcher') and fs.exists('launcher/meson.build')
+    subdir('launcher')
+endif

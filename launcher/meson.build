@@ -42,10 +42,7 @@ install_data('ncz-screensaver-idled.service',
 install_data('dev.ncz.screensaver.desktop',
   install_dir: get_option('datadir') / 'applications')
 
-install_data('../config/dev.ncz.screensaver.gschema.xml',
-  install_dir: get_option('datadir') / 'glib-2.0/schemas')
-install_data('../config/hacks.tsv',
+# The schema and the compatibility catalog copy under
+# share/ncz-screensaver-chooser are installed by the top-level meson.build.
+install_data('../assets/screensaver-chooser/hacks.tsv',
   install_dir: get_option('datadir') / 'ncz-screensavers')
-# Compatibility path read by the existing Singularity screensaver-chooser plugin.
-install_data('../config/hacks.tsv',
-  install_dir: get_option('datadir') / 'ncz-screensaver-chooser')

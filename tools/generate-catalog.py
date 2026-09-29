@@ -1,56 +1,74 @@
 #!/usr/bin/env python3
+"""Regenerate assets/screensaver-chooser/hacks.tsv from the ship set.
+
+The single source of truth is the `ncz_ship_bins` list in meson.build (the
+same list that decides which executables are installed). Columns:
+id, display name, category, group.
+"""
 import argparse
 import pathlib
 import re
 
-CLASSICS = [
+CLASSICS = {
     "voronoi", "projectiveplane", "klein", "hypertorus", "cubestorm",
     "hexstrut", "crackberg", "cityflow", "geodesic", "gravitywell",
     "noof", "gibson",
-]
+}
+TITLES = {
+    "blackhole": "Black Hole",
+}
 
 
-def variable_values(source, name):
-    match = re.search(rf"{name}\s*=\s*\[(.*?)\]", source, re.S)
-    if match is None:
-        raise SystemExit(f"missing Meson list: {name}")
-    return re.findall(r"['\"]([^'\"]+)['\"]", match.group(1))
+def ship_list(source):
+    m = re.search(r"ncz_ship_bins\s*=\s*\[(.*?)\]", source, re.S)
+    if m is None:
+        raise SystemExit("missing ncz_ship_bins list in meson.build")
+    return re.findall(r"['\"]([A-Za-z0-9_-]+_gles3)['\"]", m.group(1))
 
 
-def title(name):
-    words = name.replace("-", " ").replace("_", " ").split()
-    return " ".join(word.capitalize() for word in words)
+def title(stem):
+    if stem in TITLES:
+        return TITLES[stem]
+    # bestill0-0 -> "Bestill 0.0"; neongravity-1 -> "Neongravity 1"
+    m = re.fullmatch(r"([a-z]+)(\d)-(\d)", stem)
+    if m:
+        return f"{m.group(1).capitalize()} {m.group(2)}.{m.group(3)}"
+    words = stem.replace("-", " ").replace("_", " ").split()
+    return " ".join(w.capitalize() for w in words)
+
+
+def classify(target):
+    stem = target.removesuffix("_gles3")
+    if stem == "blackhole":
+        return stem, "Black Hole Simulation"
+    for prefix in ("hyprsaver", "xshadertoy"):
+        if stem.startswith(prefix + "_"):
+            return stem[len(prefix) + 1:], prefix
+    if stem in CLASSICS:
+        return stem, "Classics"
+    raise SystemExit(f"unclassified ship entry: {target}")
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("meson_build", type=pathlib.Path)
-    parser.add_argument("output", type=pathlib.Path)
-    args = parser.parse_args()
-    source = args.meson_build.read_text()
-    targets = set(re.findall(r"['\"]([A-Za-z0-9_-]+_gles3)['\"]", source))
-    generated_names = re.findall(r"['\"]name['\"]\s*:\s*['\"]([A-Za-z0-9_-]+)['\"]", source)
-    targets.update(f"{name}_gles3" for name in generated_names)
-    groups = [
-        ("Black Hole Simulation", ["blackhole_gles3"]),
-        ("hyprsaver", [f"hyprsaver_{name}_gles3" for name in variable_values(source, "hyprsaver_shaders")]),
-        ("xshadertoy", [f"xshadertoy_{name}_gles3" for name in variable_values(source, "xshadertoy_shaders")]),
-        ("Classics", [f"{name}_gles3" for name in CLASSICS]),
-    ]
-    missing = [target for _, entries in groups for target in entries if target not in targets]
-    if missing:
-        raise SystemExit("missing build targets: " + ", ".join(missing))
-    lines = ["# Generated from ncz-screensavers meson.build by tools/generate-catalog.py"]
-    for group, entries in groups:
-        for target in entries:
-            stem = target.removesuffix("_gles3")
-            if group == "hyprsaver":
-                stem = stem.removeprefix("hyprsaver_")
-            elif group == "xshadertoy":
-                stem = stem.removeprefix("xshadertoy_")
-            lines.append(f"{target}\t{title(stem)}\t{group}\t{group}")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("meson_build", type=pathlib.Path)
+    ap.add_argument("output", type=pathlib.Path)
+    args = ap.parse_args()
+    src = args.meson_build.read_text()
+    ships = ship_list(src)
+    order = {"Black Hole Simulation": 0, "hyprsaver": 1, "xshadertoy": 2, "Classics": 3}
+    rows = []
+    for t in ships:
+        stem, group = classify(t)
+        rows.append((order[group], t, title(stem), group))
+    rows.sort(key=lambda r: (r[0], r[1]))
+    lines = ["# Generated from meson.build (ncz_ship_bins) by tools/generate-catalog.py"]
+    lines += [f"{t}\t{name}\t{g}\t{g}" for _, t, name, g in rows]
     args.output.write_text("\n".join(lines) + "\n")
-    print(" ".join(f"{group}={len(entries)}" for group, entries in groups))
+    counts = {}
+    for _, _, _, g in rows:
+        counts[g] = counts.get(g, 0) + 1
+    print(f"{len(rows)} entries:", " ".join(f"{g}={n}" for g, n in counts.items()))
 
 
 if __name__ == "__main__":

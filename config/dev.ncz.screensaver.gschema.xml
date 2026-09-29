@@ -4,6 +4,11 @@
      name, type and meaning. Read live by ncz-screensaver-idled and
      ncz-screensaver; written by the chooser plugin and ncz-screensaver-settings. -->
 <schemalist>
+  <enum id="dev.ncz.screensaver.BlackholeColorMode">
+    <value nick="stylized" value="0"/>
+    <value nick="kipthorne" value="1"/>
+    <value nick="faithful" value="2"/>
+  </enum>
   <schema id="dev.ncz.screensaver" path="/dev/ncz/screensaver/">
     <key name="mode" type="s">
       <choices>
@@ -65,7 +70,7 @@
       <summary>Display off delay</summary>
       <description>Seconds of inactivity before the displays are powered off (DPMS). 0 means never.</description>
     </key>
-    <key name="blackhole-color-mode" type="s">
+    <key name="blackhole-color-mode" enum="dev.ncz.screensaver.BlackholeColorMode">
       <default>'stylized'</default>
       <summary>Black hole color mode</summary>
       <description>Color model used by the black hole hack: stylized (default palette), kipthorne (blackbody temperature, no relativistic shift) or faithful (blackbody with Doppler and gravitational shift). Passed to the hack as NCZ_BLACKHOLE_COLORS; stylized leaves the variable unset.</description>

@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <GLES3/gl32.h>
 #include "gles3_compat.h"
+#include "ncz_gpu_tier.h"
 #include "xscreensaver_compat.h"
 /* gcc 14+ makes implicit declarations an error under -std=c11 even though
  * both headers above declare this; explicit forward decl avoids the
@@ -19,7 +20,7 @@ extern void ncz_harness_die(int code);
 #endif
 typedef struct {
  GLuint program,vbo;
- GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis;
+ GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis,color_mode;
  GLint palette_phase,palette_rate,palette_contrast,nebula_scheme;
  // Per-launch path-shape parameters (replaces the hardcoded curve
  // coefficients that were previously literals in disk_color's camera block).
@@ -38,6 +39,9 @@ typedef struct {
  // draws [0.15,0.7], flyby draws [1.05,3.0]); orbit_omega is the
  // argument of periapse in radians.
  GLint orbit_q,orbit_e,orbit_omega;
+ // GPU-quality uniform: bounds the Schwarzschild integration loop. Adaptive per tier
+ // so the floor tier can hold 30fps on Intel iGPU.
+ GLint max_steps;
  double started;
  // 0:seed 1:radius 2:temp 3:density 4:rotation 5:inclination 6:orbit_rate
  // 7:jet 8:star_density 9:camera_mode 10:palette 11:approach 12:periapsis
@@ -55,8 +59,34 @@ typedef struct {
  float v[47];
 } State;
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec*1e-9;}
-static uint32_t seed(void){uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}struct timespec t;clock_gettime(CLOCK_REALTIME,&t);return t.tv_nsec^t.tv_sec^getpid();}
+static uint32_t seed(void){
+ /* Allow tests / A-B comparisons to force a specific seed via env var.
+  * Default behaviour (no env var) is unchanged: pull from /dev/urandom,
+  * fall back to clock XOR pid. */
+ const char*override=getenv("NCZ_BLACKHOLE_FIXED_SEED");
+ if(override&&*override){uint32_t s=(uint32_t)strtoul(override,NULL,10);if(s!=0)return s;}
+ uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);
+ if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}
+ struct timespec t;clock_gettime(CLOCK_REALTIME,&t);
+ return t.tv_nsec^t.tv_sec^getpid();
+}
 static float rnd(uint32_t*s,float a,float b){*s^=*s<<13;*s^=*s>>17;*s^=*s<<5;return a+(b-a)*(float)(*s&0xffffffu)/16777215.f;}
+// NCZ_BLACKHOLE_COLORS selects the disk colour model:
+//   unset / "stylised" -> 0, our own palette (default)
+//   "kipthorne"        -> 1, blackbody only; Doppler and gravitational
+//                            shift OFF, as Thorne/Double Negative rendered
+//                            it for Interstellar (symmetric warm-white)
+//   "faithful"         -> 2, blackbody + redshift + Doppler + beaming
+static float ncz_blackhole_color_mode(void){
+    const char*c=getenv("NCZ_BLACKHOLE_COLORS");
+    if(!c||!*c) return 0.f;
+    if(!strcmp(c,"kipthorne")) return 1.f;
+    if(!strcmp(c,"faithful"))  return 2.f;
+    if(!strcmp(c,"stylised")||!strcmp(c,"stylized")) return 0.f;
+    fprintf(stderr,"[diag] blackhole: unknown NCZ_BLACKHOLE_COLORS=\"%s\" (want kipthorne|faithful|stylised); using stylised\n",c);
+    return 0.f;
+}
+
 static char*load(void){const char*p[]={"vendor/blackhole/blackhole.frag","../vendor/blackhole/blackhole.frag","../../vendor/blackhole/blackhole.frag","/usr/share/ncz-screensavers/shaders/blackhole.frag"};FILE*f=0;const char*u=0;for(unsigned i=0;i<4;i++)if((f=fopen(p[i],"rb"))){u=p[i];break;}if(!f){fprintf(stderr,"blackhole: cannot locate shader\n");return 0;}fseek(f,0,SEEK_END);long n=ftell(f);rewind(f);char*b=malloc(n+1);if(!b||fread(b,1,n,f)!=(size_t)n){free(b);fclose(f);return 0;}fclose(f);b[n]=0;fprintf(stderr,"[diag] blackhole shader=%s\n",u);return b;}
 static GLuint comp(GLenum t,const char*x){GLuint s=glCreateShader(t);glShaderSource(s,1,&x,0);glCompileShader(s);GLint ok=0;glGetShaderiv(s,GL_COMPILE_STATUS,&ok);if(!ok){char l[8192];glGetShaderInfoLog(s,sizeof l,0,l);fprintf(stderr,"blackhole compile: %s\n",l);glDeleteShader(s);return 0;}return s;}
 static void init_blackhole(ModeInfo*m){
@@ -84,13 +114,14 @@ static void init_blackhole(ModeInfo*m){
  glBufferData(GL_ARRAY_BUFFER,sizeof q,q,GL_STATIC_DRAW);
  glBindBuffer(GL_ARRAY_BUFFER,0);
 #define L(n) s->n=glGetUniformLocation(s->program,"u_"#n)
- L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);
+ L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);L(color_mode);
  L(palette_phase);L(palette_rate);L(palette_contrast);L(nebula_scheme);
  L(path_d_base);L(path_d_swing);L(path_d_harm_amp);L(path_d_harm_freq);
  L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
  L(path_e_swing);L(path_e_freq);L(path_phase_jitter);
  L(disk_axis);L(disk_precess);L(camera_family);
  L(orbit_q);L(orbit_e);L(orbit_omega);
+ L(max_steps);
 #undef L
  uint32_t z=seed();
  // Optional deterministic seed for capture runs (eval harness). When
@@ -365,10 +396,21 @@ static void init_blackhole(ModeInfo*m){
  fprintf(stderr,"[diag] blackhole nebula_hue=%.9g nebula_scale=%.9g nebula_coverage=%.9g nebula_yaw=%.9g nebula_tilt=%.9g nebula_offset=%.9g nebula_scheme=%d\n",
   s->v[13],s->v[14],s->v[15],s->v[16],s->v[17],s->v[18],(int)s->v[22]);
  s->started=now();
+ /* Initialise the adaptive quality tier module. Reads NCZ_GPU_TIER
+  * override, queries GL hints, and arms the rolling-median frame
+  * timer. The static prior appears in the [diag] line below as
+  * "tier=" so a capture can be attributed to a tier after the fact. */
+ ncz_gpu_tier_init();
  fprintf(stderr,"[diag] blackhole seed=%.0f radius=%.3f temp=%.3f density=%.3f rotation=%.3f inclination=%.3f flyby=%d camera_rate=%.4f palette=%d approach=%.3f periapsis=%.3f jet=%.3f stars=%.3f palette_phase=%.4f palette_rate=%.5f palette_contrast=%.3f path_d_base=%.3f path_d_swing=%.3f path_d_harm_amp=%.3f path_d_harm_freq=%.3f path_o_rate=%.3f path_o_harm_amp=%.3f path_o_harm_freq=%.3f path_o_count=%.2f path_sign=%.0f path_e_swing=%.3f path_e_freq=%.3f path_phase_jitter=%.4f disk_axis=(%.3f,%.3f,%.3f,wobble=%.3f) precess_rate=%.4f camera_family=%d orbit_q=%.4f orbit_e=%.4f orbit_omega=%.3f GL=%s\n",
   s->v[0],s->v[1],s->v[2],s->v[3],s->v[4],s->v[5],(int)s->v[9],s->v[6],(int)s->v[10],s->v[11],s->v[12],s->v[7],s->v[8],s->v[19],s->v[20],s->v[21],
   s->v[23],s->v[24],s->v[25],s->v[26],s->v[27],s->v[28],s->v[29],s->v[30],s->v[31],s->v[32],s->v[33],s->v[34],
   s->v[35],s->v[36],s->v[37],s->v[38],s->v[42],(int)s->v[43],s->v[44],s->v[45],s->v[46],glGetString(GL_VERSION));
+  /* Tier attribution: every [diag] line includes the chosen tier and a
+   * short reason. The runtime may later downgrade if frame-time is over
+   * budget; the next [diag] line will reflect it. */
+  const ncz_gpu_tier_t *_tier=ncz_gpu_tier_current();
+  fprintf(stderr,"[diag] blackhole tier=%s scalar=%.2f reason=\"%s\"\n",
+   _tier->name,_tier->scalar,_tier->reason);
 }
 static void draw_blackhole(ModeInfo*m){
  State*s=m->data;
@@ -383,6 +425,7 @@ static void draw_blackhole(ModeInfo*m){
  glUniform1f(s->seed,s->v[0]);
  glUniform1f(s->radius,s->v[1]);
  glUniform1f(s->temperature,s->v[2]);
+    { float cm=ncz_blackhole_color_mode(); glUniform1f(s->color_mode,cm); }
  glUniform1f(s->density,s->v[3]);
  glUniform1f(s->rotation,s->v[4]);
  glUniform1f(s->inclination,s->v[5]);
@@ -425,6 +468,17 @@ static void draw_blackhole(ModeInfo*m){
  glUniform1f(s->orbit_q,s->v[44]);
  glUniform1f(s->orbit_e,s->v[45]);
  glUniform1f(s->orbit_omega,s->v[46]);
+ /* Tier-driven step count. The Schwarzschild Binet integration in the
+  * shader is the dominant cost on Intel UHD — 260 steps/pixel at 1080p is
+  * the difference between 60fps and 8fps. Per-tier budgets:
+  *   low=80, medium=140, high=200, ultra=260.
+  * The scalar from the tier module is mapped via ncz_gpu_tier_count so
+  * the transition is continuous if the runtime later downgrades/upgrades.
+  */
+ {
+  int steps=ncz_gpu_tier_count(80, 260);
+  glUniform1f(s->max_steps,(float)steps);
+ }
  glBindBuffer(GL_ARRAY_BUFFER,s->vbo);
  glEnableVertexAttribArray(0);
  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,0);
