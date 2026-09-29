@@ -1,3 +1,10 @@
+ncz-screensavers (0.3.3) unstable; urgency=medium
+
+  * Idle daemon restarts an abnormally exited lock command (up to 5 times,
+    1 s apart); greetd scripted re-login helper and recovery documentation.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 15:00:00 +0000
+
 ncz-screensavers (0.3.2) unstable; urgency=medium
 
   * hyprsaver geometry: visible wireframe (Reinhard capped a lone edge at 50%).
