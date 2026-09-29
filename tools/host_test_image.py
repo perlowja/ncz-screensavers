@@ -132,6 +132,33 @@ def coverage_fraction(buf: bytes, threshold: int = _DEFAULT_BRIGHT_THRESHOLD) ->
     return bright / total
 
 
+def tile_coverage(
+    width: int,
+    height: int,
+    buf: bytes,
+    tile: int = 8,
+    threshold: int = _DEFAULT_BRIGHT_THRESHOLD,
+) -> float:
+    """Fraction of tile x tile blocks containing at least one lit pixel.
+
+    Tells a sparse scene (points or lines on black) from an empty frame.
+    """
+    if width <= 0 or height <= 0 or len(buf) < width * height * _PPM_CHANNELS:
+        return 0.0
+    tx = (width + tile - 1) // tile
+    ty = (height + tile - 1) // tile
+    lit = bytearray(tx * ty)
+    for y in range(height):
+        row = buf[y * width * 3 : (y + 1) * width * 3]
+        base = (y // tile) * tx
+        for x, (r, g, b) in enumerate(
+            zip(row[0::3], row[1::3], row[2::3], strict=False)
+        ):
+            if r > threshold or g > threshold or b > threshold:
+                lit[base + x // tile] = 1
+    return sum(lit) / len(lit)
+
+
 def frame_diff_fraction(
     a: bytes,
     b: bytes,

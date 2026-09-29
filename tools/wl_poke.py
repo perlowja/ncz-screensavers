@@ -720,7 +720,11 @@ def cmd_key(args: argparse.Namespace) -> int:
 
         # Each key is a press then a release, 30 ms apart. --codes types a
         # whole sequence (used to unlock the lab hosts' test sessions).
-        seq = [int(c) for c in args.codes.split(",")] if args.codes else [args.code] * args.count
+        seq = (
+            [int(c) for c in args.codes.split(",")]
+            if args.codes
+            else [args.code] * args.count
+        )
         now_ms = int(time.time() * 1000)
         for code in seq:
             for state in (1, 0):

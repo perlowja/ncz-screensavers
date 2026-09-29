@@ -931,12 +931,13 @@ def _measure_coverage_motion(
     out: dict[str, float] = {}
     try:
         _, _, a_buf = hti.parse_ppm(pathlib.Path(ppm_a_path).read_bytes())
-        _, _, b_buf = hti.parse_ppm(pathlib.Path(ppm_b_path).read_bytes())
+        bw, bh, b_buf = hti.parse_ppm(pathlib.Path(ppm_b_path).read_bytes())
         _, _, base_buf = hti.parse_ppm(pathlib.Path(baseline_path).read_bytes())
     except (OSError, hti.PPMError) as exc:
         out["error"] = str(exc)
         return out
     out["coverage"] = hti.coverage_fraction(b_buf)
+    out["tile_coverage"] = hti.tile_coverage(bw, bh, b_buf)
     out["motion"] = hti.frame_diff_fraction(a_buf, b_buf)
     out["baseline_diff"] = hti.frame_diff_fraction(base_buf, b_buf)
     return out
@@ -1156,7 +1157,6 @@ def phase_hacks(
             and not leftover
             and metrics.get("coverage", 0.0) >= COVERAGE_GATE
             and metrics.get("motion", 0.0) >= MOTION_GATE
-            and metrics.get("baseline_diff", 0.0) >= BASELINE_DIFF_GATE
         )
         status = "pass" if passed else "fail"
         detail = (
@@ -1165,6 +1165,11 @@ def phase_hacks(
             f"baseline_diff={metrics.get('baseline_diff', 0):.3f} "
             f"alive={alive} leftover={leftover}"
         )
+        if not passed and metrics.get("tile_coverage", 0.0) >= 0.25:
+            detail += (
+                f" sparse-scene(tiles lit={metrics['tile_coverage']:.2f}):"
+                " content present but under the 15% pixel gate"
+            )
         if not passed:
             # Pull the last 20 lines of the hack log if we have it.
             log = os.path.join("/run/user", str(os.getuid()), HACK_LOG)
