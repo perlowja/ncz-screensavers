@@ -26,9 +26,10 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public NczScreensaverBackend () {
         settings = open (SCHEMA);
-        if (settings != null && !has_all_keys (settings))
+        if (settings != null && !has_all_keys (settings)) {
             warning ("screensaver schema %s lacks required keys; page disabled", SCHEMA);
             settings = null;
+        }
         if (settings != null) {
             settings.changed.connect ((key) => {
                 if (key == "gpu-offload" || key == "pool-gpu-class") {
