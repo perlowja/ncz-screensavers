@@ -32,6 +32,7 @@
 #include "ncz_options.h"
 #include "ncz_harness_cfg.h"
 #include "ncz_platform.h"
+#include "ncz_gpu_tier.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -82,14 +83,20 @@ static const char *cs_opt_s(const char *n, const char *dflt) {
     return v ? v : dflt;
 }
 
-/* style option -> 0 classic, 1 enhanced.  auto picks enhanced except on
- * software renderers (which the harness refuses anyway) and on GPUs whose
- * renderer string identifies an entry-level part. */
+/* style option -> 0 classic, 1 enhanced.  auto: enhanced on medium and better
+ * GPUs, classic on the weak class (ncz_gpu_tier LOW: Intel iGPUs and older
+ * mobile parts; NCZ_GPU_TIER overrides for tests).  Call with a GL context
+ * current. */
 static int cs_style(void) {
     const char *s = cs_opt_s("style", "auto");
     if (!strcmp(s, "classic")) return 0;
     if (!strcmp(s, "enhanced")) return 1;
-    return 1;
+    ncz_gpu_tier_init();
+    const ncz_gpu_tier_t *t = ncz_gpu_tier_current();
+    int enh = t && t->tier >= NCZ_TIER_MEDIUM;
+    fprintf(stderr, "[diag] classics style=auto -> %s (gpu tier %s: %s)\n", enh ? "enhanced" : "classic",
+            t ? t->name : "?", t ? t->reason : "");
+    return enh;
 }
 
 /* ------------------------------------------------------------------ */
