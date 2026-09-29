@@ -1,3 +1,43 @@
+ncz-screensavers (0.5.3) unstable; urgency=medium
+
+  * GPU classes: NCZ_GPU_CLASS (weak, mid, strong) or inferred from
+    GL_RENDERER; weak GPUs (Intel UHD) start at render scale 0.5 and Black Hole
+    drops bloom and halves nebula and star density. All presets declare
+    min-gpu-class and measured fps (presets.tsv columns 8 and 9).
+  * NCZ_ALLOW_SOFTWARE_FALLBACK accepted as an alias (only without a GPU).
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 23:00:00 +0000
+
+ncz-screensavers (0.5.2) unstable; urgency=medium
+
+  * render-hints.tsv: per-hack render scale (measured on Mali-G720) for the
+    shader hacks that miss 45 fps at native 1080p; render scale measurements
+    documented.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 22:00:00 +0000
+
+ncz-screensavers (0.5.1) unstable; urgency=medium
+
+  * Black Hole shader: remove three spec-undefined GLSL operations (pow of a
+    negative base, smoothstep with reversed edges, normalize of a zero
+    vector); no change in the rendered image.
+  * Harness: the Mali and integrated-Intel render-height cap now uses the
+    GL_RENDERER string captured at startup.
+  * Docs: palette distinctness on Mali, preset screenshots, shader hack guide.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 21:00:00 +0000
+
+ncz-screensavers (0.5.0) unstable; urgency=medium
+
+  * Black Hole presets: sagittarius-a-star, m87-star, ton-618, quasar,
+    quasar-edge-on, blazar, microquasar, kerr (faithful or artistic labels);
+    each is also a catalog row (presets.tsv) launching --preset=<id>.
+    New options: preset, disk-outer, jet-length, torus, companion; new eht
+    palette; --list-presets and --print-config.
+  * Render scale ladder ends at 0.35; docs: shader hack guide, scenes design.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 20:00:00 +0000
+
 ncz-screensavers (0.4.0) unstable; urgency=medium
 
   * Black Hole: configurable through one option table (command line,

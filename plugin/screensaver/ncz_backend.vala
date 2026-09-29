@@ -16,6 +16,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     private Gee.ArrayList<ScreensaverHack> catalog = new Gee.ArrayList<ScreensaverHack> ();
     private Gee.HashSet<string> igpu_ids = new Gee.HashSet<string> ();
     private bool tiers_loaded = false;
+    private Gee.HashMap<string, string> issues = new Gee.HashMap<string, string> ();
 
     public NczScreensaverBackend () {
         settings = open (SCHEMA);
@@ -24,6 +25,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             settings.changed.connect (() => changed ());
             load_catalog ();
             load_tiers ();
+            load_issues ();
         }
         if (lock_settings != null)
             lock_settings.changed.connect (() => changed ());
@@ -50,6 +52,30 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             if (f.length >= 3)
                 catalog.add (new ScreensaverHack (f[0], f[1], f[2]));
         }
+    }
+
+    private void load_issues () {
+        string data;
+        foreach (unowned string path in new string[] { "/usr/share/ncz-screensavers/broken.tsv", "/usr/share/ncz-screensaver-chooser/broken.tsv" }) {
+            try {
+                FileUtils.get_contents (path, out data);
+            } catch (FileError e) {
+                continue;
+            }
+            foreach (unowned string line in data.split ("
+")) {
+                string[] f = line.split ("	");
+                if (line.has_prefix ("#") || f.length < 3)
+                    continue;
+                if (f[1] == "broken" || f[1] == "suspect")
+                    issues[f[0]] = f[2];
+            }
+            return;
+        }
+    }
+
+    public string known_issue (string id) {
+        return issues.has_key (id) ? issues[id] : "";
     }
 
     private void load_tiers () {
@@ -195,6 +221,43 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public bool igpu_friendly (string id) {
         return igpu_ids.contains (id);
+    }
+
+    public string render_quality {
+        owned get {
+            string mode = settings.get_string ("render-scale-mode");
+            double scale = settings.get_double ("render-scale");
+            int height = settings.get_int ("max-render-height");
+            if (mode == "auto" && scale == 1.0 && height == 0)
+                return "auto";
+            if (mode == "fixed" && scale == 1.0 && height == 0)
+                return "high";
+            if (mode == "fixed" && scale == 0.75 && height == 0)
+                return "balanced";
+            if (mode == "fixed" && scale == 0.5 && height == 1080)
+                return "fast";
+            return "custom";
+        }
+        set {
+            switch (value) {
+            case "auto": apply_render ("auto", 1.0, 0); break;
+            case "high": apply_render ("fixed", 1.0, 0); break;
+            case "balanced": apply_render ("fixed", 0.75, 0); break;
+            case "fast": apply_render ("fixed", 0.5, 1080); break;
+            default: break;
+            }
+        }
+    }
+
+    private void apply_render (string mode, double scale, int height) {
+        settings.set_string ("render-scale-mode", mode);
+        settings.set_double ("render-scale", scale);
+        settings.set_int ("max-render-height", height);
+    }
+
+    public int max_render_height {
+        get { return settings.get_int ("max-render-height"); }
+        set { settings.set_int ("max-render-height", value); }
     }
 
     public string pool_class {

@@ -38,7 +38,11 @@ public interface ScreensaverBackend : Object {
     public abstract string[] enabled_hacks { owned get; set; }
     public abstract bool has_tiers { get; }
     public abstract bool igpu_friendly (string id);
+    // Empty when the hack has no known defect, else a short reason.
+    public abstract string known_issue (string id);
     public abstract string pool_class { owned get; set; }
+    public abstract string render_quality { owned get; set; }
+    public abstract int max_render_height { get; set; }
     public abstract int start_delay { get; set; }
     public abstract int rotate_delay { get; set; }
     public abstract bool lock_supported { get; }

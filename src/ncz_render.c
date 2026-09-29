@@ -1,5 +1,7 @@
 #include "ncz_render.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 
@@ -33,8 +35,25 @@ int ncz_render_platform_cap(const char *r, int native_h) {
     return 0;
 }
 
+const char *ncz_gpu_class(const char *r, const char *env) {
+    if (env && !strcasecmp(env, "weak")) return "weak";
+    if (env && !strcasecmp(env, "mid")) return "mid";
+    if (env && !strcasecmp(env, "strong")) return "strong";
+    if (!r) return "mid";
+    if (strcasestr(r, "intel") || strcasestr(r, "llvmpipe") || strcasestr(r, "softpipe") || strcasestr(r, "lavapipe")) return "weak";
+    if (strcasestr(r, "mali") || strcasestr(r, "adreno") || strcasestr(r, "powervr") || strcasestr(r, "xclipse") || strcasestr(r, "apple")) return "mid";   /* mobile GPUs */
+    return "strong";
+}
+
+static char g_render_renderer[512];
+void ncz_render_set_renderer(const char *r) { snprintf(g_render_renderer, sizeof g_render_renderer, "%s", r ? r : ""); }
+const char *ncz_gpu_class_current(void) {
+    return ncz_gpu_class(g_render_renderer[0] ? g_render_renderer : NULL, getenv("NCZ_GPU_CLASS"));
+}
+
 double ncz_render_step_down(double scale) {
     if (scale > 0.80) return 0.75;
     if (scale > 0.55) return 0.5;
+    if (scale > 0.40) return 0.35;
     return scale;
 }

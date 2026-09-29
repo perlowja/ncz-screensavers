@@ -292,6 +292,10 @@ static double mono_s(void) {
     return t.tv_sec + t.tv_nsec * 1e-9;
 }
 
+/* GL_RENDERER captured while the startup context is current (the platform
+ * render-size caps depend on it). */
+static char g_renderer[512];
+
 /* Opaque region covers the whole (native) surface; re-issued on every resize. */
 static void set_opaque_region(struct app *a) {
     struct wl_region *opaque = wl_compositor_create_region(a->compositor);
@@ -308,10 +312,18 @@ static void set_opaque_region(struct app *a) {
 static void apply_render_size(struct app *a, int nw, int nh) {
     int expl = 0;
     int cap = ncz_cfg_max_render_height(&expl);
-    const char *rend = (const char *)glGetString(GL_RENDERER);
-    if (!expl) cap = ncz_render_platform_cap(rend, nh);
-    int rw = nw, rh = nh;
-    int scaled = ncz_render_size(nw, nh, a->rscale, cap, &rw, &rh);
+    const char *rend = g_renderer[0] ? g_renderer : (const char *)glGetString(GL_RENDERER);
+    /* Test only: NCZ_TEST_SURFACE_SIZE=WxH makes the size/cap/scale logic act as if the surface
+     * were WxH (to measure a 4K operating point on a smaller panel). The viewport destination
+     * stays the real surface size. */
+    int vw = nw, vh = nh, virt = 0;
+    const char *tss = getenv("NCZ_TEST_SURFACE_SIZE");
+    if (tss && sscanf(tss, "%dx%d", &vw, &vh) == 2 && vw >= 2 && vh >= 2) virt = 1;
+    else { vw = nw; vh = nh; }
+    if (!expl) cap = ncz_render_platform_cap(rend, vh);
+    int rw = vw, rh = vh;
+    int scaled = ncz_render_size(vw, vh, a->rscale, cap, &rw, &rh);
+    if (virt && (rw != nw || rh != nh)) scaled = 1;
     if (scaled && !a->viewporter) {
         fprintf(stderr, "[diag] gles3_harness: wp_viewporter unavailable; rendering at native %dx%d\n", nw, nh);
         scaled = 0; rw = nw; rh = nh;
@@ -348,8 +360,16 @@ static void commit_render_size(struct app *a) {
 static void guard_renderer(const char *where) {
     const char *rend = (const char *)glGetString(GL_RENDERER);
     if (!rend) { fprintf(stderr, "[guard] renderer string unavailable at %s\n", where); return; }
+    if (!g_renderer[0] && rend[0]) {
+        snprintf(g_renderer, sizeof g_renderer, "%s", rend);
+        ncz_render_set_renderer(rend);
+        fprintf(stderr, "[diag] gles3_harness: gpu class %s (%s)\n", ncz_gpu_class_current(), rend);
+    }
     char gmsg[512];
-    if (ncz_gpu_guard_check("", rend, getenv("NCZ_ALLOW_SOFTWARE"), gmsg, sizeof gmsg)) {
+    /* Only honored when the machine has no hardware GPU (see ncz_gpu_guard.h). */
+    const char *allow = getenv("NCZ_ALLOW_SOFTWARE");
+    if (!allow || !allow[0]) allow = getenv("NCZ_ALLOW_SOFTWARE_FALLBACK");
+    if (ncz_gpu_guard_check("", rend, allow, gmsg, sizeof gmsg)) {
         fprintf(stderr, "[guard] %s\n", gmsg);
         ncz_harness_die(3);
     }
@@ -360,6 +380,8 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
 
     if (!a->configured) {
         a->rscale = ncz_cfg_render_scale();
+        /* Weak GPUs (Intel UHD class) start at half resolution unless the user chose a scale. */
+        if (!ncz_cfg_render_scale_is_set() && !strcmp(ncz_gpu_class_current(), "weak")) a->rscale = 0.5;
         apply_render_size(a, (int)w, (int)h);
         a->egl_window = wl_egl_window_create(a->surface, a->width, a->height);
         if (!a->egl_window) {

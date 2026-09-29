@@ -23,7 +23,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.4.0',
+    version: '0.5.3',
     license: 'GPL-2.0-or-later',
 )
 
@@ -1674,12 +1674,29 @@ install_data('assets/screensaver-chooser/hacks.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 # Shipped to both directories, like hacks.tsv: the launcher reads share/ncz-screensavers,
 # the chooser plugin reads share/ncz-screensaver-chooser. Do not de-duplicate.
+install_subdir('assets/screensaver-chooser/options/presets/blackhole',
+               install_dir: get_option('prefix') / 'share' / 'ncz-screensavers' / 'presets')
+install_data('assets/screensaver-chooser/render-hints.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/render-hints.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data('assets/screensaver-chooser/presets.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/presets.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 install_data(['assets/screensaver-chooser/options/blackhole.tsv', 'assets/screensaver-chooser/options/_render.tsv'],
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers' / 'options')
 install_data('assets/screensaver-chooser/sparse.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('assets/screensaver-chooser/sparse.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+# GPU tiers (see docs/LAUNCHER-DESIGN.md): the launcher and both settings UIs read them.
+install_data('assets/screensaver-chooser/broken.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/broken.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data('assets/screensaver-chooser/render-defaults.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('config/dev.ncz.screensaver.gschema.xml',
              install_dir: get_option('prefix') / 'share' / 'glib-2.0' / 'schemas')
 
@@ -1720,6 +1737,10 @@ if not meson.is_cross_build()
          find_program('sh'),
          args: ['-c', '"$0" --dump-schema | diff -u "$1" -',
                 blackhole_exe, files('assets/screensaver-chooser/options/blackhole.tsv')])
+    test('blackhole-preset-precedence',
+         find_program('sh'),
+         args: ['-c', 'cd "$1" && test "$($0 --preset=kerr --print-config | grep ^spin=)" = "spin=0.998" && test "$(NCZ_BLACKHOLE_SPIN=0.5 $0 --preset=kerr --print-config | grep ^spin=)" = "spin=0.5" && test "$(NCZ_BLACKHOLE_SPIN=0.5 $0 --preset=kerr --spin=0.7 --print-config | grep ^spin=)" = "spin=0.7" && test "$($0 --preset=nope --print-config 2>/dev/null | grep ^spin=)" = "spin=0"',
+                blackhole_exe.full_path(), meson.project_source_root()])
     test('common-render-schema-in-sync',
          find_program('sh'),
          args: ['-c', '"$0" --dump-schema-common | diff -u "$1" -',

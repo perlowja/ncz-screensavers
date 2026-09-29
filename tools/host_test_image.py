@@ -278,3 +278,108 @@ def brightness_ratio(a: float, b: float) -> float:
     if a > b:
         return a / b
     return b / a
+
+
+def visual_metrics(
+    width: int, height: int, buf: bytes, prev: bytes | None = None, tile: int = 8
+) -> dict[str, float]:
+    """Cheap heuristics for output that is lit and moving but looks wrong.
+
+    Colors are quantized to 4 bits per channel. Returned values:
+      top1, top2      fraction of pixels in the most common one/two colors
+      entropy         Shannon entropy of the color histogram in bits
+      colors          number of colors holding at least 0.2% of the pixels
+      lit_flat_tiles  fraction of tiles that are uniform (spread <= 6 per channel) AND lit (max channel > 40)
+      moved_tiles     fraction of tiles that changed by more than 12 against `prev` (0 when no prev)
+    """
+    import math
+
+    n = width * height
+    if n == 0 or len(buf) < n * 3:
+        return {
+            "lit": 0.0,
+            "lit_colors": 0,
+            "lit_top1": 0.0,
+            "top1": 1.0,
+            "top2": 1.0,
+            "entropy": 0.0,
+            "colors": 0,
+            "lit_flat_tiles": 0.0,
+            "moved_tiles": 0.0,
+        }
+    hist: dict[int, int] = {}
+    for r, g, b in zip(buf[0::3], buf[1::3], buf[2::3], strict=False):
+        key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+        hist[key] = hist.get(key, 0) + 1
+    counts = sorted(hist.values(), reverse=True)
+    entropy = -sum(c / n * math.log2(c / n) for c in counts)
+    tx, ty = width // tile, height // tile
+    flat = lit_flat = moved = total = 0
+    for j in range(ty):
+        for i in range(tx):
+            lo = [255, 255, 255]
+            hi = [0, 0, 0]
+            changed = False
+            for y in range(j * tile, (j + 1) * tile):
+                row = (y * width + i * tile) * 3
+                for x in range(tile):
+                    o = row + x * 3
+                    for c in range(3):
+                        v = buf[o + c]
+                        lo[c] = min(lo[c], v)
+                        hi[c] = max(hi[c], v)
+                    if (
+                        prev is not None
+                        and not changed
+                        and (
+                            abs(buf[o] - prev[o]) > 12
+                            or abs(buf[o + 1] - prev[o + 1]) > 12
+                            or abs(buf[o + 2] - prev[o + 2]) > 12
+                        )
+                    ):
+                        changed = True
+            total += 1
+            if max(hi[c] - lo[c] for c in range(3)) <= 6:
+                flat += 1
+                if max(hi) > 40:
+                    lit_flat += 1
+            if changed:
+                moved += 1
+    lit = {k: c for k, c in hist.items() if max(k >> 8, (k >> 4) & 15, k & 15) >= 3}
+    lit_n = sum(lit.values())
+    lit_counts = sorted(lit.values(), reverse=True)
+    return {
+        "lit": round(lit_n / n, 3),
+        "lit_colors": sum(1 for c in lit_counts if c / n >= 0.002),
+        "lit_top1": round(lit_counts[0] / lit_n, 3) if lit_n else 0.0,
+        "top1": counts[0] / n,
+        "top2": sum(counts[:2]) / n,
+        "entropy": round(entropy, 2),
+        "colors": sum(1 for c in counts if c / n >= 0.002),
+        "lit_flat_tiles": round(lit_flat / total, 3) if total else 0.0,
+        "moved_tiles": round(moved / total, 3) if total else 0.0,
+    }
+
+
+def visual_verdict(vm: dict[str, float]) -> list[str]:
+    """Reasons a lit, moving frame still looks wrong; empty when it looks fine.
+
+    Thresholds come from a scan of 415 frames from five hosts: healthy hacks never trip
+    them, while cityflow (flat polygons) trips all three and crackberg trips one_color.
+      flat_fill    mostly lit, but only a handful of colors or very low entropy
+      one_color    mostly lit and one color is most of the lit area
+      tiny_motion  mostly lit, few colors, and almost nothing moved between frames
+    """
+    reasons = []
+    lit = vm.get("lit", 0.0)
+    if lit >= 0.4 and (vm.get("lit_colors", 99) <= 4 or vm.get("entropy", 99) < 1.5):
+        reasons.append("flat_fill")
+    if lit >= 0.6 and vm.get("lit_top1", 0.0) >= 0.75:
+        reasons.append("one_color")
+    if (
+        lit >= 0.5
+        and vm.get("lit_colors", 99) <= 8
+        and vm.get("moved_tiles", 1.0) < 0.10
+    ):
+        reasons.append("tiny_motion")
+    return reasons
