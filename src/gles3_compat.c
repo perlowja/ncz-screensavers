@@ -2673,3 +2673,12 @@ void glGetIntegerv(GLenum p, GLint *v) {
  * provided as no-op stubs in xscreensaver_compat.c when
  * -DNCZ_GLES3_BUILD=1 is set — see that file's
  * #ifdef NCZ_GLES3_BUILD block. No need to add them here. */
+
+int ncz_diag_periodic_samples(void) {
+    static int v = -1;
+    if (v < 0) {
+        const char *d = getenv("NCZ_DIAG_FRAMEBUFFER");
+        v = (d && *d && strcmp(d, "0") != 0) ? 1 : 0;
+    }
+    return v;
+}

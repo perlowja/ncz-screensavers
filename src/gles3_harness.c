@@ -564,6 +564,20 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
     free(pixels);
 }
 
+/* Frame 4 is a one-shot sample; periodic full-frame readbacks (a 70-110 ms
+ * stall on O6N) are opt-in via NCZ_DIAG_FRAMEBUFFER or NCZ_FRAME_DUMP, which
+ * needs the frames. See ncz_diag_sample_frame() in gles3_compat.h. */
+static int report_wanted(unsigned long idx) {
+    static int dump = -1;
+    if (dump < 0) {
+        const char *f = getenv("NCZ_FRAME_DUMP");
+        dump = (f && *f) ? 1 : 0;
+    }
+    if (dump && idx >= 60 && (idx % 60) == 0)
+        return 1;
+    return ncz_diag_sample_frame(idx, 60);
+}
+
 static void draw_and_swap(struct app *a, unsigned long frame, unsigned long report_idx) {
     ncz_harness_attach_frame_size(a->width, a->height);
     hack->draw_cb(&a->mi);
@@ -578,7 +592,7 @@ static void draw_and_swap(struct app *a, unsigned long frame, unsigned long repo
      * post-increment frame counter in the main loop, which meant frame 4
      * was never passed in — see the comment above the main loop for the
      * off-by-one history. */
-    if (report_idx == 4 || (report_idx >= 60 && (report_idx % 60) == 0))
+    if (report_wanted(report_idx))
         report_framebuffer(a, report_idx);
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",

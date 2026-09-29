@@ -541,4 +541,22 @@ void ncz_gles3_runtime_fini(void);
  * glDrawArrays shim in gles3_compat.c only handles GL1 client arrays. */
 void ncz_gles3_draw_arrays(GLenum mode, GLint first, GLsizei count);
 
+/*
+ * Periodic diagnostic pixel readbacks stall the GPU pipeline.
+ *
+ * Several hacks sampled the framebuffer every 30/60 frames for the validator's
+ * "[diag] ... frame=N" lines. glReadPixels() is a synchronous GPU drain; on
+ * O6N (Mali-G720) the 1x1 samples froze the animation for ~55 ms once a
+ * second and the full-frame harness sample for 70-110 ms (CHIMERA/radeonsi:
+ * ~45 ms), which is the visible periodic stutter. The one-shot startup sample
+ * (frame 4) is always kept; the periodic ones run only when
+ * NCZ_DIAG_FRAMEBUFFER is set to something other than "0".
+ */
+int ncz_diag_periodic_samples(void);
+static inline int ncz_diag_sample_frame(unsigned long frame, unsigned long period) {
+    if (frame == 4)
+        return 1;
+    return frame >= period && (frame % period) == 0 && ncz_diag_periodic_samples();
+}
+
 #endif /* NCZ_GLES3_COMPAT_H */
