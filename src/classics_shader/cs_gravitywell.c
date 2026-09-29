@@ -240,7 +240,7 @@ static void draw_gw(ModeInfo *mi) {
         for (int j = 0; j < s->nstars; j++) {
             if (i == j) continue;
             float dx = s->st[j].x - a->x, dy = s->st[j].y - a->y;
-            a->depth += s->st[j].mass / (dx * dx + dy * dy);
+            a->depth += s->st[j].mass / (dx * dx + dy * dy + 1e-3f);   /* coincident stars must not give inf */
         }
         S0[i * 4] = a->x; S0[i * 4 + 1] = a->y; S0[i * 4 + 2] = a->mass; S0[i * 4 + 3] = a->sg;
         S1[i * 4] = a->ri2; S1[i * 4 + 1] = a->ro2; S1[i * 4 + 2] = a->radius; S1[i * 4 + 3] = a->depth;
