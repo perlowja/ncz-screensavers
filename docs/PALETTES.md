@@ -1,6 +1,6 @@
 # Black Hole palettes
 
-Six palettes: `stylized`, `kipthorne`, `faithful`, `singularity`, `slingshot`, `whitehole`. Choose one with `--palette=NAME` (see `BLACKHOLE-OPTIONS.md`); `--cycle-palettes` cross-fades between them.
+Seven palettes: `stylized`, `kipthorne`, `faithful`, `singularity`, `slingshot`, `whitehole`, `eht`. Choose one with `--palette=NAME` (see `BLACKHOLE-OPTIONS.md`); `--cycle-palettes` cross-fades between them. All six of the first palettes are kept: the operator reviewed the comparison below and decided singularity and whitehole are distinct.
 
 ![swatches](blackhole/palette-swatches.png)
 
@@ -12,10 +12,11 @@ Six palettes: `stylized`, `kipthorne`, `faithful`, `singularity`, `slingshot`, `
 | singularity | strictly monochrome white on black | sampled from the Singularity desktop default wallpaper: background #000000, mark #ffffff, greys R=G=B |
 | slingshot | brick/rust disk, orange to gold to near-white beamed arc, blue-white limb on the lensed image, navy star-speckled sky | color reference: the supplied Strange New Worlds frame (not shipped) |
 | whitehole | icy teal and steel-blue ramp, pale ice core, deep teal-navy sky, hazy blue-gray vortex inside the shadow, cyan/magenta fringe (option `fringe`), wide cool bloom | color reference: the supplied Enterprise-at-the-white-hole frame (not shipped) |
+| eht | Event Horizon Telescope false color: dark red through orange to pale yellow, bright crescent on the approaching side, black sky | afmhot-style ramp; used by the Sagittarius A* and M87* presets |
 
 ## Distinctness (measured)
 
-Metric: per-pixel chroma distance (chromaticity r,g,b normalized to sum 1) over pixels lit in both renders, same seed (42) and same times; six timestamps per flyby, orbit and slingshot flybys. "mean / min" is over timestamps. Acceptance for singularity vs whitehole: mean >= 0.08, min >= 0.05, singularity lit-pixel chroma < 0.02, whitehole > 0.08: all met on both hosts.
+Metric: per-pixel chroma distance (chromaticity r,g,b normalized to sum 1) over pixels lit in both renders, same seed (42) and same times; six timestamps per flyby, orbit and slingshot flybys. "mean / min" is over timestamps. Acceptance for singularity vs whitehole: mean >= 0.08, min >= 0.05, singularity lit-pixel chroma < 0.02, whitehole > 0.08: met on every host below.
 
 Host CHIMERA (AMD Navi14, Mesa radeonsi):
 
@@ -71,11 +72,38 @@ pairwise per-pixel chroma distance (mean over timestamps / min over timestamps):
 |whitehole|0.172/0.080|0.219/0.156|0.186/0.129|0.140/0.115|0.239/0.174|-|
 
 
+Host O6N (Mali-G720, mali_kbase, 1080p):
+
+## flyby=orbit, host=o6n, frames [np.int64(1), np.int64(3), np.int64(6), np.int64(9), np.int64(12), np.int64(15)] of 16
+mean chroma of lit pixels (distance from neutral): stylized=0.233, kipthorne=0.223, faithful=0.117, singularity=0.001, slingshot=0.169, whitehole=0.188
+pairwise per-pixel chroma distance (mean over timestamps / min over timestamps):
+| |stylized|kipthorne|faithful|singularity|slingshot|whitehole|
+|---|---|---|---|---|---|---|
+|stylized|-|0.236/0.069|0.254/0.204|0.236/0.175|0.257/0.096|0.230/0.092|
+|kipthorne|0.236/0.069|-|0.137/0.053|0.222/0.134|0.083/0.060|0.319/0.235|
+|faithful|0.254/0.204|0.137/0.053|-|0.092/0.034|0.147/0.095|0.220/0.170|
+|singularity|0.236/0.175|0.222/0.134|0.092/0.034|-|0.190/0.080|0.159/0.127|
+|slingshot|0.257/0.096|0.083/0.060|0.147/0.095|0.190/0.080|-|0.316/0.230|
+|whitehole|0.230/0.092|0.319/0.235|0.220/0.170|0.159/0.127|0.316/0.230|-|
+
+## flyby=slingshot, host=o6n, frames [np.int64(1), np.int64(3), np.int64(6), np.int64(8), np.int64(11), np.int64(14)] of 15
+mean chroma of lit pixels (distance from neutral): stylized=0.174, kipthorne=0.155, faithful=0.130, singularity=0.001, slingshot=0.150, whitehole=0.176
+pairwise per-pixel chroma distance (mean over timestamps / min over timestamps):
+| |stylized|kipthorne|faithful|singularity|slingshot|whitehole|
+|---|---|---|---|---|---|---|
+|stylized|-|0.170/0.050|0.160/0.065|0.189/0.123|0.244/0.149|0.178/0.107|
+|kipthorne|0.170/0.050|-|0.075/0.023|0.160/0.140|0.087/0.057|0.221/0.162|
+|faithful|0.160/0.065|0.075/0.023|-|0.126/0.089|0.116/0.069|0.196/0.135|
+|singularity|0.189/0.123|0.160/0.140|0.126/0.089|-|0.169/0.132|0.146/0.110|
+|slingshot|0.244/0.149|0.087/0.057|0.116/0.069|0.169/0.132|-|0.257/0.174|
+|whitehole|0.178/0.107|0.221/0.162|0.196/0.135|0.146/0.110|0.257/0.174|-|
+
+
 The closest pairs are kipthorne/slingshot (both warm, 0.05 to 0.09 mean) and kipthorne/faithful at far camera distances; every other pair is at least 0.1 on average.
 
-## singularity or whitehole?
+## singularity and whitehole
 
-Same seed and times, luminance statistics (range = p99 - p1 luminance, bands = occupied bins of a 16-bin luminance histogram, edge = mean gradient x100):
+Luminance statistics at the same seed and times (range = p99 - p1 luminance, bands = occupied bins of a 16-bin luminance histogram, edge = mean gradient x100):
 
 CHIMERA:
 
@@ -105,13 +133,21 @@ slingshot (medusa):  palette: dynamic range p1..p99 luminance | luminance bands 
   slingshot    range=0.697  bands=10.7  edge=0.38  chroma=0.143
   stylized     range=0.724  bands=12.2  edge=0.50  chroma=0.164
 
+O6N:
 
-singularity has the widest dynamic range (0.78 vs 0.55) and the crispest edges (0.64 vs 0.51): black sky, white disk, it reads as the Singularity desktop and is the more elegant, graphic look. whitehole has more depth: a graded navy sky, hazy vortex inside the shadow, bloom and the teal to ice ramp give it more luminance layers and a sense of volume, and it is the more spectacular of the two. Recommendation: keep whitehole as the showpiece; keep singularity only if a brand-matching monochrome option is wanted. Deleting singularity later needs a deprecated alias that maps it to whitehole for one release.
+orbit (o6n):  palette: dynamic range p1..p99 luminance | luminance bands (16-bin occupied bins >0.5%) | edge detail (mean gradient) | mean chroma
+  singularity  range=0.779  bands=12.7  edge=0.64  chroma=0.001
+  whitehole    range=0.544  bands=10.0  edge=0.51  chroma=0.186
+  slingshot    range=0.669  bands=11.8  edge=0.42  chroma=0.177
+  stylized     range=0.691  bands=11.8  edge=0.50  chroma=0.243
 
-Images (same seed, six timestamps per row):
+slingshot (o6n):  palette: dynamic range p1..p99 luminance | luminance bands (16-bin occupied bins >0.5%) | edge detail (mean gradient) | mean chroma
+  singularity  range=0.787  bands=12.2  edge=0.65  chroma=0.001
+  whitehole    range=0.593  bands=11.0  edge=0.54  chroma=0.175
+  slingshot    range=0.722  bands=11.5  edge=0.41  chroma=0.147
+  stylized     range=0.744  bands=12.5  edge=0.53  chroma=0.177
 
-* `blackhole/sheet_chimera_orbit.jpg`, `blackhole/sheet_chimera_slingshot.jpg`: all six palettes (rows: stylized, kipthorne, faithful, singularity, slingshot, whitehole) at six timestamps.
-* `blackhole/full_singularity_vs_whitehole_chimera_orbit.jpg` and `..._slingshot.jpg` (also `medusa`): full frames, singularity left, whitehole right.
-* `blackhole/detail_chimera_orbit.jpg`, `blackhole/detail_chimera_slingshot.jpg`: full-resolution 640x640 crops of the ring and disk (columns: singularity, whitehole, slingshot, stylized).
 
-PEGASUS (Intel) and O6N renders of the same matrix are added when those hosts are free of other GPU test runs; O6N numbers are only valid on the Mali (mali_kbase) driver.
+singularity has the widest dynamic range (0.78 vs 0.55) and the crispest edges (0.64 vs 0.51): black sky, white disk, the graphic look of the Singularity desktop. whitehole has more depth: a graded navy sky, a hazy vortex inside the shadow, bloom and the teal-to-ice ramp. Both are shipped.
+
+Images (same seed, six timestamps per row): `blackhole/sheet_<host>_<flyby>.jpg` (rows stylized, kipthorne, faithful, singularity, slingshot, whitehole), `blackhole/full_singularity_vs_whitehole_<host>_<flyby>.jpg`, `blackhole/detail_<host>_<flyby>.jpg` (640x640 full-resolution crops; columns singularity, whitehole, slingshot, stylized). Mali renders (O6N, MS-R1) were made on the mali_kbase driver.
