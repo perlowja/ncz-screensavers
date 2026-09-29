@@ -354,7 +354,10 @@ static void guard_renderer(const char *where) {
     if (!rend) { fprintf(stderr, "[guard] renderer string unavailable at %s\n", where); return; }
     if (!g_renderer[0]) snprintf(g_renderer, sizeof g_renderer, "%s", rend);
     char gmsg[512];
-    if (ncz_gpu_guard_check("", rend, getenv("NCZ_ALLOW_SOFTWARE"), gmsg, sizeof gmsg)) {
+    /* Only honored when the machine has no hardware GPU (see ncz_gpu_guard.h). */
+    const char *allow = getenv("NCZ_ALLOW_SOFTWARE");
+    if (!allow) allow = getenv("NCZ_ALLOW_SOFTWARE_FALLBACK");
+    if (ncz_gpu_guard_check("", rend, allow, gmsg, sizeof gmsg)) {
         fprintf(stderr, "[guard] %s\n", gmsg);
         ncz_harness_die(3);
     }
