@@ -89,7 +89,7 @@ run_host() {
     fi
     mkdir -p "$outdir"
     stage="$(mktemp -d)"
-    cp "$HERE/host-test-agent.py" "$HERE/host_test_image.py" "$HERE/wl_poke.py" "$stage/"
+    cp "$HERE/host-test-agent.py" "$HERE/host_test_image.py" "$HERE/wl_poke.py" "$HERE/greetd_login.py" "$stage/"
     [ -n "$deb" ] && cp "$deb" "$stage/ncz-screensavers.deb"
     echo "[$h] shipping agent${deb:+ and package}"
     if ! rsh "$h" 'rm -rf "$HOME/ncz-host-test" && mkdir -p "$HOME/ncz-host-test" && tar -x -C "$HOME/ncz-host-test"' \

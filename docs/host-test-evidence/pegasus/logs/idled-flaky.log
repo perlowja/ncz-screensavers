@@ -1,0 +1,14 @@
+ncz-screensaver-idled: debug: bound wl_seat (advertised v9)
+ncz-screensaver-idled: debug: bound ext_idle_notifier_v1 v2
+ncz-screensaver-idled: debug: bound zwlr_output_power_manager_v1 v1
+ncz-screensaver-idled: debug: bound output power for wl_output=0x55bc47c79b70
+ncz-screensaver-idled: debug: plan recomputed: saver=6 lock=10 dpms=-1 lock_on_suspend=0
+ncz-screensaver-idled: debug: output power mode event: mode=1
+ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_3222
+ncz-screensaver-idled: debug: acquired sleep inhibitor fd=11
+ncz-screensaver-idled: info: lock spawned pid=76994
+ncz-screensaver-idled: debug: lock pid=76994 exited status=768
+ncz-screensaver-idled: debug: child pid=76993 exited status=0
+ncz-screensaver-idled: debug: saver idled: spawn pid=77000
+ncz-screensaver-idled: debug: child pid=77000 exited status=0
+ncz-screensaver-idled: info: SIGTERM/INT received, shutting down

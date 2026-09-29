@@ -2166,62 +2166,75 @@ def _graphical_session():
     return sid, _compositor_pid()[1]
 
 
+def _greetd_login(user, pw):
+    """Log `user` in through the greetd socket (as root). True on success."""
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "greetd_login.py")
+    r = _run_with_sudo(
+        [sys.executable, script, user], pw=pw, timeout=60.0, stdin_text=pw + "\n"
+    )
+    return r.returncode == 0
+
+
 @_guard
 def phase_session(results, checks, env, workdir, pw):
-    """Scripted logout and login: restart greetd with a temporary initial
-    session for this user (restored afterwards), then check the new session."""
+    """Scripted logout and login: `systemctl restart greetd` ends the session
+    and shows the greeter; greetd_login.py then logs the user in again through
+    the greetd IPC socket. Afterwards the idle daemon must have started by
+    itself and a hack must render."""
     user = os.environ.get("USER") or pathlib.Path("/proc/self").owner()
-    cfg = "/etc/greetd/config.toml"
-    bak = cfg + ".ncz-ht.bak"
-    if not os.path.exists(cfg) or not pw:
+    if not pw or not glob.glob("/run/greetd*.sock"):
         _record(
             checks,
             "session-restart",
             "skip",
-            "greetd config or sudo secret unavailable",
+            "greetd socket or sudo secret unavailable",
         )
         return
     old_sid, old_pid = _graphical_session()
     was_active = _unit_active(env, IDLED_UNIT)
-    script = (
-        f'cp -a {cfg} {bak} && printf \'\\n[initial_session]\\ncommand = "/usr/local/bin/ncz-singularity"\\n'
-        f'user = "{user}"\\n\' >> {cfg} && systemctl restart greetd'
-    )
-    restored = False
+    new_ok = False
     try:
-        r = _run_with_sudo(["sh", "-c", script], pw=pw, timeout=60.0)
+        r = _run_with_sudo(["systemctl", "restart", "greetd"], pw=pw, timeout=60.0)
         if r.returncode != 0:
             _record(
                 checks,
                 "session-restart",
                 "fail",
-                f"could not arrange autologin: {r.stderr[-200:]}",
+                f"greetd restart failed: {r.stderr[-200:]}",
             )
             return
+        greeter = _wait_until(
+            lambda: (
+                bool(glob.glob("/run/greetd*.sock"))
+                and bool(_pids("singularity-greeter"))
+            ),
+            40.0,
+            step=1.0,
+        )
+        time.sleep(3.0)
+        logged = greeter is not None and _greetd_login(user, pw)
 
         def new_session():
-            sid, pid = _graphical_session()
+            _sid, pid = _graphical_session()
             return (
-                bool(sid)
-                and pid
+                bool(pid)
                 and pid != old_pid
                 and pathlib.Path(_rt_dir(), "wayland-0").exists()
             )
 
-        got = _wait_until(new_session, 90.0, step=1.0)
-        # Restore the greeter configuration right away; no restart needed.
-        _run_with_sudo(["sh", "-c", f"mv -f {bak} {cfg}"], pw=pw, timeout=20.0)
-        restored = True
+        got = _wait_until(new_session, 90.0, step=1.0) if logged else None
+        new_ok = got is not None
         sid, pid = _graphical_session()
         _record(
             checks,
             "session-restart",
-            "pass" if got is not None else "fail",
-            f"seat0 session {old_sid} -> {sid}, compositor pid {old_pid} -> {pid} after {got or 0:.0f}s"
-            if got is not None
-            else "no new graphical session appeared within 90 s",
+            "pass" if new_ok else "fail",
+            f"logout via greetd restart, scripted login: seat0 session {old_sid} -> {sid}, "
+            f"compositor pid {old_pid} -> {pid} after {got or 0:.0f}s"
+            if new_ok
+            else f"no new graphical session (greeter up: {greeter is not None}, login ok: {logged})",
         )
-        if got is None:
+        if not new_ok:
             return
         time.sleep(8.0)  # let the shell finish starting
         up = _wait_until(lambda: _unit_active(env, IDLED_UNIT), 30.0, step=1.0)
@@ -2233,8 +2246,7 @@ def phase_session(results, checks, env, workdir, pw):
             if up is not None
             else f"{IDLED_UNIT} did not start with the new session",
         )
-        senv = _build_session_env()
-        ok = _display_probe(senv)
+        ok = _display_probe(_build_session_env())
         _record(
             checks,
             "saver-after-login",
@@ -2244,10 +2256,12 @@ def phase_session(results, checks, env, workdir, pw):
             else "no hack visible after re-login",
         )
     finally:
-        if not restored:
-            _run_with_sudo(
-                ["sh", "-c", f"[ -f {bak} ] && mv -f {bak} {cfg}"], pw=pw, timeout=20.0
-            )
+        if (
+            not new_ok
+            and glob.glob("/run/greetd*.sock")
+            and not _graphical_session()[1]
+        ):
+            _greetd_login(user, pw)  # never leave the host at the greeter
 
 
 @_guard
