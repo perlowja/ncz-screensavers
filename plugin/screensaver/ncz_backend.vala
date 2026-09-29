@@ -197,6 +197,43 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         return igpu_ids.contains (id);
     }
 
+    public string render_quality {
+        owned get {
+            string mode = settings.get_string ("render-scale-mode");
+            double scale = settings.get_double ("render-scale");
+            int height = settings.get_int ("max-render-height");
+            if (mode == "auto" && scale == 1.0 && height == 0)
+                return "auto";
+            if (mode == "fixed" && scale == 1.0 && height == 0)
+                return "high";
+            if (mode == "fixed" && scale == 0.75 && height == 0)
+                return "balanced";
+            if (mode == "fixed" && scale == 0.5 && height == 1080)
+                return "fast";
+            return "custom";
+        }
+        set {
+            switch (value) {
+            case "auto": apply_render ("auto", 1.0, 0); break;
+            case "high": apply_render ("fixed", 1.0, 0); break;
+            case "balanced": apply_render ("fixed", 0.75, 0); break;
+            case "fast": apply_render ("fixed", 0.5, 1080); break;
+            default: break;
+            }
+        }
+    }
+
+    private void apply_render (string mode, double scale, int height) {
+        settings.set_string ("render-scale-mode", mode);
+        settings.set_double ("render-scale", scale);
+        settings.set_int ("max-render-height", height);
+    }
+
+    public int max_render_height {
+        get { return settings.get_int ("max-render-height"); }
+        set { settings.set_int ("max-render-height", value); }
+    }
+
     public string pool_class {
         owned get { return settings.get_string ("pool-gpu-class"); }
         set { settings.set_string ("pool-gpu-class", value); }

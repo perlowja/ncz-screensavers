@@ -65,6 +65,8 @@ public class ScreensaverSettings : Gtk.Box {
     private const string[] MODE_LABELS = { "Off", "One screensaver", "Random rotation" };
     private const string[] GPU_IDS = { "auto", "prime", "off" };
     private const string[] GPU_LABELS = { "Automatic (heavy screensavers on the discrete GPU)", "Always the discrete GPU", "Same GPU as the desktop" };
+    private const string[] RENDER_IDS = { "auto", "high", "balanced", "fast", "custom" };
+    private const string[] RENDER_LABELS = { "Auto (recommended)", "High (native resolution)", "Balanced (75%)", "Fast (50%, 1080p cap)", "Custom" };
     private const string[] POOL_IDS = { "auto", "igpu-only", "all" };
     private const string[] POOL_LABELS = { "Automatic", "Only screensavers that run well on integrated GPUs", "All screensavers" };
 
@@ -75,6 +77,8 @@ public class ScreensaverSettings : Gtk.Box {
     private SpinRow start_row;
     private SpinRow rotate_row;
     private SelectionRow pool_row;
+    private SelectionRow render_row;
+    private SpinRow render_height_row;
     private SwitchRow lock_row;
     private SpinRow lock_delay_row;
     private SwitchRow suspend_row;
@@ -97,6 +101,7 @@ public class ScreensaverSettings : Gtk.Box {
         if (backend.lock_supported)
             build_lock_group ();
         build_display_group ();
+        build_render_group ();
         if (backend.color_hack != null && backend.options_for (backend.color_hack).is_empty)
             build_color_group ();
         if (backend.gpu_offload_supported)
@@ -210,6 +215,28 @@ public class ScreensaverSettings : Gtk.Box {
                 backend.display_off_delay = (int) display_row.spin_btn.value * 60;
         });
         group.add_row (display_row);
+    }
+
+    private void build_render_group () {
+        var group = new PreferencesGroup ("Render quality", "Lower quality renders shader screensavers smaller: less GPU load and less stutter on 4K screens");
+        append (group);
+
+        render_row = new SelectionRow ("Render quality", RENDER_LABELS, RENDER_LABELS[0]);
+        render_row.selected.connect ((label) => {
+            if (refreshing)
+                return;
+            int i = index_of (RENDER_LABELS, label);
+            if (i >= 0)
+                backend.render_quality = RENDER_IDS[i];
+        });
+        group.add_row (render_row);
+
+        render_height_row = new SpinRow ("Maximum render height (advanced)", "Pixels; 0 lets Auto decide (choose High for no cap)", 0, 8192, 10, 0);
+        render_height_row.spin_btn.value_changed.connect (() => {
+            if (!refreshing)
+                backend.max_render_height = (int) render_height_row.spin_btn.value;
+        });
+        group.add_row (render_height_row);
     }
 
     private void build_color_group () {
@@ -411,6 +438,9 @@ public class ScreensaverSettings : Gtk.Box {
                         hack_row.current_value = entry.key;
             }
         }
+        int ri = index_of (RENDER_IDS, backend.render_quality);
+        render_row.current_value = RENDER_LABELS[ri >= 0 ? ri : 0];
+        render_height_row.spin_btn.value = backend.max_render_height;
         int pi = index_of (POOL_IDS, backend.pool_class);
         pool_row.current_value = POOL_LABELS[pi >= 0 ? pi : 0];
         start_row.spin_btn.value = minutes (backend.start_delay);

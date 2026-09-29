@@ -1085,6 +1085,19 @@ def _stop_with_launcher(launcher_path: str, env: dict[str, str]) -> tuple[bool, 
     return True, "ok"
 
 
+_SIZE_RE = re.compile(r"render[^\n]{0,40}?(\d{3,5})\s*x\s*(\d{3,5})", re.IGNORECASE)
+
+
+def _render_size(log_text):
+    """(width, height) of the render buffer from the last matching hack log line, or None."""
+    found = None
+    for line in log_text.splitlines():
+        m = _SIZE_RE.search(line)
+        if m:
+            found = (int(m.group(1)), int(m.group(2)))
+    return found
+
+
 def _sparse_floors():
     """{hack id: tile floor} from the package's sparse.tsv (empty if absent)."""
     floors = {}
@@ -1351,6 +1364,9 @@ def phase_hacks(
             hits = [ln for ln in log_text.splitlines() if ln.startswith("RENDERER=")]
             if hits:
                 sub["renderer"] = hits[-1][len("RENDERER=") :]
+            size = _render_size(log_text)
+            if size:
+                sub["render_size"] = f"{size[0]}x{size[1]}"
 
         # Documented rule: a hack passes when it is healthy and moving and
         # either fills at least 15% of the pixels (the operator's gate) or,
@@ -1783,6 +1799,41 @@ def phase_launcher(results, checks, env, workdir, launcher_path):
                 "pass" if got is not None and got == expect else "fail",
                 f"{hid} ({tier} tier): offload variables in the hack process={got}, expected {expect} (nvidia_offload={want_nv})",
             )
+
+    # Render cap on the Sky1 board: shader hacks get a 1080 cap on a 4K output.
+    if (doc.get("render") or {}).get("platform") == "sky1-arm64":
+        _cli(ienv, "config", "set", "verify-render", "false")
+        _cli(ienv, "preview", "blackhole_gles3", "--seconds", "20")
+        _wait_until(lambda: _status(ienv).get("running"), 5.0)
+        time.sleep(4.0)
+        raw = ""
+        with contextlib.suppress(OSError, ValueError, KeyError):
+            state = json.loads(
+                pathlib.Path(_rt_dir(), "ncz-screensaver", "state.json").read_text()
+            )
+            raw = (
+                pathlib.Path(f"/proc/{state['child_pid']}/environ")
+                .read_bytes()
+                .decode(errors="replace")
+            )
+        frame = _grab_frame(env)
+        log_text = ""
+        with contextlib.suppress(OSError):
+            log_text = pathlib.Path(_rt_dir(), HACK_LOG).read_text(errors="replace")[
+                -20000:
+            ]
+        _cli(ienv, "stop")
+        size = _render_size(log_text)
+        cap_ok = "NCZ_MAX_RENDER_HEIGHT=1080" in raw.split("\0")
+        buf_ok = size is None or size[1] <= 1080
+        cov = hti.coverage_fraction(frame[2]) if frame else 0.0
+        _record(
+            checks,
+            "render-cap-sky1",
+            "pass" if cap_ok and buf_ok and cov >= 0.5 else "fail",
+            f"cap variable in the hack process={cap_ok}; reported render size={size or 'not reported by the hack'}; "
+            f"full-screen coverage {cov:.2f}",
+        )
 
     # Per-hack options reach the hack as environment variables.
     if os.path.exists(

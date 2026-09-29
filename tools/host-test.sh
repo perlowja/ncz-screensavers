@@ -80,6 +80,30 @@ rsh() { # rsh <alias> <remote command...>
     fi
 }
 
+hostlock() { # hostlock <alias> <host-lock.sh args...>
+    local a="$1"; shift
+    local q
+    q=$(printf '%q ' "$@")
+    rsh "$a" "sh -s -- $q" < "$HERE/host-lock.sh"
+}
+
+# Wait (up to 3 minutes) for a quiet machine before starting; HOST_TEST_SKIP_LOAD=1 skips the check.
+wait_quiet() {
+    local a="$1" i load
+    [ "${HOST_TEST_SKIP_LOAD:-0}" = 1 ] && return 0
+    for i in $(seq 1 18); do
+        load=$(rsh "$a" 'cut -d" " -f1 /proc/loadavg' 2>/dev/null | head -n1)
+        awk -v l="${load:-0}" 'BEGIN { exit !(l < 2.0) }' && return 0
+        sleep 10
+    done
+    echo "[$a] load stays at ${load:-?} (needs < 2); not starting (HOST_TEST_SKIP_LOAD=1 to override)" >&2
+    return 1
+}
+
+remote_cleanup() { # stop anything this harness may have left running on the host
+    rsh "$1" 'ncz-screensaver stop >/dev/null 2>&1; pkill -f "[h]ost-test-agent.py" 2>/dev/null; pkill -f "[w]l_poke.py" 2>/dev/null; true' >/dev/null 2>&1
+}
+
 run_host() {
     local h="$1" arch deb outdir stage
     if [ -z "${HOST_ARCH[$h]:-}" ]; then echo "unknown host $h" >&2; return 2; fi
@@ -96,6 +120,15 @@ run_host() {
         return 0
     fi
     mkdir -p "$outdir"
+    wait_quiet "$h" || return 1
+    if ! hostlock "$h" acquire test "host-test.sh@$(hostname)" "phases=$phases" --expect 90 --wait "${HOST_TEST_LOCK_WAIT:-900}"; then
+        echo "[$h] could not take the host lock; not starting" >&2
+        return 1
+    fi
+    local refresher
+    (while sleep 300; do hostlock "$h" refresh >/dev/null 2>&1; done) &
+    refresher=$!
+    trap 'kill $refresher 2>/dev/null; remote_cleanup "$h"; hostlock "$h" release >/dev/null 2>&1; exit 130' INT TERM
     stage="$(mktemp -d)"
     cp "$HERE/host-test-agent.py" "$HERE/host_test_image.py" "$HERE/wl_poke.py" "$HERE/greetd_login.py" "$stage/"
     [ -n "$deb" ] && cp "$deb" "$stage/ncz-screensavers.deb"
@@ -118,14 +151,15 @@ run_host() {
     # First stdin line carries the sudo secret (empty line = none).
     local pw="${HT_SUDO_PW:-}"
     [ "$pw" = "@user" ] && pw="${HOST_USER[$h]}"   # lab hosts: login name doubles as sudo secret
-    printf '%s\n' "$pw" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && python3 host-test-agent.py $args" \
+    printf '%s\n' "$pw" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && timeout -k 30 ${HOST_TEST_TIMEOUT:-5400} python3 host-test-agent.py $args" \
         > "$outdir/agent.stdout" 2> "$outdir/agent.stderr"
     local rc=$?
     echo "[$h] agent exit=$rc; collecting results"
+    kill $refresher 2>/dev/null
+    trap - INT TERM
     rsh "$h" 'cd "$HOME/ncz-host-test/results" 2>/dev/null && tar -c .' 2>/dev/null | tar -x -C "$outdir" 2>/dev/null
-    if [ "$keep" = 0 ] && [[ ",$phases," == *,install,* ]]; then
-        : # the package stays installed: it is the product under test
-    fi
+    remote_cleanup "$h"
+    hostlock "$h" release >/dev/null 2>&1
     return "$rc"
 }
 
