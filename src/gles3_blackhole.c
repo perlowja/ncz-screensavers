@@ -11,6 +11,10 @@
 #include <GLES3/gl32.h>
 #include "gles3_compat.h"
 #include "ncz_gpu_tier.h"
+#include "ncz_options.h"
+#include "blackhole_opts.h"
+#include "ncz_harness_cfg.h"
+#include "gles3_harness_hooks.h"
 #include "xscreensaver_compat.h"
 /* gcc 14+ makes implicit declarations an error under -std=c11 even though
  * both headers above declare this; explicit forward decl avoids the
@@ -20,7 +24,8 @@ extern void ncz_harness_die(int code);
 #endif
 typedef struct {
  GLuint program,vbo;
- GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis,color_mode;
+ GLint time,resolution,seed,radius,temperature,density,rotation,inclination,orbit_rate,jet,star_density,camera_mode,palette,approach,periapsis,nebula,nebula_axis;
+ GLint pal_a,pal_b,pal_mix,spin,isco,exposure,beaming,bloom,fringe,lensing,nebula_amt,hot_sector,fade,flyby,fly_t,fly_var,dmin,dmax,incl;
  GLint palette_phase,palette_rate,palette_contrast,nebula_scheme;
  // Per-launch path-shape parameters (replaces the hardcoded curve
  // coefficients that were previously literals in disk_color's camera block).
@@ -43,6 +48,12 @@ typedef struct {
  // so the floor tier can hold 30fps on Intel iGPU.
  GLint max_steps;
  double started;
+ /* frame pacing + adaptive quality (see bh_pace) */
+ double prev_t,last_change,refr,fail_level,dtmax;
+ float level,levelmax;
+ unsigned long nfr;
+ unsigned char mring[60];int mcnt;
+ float dtring[300];int dtn;float wdt[120];unsigned long hit[16];int nhit;
  // 0:seed 1:radius 2:temp 3:density 4:rotation 5:inclination 6:orbit_rate
  // 7:jet 8:star_density 9:camera_mode 10:palette 11:approach 12:periapsis
  // 13..16:nebula vec4 (hue,scale,coverage,yaw) 17..18:nebula_axis vec2 (tilt,offset)
@@ -59,34 +70,99 @@ typedef struct {
  float v[47];
 } State;
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec*1e-9;}
+static float rnd(uint32_t*s,float a,float b){*s^=*s<<13;*s^=*s>>17;*s^=*s<<5;return a+(b-a)*(float)(*s&0xffffffu)/16777215.f;}
+
+/* ---- options -----------------------------------------------------------
+ * One table (blackhole_opts.h), three channels: environment
+ * NCZ_BLACKHOLE_<OPTION>, --option=value and $XDG_CONFIG_HOME/ncz-screensavers/
+ * blackhole.conf ([blackhole]); precedence CLI > env > file > defaults. */
+typedef struct {
+ int pal_seq[16],npal;
+ int flyby;                    /* 0 auto, 1..7 types, 8 random */
+ double interval,ptrans,speed,dmin,dmax,duration;
+ float incl,spin,exposure,beaming,bloom,fringe,nebula,hot,lensing;
+ int adaptive;
+ uint32_t seed;
+} BhOpts;
+/* The harness parses the merged (generic + Black Hole) option set before any
+ * Wayland or EGL work and owns it; this hack only reads the resolved values. */
+const ncz_opt_def *ncz_hack_options(size_t *n,const char **prefix,const char **group){
+ *n=BH_NOPTS;*prefix="NCZ_BLACKHOLE_";*group="blackhole";return BH_OPTS;
+}
+static const ncz_opts *g_op;static int g_o_ready;static BhOpts g_b;
+#define g_o (*g_op)
+static int pal_id(const char*n){static const char*t[]={"stylized","kipthorne","faithful","singularity","slingshot","whitehole"};for(int i=0;i<6;i++)if(!strcmp(n,t[i]))return i;return 0;}
+static int fly_id(const char*n){static const char*t[]={"auto","orbit","slow-orbit","equatorial","polar","plunge","slingshot","drift","random"};for(int i=0;i<9;i++)if(!strcmp(n,t[i]))return i;return 0;}
+static void bh_resolve(void){
+ if(g_o_ready)return;
+ g_op=ncz_harness_opts();
+ if(!g_op)return;
+ g_o_ready=1;
+ BhOpts*b=&g_b;
+ b->npal=0;b->pal_seq[b->npal++]=pal_id(ncz_opts_get(&g_o,"palette"));
+ {char l[256];snprintf(l,sizeof l,"%s",ncz_opts_get(&g_o,"cycle-palettes"));
+  for(char*t=strtok(l,",");t&&b->npal<16;t=strtok(NULL,","))b->pal_seq[b->npal++]=pal_id(t);}
+ b->flyby=fly_id(ncz_opts_get(&g_o,"flyby"));
+ b->interval=ncz_opts_get_float(&g_o,"cycle-interval");b->ptrans=ncz_opts_get_float(&g_o,"palette-transition");
+ b->speed=ncz_opts_get_float(&g_o,"speed");b->dmin=ncz_opts_get_float(&g_o,"distance-min");b->dmax=ncz_opts_get_float(&g_o,"distance-max");
+ b->duration=ncz_opts_get_float(&g_o,"duration");b->incl=(float)ncz_opts_get_float(&g_o,"inclination");
+ b->spin=(float)ncz_opts_get_float(&g_o,"spin");b->exposure=(float)ncz_opts_get_float(&g_o,"exposure");
+ b->beaming=(float)ncz_opts_get_float(&g_o,"beaming");b->bloom=(float)ncz_opts_get_float(&g_o,"bloom");
+ b->fringe=(float)ncz_opts_get_float(&g_o,"fringe");b->nebula=(float)ncz_opts_get_float(&g_o,"nebula");
+ b->hot=(float)ncz_opts_get_float(&g_o,"hot-sector");b->lensing=ncz_opts_get_bool(&g_o,"lensing")?1.f:0.f;
+ b->seed=(uint32_t)strtoul(ncz_opts_get(&g_o,"seed"),NULL,0);
+ b->adaptive=ncz_opts_get_bool(&g_o,"adaptive")&&!strcmp(ncz_opts_get(&g_o,"quality"),"auto");
+}
 static uint32_t seed(void){
- /* Allow tests / A-B comparisons to force a specific seed via env var.
-  * Default behaviour (no env var) is unchanged: pull from /dev/urandom,
-  * fall back to clock XOR pid. */
- const char*override=getenv("NCZ_BLACKHOLE_FIXED_SEED");
- if(override&&*override){uint32_t s=(uint32_t)strtoul(override,NULL,10);if(s!=0)return s;}
+ if(g_b.seed)return g_b.seed;
  uint32_t s=0;int f=open("/dev/urandom",O_RDONLY|O_CLOEXEC);
  if(f>=0){ssize_t n=read(f,&s,4);close(f);if(n==4)return s;}
  struct timespec t;clock_gettime(CLOCK_REALTIME,&t);
  return t.tv_nsec^t.tv_sec^getpid();
 }
-static float rnd(uint32_t*s,float a,float b){*s^=*s<<13;*s^=*s>>17;*s^=*s<<5;return a+(b-a)*(float)(*s&0xffffffu)/16777215.f;}
-// NCZ_BLACKHOLE_COLORS selects the disk colour model:
-//   unset / "stylised" -> 0, our own palette (default)
-//   "kipthorne"        -> 1, blackbody only; Doppler and gravitational
-//                            shift OFF, as Thorne/Double Negative rendered
-//                            it for Interstellar (symmetric warm-white)
-//   "faithful"         -> 2, blackbody + redshift + Doppler + beaming
-static float ncz_blackhole_color_mode(void){
-    const char*c=getenv("NCZ_BLACKHOLE_COLORS");
-    if(!c||!*c) return 0.f;
-    if(!strcmp(c,"kipthorne")) return 1.f;
-    if(!strcmp(c,"faithful"))  return 2.f;
-    if(!strcmp(c,"stylised")||!strcmp(c,"stylized")) return 0.f;
-    fprintf(stderr,"[diag] blackhole: unknown NCZ_BLACKHOLE_COLORS=\"%s\" (want kipthorne|faithful|stylised); using stylised\n",c);
-    return 0.f;
+static uint32_t hash32(uint32_t a,uint32_t b){uint32_t h=a*2654435761u^(b+0x9E3779B9u);h^=h>>16;h*=0x85ebca6bu;h^=h>>13;h*=0xc2b2ae35u;h^=h>>16;return h;}
+static float sstep(float a,float b,float x){float t=(x-a)/(b-a);t=t<0?0:t>1?1:t;return t*t*(3-2*t);}
+/* Per-type natural period (s) and default distance range. Index = type 1..7. */
+static const double FLY_T[8]={0,60,180,45,50,40,45,240};
+static const double FLY_DMIN[8]={0,11,14,6.5,7.5,3.8,4.6,9};
+static const double FLY_DMAX[8]={0,16,20,30,30,26,34,20};
+/* Upload every uniform that changes per frame because of the options. */
+static void bh_frame_uniforms(State*s,double t,double treal){
+ const BhOpts*b=&g_b;
+ /* palette sequence with smooth cross-fades */
+ int pa=b->pal_seq[0],pb=pa;float pm=0.f;
+ if(b->npal>1){
+  long k=(long)(treal/b->interval);double tb=treal-k*b->interval;
+  int n=b->npal;
+  pb=b->pal_seq[k%n];pa=pb;
+  double tr=b->ptrans>b->interval*0.5?b->interval*0.5:b->ptrans;
+  if(k>0&&tr>0&&tb<tr){pa=b->pal_seq[(k-1)%n];pm=sstep(0,(float)tr,(float)tb);}
+ }
+ glUniform1f(s->pal_a,(float)pa);glUniform1f(s->pal_b,(float)pb);glUniform1f(s->pal_mix,pm);
+ glUniform1f(s->spin,b->spin);glUniform1f(s->isco,3.f-1.4f*b->spin);
+ glUniform1f(s->exposure,b->exposure);glUniform1f(s->beaming,b->beaming);
+ glUniform1f(s->bloom,b->bloom);glUniform1f(s->fringe,b->fringe);
+ glUniform1f(s->lensing,b->lensing);glUniform1f(s->nebula_amt,b->nebula);glUniform1f(s->hot_sector,b->hot);
+ float fade=1.f,flyid=0.f,flyt=0.f,flyv=0.f;double dmin=6,dmax=20;
+ if(b->flyby){
+  int ft=b->flyby,type=ft;
+  double T=b->duration>0?b->duration:(ft==8?50.:FLY_T[ft]);
+  long k=(long)floor(t/T);
+  uint32_t sd=(uint32_t)s->v[0];
+  if(ft==8){type=1+(int)(hash32(sd,(uint32_t)k)%7u);int prev=k>0?1+(int)(hash32(sd,(uint32_t)(k-1))%7u):-1;if(type==prev)type=type%7+1;T=b->duration>0?b->duration:FLY_T[type]*0.6;k=(long)floor(t/T);}
+  int wrap=(ft==8)||b->duration>0||(type>=3&&type<=6);
+  flyid=(float)type;
+  flyt=(float)(t/T);
+  flyv=(hash32(sd,(uint32_t)(wrap?k:0))>>8)/16777216.f;
+  if(wrap){double sec=t-k*T;fade=fminf(sstep(0,1.2f,(float)sec),sstep(0,1.2f,(float)(T-sec)));}
+  dmin=b->dmin>0?b->dmin:FLY_DMIN[type];dmax=b->dmax>0?b->dmax:FLY_DMAX[type];
+  if(dmin<3.2)dmin=3.2;if(dmax<dmin+1.)dmax=dmin+1.;
+ }
+ glUniform1f(s->flyby,flyid);glUniform1f(s->fly_t,flyt);glUniform1f(s->fly_var,flyv);
+ glUniform1f(s->dmin,(float)dmin);glUniform1f(s->dmax,(float)dmax);
+ glUniform1f(s->incl,b->incl>=0?b->incl*0.01745329f:-1.f);
+ glUniform1f(s->fade,fade);
 }
-
 static char*load(void){const char*p[]={"vendor/blackhole/blackhole.frag","../vendor/blackhole/blackhole.frag","../../vendor/blackhole/blackhole.frag","/usr/share/ncz-screensavers/shaders/blackhole.frag"};FILE*f=0;const char*u=0;for(unsigned i=0;i<4;i++)if((f=fopen(p[i],"rb"))){u=p[i];break;}if(!f){fprintf(stderr,"blackhole: cannot locate shader\n");return 0;}fseek(f,0,SEEK_END);long n=ftell(f);rewind(f);char*b=malloc(n+1);if(!b||fread(b,1,n,f)!=(size_t)n){free(b);fclose(f);return 0;}fclose(f);b[n]=0;fprintf(stderr,"[diag] blackhole shader=%s\n",u);return b;}
 static GLuint comp(GLenum t,const char*x){GLuint s=glCreateShader(t);glShaderSource(s,1,&x,0);glCompileShader(s);GLint ok=0;glGetShaderiv(s,GL_COMPILE_STATUS,&ok);if(!ok){char l[8192];glGetShaderInfoLog(s,sizeof l,0,l);fprintf(stderr,"blackhole compile: %s\n",l);glDeleteShader(s);return 0;}return s;}
 static void init_blackhole(ModeInfo*m){
@@ -114,7 +190,7 @@ static void init_blackhole(ModeInfo*m){
  glBufferData(GL_ARRAY_BUFFER,sizeof q,q,GL_STATIC_DRAW);
  glBindBuffer(GL_ARRAY_BUFFER,0);
 #define L(n) s->n=glGetUniformLocation(s->program,"u_"#n)
- L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);L(color_mode);
+ L(time);L(resolution);L(seed);L(radius);L(temperature);L(density);L(rotation);L(inclination);L(orbit_rate);L(jet);L(star_density);L(camera_mode);L(palette);L(approach);L(periapsis);L(nebula);L(nebula_axis);L(pal_a);L(pal_b);L(pal_mix);L(spin);L(isco);L(exposure);L(beaming);L(bloom);L(fringe);L(lensing);L(nebula_amt);L(hot_sector);L(fade);L(flyby);L(fly_t);L(fly_var);L(dmin);L(dmax);L(incl);
  L(palette_phase);L(palette_rate);L(palette_contrast);L(nebula_scheme);
  L(path_d_base);L(path_d_swing);L(path_d_harm_amp);L(path_d_harm_freq);
  L(path_o_rate);L(path_o_harm_amp);L(path_o_harm_freq);L(path_o_count);L(path_sign);
@@ -123,17 +199,9 @@ static void init_blackhole(ModeInfo*m){
  L(orbit_q);L(orbit_e);L(orbit_omega);
  L(max_steps);
 #undef L
+ bh_resolve();
+ {const char*q=ncz_opts_get(&g_o,"quality");if(strcmp(q,"auto"))setenv("NCZ_GPU_TIER",q,1);}
  uint32_t z=seed();
- // Optional deterministic seed for capture runs (eval harness). When
- // NCZ_BLACKHOLE_SEED is set in the environment, use it instead of
- // /dev/urandom so a launch can be reproduced by seed value.
- {
-  const char*env=getenv("NCZ_BLACKHOLE_SEED");
-  if(env&&*env){
-   unsigned long v=strtoul(env,NULL,0);
-   z=(uint32_t)v;
-  }
- }
  s->v[0]=(float)z;
  s->v[1]=rnd(&z,.82,1.15);
  s->v[2]=rnd(&z,.45,1);
@@ -393,6 +461,16 @@ static void init_blackhole(ModeInfo*m){
  //       dramatic lensing pass, but high enough that the floor clamp at 5.4
  //       never bites.
  // ---------------------------------------------------------------------
+ /* ---- option overrides of the per-launch draws (defaults change nothing) */
+ s->v[3]*=(float)ncz_opts_get_float(&g_o,"disk-brightness");
+ s->v[7]*=(float)ncz_opts_get_float(&g_o,"jet");
+ s->v[8]*=(float)ncz_opts_get_float(&g_o,"star-density");
+ s->v[2]*=(float)ncz_opts_get_float(&g_o,"temperature");
+ s->v[4]*=(float)ncz_opts_get_float(&g_o,"rotation-speed")*(1.f+1.5f*g_b.spin);
+ s->v[42]*=(float)ncz_opts_get_float(&g_o,"precession");
+ if(g_b.incl>=0)s->v[5]=g_b.incl*0.01745329f;
+ if(g_b.flyby==0&&g_b.dmin>0)s->v[12]=fmaxf((float)g_b.dmin,5.4f);
+ if(g_b.flyby!=0){s->v[35]=0;s->v[36]=0;s->v[37]=1;s->v[38]=0;s->v[42]=0;}
  fprintf(stderr,"[diag] blackhole nebula_hue=%.9g nebula_scale=%.9g nebula_coverage=%.9g nebula_yaw=%.9g nebula_tilt=%.9g nebula_offset=%.9g nebula_scheme=%d\n",
   s->v[13],s->v[14],s->v[15],s->v[16],s->v[17],s->v[18],(int)s->v[22]);
  s->started=now();
@@ -409,23 +487,86 @@ static void init_blackhole(ModeInfo*m){
    * short reason. The runtime may later downgrade if frame-time is over
    * budget; the next [diag] line will reflect it. */
   const ncz_gpu_tier_t *_tier=ncz_gpu_tier_current();
+  s->levelmax=s->level=_tier->scalar;
   fprintf(stderr,"[diag] blackhole tier=%s scalar=%.2f reason=\"%s\"\n",
    _tier->name,_tier->scalar,_tier->reason);
+}
+
+/* ---- frame pacing and adaptive quality ---------------------------------
+ * The GPU tier module's frame-time hook was never wired to this hack, so the
+ * quality was the static prior for the whole run: on a heavy panel that misses
+ * vsync every few frames and looks like stutter. This controller measures the
+ * frame period, estimates the display refresh from the first frames, counts
+ * frames that miss it and moves one "level" knob (0..1 = ray steps 80..260)
+ * with hysteresis. Resolution is handled by the shared harness (render-scale).
+ * It steps down when more than 10% of the last 60 frames missed, steps up
+ * slowly after 10 s without a miss, and never returns to a level that failed
+ * until 90 s have passed, so it converges instead of oscillating. */
+static int cmpf(const void*a,const void*b){float x=*(const float*)a,y=*(const float*)b;return x<y?-1:x>y;}
+static void bh_level_split(float level,float*q,float*scale){*q=level;*scale=1.f;}
+static void bh_pace(State*s,double tn){
+ static int perf=-1;
+ if(perf<0){const char*e=getenv("NCZ_BLACKHOLE_PERF_LOG");perf=e?(atoi(e)>=2?2:1):0;}
+ if(s->prev_t>0){
+  double dt=(tn-s->prev_t)*1000.;
+  s->nfr++;
+  if(s->nfr>30&&s->nfr<=150){s->wdt[s->nfr-31]=(float)dt;
+   if(s->nfr==150){float t[120];memcpy(t,s->wdt,sizeof t);qsort(t,120,sizeof(float),cmpf);
+    /* vsync-paced frames cluster at the refresh interval; assume 60 Hz unless the median says faster */
+    s->refr=(t[60]<12.5f&&t[60]>=5.f)?t[60]:16.67;}}
+  int miss=(s->nfr>150)&&dt>s->refr*1.3;
+  if(perf>=2&&dt>25.&&s->nhit<16)s->hit[s->nhit++]=s->nfr;
+  int i=(int)(s->nfr%60);
+  s->mcnt+=miss-s->mring[i];s->mring[i]=(unsigned char)miss;
+  s->dtring[s->dtn++%300]=(float)dt;if(dt>s->dtmax)s->dtmax=dt;
+  if(s->nfr>150&&(s->nfr%30)==0){
+   double miss_rate=s->mcnt/60.;
+   if(g_b.adaptive){
+    if(miss_rate>0.10&&tn-s->last_change>1.0&&s->level>0.f){
+     s->fail_level=s->level;s->level=fmaxf(0.f,s->level-0.08f);s->last_change=tn;
+     float q,sc;bh_level_split(s->level,&q,&sc);
+     fprintf(stderr,"[diag] blackhole adapt down level=%.2f steps=%d scale=%.2f miss=%.0f%% refresh=%.1fms\n",s->level,80+(int)(180*q+.5f),sc,miss_rate*100,s->refr);
+    }else if(s->mcnt==0&&tn-s->last_change>10.&&s->level<s->levelmax){
+     float cand=fminf(s->levelmax,s->level+0.04f);
+     if(s->fail_level<=0.||cand<=s->fail_level-0.06){
+      s->level=cand;s->last_change=tn;
+      float q,sc;bh_level_split(s->level,&q,&sc);
+      fprintf(stderr,"[diag] blackhole adapt up level=%.2f steps=%d scale=%.2f\n",s->level,80+(int)(180*q+.5f),sc);
+     }
+    }
+    if(s->fail_level>0.&&tn-s->last_change>90.){s->fail_level+=0.1;if(s->fail_level>=1.)s->fail_level=0.;s->last_change=tn;}
+   }
+  }
+  if(perf>=2&&s->nfr%300==0){
+   float w[300];int n=s->dtn<300?s->dtn:300;memcpy(w,s->dtring,sizeof(float)*n);qsort(w,n,sizeof(float),cmpf);
+   int m=0;for(int k=0;k<n;k++)if(w[k]>s->refr*1.3)m++;
+   float q,sc;bh_level_split(s->level,&q,&sc);
+   fprintf(stderr,"[diag] blackhole pace frames=%lu p50=%.2f p95=%.2f p99=%.2f max=%.2f ms miss=%d/%d refresh=%.2fms level=%.2f steps=%d scale=%.2f\n",
+    s->nfr,w[n/2],w[(int)(n*0.95)],w[(int)(n*0.99)],(double)w[n-1],m,n,s->refr,s->level,g_b.adaptive?80+(int)(180*q+.5f):-1,sc);
+   if(s->nhit){fprintf(stderr,"[diag] blackhole hitches(>25ms) at frames:");for(int k=0;k<s->nhit;k++)fprintf(stderr," %lu",s->hit[k]);fprintf(stderr,"\n");s->nhit=0;}
+  }
+ }else{s->refr=33.3;}
+ s->prev_t=tn;
 }
 static void draw_blackhole(ModeInfo*m){
  State*s=m->data;
  if(!s||!s->program)return;
  int w=m->xgwa.width,h=m->xgwa.height;
  if(w<1)w=1;if(h<1)h=1;
- glViewport(0,0,w,h);
+ bh_pace(s,now());
+ float lq=0.f,lscale=1.f;
+ if(g_b.adaptive)bh_level_split(s->level,&lq,&lscale);
+ int rw=w,rh=h;
+ glViewport(0,0,rw,rh);
  glClear(GL_COLOR_BUFFER_BIT);
  glUseProgram(s->program);
- glUniform1f(s->time,now()-s->started);
- glUniform2f(s->resolution,w,h);
+ double bt=(now()-s->started)*g_b.speed;
+ glUniform1f(s->time,(float)bt);
+ glUniform2f(s->resolution,(float)rw,(float)rh);
  glUniform1f(s->seed,s->v[0]);
  glUniform1f(s->radius,s->v[1]);
  glUniform1f(s->temperature,s->v[2]);
-    { float cm=ncz_blackhole_color_mode(); glUniform1f(s->color_mode,cm); }
+ bh_frame_uniforms(s,bt,now()-s->started);
  glUniform1f(s->density,s->v[3]);
  glUniform1f(s->rotation,s->v[4]);
  glUniform1f(s->inclination,s->v[5]);
@@ -476,7 +617,7 @@ static void draw_blackhole(ModeInfo*m){
   * the transition is continuous if the runtime later downgrades/upgrades.
   */
  {
-  int steps=ncz_gpu_tier_count(80, 260);
+  int steps=g_b.adaptive?80+(int)(180*lq+.5f):ncz_gpu_tier_count(80, 260);
   glUniform1f(s->max_steps,(float)steps);
  }
  glBindBuffer(GL_ARRAY_BUFFER,s->vbo);

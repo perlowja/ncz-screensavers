@@ -76,6 +76,10 @@
 #include "ncz_platform.h"
 #include "gles3_harness_hooks.h"
 #include "gles3_harness_png.h"
+#include "ncz_harness_cfg.h"
+#include "ncz_render.h"
+#include "ncz_gpu_guard.h"
+#include "ncz_stats.h"
 
 /* xscreensaver_compat.h transitively includes gl4es_include/GL/gl.h,
  * which redefines the same GL_FALSE/GL_TRUE/etc. values. Same fix as
@@ -102,6 +106,7 @@
 #include "wayland-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "viewporter-client-protocol.h"
 
 /* The vendored hack emits this via its own registration macro
  * (XSCREENSAVER_MODULE_2 or similar). For our pilots we point at
@@ -158,7 +163,11 @@ struct app {
     EGLSurface  egl_surface;
     EGLContext  egl_context;
 
-    int width, height;
+    int width, height;            /* render (buffer) size */
+    int nat_w, nat_h;             /* surface (native) size */
+    double rscale, last_adapt_s;
+    struct wp_viewporter *viewporter;
+    struct wp_viewport *viewport;
     struct wl_callback *frame_cb;
     bool frame_in_flight;
     bool configured;
@@ -203,6 +212,8 @@ static void reg_global(void *d, struct wl_registry *r, uint32_t n,
             a->layer_shell = wl_registry_bind(r, n,
                                               &zwlr_layer_shell_v1_interface, 4);
     }
+    else if (strcmp(iface, wp_viewporter_interface.name) == 0)
+        a->viewporter = wl_registry_bind(r, n, &wp_viewporter_interface, 1);
     else if (strcmp(iface, xdg_wm_base_interface.name) == 0) {
         a->wm_base = wl_registry_bind(r, n, &xdg_wm_base_interface, 1);
         xdg_wm_base_add_listener(a->wm_base, &wm_base_listener, a);
@@ -271,12 +282,51 @@ static const struct wl_seat_listener seat_listener = {
 /* Layer surface                                                           */
 /* ----------------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------------- */
+/* Render resolution                                                       */
+/* ----------------------------------------------------------------------- */
+
+static double mono_s(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec + t.tv_nsec * 1e-9;
+}
+
+/* Decide the buffer size for a surface of nw x nh (see ncz_render.h). The
+ * buffer is smaller than the surface when scaled; wp_viewport upscales it in
+ * the compositor (no extra GPU pass). Without wp_viewporter, or when nothing
+ * needs reducing, the buffer stays at native size. */
+static void apply_render_size(struct app *a, int nw, int nh) {
+    int expl = 0;
+    int cap = ncz_cfg_max_render_height(&expl);
+    const char *rend = (const char *)glGetString(GL_RENDERER);
+    if (!expl) cap = ncz_render_platform_cap(rend, nh);
+    int rw = nw, rh = nh;
+    int scaled = ncz_render_size(nw, nh, a->rscale, cap, &rw, &rh);
+    if (scaled && !a->viewporter) {
+        fprintf(stderr, "[diag] gles3_harness: wp_viewporter unavailable; rendering at native %dx%d\n", nw, nh);
+        scaled = 0; rw = nw; rh = nh;
+    }
+    if (scaled) {
+        if (!a->viewport)
+            a->viewport = wp_viewporter_get_viewport(a->viewporter, a->surface);
+        wp_viewport_set_destination(a->viewport, nw, nh);
+    } else if (a->viewport) {
+        wp_viewport_set_destination(a->viewport, nw, nh);
+    }
+    if (rw != a->width || rh != a->height || a->nat_w != nw || a->nat_h != nh)
+        fprintf(stderr, "[diag] gles3_harness: render size %dx%d (surface %dx%d, scale %.2f, cap %d, %s)\n",
+                rw, rh, nw, nh, a->rscale, cap, scaled ? "wp_viewport upscale" : "native");
+    a->nat_w = nw; a->nat_h = nh;
+    a->width = rw; a->height = rh;
+}
+
 static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
     if (w == 0 || h == 0) return;
 
     if (!a->configured) {
-        a->width = (int)w;
-        a->height = (int)h;
+        a->rscale = ncz_cfg_render_scale();
+        apply_render_size(a, (int)w, (int)h);
         a->egl_window = wl_egl_window_create(a->surface, a->width, a->height);
         if (!a->egl_window) {
             fprintf(stderr, "gles3_harness: wl_egl_window_create failed\n");
@@ -307,7 +357,7 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
          * against the desktop, which is invisible. */
         struct wl_region *opaque = wl_compositor_create_region(a->compositor);
         if (opaque) {
-            wl_region_add(opaque, 0, 0, a->width, a->height);
+            wl_region_add(opaque, 0, 0, a->nat_w, a->nat_h);
             wl_surface_set_opaque_region(a->surface, opaque);
             wl_region_destroy(opaque);
         }
@@ -342,10 +392,13 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
         }
         fprintf(stderr, "[diag] gles3_harness: init returned\n");
         a->configured = true;
-    } else if (w != (uint32_t)a->width || h != (uint32_t)a->height) {
-        wl_egl_window_resize(a->egl_window, (int)w, (int)h, 0, 0);
-        a->width = (int)w;
-        a->height = (int)h;
+    } else if (w != (uint32_t)a->nat_w || h != (uint32_t)a->nat_h) {
+        apply_render_size(a, (int)w, (int)h);
+        wl_egl_window_resize(a->egl_window, a->width, a->height, 0, 0);
+        g_harness_width = a->width;
+        g_harness_height = a->height;
+        a->mi.xgwa.width = a->width;
+        a->mi.xgwa.height = a->height;
         if (hack->reshape_cb) {
             hack->reshape_cb(&a->mi, a->width, a->height);
         }
@@ -578,7 +631,14 @@ static void draw_and_swap(struct app *a, unsigned long frame, unsigned long repo
      * post-increment frame counter in the main loop, which meant frame 4
      * was never passed in — see the comment above the main loop for the
      * off-by-one history. */
-    if (report_idx == 4 || (report_idx >= 60 && (report_idx % 60) == 0))
+    /* The framebuffer report does a full glReadPixels plus a CPU histogram, which
+     * stalls the pipeline for tens of milliseconds. Frame 4 (one time) is kept for
+     * the validators; the every-60th-frame samples are a visible once-per-second
+     * hitch in production, so they only run when diagnostics are requested. */
+    static int diag_periodic = -1;
+    if (diag_periodic < 0)
+        diag_periodic = (getenv("NCZ_HARNESS_DIAG") || getenv("NCZ_FRAME_DUMP")) ? 1 : 0;
+    if (report_idx == 4 || (diag_periodic && report_idx >= 60 && (report_idx % 60) == 0))
         report_framebuffer(a, report_idx);
     if (!eglSwapBuffers(a->egl_display, a->egl_surface)) {
         fprintf(stderr, "gles3_harness: eglSwapBuffers failed (0x%x)\n",
@@ -749,11 +809,45 @@ void ncz_harness_die(int code) {
     exit(code);
 }
 
+
+/* Adaptive render scale: if the 95th percentile frame time stays above 40 ms
+ * for 3 s, step the scale down 1 -> 0.75 -> 0.5, at most once per 3 s, never
+ * back up within the run. Only in render-scale-mode=auto. */
+static void adapt_render(struct app *a, unsigned long frame) {
+    if (!ncz_cfg_scale_auto() || !a->viewporter || !a->configured) return;
+    if (frame < 240 || (frame % 30) != 0) return;
+    double t = mono_s();
+    if (t - a->last_adapt_s < 3.0) return;
+    double p95 = ncz_stats_p95_recent(3);
+    if (p95 < 40.0) return;
+    double ns = ncz_render_step_down(a->rscale);
+    if (ns >= a->rscale - 1e-6) return;
+    fprintf(stderr, "[diag] gles3_harness: adaptive render scale %.2f -> %.2f (p95 %.1f ms over 3 s)\n",
+            a->rscale, ns, p95);
+    a->rscale = ns;
+    a->last_adapt_s = t;
+    apply_render_size(a, a->nat_w, a->nat_h);
+    wl_egl_window_resize(a->egl_window, a->width, a->height, 0, 0);
+    g_harness_width = a->width;
+    g_harness_height = a->height;
+    a->mi.xgwa.width = a->width;
+    a->mi.xgwa.height = a->height;
+    if (hack->reshape_cb) hack->reshape_cb(&a->mi, a->width, a->height);
+}
+
+static volatile sig_atomic_t g_stats_req;
+static void on_usr1(int sig) { (void)sig; g_stats_req = 1; }
+
 /* ----------------------------------------------------------------------- */
 /* main                                                                    */
 /* ----------------------------------------------------------------------- */
 
-int main(void) {
+int main(int argc, char **argv) {
+    /* Options, --help, --list-options, --version, --dump-schema: all handled
+     * before any Wayland or EGL work. Unknown options are an error (exit 2). */
+    int early = ncz_harness_cfg_init(argc, argv);
+    if (early >= 0) return early;
+    ncz_stats_start();
     static struct app app;
     memset(&app, 0, sizeof app);
     app.egl_display = EGL_NO_DISPLAY;
@@ -762,6 +856,7 @@ int main(void) {
     app.running = 1;
 
     g_app = &app;
+    atexit(ncz_stats_print);
     if (atexit(atexit_app_fini) != 0) {
         fprintf(stderr, "gles3_harness: atexit failed\n");
         ncz_harness_die(1);
@@ -781,6 +876,13 @@ int main(void) {
     ign.sa_handler = SIG_IGN;
     sigemptyset(&ign.sa_mask);
     DIE(sigaction(SIGPIPE, &ign, NULL), 0, "sigaction(SIGPIPE) failed");
+    {
+        struct sigaction u1;
+        memset(&u1, 0, sizeof u1);
+        u1.sa_handler = on_usr1;
+        sigemptyset(&u1.sa_mask);
+        sigaction(SIGUSR1, &u1, NULL);
+    }
 
     /* Wayland connect + bind. */
     app.display = wl_display_connect(NULL);
@@ -813,6 +915,16 @@ int main(void) {
     DIE(eglMakeCurrent(app.egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                        app.egl_context), EGL_TRUE,
         "eglMakeCurrent (no surface) failed");
+    {
+        /* Never software render on a machine that has a GPU. Runs before any
+         * shader work so a misconfigured environment fails in well under a second. */
+        const char *rend = (const char *)glGetString(GL_RENDERER);
+        char gmsg[512];
+        if (ncz_gpu_guard_check("", rend, getenv("NCZ_ALLOW_SOFTWARE"), gmsg, sizeof gmsg)) {
+            fprintf(stderr, "[guard] %s\n", gmsg);
+            ncz_harness_die(3);
+        }
+    }
     if (ncz_gles3_runtime_init() < 0) {
         fprintf(stderr, "gles3_harness: GLES3 runtime init failed\n");
         ncz_harness_die(1);
@@ -953,6 +1065,9 @@ shell_ready:
             if (_report_idx < 5 || (_report_idx > 0 && (_report_idx % 60) == 0))
                 fprintf(stderr, "[diag] frame #%lu\n", _report_idx);
             draw_and_swap(&app, _nframes, _report_idx);
+            ncz_stats_frame();
+            if (g_stats_req) { g_stats_req = 0; ncz_stats_print(); }
+            adapt_render(&app, _nframes);
         }
     }
     if (app.display) wl_display_roundtrip(app.display);

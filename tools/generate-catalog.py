@@ -59,6 +59,61 @@ def classify(target):
     raise SystemExit(f"unclassified ship entry: {target}")
 
 
+
+OPT_TYPES = {"bool", "int", "float", "enum", "string"}
+
+
+def validate_options(directory, ships):
+    """Validate options/<hack>.tsv schemas: 10 tab separated columns
+    (name, type, default, min, max, choices, label, description, group, env)."""
+    if not directory.is_dir():
+        return
+    problems = []
+    for path in sorted(directory.glob("*.tsv")):
+        hack = path.stem
+        if not hack.startswith("_") and not any(t == hack or t == hack + "_gles3" for t in ships):
+            problems.append(f"{path.name}: no ship-set hack named {hack}")
+        seen = set()
+        for n, line in enumerate(path.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            c = line.split("\t")
+            where = f"{path.name}:{n}"
+            if len(c) != 10:
+                problems.append(f"{where}: expected 10 columns, got {len(c)}")
+                continue
+            name, typ, default, lo, hi, choices, label, desc, group, env = c
+            if not re.fullmatch(r"[a-z][a-z0-9-]*", name):
+                problems.append(f"{where}: bad option name {name!r}")
+            if name in seen:
+                problems.append(f"{where}: duplicate option {name}")
+            seen.add(name)
+            if typ not in OPT_TYPES:
+                problems.append(f"{where}: unknown type {typ!r}")
+                continue
+            if not (label.strip() and desc.strip() and group.strip()):
+                problems.append(f"{where}: label, description and group are required")
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", env):
+                problems.append(f"{where}: bad env name {env!r}")
+            try:
+                if typ in ("int", "float"):
+                    fl, fh, fd = float(lo), float(hi), float(default)
+                    if not fl <= fd <= fh:
+                        problems.append(f"{where}: default {default} outside {lo}..{hi}")
+                    if typ == "int" and fd != int(fd):
+                        problems.append(f"{where}: int default {default} is not an integer")
+                elif typ == "bool":
+                    if default not in ("true", "false"):
+                        problems.append(f"{where}: bool default must be true or false")
+                elif typ == "enum":
+                    if default not in choices.split(","):
+                        problems.append(f"{where}: enum default {default!r} not in choices")
+            except ValueError:
+                problems.append(f"{where}: numeric column is not a number")
+    if problems:
+        raise SystemExit("options schema: " + "; ".join(problems))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("meson_build", type=pathlib.Path)
@@ -99,6 +154,7 @@ def main():
             bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
     if bad:
         raise SystemExit("sparse.tsv: " + "; ".join(bad))
+    validate_options(args.meson_build.parent / "assets" / "screensaver-chooser" / "options", ships)
     order = {"Black Hole Simulation": 0, "hyprsaver": 1, "xshadertoy": 2, "Classics": 3}
     rows = []
     for t in ships:
