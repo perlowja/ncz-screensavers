@@ -71,8 +71,23 @@
 #include <EGL/eglext.h>
 #include <GLES3/gl32.h>
 
-#include "gles3_compat.h"
-#include "xscreensaver_compat.h"
+#include "ncz_gl.h"
+
+/* sRGB write control is an ES extension (EXT_sRGB_write_control); the desktop
+ * token is the same value.  Only touch it where the driver exposes it, so the
+ * calls cannot raise GL_INVALID_ENUM. */
+#ifndef GL_FRAMEBUFFER_SRGB
+#define GL_FRAMEBUFFER_SRGB 0x8DB9
+#endif
+static int srgb_control_available(void) {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = (const char *)glGetString(GL_EXTENSIONS);
+        v = (e && strstr(e, "GL_EXT_sRGB_write_control")) ? 1 : 0;
+    }
+    return v;
+}
+#include "ncz_hack_shim.h"
 #include "ncz_platform.h"
 #include "gles3_harness_hooks.h"
 #include "gles3_harness_png.h"
@@ -80,28 +95,6 @@
 #include "ncz_render.h"
 #include "ncz_gpu_guard.h"
 #include "ncz_stats.h"
-
-/* xscreensaver_compat.h transitively includes gl4es_include/GL/gl.h,
- * which redefines the same GL_FALSE/GL_TRUE/etc. values. Same fix as
- * in gles3_compat.c — undef the GLES3 ones so the gl4es headers win. */
-#ifdef GL_FALSE
-#  undef GL_FALSE
-#endif
-#ifdef GL_TRUE
-#  undef GL_TRUE
-#endif
-#ifdef GL_ZERO
-#  undef GL_ZERO
-#endif
-#ifdef GL_ONE
-#  undef GL_ONE
-#endif
-#ifdef GL_NONE
-#  undef GL_NONE
-#endif
-#ifdef GL_NO_ERROR
-#  undef GL_NO_ERROR
-#endif
 
 #include "wayland-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -592,7 +585,7 @@ static void report_framebuffer(struct app *a, unsigned long frame) {
      * default per spec is DISABLED in GLES — so any driver that
      * reports it enabled here has done something beyond spec. Print
      * the live state so we can see who defaulted it. */
-    GLboolean srgb_enabled = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+    GLboolean srgb_enabled = srgb_control_available() ? glIsEnabled(GL_FRAMEBUFFER_SRGB) : GL_FALSE;
 
     fprintf(stderr,
             "[diag] framebuffer frame=%lu pixels=%zu nonblack=%zu "
@@ -821,8 +814,6 @@ static void app_fini(struct app *a) {
         hack->free_cb(&a->mi);
     }
 
-    ncz_gles3_runtime_fini();
-
     if (a->egl_context != EGL_NO_CONTEXT) {
         eglMakeCurrent(a->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                        EGL_NO_CONTEXT);
@@ -969,10 +960,6 @@ int main(int argc, char **argv) {
         "eglMakeCurrent (no surface) failed");
     /* Never software render on a machine that has a GPU: fail before any shader work. */
     guard_renderer("startup");
-    if (ncz_gles3_runtime_init() < 0) {
-        fprintf(stderr, "gles3_harness: GLES3 runtime init failed\n");
-        ncz_harness_die(1);
-    }
 
     /* Explicitly disable GL_FRAMEBUFFER_SRGB. The GLES3.2 spec
      * default for this toggle is DISABLED — we're not opting into
@@ -984,7 +971,8 @@ int main(int argc, char **argv) {
      * spec-conformant. After this call, report_framebuffer's
      * `srgb=ON|off` log will read `off` on every box. See
      * docs/audit/blackhole-black-floor-evidence/ROOTCAUSE.md §11. */
-    glDisable(GL_FRAMEBUFFER_SRGB);
+    if (srgb_control_available())
+        glDisable(GL_FRAMEBUFFER_SRGB);
 
     /* Log GL strings now. */
     fprintf(stderr, "[diag] GL_VERSION=%s\nRENDERER=%s\nVENDOR=%s\nGLSL=%s\n",

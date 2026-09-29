@@ -7,8 +7,6 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
-		-Dgl4es=disabled \
-		-Dxscreensaver-shim=disabled \
 		-Dinstall-extras=false
 
 override_dh_auto_test:

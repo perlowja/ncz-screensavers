@@ -9,14 +9,14 @@
 #include <time.h>
 #include <unistd.h>
 #include <GLES3/gl32.h>
-#include "gles3_compat.h"
+#include "ncz_gl.h"
 #include "ncz_gpu_tier.h"
 #include "ncz_options.h"
 #include "blackhole_opts.h"
 #include "ncz_harness_cfg.h"
 #include "ncz_render.h"
 #include "gles3_harness_hooks.h"
-#include "xscreensaver_compat.h"
+#include "ncz_hack_shim.h"
 /* gcc 14+ makes implicit declarations an error under -std=c11 even though
  * both headers above declare this; explicit forward decl avoids the
  * regression if the header order ever changes. */
@@ -634,7 +634,7 @@ static void draw_blackhole(ModeInfo*m){
  glEnableVertexAttribArray(0);
  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,0);
  glDisable(GL_DEPTH_TEST);
- ncz_gles3_draw_arrays(GL_TRIANGLES,0,6);
+ glDrawArrays(GL_TRIANGLES,0,6);
  glDisableVertexAttribArray(0);
  glBindBuffer(GL_ARRAY_BUFFER,0);
  glUseProgram(0);

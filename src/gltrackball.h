@@ -8,5 +8,5 @@
  */
 #ifndef NCZ_GLTRACKBALL_H
 #define NCZ_GLTRACKBALL_H
-#include "xscreensaver_compat.h"
+#include "ncz_hack_shim.h"
 #endif

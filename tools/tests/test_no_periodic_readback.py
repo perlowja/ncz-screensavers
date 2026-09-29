@@ -28,8 +28,8 @@ class NoPeriodicReadback(unittest.TestCase):
         self.assertEqual(offenders, [], "ungated periodic glReadPixels")
 
     def test_helper_defined(self):
-        self.assertIn("ncz_diag_sample_frame", (SRC / "gles3_compat.h").read_text())
-        self.assertIn("ncz_diag_periodic_samples", (SRC / "gles3_compat.c").read_text())
+        self.assertIn("ncz_diag_sample_frame", (SRC / "ncz_gl.h").read_text())
+        self.assertIn("ncz_diag_periodic_samples", (SRC / "ncz_gl.c").read_text())
 
 
 if __name__ == "__main__":
