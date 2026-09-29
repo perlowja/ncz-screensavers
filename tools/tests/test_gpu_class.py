@@ -627,3 +627,127 @@ def test_unmeasurable_hack_gets_a_floor_expectation(env):
     )
     rows = env.load_tier_rows()
     assert env.expectation("slow_gles3", "weak", rows) == "under 6 fps on Intel UHD 630"
+
+
+# ---- regressions from the code review ---------------------------------------------------------
+def test_supervisor_plan_reaches_the_child_env_with_copy_cost(env):
+    layout(env, "nvidia+intel")
+    disp, nv = env.list_gpus()
+    seed_cache(
+        env,
+        {disp["id"]: {"class": "weak"}, nv["id"]: {"class": "strong", "copy_ms": 12.0}},
+    )
+    plan = env.plan_for("hyprsaver_light_gles3", S)
+    child = env.build_child_env(
+        "hyprsaver_light_gles3", S, base_env={"HOME": str(env.tmp)}, offload=plan
+    )
+    assert child["__NV_PRIME_RENDER_OFFLOAD"] == "1"
+    assert child["NCZ_RENDER_SCALE"] == "0.75"  # the copy cost lowers the scale
+    assert child["NCZ_GPU_CLASS"] == "strong"
+
+
+def test_chosen_gpu_id_is_not_overridden_by_a_better_gpu(env):
+    layout(env, "amd-apu+amd-dgpu")
+    add_gpu(env.sysfs, "card2", "0x10de", "0x1f08", "nvidia", "0000:08:00.0")
+    env.list_gpus.cache_clear()
+    gpus = env.list_gpus()
+    amd_dgpu = next(g for g in gpus if g["id"] == "pci-0000_03_00_0")
+    nvidia = next(g for g in gpus if g["vendor"] == "nvidia")
+    seed_cache(
+        env,
+        {
+            gpus[0]["id"]: {"class": "mid"},
+            amd_dgpu["id"]: {"class": "strong"},
+            nvidia["id"]: {"class": "strong"},
+        },
+    )
+    chosen = {**S, "gpu-offload": amd_dgpu["id"]}
+    child = env.build_child_env(
+        "heavy_gles3", chosen, base_env={"HOME": str(env.tmp)}, offload=True
+    )
+    assert child["DRI_PRIME"] == "pci-0000_03_00_0"
+    assert "__NV_PRIME_RENDER_OFFLOAD" not in child
+
+
+def test_egl_vendor_pin_is_dropped_for_offloaded_hacks_only(env):
+    classes_pegasus(env)
+    base = {"HOME": str(env.tmp), "__EGL_VENDOR_LIBRARY_FILENAMES": "/x/50_mesa.json"}
+    heavy = env.build_child_env("heavy_gles3", S, base_env=base)
+    light = env.build_child_env("light_gles3", S, base_env=base)
+    assert "__EGL_VENDOR_LIBRARY_FILENAMES" not in heavy
+    assert (
+        light["__EGL_VENDOR_LIBRARY_FILENAMES"] == "/x/50_mesa.json"
+    )  # display GPU keeps its pin
+
+
+def test_failed_benchmark_is_retried_later_not_cached_forever(env, monkeypatch):
+    layout(env, "single-soc")
+    calls = []
+    real = env._calibrator_json
+
+    def flaky(args, environ, timeout):
+        calls.append(tuple(args))
+        if not args:  # the benchmark itself fails
+            return 2, None
+        return real(args, environ, timeout)
+
+    monkeypatch.setattr(env, "_calibrator_json", flaky)
+    first = env.gpu_class(S, None)
+    assert first["source"] == "table"
+    n = len(calls)
+    env.gpu_class(S, None)  # inside the retry window: no second benchmark attempt
+    assert () not in calls[n:]
+    cache = env.read_class_cache()
+    key = next(iter(cache))
+    cache[key]["retry_after"] = 0
+    env.class_cache_path().write_text(json.dumps({"entries": cache}))
+    monkeypatch.setattr(env, "_calibrator_json", real)
+    assert env.gpu_class(S, None)["source"] == "calibration"
+
+
+def test_render_only_gpu_takes_the_display_role_of_a_display_only_controller(env):
+    # Pi-like: card0 is the display controller (no render node), card1 the render GPU
+    add_gpu(env.sysfs, "card0", "0x0000", "0x0000", "vc4", "soc:gpu0", connected=True)
+    add_gpu(env.sysfs, "card1", "0x0000", "0x0000", "v3d", "soc:gpu1")
+    (env.sysfs / "class/drm/card1/device/drm/renderD128").mkdir(parents=True)
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.switcheroo_envs, env.gpu_topology):
+        fn.cache_clear()
+    gpus = env.list_gpus()
+    assert [g["driver"] for g in gpus] == ["v3d"]
+    assert gpus[0]["display"] is True
+    assert env.offload_targets(S) == []
+
+
+def test_unknown_gpu_offload_value_behaves_like_auto_including_on_battery(env):
+    layout(env, "nvidia+intel", ac=False)
+    disp, nv = env.list_gpus()
+    seed_cache(env, {disp["id"]: {"class": "weak"}, nv["id"]: {"class": "strong"}})
+    for bogus in ("nvidia", "PCI-0000_01_00_0", ""):
+        settings = {**S, "gpu-offload": bogus}
+        assert env.offload_mode(settings) == "auto"
+        assert env.offload_targets(settings) == []
+        assert env.pool_class(settings) == "weak"
+
+
+def test_calibration_happens_inside_the_supervisor_after_state_exists(env, monkeypatch):
+    layout(env, "single-soc")
+    order = []
+    monkeypatch.setattr(
+        env.Supervisor,
+        "write_state",
+        lambda self, rotates_at=None: order.append("state"),
+    )
+    monkeypatch.setattr(
+        env.Supervisor, "calibrate", lambda self: order.append("calibrate")
+    )
+    monkeypatch.setattr(env.Supervisor, "pick", lambda self: None)
+    args = type(
+        "A",
+        (),
+        {"seconds": 0, "hack": None, "idle": False, "force": False, "foreground": True},
+    )()
+    sup = env.Supervisor(args, dict(env.DEFAULTS), [])
+    monkeypatch.setattr(env.signal, "signal", lambda *a: None)
+    sup.run()
+    assert order[:2] == ["state", "calibrate"]

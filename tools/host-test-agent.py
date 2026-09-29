@@ -3094,6 +3094,9 @@ def phase_offloadproof(results, checks, env, workdir, pw):
             picks.append((label, hid))
     if "blackhole_gles3" in installed and all(h != "blackhole_gles3" for _, h in picks):
         picks.append(("blackhole", "blackhole_gles3"))
+    if not picks:
+        _record(checks, "offload-proof", "skip", "no tiered shader hack installed")
+        return
     ac = _json_cli(ienv, "plan", picks[0][1], "--json") or {}
     proof["ac_online"] = not ac.get("on_battery", True)
     proof["gpus"] = gpus

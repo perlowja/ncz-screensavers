@@ -616,6 +616,7 @@ def list_gpus():
         vram = 0
         with contextlib.suppress(ValueError):
             vram = int(_read(dev / "mem_info_vram_total") or 0)
+        has_render = any((dev / "drm").glob("renderD*"))
         vendor = VENDORS.get(_read(dev / "vendor").lower(), "other")
         discrete = vendor == "nvidia" or (vendor == "amd" and vram >= 2 * 1024**3)
         gpus.append(
@@ -629,8 +630,21 @@ def list_gpus():
                 "display": connected,
                 "boot_vga": _read(dev / "boot_vga") == "1",
                 "discrete": discrete,
+                "render": has_render,
             }
         )
+    # A display controller that has no render node (Pi vc4, Sky1 komeda) is not a GPU:
+    # the display role belongs to the render GPU that sits on the same kind of bus.
+    if any(g["render"] for g in gpus) and not all(g["render"] for g in gpus):
+        shown = next((g for g in gpus if g["display"]), None)
+        renderers = [g for g in gpus if g["render"]]
+        if shown is not None and not shown["render"]:
+            pci = bool(PCI_SLOT_RE.match(shown["slot"]))
+            same = [g for g in renderers if bool(PCI_SLOT_RE.match(g["slot"])) == pci]
+            for g in renderers:
+                g["display"] = False
+            (same or renderers)[0]["display"] = True
+        gpus = renderers
     if gpus and not any(g["display"] for g in gpus):
         for g in gpus:
             g["display"] = g["boot_vga"]
@@ -674,6 +688,12 @@ def switcheroo_envs():
         elif "__NV_PRIME_RENDER_OFFLOAD" in env:
             found["nvidia"] = env
     return found
+
+
+def drop_egl_vendor_pins(env):
+    """A compositor's EGL vendor pin would send an offloaded process to the display GPU."""
+    for name in ("__EGL_VENDOR_LIBRARY_FILENAMES", "__EGL_VENDOR_LIBRARY_DIRS"):
+        env.pop(name, None)
 
 
 def gpu_env(gpu):
@@ -793,6 +813,8 @@ def gpu_class(settings, gpu=None, run=True, force=False):
     if not run and not force:
         return entry or fallback_entry("", gpu)
     env = build_child_env("calibrate", settings, offload=False)
+    if gpu is not None and not gpu.get("display"):
+        drop_egl_vendor_pins(env)
     env.update(gpu_env(gpu))
     for name in ("NCZ_ALLOW_SOFTWARE", "NCZ_CALIBRATE_MS"):
         env.pop(name, None)
@@ -806,6 +828,7 @@ def gpu_class(settings, gpu=None, run=True, force=False):
         and not force
         and entry.get("renderer") == ident.get("renderer")
         and entry.get("version") == ident.get("version")
+        and (entry.get("source") == "calibration" or time.time() < entry.get("retry_after", 0))
     ):
         return entry
     code, res = _calibrator_json([], env, 90)
@@ -822,6 +845,7 @@ def gpu_class(settings, gpu=None, run=True, force=False):
     else:
         entry = fallback_entry(ident.get("renderer", ""), gpu)
         entry["version"] = ident.get("version", "")
+        entry["retry_after"] = time.time() + 3600  # the benchmark failed: try again later
     if gpu:
         entry["gpu"] = gpu["id"]
         entry["driver"] = gpu["driver"]
@@ -837,14 +861,26 @@ def gpu_class(settings, gpu=None, run=True, force=False):
     return entry
 
 
+PCI_SLOT_RE = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]$")
+
+
+def offload_mode(settings):
+    """gpu-offload normalized: off, auto, prime or a GPU id; anything else means auto."""
+    mode = str(settings.get("gpu-offload", "auto"))
+    return mode if mode in OFFLOAD_MODES or GPU_ID_RE.match(mode) else "auto"
+
+
 def offload_targets(settings):
     """GPUs a hack may be sent to instead of the display GPU, best first.
 
     Honours gpu-offload (off: none; a GPU id: only that one; auto/prime: every other
     GPU) and the power policy: on battery, auto never wakes a second GPU.
     """
-    mode = str(settings.get("gpu-offload", "auto"))
-    others = [g for g in list_gpus() if not g["display"]]
+    mode = offload_mode(settings)
+    # DRI_PRIME and the NVIDIA variables address PCI devices only
+    others = [
+        g for g in list_gpus() if not g["display"] and PCI_SLOT_RE.match(g["slot"])
+    ]
     if mode == "off" or not others:
         return []
     if GPU_ID_RE.match(mode):
@@ -884,7 +920,7 @@ def plan_for(hack_id, settings, tiers=None):
     hacks (the classics) stay on the display GPU unless they need a faster class. It never
     goes to a slower GPU. gpu-offload=prime or a GPU id forces the target for every hack.
     """
-    mode = str(settings.get("gpu-offload", "auto"))
+    mode = offload_mode(settings)
     tiers = load_tiers() if tiers is None else tiers
     disp = display_gpu()
     disp_cls = system_class(settings)
@@ -904,6 +940,15 @@ def plan_for(hack_id, settings, tiers=None):
             "copy_ms": float(ent.get("copy_ms") or 0.0),
         }
     return {"gpu": disp, "offload": False, "class": disp_cls, "copy_ms": 0.0}
+
+
+def display_plan(settings):
+    return {
+        "gpu": display_gpu(),
+        "offload": False,
+        "class": system_class(settings),
+        "copy_ms": 0.0,
+    }
 
 
 def offload_for(hack_id, settings, tiers=None):
@@ -1260,26 +1305,18 @@ def build_child_env(
     # vendor breaks Wayland compositors (labwc died that way on PEGASUS).
     for name in OFFLOAD_VARS:
         env.pop(name, None)
-    if offload is None:
+    if isinstance(offload, dict):
+        plan = offload
+    elif offload is None:
         plan = plan_for(hack_id, settings)
     elif offload:
-        tg = offload_targets({**settings, "gpu-offload": "prime"}) or [None]
-        plan = {
-            "gpu": tg[0],
-            "offload": tg[0] is not None,
-            "class": "strong",
-            "copy_ms": 0.0,
-        }
-        if tg[0] is not None:
-            plan["class"] = gpu_class(settings, tg[0], run=False)["class"]
+        forced = offload_mode(settings)
+        forced = forced if GPU_ID_RE.match(forced) else "prime"
+        plan = plan_for(hack_id, {**settings, "gpu-offload": forced})
     else:
-        plan = {
-            "gpu": display_gpu(),
-            "offload": False,
-            "class": system_class(settings),
-            "copy_ms": 0.0,
-        }
+        plan = display_plan(settings)
     if plan["offload"]:
+        drop_egl_vendor_pins(env)
         env.update(gpu_env(plan["gpu"]))
     env.update(render_env(hack_id, settings, plan))
     if hack_id != "calibrate":
@@ -1542,8 +1579,13 @@ class Supervisor:
 
         Returns "failed", "rotate", "ended" or "stop".
         """
-        offload = offload_for(hack_id, self.settings) and hack_id not in self.no_offload
-        self.child = self.launch(hack_id, offload=offload)
+        plan = (
+            display_plan(self.settings)
+            if hack_id in self.no_offload
+            else plan_for(hack_id, self.settings)
+        )
+        offload = plan["offload"]
+        self.child = self.launch(hack_id, offload=plan)
         if self.child is None:
             self.failures.fail(hack_id)
             return "failed"
@@ -1608,12 +1650,25 @@ class Supervisor:
                 return "rotate"
             time.sleep(0.1)
 
+    def calibrate(self):
+        """Measure the GPU class once (cache hit: about 0.3 s), never while a hack runs."""
+        with contextlib.suppress(Exception):
+            gpu_class(self.settings, None)
+            for tg in offload_targets(self.settings):
+                if self.stop_requested:
+                    return
+                gpu_class(self.settings, tg)
+
     def run(self):
         self.started_wall = time.time()
         deadline = time.monotonic() + self.args.seconds if self.args.seconds else None
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             signal.signal(sig, lambda *_: setattr(self, "stop_requested", True))
         try:
+            # state.json first, so that a stop during the calibration below is delivered
+            self.write_state(None)
+            if not self.args.hack:
+                self.calibrate()
             while not self.stop_requested:
                 hack = self.pick()
                 if not hack:
@@ -1715,11 +1770,6 @@ def cmd_start(args):
     except OSError:
         print("already running")
         return 0
-    if not args.hack and not read_state():
-        with contextlib.suppress(Exception):
-            gpu_class(settings, None)
-            for tg in offload_targets(settings):
-                gpu_class(settings, tg)
     return Supervisor(args, settings, catalog).run()
 
 

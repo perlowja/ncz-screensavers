@@ -172,6 +172,7 @@ run_host() {
     cp "$HERE/host-test-agent.py" "$HERE/host_test_image.py" "$HERE/wl_poke.py" "$HERE/greetd_login.py" "$stage/"
     [ -n "$deb" ] && cp "$deb" "$stage/ncz-screensavers.deb"
     echo "[$h] shipping agent${deb:+ and package}"
+    remote_cleanup "$h"
     if ! rsh "$h" 'rm -rf "$HOME/ncz-host-test" && mkdir -p "$HOME/ncz-host-test" && tar -x -C "$HOME/ncz-host-test"' \
         < <(tar -C "$stage" -c .); then
         echo "[$h] FAIL: could not ship files" >&2
@@ -190,7 +191,7 @@ run_host() {
     # First stdin line carries the sudo secret (empty line = none).
     local pw="${HT_SUDO_PW:-}"
     [ "$pw" = "@user" ] && pw="${HOST_USER[$h]}"   # lab hosts: login name doubles as sudo secret
-    printf '%s\n' "$pw" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && setsid -w sh -c 'echo \$\$ > \$HOME/ncz-host-test/agent.pid; exec timeout -k 30 ${HOST_TEST_TIMEOUT:-5400} python3 host-test-agent.py $args'" \
+    printf '%s\n' "$pw" | rsh "$h" "IFS= read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && setsid -w sh -c 'echo \$\$ > \$HOME/ncz-host-test/agent.pid; exec timeout -k 30 ${HOST_TEST_TIMEOUT:-5400} python3 host-test-agent.py $args'" \
         > "$outdir/agent.stdout" 2> "$outdir/agent.stderr"
     local rc=$?
     echo "[$h] agent exit=$rc; collecting results"

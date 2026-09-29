@@ -109,7 +109,7 @@ static GLuint prog(const char *fs)
 }
 
 static GLuint main_prog, cons_prog, main_fbo, main_tex, cons_fbo;
-static int strips = 16;
+static int strips = 64; /* short jobs for the first, cold frame; resized after it */
 
 static void frame(void)
 {
@@ -259,8 +259,11 @@ int main(int argc, char **argv)
     GLint nex = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &nex);
     for (GLint i = 0; i < nex; i++)
-        if (!strcmp((const char *)glGetStringi(GL_EXTENSIONS, i), "GL_EXT_disjoint_timer_query"))
+    {
+        const char *ext = (const char *)glGetStringi(GL_EXTENSIONS, i);
+        if (ext && !strcmp(ext, "GL_EXT_disjoint_timer_query"))
             have_timer = 1;
+    }
     if (have_timer) {
         p_gen_q = (pfn_gen_q)eglGetProcAddress("glGenQueriesEXT");
         p_begin_q = (pfn_q)eglGetProcAddress("glBeginQueryEXT");
