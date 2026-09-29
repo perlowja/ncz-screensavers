@@ -380,11 +380,11 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     }
 
     public string[] color_ids {
-        owned get { return { "stylized", "kipthorne", "faithful" }; }
+        owned get { return { "stylized", "kipthorne", "faithful", "singularity", "slingshot", "whitehole", "eht" }; }
     }
 
     public string[] color_labels {
-        owned get { return { "Stylized", "Kip Thorne (blackbody)", "Faithful (blackbody with Doppler shift)" }; }
+        owned get { return { "Stylized", "Kip Thorne (blackbody)", "Faithful (blackbody with Doppler shift)", "Singularity", "Slingshot", "White hole", "Event Horizon Telescope (orange ring)" }; }
     }
 
     public string color_mode {

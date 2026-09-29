@@ -58,6 +58,15 @@ INT_RANGES = {
 ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 WORD_RE = re.compile(r"^[a-z0-9_-]+$")
 EARLY_EXIT_SECONDS = 3.0
+COLOR_MODES = (
+    "stylized",
+    "kipthorne",
+    "faithful",
+    "singularity",
+    "slingshot",
+    "whitehole",
+    "eht",
+)
 GUARD_EXIT = 3  # the hack's software-renderer guard refused to run
 MAX_CONSECUTIVE_FAILURES = 3
 BENCH_SECONDS = 24 * 3600
@@ -1838,7 +1847,7 @@ def cmd_set_hack(args):
 def cmd_set_color(args):
     if not WORD_RE.match(args.mode):
         raise SystemExit("color mode must be a lowercase word")
-    if args.mode not in ("stylized", "kipthorne", "faithful"):
+    if args.mode not in COLOR_MODES:
         log(f"warning: {args.mode} may not be a known color mode")
     return cmd_set("blackhole-color-mode", args.mode)
 

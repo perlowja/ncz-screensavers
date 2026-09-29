@@ -1539,10 +1539,35 @@ def _grab_frame(env, scale=0.125):
             os.unlink(path)
 
 
+def _proc_scan(patterns):
+    """Pids whose command line matches a regex, found by reading /proc. Our own process
+    and its ancestors never match (a name-based pkill can kill the shell that runs it)."""
+    skip = {os.getpid(), os.getppid()}
+    hits = []
+    for entry in os.listdir("/proc"):
+        if not entry.isdigit() or int(entry) in skip:
+            continue
+        try:
+            cmd = (
+                pathlib.Path(f"/proc/{entry}/cmdline")
+                .read_bytes()
+                .replace(b"\0", b" ")
+                .decode(errors="replace")
+            )
+        except OSError:
+            continue
+        if any(re.search(p, cmd) for p in patterns):
+            hits.append(int(entry))
+    return hits
+
+
 def _kill_hacks():
     """Belt and braces between phases: nothing of ours may keep running."""
-    for pat in ("ncz-screensaver.*--foreground", "/usr/lib/ncz-screensavers/"):
-        subprocess.run(["pkill", "-f", pat], capture_output=True, check=False)
+    for pid in _proc_scan(
+        ("ncz-screensaver.*--foreground", "^/usr/lib/ncz-screensavers/")
+    ):
+        with contextlib.suppress(OSError):
+            os.kill(pid, signal.SIGTERM)
     time.sleep(0.5)
 
 

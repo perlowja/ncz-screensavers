@@ -68,7 +68,15 @@ MODE_LABEL = {
     "playlist": "Playlist",
 }
 # Black hole color choices.
-COLOR_NICKS = ("stylized", "kipthorne", "faithful")
+COLOR_NICKS = (
+    "stylized",
+    "kipthorne",
+    "faithful",
+    "singularity",
+    "slingshot",
+    "whitehole",
+    "eht",
+)
 RENDER_PRESETS = (
     ("auto", "Auto (recommended)", ("auto", 1.0, 0)),
     ("high", "High (native resolution)", ("fixed", 1.0, 0)),
@@ -102,6 +110,10 @@ COLOR_LABEL = {
     "stylized": "Stylized",
     "kipthorne": "Kip Thorne (blackbody)",
     "faithful": "Faithful (blackbody + Doppler)",
+    "singularity": "Singularity",
+    "slingshot": "Slingshot",
+    "whitehole": "White hole",
+    "eht": "Event Horizon Telescope (orange ring)",
 }
 # UI bounds in minutes.
 MINUTES_MIN = 1

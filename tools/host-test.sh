@@ -138,7 +138,9 @@ wait_quiet() {
 }
 
 remote_cleanup() { # stop anything this harness may have left running on the host
-    rsh "$1" 'ncz-screensaver stop >/dev/null 2>&1; pkill -f "[h]ost-test-agent.py" 2>/dev/null; pkill -f "[w]l_poke.py" 2>/dev/null; true' >/dev/null 2>&1
+    # The agent runs in its own session; its pid is in agent.pid, so the whole group can be
+    # stopped by pid (no name matching, which can hit the cleanup command itself).
+    rsh "$1" 'ncz-screensaver stop >/dev/null 2>&1; f="$HOME/ncz-host-test/agent.pid"; if [ -r "$f" ]; then p=$(cat "$f"); kill -TERM -- "-$p" 2>/dev/null; sleep 1; kill -KILL -- "-$p" 2>/dev/null; rm -f "$f"; fi; true' >/dev/null 2>&1
 }
 
 run_host() {
@@ -188,7 +190,7 @@ run_host() {
     # First stdin line carries the sudo secret (empty line = none).
     local pw="${HT_SUDO_PW:-}"
     [ "$pw" = "@user" ] && pw="${HOST_USER[$h]}"   # lab hosts: login name doubles as sudo secret
-    printf '%s\n' "$pw" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && timeout -k 30 ${HOST_TEST_TIMEOUT:-5400} python3 host-test-agent.py $args" \
+    printf '%s\n' "$pw" | rsh "$h" "read -r HT_SUDO_PW; export HT_SUDO_PW; cd \$HOME/ncz-host-test && setsid -w sh -c 'echo \$\$ > \$HOME/ncz-host-test/agent.pid; exec timeout -k 30 ${HOST_TEST_TIMEOUT:-5400} python3 host-test-agent.py $args'" \
         > "$outdir/agent.stdout" 2> "$outdir/agent.stderr"
     local rc=$?
     echo "[$h] agent exit=$rc; collecting results"
