@@ -294,7 +294,7 @@ static double mono_s(void) {
 
 /* GL_RENDERER captured while the startup context is current (the platform
  * render-size caps depend on it). */
-static char g_renderer[256];
+static char g_renderer[512];
 
 /* Opaque region covers the whole (native) surface; re-issued on every resize. */
 static void set_opaque_region(struct app *a) {
@@ -352,11 +352,15 @@ static void commit_render_size(struct app *a) {
 static void guard_renderer(const char *where) {
     const char *rend = (const char *)glGetString(GL_RENDERER);
     if (!rend) { fprintf(stderr, "[guard] renderer string unavailable at %s\n", where); return; }
-    if (!g_renderer[0]) snprintf(g_renderer, sizeof g_renderer, "%s", rend);
+    if (!g_renderer[0] && rend[0]) {
+        snprintf(g_renderer, sizeof g_renderer, "%s", rend);
+        ncz_render_set_renderer(rend);
+        fprintf(stderr, "[diag] gles3_harness: gpu class %s (%s)\n", ncz_gpu_class_current(), rend);
+    }
     char gmsg[512];
     /* Only honored when the machine has no hardware GPU (see ncz_gpu_guard.h). */
     const char *allow = getenv("NCZ_ALLOW_SOFTWARE");
-    if (!allow) allow = getenv("NCZ_ALLOW_SOFTWARE_FALLBACK");
+    if (!allow || !allow[0]) allow = getenv("NCZ_ALLOW_SOFTWARE_FALLBACK");
     if (ncz_gpu_guard_check("", rend, allow, gmsg, sizeof gmsg)) {
         fprintf(stderr, "[guard] %s\n", gmsg);
         ncz_harness_die(3);
@@ -368,6 +372,8 @@ static void surface_configured(struct app *a, uint32_t w, uint32_t h) {
 
     if (!a->configured) {
         a->rscale = ncz_cfg_render_scale();
+        /* Weak GPUs (Intel UHD class) start at half resolution unless the user chose a scale. */
+        if (!ncz_cfg_render_scale_is_set() && !strcmp(ncz_gpu_class_current(), "weak")) a->rscale = 0.5;
         apply_render_size(a, (int)w, (int)h);
         a->egl_window = wl_egl_window_create(a->surface, a->width, a->height);
         if (!a->egl_window) {

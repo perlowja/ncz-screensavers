@@ -1,3 +1,13 @@
+ncz-screensavers (0.5.3) unstable; urgency=medium
+
+  * GPU classes: NCZ_GPU_CLASS (weak, mid, strong) or inferred from
+    GL_RENDERER; weak GPUs (Intel UHD) start at render scale 0.5 and Black Hole
+    drops bloom and halves nebula and star density. All presets declare
+    min-gpu-class and measured fps (presets.tsv columns 8 and 9).
+  * NCZ_ALLOW_SOFTWARE_FALLBACK accepted as an alias (only without a GPU).
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 23:00:00 +0000
+
 ncz-screensavers (0.5.2) unstable; urgency=medium
 
   * render-hints.tsv: per-hack render scale (measured on Mali-G720) for the

@@ -8,7 +8,7 @@ Precedence, lowest to highest: built-in defaults, `blackhole.conf`, **the preset
 
 * Sources of truth: `assets/screensaver-chooser/options/presets/blackhole/<id>.conf`, installed to `/usr/share/ncz-screensavers/presets/blackhole/`. Also searched: `$NCZ_PRESET_DIR`, `~/.local/share/ncz-screensavers/presets/blackhole/`, so users can add their own.
 * Format (key file): a `[preset]` section with `name`, `description`, `accuracy` (`faithful` or `artistic`) and `sources`; then a `[blackhole]` section of option values. The generator validates every value against `options/blackhole.tsv` (type, range, choices).
-* Catalog rows: `tools/generate-catalog.py` writes `assets/screensaver-chooser/presets.tsv` (installed to `/usr/share/ncz-screensavers/` and `/usr/share/ncz-screensaver-chooser/`), 7 tab-separated columns: `id` (row id, `blackhole_gles3--<preset>`), `title` ("Black Hole: M87*"), `group`, `hack` (binary id), `args` (`--preset=<id>`), `accuracy`, `description`. `hacks.tsv` stays exactly four columns; a launcher or chooser lists these rows next to the hack rows and starts `hack args`, so each preset can be picked individually, put in the random pool or a playlist. A build test regenerates the file and fails on drift.
+* Catalog rows: `tools/generate-catalog.py` writes `assets/screensaver-chooser/presets.tsv` (installed to `/usr/share/ncz-screensavers/` and `/usr/share/ncz-screensaver-chooser/`), 9 tab-separated columns: `id` (row id, `blackhole_gles3--<preset>`), `title` ("Black Hole: M87*"), `group`, `hack` (binary id), `args` (`--preset=<id>`), `accuracy`, `description`, `min_gpu_class` (`weak`, `mid` or `strong`), `measured` (fps on the reference GPUs). `hacks.tsv` stays exactly four columns; a launcher or chooser lists these rows next to the hack rows and starts `hack args`, so each preset can be picked individually, put in the random pool or a playlist. A build test regenerates the file and fails on drift.
 
 ## Accuracy labels
 
@@ -30,3 +30,23 @@ Precedence, lowest to highest: built-in defaults, `blackhole.conf`, **the preset
 ## Screenshots
 
 `docs/blackhole/presets-*.jpg`: all eight presets at four times each.
+
+## GPU classes and measured performance
+
+Every preset declares `min-gpu-class` (the weakest GPU class that still runs it at the bar of 30 fps with a 95th percentile frame time under 40 ms) and `measured`. Classes: `weak` (Intel UHD 630 reference), `mid` (Mali-G720 reference), `strong` (Radeon Pro 5500M, RTX 2060 class). The class comes from `NCZ_GPU_CLASS` when the launcher sets it (from its calibration), otherwise from GL_RENDERER (Intel and CPU renderers weak, Mali mid, everything else strong).
+
+Weak-class defaults (used unless the user sets the options): render scale 0.5 (960x540 upscaled to 1080p by the compositor), the ray-step budget at its lowest, no bloom, half the nebula and star density, torus opacity x0.6. Measured on PEGASUS (Intel UHD 630, Mesa iris, 1920x1080, clean timing, 26 s per run, no readbacks):
+
+| Preset | weak (UHD 630) fps, p95 | mid (Mali-G720, 1080p) | strong (Navi14) | min-gpu-class |
+|---|---|---|---|---|
+| default (no preset) | 49, 21.5 ms | 59 | 60 | weak |
+| sagittarius-a-star | 54, 18.6 ms | 60 | 60 | weak |
+| m87-star | 54, 18.7 ms | 60 | 60 | weak |
+| ton-618 | 49, 20.6 ms | 60 | 60 | weak |
+| quasar | 48, 20.9 ms | 60 | 60 | weak |
+| quasar-edge-on | 50, 20.1 ms | 60 | 60 | weak |
+| blazar | 49, 20.7 ms | 60 | 60 | weak |
+| microquasar | 52, 19.6 ms | 60 | 60 | weak |
+| kerr | 53, 19.2 ms | 60 | 60 | weak |
+
+All existing presets and Black Hole itself clear the bar on the weakest reference GPU at the weak-class defaults, so all are `weak`. The RTX 2060 was not measured here. Scenes from `BLACKHOLE-SCENES-DESIGN.md` that are not built yet: binary and merger, galaxy zoom, tidal disruption and three-hole scenes are expected to be `strong` only, proper Kerr geodesics `mid` or better (design-doc estimates, to be measured when built).

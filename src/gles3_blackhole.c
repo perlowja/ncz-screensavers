@@ -14,6 +14,7 @@
 #include "ncz_options.h"
 #include "blackhole_opts.h"
 #include "ncz_harness_cfg.h"
+#include "ncz_render.h"
 #include "gles3_harness_hooks.h"
 #include "xscreensaver_compat.h"
 /* gcc 14+ makes implicit declarations an error under -std=c11 even though
@@ -113,6 +114,12 @@ static void bh_resolve(void){
  b->disk_out=(float)ncz_opts_get_float(&g_o,"disk-outer");b->jet_len=(float)ncz_opts_get_float(&g_o,"jet-length");
  b->torus=(float)ncz_opts_get_float(&g_o,"torus");b->comp=(float)ncz_opts_get_float(&g_o,"companion");b->lensing=ncz_opts_get_bool(&g_o,"lensing")?1.f:0.f;
  b->seed=(uint32_t)strtoul(ncz_opts_get(&g_o,"seed"),NULL,0);
+ /* Weak GPUs (Intel UHD class): lighter defaults for the optional extras unless the user set them. */
+ if(!strcmp(ncz_gpu_class_current(),"weak")){
+  if(!ncz_opts_is_set(&g_o,"bloom"))b->bloom=0.f;
+  if(!ncz_opts_is_set(&g_o,"nebula"))b->nebula*=0.5f;
+  if(!ncz_opts_is_set(&g_o,"torus"))b->torus*=0.6f;
+ }
  b->adaptive=ncz_opts_get_bool(&g_o,"adaptive")&&!strcmp(ncz_opts_get(&g_o,"quality"),"auto");
 }
 static uint32_t seed(void){
@@ -467,7 +474,7 @@ static void init_blackhole(ModeInfo*m){
  /* ---- option overrides of the per-launch draws (defaults change nothing) */
  s->v[3]*=(float)ncz_opts_get_float(&g_o,"disk-brightness");
  s->v[7]*=(float)ncz_opts_get_float(&g_o,"jet");
- s->v[8]*=(float)ncz_opts_get_float(&g_o,"star-density");
+ s->v[8]*=(float)ncz_opts_get_float(&g_o,"star-density")*((!strcmp(ncz_gpu_class_current(),"weak")&&!ncz_opts_is_set(&g_o,"star-density"))?0.5f:1.f);
  s->v[2]*=(float)ncz_opts_get_float(&g_o,"temperature");
  s->v[4]*=(float)ncz_opts_get_float(&g_o,"rotation-speed")*(1.f+1.5f*g_b.spin);
  s->v[42]*=(float)ncz_opts_get_float(&g_o,"precession");

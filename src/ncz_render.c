@@ -1,5 +1,7 @@
 #include "ncz_render.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 
@@ -31,6 +33,20 @@ int ncz_render_platform_cap(const char *r, int native_h) {
     if (strcasestr(r, "mali")) return 1080;
     if (strcasestr(r, "intel") && native_h > 1440) return 1080;
     return 0;
+}
+
+const char *ncz_gpu_class(const char *r, const char *env) {
+    if (env && (!strcmp(env, "weak") || !strcmp(env, "mid") || !strcmp(env, "strong"))) return env[0] == 'w' ? "weak" : env[0] == 'm' ? "mid" : "strong";
+    if (!r) return "mid";
+    if (strcasestr(r, "intel") || strcasestr(r, "llvmpipe") || strcasestr(r, "softpipe") || strcasestr(r, "lavapipe")) return "weak";
+    if (strcasestr(r, "mali")) return "mid";
+    return "strong";
+}
+
+static char g_render_renderer[256];
+void ncz_render_set_renderer(const char *r) { snprintf(g_render_renderer, sizeof g_render_renderer, "%s", r ? r : ""); }
+const char *ncz_gpu_class_current(void) {
+    return ncz_gpu_class(g_render_renderer[0] ? g_render_renderer : NULL, getenv("NCZ_GPU_CLASS"));
 }
 
 double ncz_render_step_down(double scale) {

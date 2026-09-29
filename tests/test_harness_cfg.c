@@ -47,6 +47,12 @@ int main(void) {
     CHECK(ncz_render_platform_cap("Mesa Intel(R) UHD Graphics 630", 2160) == 1080);
     CHECK(ncz_render_platform_cap("Mesa Intel(R) UHD Graphics 630", 1080) == 0);
     CHECK(ncz_render_platform_cap("AMD Radeon Graphics (radeonsi, navi14)", 2160) == 0);
+    CHECK(!strcmp(ncz_gpu_class("Mesa Intel(R) UHD Graphics 630", NULL), "weak"));
+    CHECK(!strcmp(ncz_gpu_class("Mali-G720-Immortalis", NULL), "mid"));
+    CHECK(!strcmp(ncz_gpu_class("AMD Radeon Graphics (radeonsi, navi14)", NULL), "strong"));
+    CHECK(!strcmp(ncz_gpu_class("NVIDIA GeForce RTX 2060/PCIe/SSE2", NULL), "strong"));
+    CHECK(!strcmp(ncz_gpu_class("Mesa Intel(R) UHD Graphics 630", "strong"), "strong"));   /* launcher calibration wins */
+    CHECK(!strcmp(ncz_gpu_class("Mesa Intel(R) UHD Graphics 630", "bogus"), "weak"));      /* invalid override ignored */
     CHECK(ncz_render_step_down(1.0) == 0.75 && ncz_render_step_down(0.75) == 0.5 && ncz_render_step_down(0.5) == 0.35 && ncz_render_step_down(0.35) == 0.35);
 
     /* software renderer detection */

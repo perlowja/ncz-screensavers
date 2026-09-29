@@ -25,6 +25,7 @@ const ncz_opts *ncz_harness_opts(void);
 double ncz_cfg_render_scale(void);
 int    ncz_cfg_max_render_height(int *explicit_set);
 int    ncz_cfg_scale_auto(void);
+int    ncz_cfg_render_scale_is_set(void);
 
 /* Hack hook (weak): return the hack's option table. prefix is the environment
  * prefix, group the config-file group / file name. */

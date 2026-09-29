@@ -30,6 +30,7 @@ int ncz_cfg_max_render_height(int *explicit_set) {
     if (explicit_set) *explicit_set = ncz_opts_is_set(&g_o, "max-render-height");
     return (int)ncz_opts_get_int(&g_o, "max-render-height");
 }
+int ncz_cfg_render_scale_is_set(void) { return g_ready && ncz_opts_is_set(&g_o, "render-scale"); }
 int ncz_cfg_scale_auto(void) { return g_ready ? !strcmp(ncz_opts_get(&g_o, "render-scale-mode"), "auto") : 1; }
 
 /* ---- presets ------------------------------------------------------------
