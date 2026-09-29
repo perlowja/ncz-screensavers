@@ -151,3 +151,35 @@ slingshot (o6n):  palette: dynamic range p1..p99 luminance | luminance bands (16
 singularity has the widest dynamic range (0.78 vs 0.55) and the crispest edges (0.64 vs 0.51): black sky, white disk, the graphic look of the Singularity desktop. whitehole has more depth: a graded navy sky, a hazy vortex inside the shadow, bloom and the teal-to-ice ramp. Both are shipped.
 
 Images (same seed, six timestamps per row): `blackhole/sheet_<host>_<flyby>.jpg` (rows stylized, kipthorne, faithful, singularity, slingshot, whitehole), `blackhole/full_singularity_vs_whitehole_<host>_<flyby>.jpg`, `blackhole/detail_<host>_<flyby>.jpg` (640x640 full-resolution crops; columns singularity, whitehole, slingshot, stylized). Mali renders (O6N, MS-R1) were made on the mali_kbase driver.
+
+## Seven-palette matrix on MS-R1 (Mali-G720, includes eht)
+
+Same metric and method as above (seed 42, same frame indices per flyby), MS-R1, 0.5.3 build, 22 s per run, frames dumped at the Mali-capped size. eht is by far the most distinct palette (mean chroma of lit pixels 0.43 to 0.53 against 0.12 to 0.23 for the others; pairwise distance to every other palette 0.29 to 0.69, minimum over timestamps at least 0.18). Contact sheets: `docs/blackhole/sheet_MS-R1_orbit.jpg`, `docs/blackhole/sheet_MS-R1_slingshot.jpg`.
+
+Note on frame-dump runs: the `[stats]` p99 of these runs (250 to 600 ms) comes from writing the PNG frame dumps, not from rendering; p95 is 16.7 ms. The fps and p95 numbers for the presets are from the same runs (blazar, kerr, m87-star, microquasar, quasar, quasar-edge-on, sagittarius-a-star, ton-618 all p50 16.2 to 16.7 ms).
+
+## flyby=orbit, host=MS-R1, frames [1, 3, 6, 9, 12, 15] of 16
+mean chroma of lit pixels (distance from neutral): stylized=0.231, kipthorne=0.223, faithful=0.117, singularity=0.001, slingshot=0.171, whitehole=0.188, eht=0.533
+pairwise per-pixel chroma distance (mean over timestamps / min over timestamps):
+| |stylized|kipthorne|faithful|singularity|slingshot|whitehole|eht|
+|---|---|---|---|---|---|---|---|
+|stylized|-|0.233/0.068|0.252/0.198|0.236/0.187|0.259/0.094|0.231/0.092|0.563/0.343|
+|kipthorne|0.233/0.068|-|0.137/0.054|0.223/0.144|0.082/0.060|0.320/0.247|0.359/0.294|
+|faithful|0.252/0.198|0.137/0.054|-|0.095/0.034|0.146/0.092|0.221/0.170|0.458/0.359|
+|singularity|0.236/0.187|0.223/0.144|0.095/0.034|-|0.195/0.109|0.158/0.121|0.502/0.277|
+|slingshot|0.259/0.094|0.082/0.060|0.146/0.092|0.195/0.109|-|0.319/0.249|0.346/0.305|
+|whitehole|0.231/0.092|0.320/0.247|0.221/0.170|0.158/0.121|0.319/0.249|-|0.690/0.621|
+|eht|0.563/0.343|0.359/0.294|0.458/0.359|0.502/0.277|0.346/0.305|0.690/0.621|-|
+
+## flyby=slingshot, host=MS-R1, frames [1, 3, 6, 8, 11, 14] of 15
+mean chroma of lit pixels (distance from neutral): stylized=0.173, kipthorne=0.155, faithful=0.130, singularity=0.001, slingshot=0.149, whitehole=0.178, eht=0.431
+pairwise per-pixel chroma distance (mean over timestamps / min over timestamps):
+| |stylized|kipthorne|faithful|singularity|slingshot|whitehole|eht|
+|---|---|---|---|---|---|---|---|
+|stylized|-|0.169/0.053|0.156/0.065|0.188/0.125|0.242/0.150|0.178/0.109|0.475/0.198|
+|kipthorne|0.169/0.053|-|0.072/0.023|0.160/0.140|0.088/0.057|0.222/0.162|0.335/0.179|
+|faithful|0.156/0.065|0.072/0.023|-|0.126/0.099|0.118/0.070|0.195/0.135|0.362/0.236|
+|singularity|0.188/0.125|0.160/0.140|0.126/0.099|-|0.169/0.132|0.147/0.109|0.430/0.301|
+|slingshot|0.242/0.150|0.088/0.057|0.118/0.070|0.169/0.132|-|0.258/0.175|0.293/0.195|
+|whitehole|0.178/0.109|0.222/0.162|0.195/0.135|0.147/0.109|0.258/0.175|-|0.563/0.419|
+|eht|0.475/0.198|0.335/0.179|0.362/0.236|0.430/0.301|0.293/0.195|0.563/0.419|-|

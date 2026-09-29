@@ -1,33 +1,117 @@
-# Render scale measurements (Mali-G720)
+# Render size measurements (Mali-G720, Sky1)
 
-Host O6N (Cix Sky1, Mali-G720-Immortalis, mali_kbase; cmdline module_blacklist=panthor,...; 1920x1080 output), package 0.4.0, 72 shader hacks (Black Hole, 35 hyprsaver, 36 xshadertoy), each run 12 s under `timeout` with `--render-scale=S --render-scale-mode=fixed` at S = 1 and, for hacks under about 52 fps, also 0.75, 0.5, 0.35. fps is the steady-state frame count over about 7 s; p95 is the 95th percentile frame interval in ms (`[stats]` line). Raw lines: `docs/render-scale-o6n-sweep.txt`.
+## Correction
 
-At native 1080p, 56 of 72 hacks hold 55 fps or more. 16 hacks are below 55 fps at scale 1; the table shows the effect of the render scale (fps, p95 ms):
+An earlier version of this document (package 0.4.0) measured on O6N and said that a 4K Sky1 panel costs the same as the 1080p case. O6N's attached monitor is a 1080p panel (QSA QiSi-AUGRA, DP-2, verified with `wlr-randr` and `/sys/class/drm`), so that 4K statement was an inference, not a measurement. The tables below are measured on the MS-R1 (same Cix Sky1 SoC, Mali-G720-Immortalis, mali_kbase) with its real ViewSonic VP2488-4K, 3840x2160 at 59.997 Hz, output scale 1.75. There the compositor configures 2194x1234 layer surfaces (logical pixels), and that is what a hack renders unless something reduces it.
+
+## Method
+
+Host MS-R1, package 0.5.3 binaries (unpacked, not installed) plus the test knob `NCZ_TEST_SURFACE_SIZE`, 72 shader hacks (Black Hole, 35 hyprsaver, 36 xshadertoy), each run 12 s under `timeout` with `--render-scale-mode=fixed`, under the host lock, in the operator's session. fps is the steady-state frame count over the last 7 s; p95 is the 95th percentile frame interval in ms (the `[stats]` line). Three operating points:
+
+| Point | Surface | Render size at scale 1 | How |
+|---|---|---|---|
+| native 4K | 3840x2160 output pixels | 3840x2160 | `NCZ_TEST_SURFACE_SIZE=3840x2160 --max-render-height=0`; the buffer maps 1:1 to the physical pixels of the 4K panel, so compositor cost is the real one |
+| default, uncapped | 2194x1234 (real) | 2194x1234 | `--max-render-height=0` |
+| capped (the Mali default) | 2194x1234 (real) | 1919x1080 | nothing set; the platform cap of 1080 lines applies |
+
+Slow hacks were re-run at scale 0.75, 0.5 and 0.35 (of the surface, then capped) until 55 fps was reached. Cells are fps (p95 ms); `-` means not measured because a larger size already reached 55 fps. Raw lines: `docs/render-scale-msr1-4k-sweep.txt`. The old 1080p O6N data stays in `docs/render-scale-o6n-sweep.txt` (a 1080p panel; it matches the capped table below within noise).
+
+## Summary
+
+* Capped (the shipped default): 55 of 72 hacks hold 55 fps or more at scale 1. This equals the 1080p O6N result, so the Mali cap makes a 4K panel cost the same as 1080p.
+* Default uncapped 2194x1234: 51 of 72 (Black Hole 48 fps, p95 21 ms). Native 3840x2160: 37 of 72 (Black Hole 15 fps). The cap of 1080 lines is therefore the right Sky1 default; `max-render-height` stays 1080 on Mali.
+* Black Hole capped: 57 fps, p95 18 ms (the adaptive step controller keeps it in the medium tier).
+* alienbeacon is the heaviest shader: 5 fps capped, 26 fps at scale 0.35. No hint reaches 45 fps for it.
+* `assets/screensaver-chooser/render-hints.tsv` was regenerated from the capped point (16 hacks). A hint seeds `NCZ_RENDER_SCALE`; adaptive mode may step lower.
+
+Image quality: reduced renders are upscaled with the compositor's linear filter (wp_viewport); these shader hacks are smooth gradients, so the loss is softness; 0.35 is visibly soft.
+
+## Tables (hacks that hold 55 fps at scale 1 are omitted, except Black Hole)
+### native 3840x2160 (output pixels, scale 1): 37 of 72 hacks hold 55 fps or more at scale 1
 
 | Hack | 1.0 | 0.75 | 0.5 | 0.35 |
 |---|---|---|---|---|
-| xshadertoy_bestill3-0_gles3 | 0 (0) | 39 (26) | 60 (17) | 60 (17) |
-| xshadertoy_alienbeacon_gles3 | 5 (248) | 8 (154) | 17 (75) | 33 (37) |
-| xshadertoy_bestill2-0_gles3 | 6 (84) | 21 (48) | 45 (22) | 60 (17) |
-| xshadertoy_bestill4-0_gles3 | 12 (85) | 21 (49) | 45 (22) | 60 (17) |
-| xshadertoy_downfall_gles3 | 14 (74) | 24 (42) | 52 (19) | 60 (17) |
-| xshadertoy_polarnight_gles3 | 14 (80) | 24 (48) | 48 (25) | 60 (17) |
-| xshadertoy_bestill1-0_gles3 | 15 (70) | 25 (41) | 54 (19) | 60 (17) |
-| xshadertoy_skyline_gles3 | 17 (71) | 28 (44) | 55 (21) | 60 (17) |
-| xshadertoy_noxfire_gles3 | 18 (57) | 31 (33) | 60 (17) | 60 (17) |
-| xshadertoy_bestill0-0_gles3 | 22 (46) | 38 (27) | 60 (17) | 60 (17) |
-| xshadertoy_fluxcore_gles3 | 23 (63) | 39 (37) | 58 (19) | 60 (17) |
-| xshadertoy_universeball_gles3 | 25 (41) | 42 (25) | 60 (17) | 60 (17) |
-| xshadertoy_rigrekt_gles3 | 30 (34) | 52 (20) | 60 (17) | 60 (17) |
-| hyprsaver_lissajous_gles3 | 36 (28) | 60 (17) | 60 (17) | 60 (17) |
-| xshadertoy_topologica_gles3 | 38 (26) | - | - | - |
-| xshadertoy_batteredplanet_gles3 | 41 (25) | - | - | - |
+| blackhole | 15 (67) | 28 (37) | 60 (17) | - |
+| hyprsaver_aurora | 24 (43) | 41 (25) | 60 (17) | - |
+| hyprsaver_bezier | 43 (24) | 60 (17) | - | - |
+| hyprsaver_circuit | 34 (29) | 60 (17) | - | - |
+| hyprsaver_geometry | 43 (29) | 60 (17) | - | - |
+| hyprsaver_lissajous | 9 (112) | 16 (64) | 35 (29) | 60 (17) |
+| hyprsaver_marble | 53 (19) | 60 (17) | - | - |
+| hyprsaver_starfield | 43 (24) | 60 (17) | - | - |
+| hyprsaver_voronoi | 17 (58) | 30 (33) | 60 (17) | - |
+| xshadertoy_alienbeacon | 0 (0) | 2 (541) | 5 (249) | 10 (130) |
+| xshadertoy_batteredplanet | 11 (93) | 19 (53) | 40 (26) | 60 (17) |
+| xshadertoy_bestill0-0 | 6 (179) | 10 (102) | 22 (46) | 43 (24) |
+| xshadertoy_bestill1-0 | 4 (273) | 7 (154) | 14 (70) | 28 (36) |
+| xshadertoy_bestill2-0 | 3 (336) | 5 (190) | 12 (85) | 24 (43) |
+| xshadertoy_bestill3-0 | 6 (174) | 10 (99) | 23 (45) | 44 (23) |
+| xshadertoy_bestill4-0 | 3 (340) | 5 (192) | 12 (86) | 23 (43) |
+| xshadertoy_bestill5-0 | 20 (51) | 35 (29) | 60 (17) | - |
+| xshadertoy_darktransit | 31 (32) | 54 (19) | 60 (17) | - |
+| xshadertoy_downfall | 4 (293) | 6 (166) | 14 (74) | 27 (38) |
+| xshadertoy_fluxcore | 6 (227) | 11 (132) | 23 (63) | 42 (33) |
+| xshadertoy_gimbalharmonics | 20 (53) | 34 (31) | 60 (17) | - |
+| xshadertoy_neongravity-1 | 41 (24) | 60 (17) | - | - |
+| xshadertoy_neonhorizon | 42 (24) | 60 (17) | - | - |
+| xshadertoy_neontriangulator | 32 (43) | 52 (25) | 60 (17) | - |
+| xshadertoy_noxfire | 5 (226) | 8 (128) | 18 (57) | 35 (29) |
+| xshadertoy_polarnight | 4 (307) | 7 (175) | 14 (80) | 27 (44) |
+| xshadertoy_prococean | 17 (60) | 29 (35) | 60 (17) | - |
+| xshadertoy_protophore | 33 (32) | 54 (19) | 60 (17) | - |
+| xshadertoy_rigrekt | 8 (132) | 13 (76) | 30 (34) | 57 (18) |
+| xshadertoy_selfreflect | 25 (43) | 41 (25) | 60 (17) | - |
+| xshadertoy_skyline | 4 (271) | 8 (156) | 17 (72) | 32 (39) |
+| xshadertoy_starnest | 18 (57) | 31 (32) | 60 (17) | - |
+| xshadertoy_topologica | 10 (105) | 17 (60) | 37 (27) | 60 (17) |
+| xshadertoy_trizm | 14 (72) | 25 (41) | 54 (19) | 60 (17) |
+| xshadertoy_universeball | 7 (161) | 11 (91) | 24 (42) | 47 (22) |
 
-Findings:
+### 2194x1234 (4K at output scale 1.75, no cap): 51 of 72 hacks hold 55 fps or more at scale 1
 
-* Black Hole runs at 59 fps with p95 17.3 ms at native 1080p (adaptive ray-step tier medium).
-* Halving the render height (scale 0.5) brings all but alienbeacon to 45 to 60 fps; alienbeacon needs 0.35 (33 fps, p95 37 ms) and is the heaviest shader in the set.
-* The ladder in auto mode (1, 0.75, 0.5, 0.35, one step per 3 s while the 95th percentile frame time exceeds 40 ms) therefore converges for every hack in the set. `assets/screensaver-chooser/render-hints.tsv` lists, per slow hack, the smallest reduction that reaches 45 fps, so a launcher can start there and skip the ramp.
-* On a 4K Sky1 panel the harness already caps the render height at 1080 (Mali default), so the render cost equals the 1080p case measured here. The MS-R1 (same SoC, 4K panel) sweep could not be completed: its desktop session ended during the run and the host was at the greeter.
+| Hack | 1.0 | 0.75 | 0.5 | 0.35 |
+|---|---|---|---|---|
+| blackhole | 48 (21) | 60 (17) | - | - |
+| hyprsaver_lissajous | 27 (37) | 47 (22) | 60 (17) | - |
+| hyprsaver_voronoi | 51 (20) | 60 (17) | - | - |
+| xshadertoy_alienbeacon | 4 (311) | 7 (190) | 14 (87) | 26 (49) |
+| xshadertoy_batteredplanet | 32 (32) | 52 (20) | 60 (17) | - |
+| xshadertoy_bestill0-0 | 17 (60) | 29 (36) | 60 (19) | - |
+| xshadertoy_bestill1-0 | 11 (91) | 19 (54) | 41 (26) | 60 (17) |
+| xshadertoy_bestill2-0 | 9 (111) | 16 (64) | 35 (30) | 60 (17) |
+| xshadertoy_bestill3-0 | 17 (59) | 30 (35) | 60 (17) | - |
+| xshadertoy_bestill4-0 | 9 (112) | 16 (64) | 34 (30) | 60 (17) |
+| xshadertoy_downfall | 11 (97) | 18 (56) | 39 (26) | 60 (17) |
+| xshadertoy_fluxcore | 18 (80) | 30 (48) | 50 (24) | 60 (17) |
+| xshadertoy_noxfire | 14 (75) | 24 (43) | 51 (20) | 60 (17) |
+| xshadertoy_polarnight | 11 (104) | 19 (61) | 38 (31) | 60 (17) |
+| xshadertoy_prococean | 48 (22) | 60 (17) | - | - |
+| xshadertoy_rigrekt | 23 (44) | 40 (26) | 60 (17) | - |
+| xshadertoy_skyline | 13 (93) | 22 (56) | 45 (27) | 60 (17) |
+| xshadertoy_starnest | 52 (19) | 60 (17) | - | - |
+| xshadertoy_topologica | 29 (35) | 50 (20) | 60 (17) | - |
+| xshadertoy_trizm | 42 (24) | 60 (17) | - | - |
+| xshadertoy_universeball | 19 (54) | 32 (32) | 60 (17) | - |
 
-Image quality: scale 0.5 renders a quarter of the pixels and is upscaled with the compositor's linear filter (wp_viewport); shader hacks are smooth gradients, so the loss is softness rather than artifacts; 0.35 is visibly soft.
+### capped to 1080 lines (Mali default, 1919x1080): 55 of 72 hacks hold 55 fps or more at scale 1
+
+| Hack | 1.0 | 0.75 | 0.5 | 0.35 |
+|---|---|---|---|---|
+| blackhole | 57 (18) | - | - | - |
+| hyprsaver_lissajous | 35 (29) | 47 (22) | 60 (17) | - |
+| xshadertoy_alienbeacon | 5 (243) | 7 (188) | 14 (91) | 26 (48) |
+| xshadertoy_batteredplanet | 40 (26) | 52 (20) | 60 (17) | - |
+| xshadertoy_bestill0-0 | 22 (46) | 29 (36) | 60 (20) | - |
+| xshadertoy_bestill1-0 | 14 (70) | 19 (54) | 41 (26) | 60 (17) |
+| xshadertoy_bestill2-0 | 12 (85) | 16 (64) | 35 (30) | 60 (17) |
+| xshadertoy_bestill3-0 | 22 (45) | 30 (35) | 60 (17) | - |
+| xshadertoy_bestill4-0 | 12 (86) | 16 (64) | 34 (30) | 60 (17) |
+| xshadertoy_downfall | 14 (74) | 18 (56) | 39 (26) | 60 (17) |
+| xshadertoy_fluxcore | 23 (63) | 30 (47) | 50 (25) | 60 (17) |
+| xshadertoy_noxfire | 18 (57) | 24 (43) | 51 (20) | 60 (17) |
+| xshadertoy_polarnight | 14 (80) | 19 (61) | 39 (30) | 60 (17) |
+| xshadertoy_rigrekt | 30 (34) | 39 (26) | 60 (17) | - |
+| xshadertoy_skyline | 17 (72) | 22 (56) | 45 (27) | 60 (17) |
+| xshadertoy_topologica | 37 (27) | 50 (20) | 60 (17) | - |
+| xshadertoy_trizm | 54 (19) | 60 (17) | - | - |
+| xshadertoy_universeball | 24 (42) | 32 (32) | 60 (17) | - |

@@ -35,6 +35,17 @@ run() { # bin point surface capargs scale
   CUR=$!; wait $CUR; CUR=
   echo "$1 $2 $5 $(grep '^\[diag\] gles3_harness: render size' "$OUT.one" | tail -1 | sed 's/.*render size \([0-9x]*\).*/\1/') $(grep '^\[stats\]' "$OUT.one" | tail -1)" >> "$OUT"
 }
+if [ -n "${PAIRS:-}" ]; then   # PAIRS=file of "hack point scale..." lines: only the lower scales for those (hack, point) pairs
+  while read -r h p scales; do
+    case $p in native4k) s=3840x2160; c="--max-render-height=0";; default) s=2194x1234; c="--max-render-height=0";; capped) s=2194x1234; c="";; esac
+    for sc2 in $scales; do
+      run $h $p $s "$c" $sc2
+      n2=$(tail -1 "$OUT" | sed -n 's/.*steady n=\([0-9]*\).*/\1/p'); [ "${n2:-0}" -ge 385 ] && break
+    done
+    sh "$LOCKSH" refresh
+  done < "$PAIRS"
+  echo DONE >> "$OUT"; exit 0
+fi
 hacks=${HACKS:-$(ls | grep _gles3 | grep -E '^(blackhole|hyprsaver_|xshadertoy_)')}
 SURF=${*:-"3840x2160 2194x1234"}
 n=0
@@ -44,12 +55,15 @@ for h in $hacks; do
   done
   n=$((n+1)); [ $((n % 8)) -eq 0 ] && sh "$LOCKSH" refresh
 done
-# phase two: every slow (point, hack) at lower scales; steady n counts frames in the ~5 s window (52 fps = 260)
+# phase two: every slow (point, hack) at lower scales; steady n counts frames in the ~7 s window (55 fps = 385)
 grep -E ' (native4k|default|capped) 1 ' "$OUT" | while read -r h p sc rs rest; do
   n=$(echo "$rest" | sed -n 's/.*steady n=\([0-9]*\).*/\1/p'); [ -z "$n" ] && n=0
-  [ "$n" -lt 260 ] || continue
+  [ "$n" -lt 385 ] || continue
   case $p in native4k) s=3840x2160; c="--max-render-height=0";; default) s=2194x1234; c="--max-render-height=0";; capped) s=2194x1234; c="";; esac
-  for sc2 in 0.75 0.5 0.35; do run $h $p $s "$c" $sc2; done
+  for sc2 in 0.75 0.5 0.35; do
+    run $h $p $s "$c" $sc2
+    n2=$(tail -1 "$OUT" | sed -n 's/.*steady n=\([0-9]*\).*/\1/p'); [ "${n2:-0}" -ge 385 ] && break   # 55 fps reached: stop stepping down
+  done
   sh "$LOCKSH" refresh
 done
 echo DONE >> "$OUT"
