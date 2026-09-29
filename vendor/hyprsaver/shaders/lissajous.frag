@@ -27,19 +27,25 @@ vec2 lissajousPoint(float t, float fx, float fy, float phase) {
 }
 
 // ---------------------------------------------------------------------------
-// Minimum distance from p to one Lissajous curve sampled at N = 96 points.
-// Squared distance is accumulated inside the loop (avoids 95 redundant sqrts);
-// sqrt is taken once on the final minimum.
+// Minimum distance from p to one Lissajous curve approximated by N = 96 chords
+// (point-to-SEGMENT distance between consecutive samples). Measuring distance
+// to the sample points alone left gaps wider than the line: the high-frequency
+// curves rendered as isolated faint dots instead of continuous lines.
+// Squared distance is accumulated inside the loop; sqrt is taken once.
 // ---------------------------------------------------------------------------
 float distToLissajous(vec2 p, float fx, float fy, float phase) {
     const int   N      = 96;
     const float TWO_PI = 6.28318530718;
     float minD2 = 1.0e9;
-    for (int i = 0; i < N; i++) {
+    vec2 prev = lissajousPoint(0.0, fx, fy, phase);
+    for (int i = 1; i <= N; i++) {
         float t  = float(i) / float(N) * TWO_PI;
         vec2  q  = lissajousPoint(t, fx, fy, phase);
-        vec2  dv = p - q;
+        vec2  ab = q - prev;
+        float h  = clamp(dot(p - prev, ab) / max(dot(ab, ab), 1.0e-8), 0.0, 1.0);
+        vec2  dv = p - (prev + ab * h);
         minD2 = min(minD2, dot(dv, dv));
+        prev = q;
     }
     return sqrt(minD2);
 }

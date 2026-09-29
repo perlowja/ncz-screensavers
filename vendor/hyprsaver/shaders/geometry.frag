@@ -406,7 +406,7 @@ void main() {
     // The inner break on EDGE_COUNT is also uniform, capping iterations to the
     // shape's actual edge count rather than always running 30.
 
-    const float LINE_WIDTH = 0.009;
+    const float LINE_WIDTH = 0.014;
 
     vec3  col      = vec3(0.0);
     float base_hue = t * 0.06;   // full palette cycle ~16.7 s
@@ -442,8 +442,10 @@ void main() {
         }
     }
 
-    // Reinhard tone-map: compress overlapping-edge intersections without clipping.
-    col = col / (col + 1.0);
+    // Soft-clip: overlapping edges saturate smoothly, but a single edge reaches
+    // ~90% of its palette color. The previous Reinhard col/(col+1) capped a lone
+    // edge at 50% and rendered the wireframe nearly invisible on every host.
+    col = vec3(1.0) - exp(-2.2 * col);
 
     fragColor = vec4(col, 1.0);
 }
