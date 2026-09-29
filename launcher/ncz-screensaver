@@ -869,9 +869,10 @@ def plan_for(hack_id, settings, tiers=None):
     """Where a hack should render: {"gpu": gpu dict or None (display), "offload": bool,
     "class": class of the GPU that will render it, "copy_ms": cross-GPU copy cost}.
 
-    A hack the display GPU can carry stays there (saves power). A heavier hack goes to
-    the best allowed offload target, but only when that target is faster. gpu-offload=prime
-    or a GPU id forces the target for every hack.
+    On AC (offload_targets is empty on battery) every shader hack goes to the best offload
+    target when that target is a faster class, because a discrete GPU is idle anyway; other
+    hacks (the classics) stay on the display GPU unless they need a faster class. It never
+    goes to a slower GPU. gpu-offload=prime or a GPU id forces the target for every hack.
     """
     mode = str(settings.get("gpu-offload", "auto"))
     tiers = load_tiers() if tiers is None else tiers
@@ -885,7 +886,7 @@ def plan_for(hack_id, settings, tiers=None):
     forced = mode == "prime" or bool(GPU_ID_RE.match(mode))
     need = CLASS_RANK[tiers.get(hack_id, "strong")]
     faster = CLASS_RANK[ent["class"]] > CLASS_RANK[disp_cls]
-    if forced or (need > CLASS_RANK[disp_cls] and faster):
+    if forced or (faster and (need > CLASS_RANK[disp_cls] or is_shader_hack(hack_id))):
         return {
             "gpu": tgt,
             "offload": True,

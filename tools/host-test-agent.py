@@ -2917,6 +2917,239 @@ def phase_gpuclass(results, checks, env, workdir, pw):
     _cli(ienv, "set-gpu", "auto")
 
 
+OFFLOAD_ENV_NAMES = (
+    "DRI_PRIME",
+    "MESA_VK_DEVICE_SELECT",
+    "__NV_PRIME_RENDER_OFFLOAD",
+    "__GLX_VENDOR_LIBRARY_NAME",
+    "__VK_LAYER_NV_optimus",
+    "__EGL_VENDOR_LIBRARY_FILENAMES",
+    "NCZ_GPU_CLASS",
+)
+
+
+def _proc_env(pid):
+    try:
+        raw = pathlib.Path(f"/proc/{pid}/environ").read_bytes().decode(errors="replace")
+    except OSError:
+        return {}
+    env = dict(x.split("=", 1) for x in raw.split("\0") if "=" in x)
+    return {k: env[k] for k in OFFLOAD_ENV_NAMES if k in env}
+
+
+def _smi_evidence(pid):
+    """nvidia-smi view of one hack: is the pid listed, GPU util, power, pstate."""
+    if not shutil.which("nvidia-smi"):
+        return {"available": False}
+    out = {"available": True}
+    pm = subprocess.run(
+        ["nvidia-smi", "pmon", "-c", "1", "-s", "u"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    ).stdout
+    out["pmon_lists_pid"] = any(
+        ln.split()[1:2] == [str(pid)]
+        for ln in pm.splitlines()
+        if ln.strip() and not ln.startswith("#")
+    )
+    out["pmon"] = [ln for ln in pm.splitlines() if str(pid) in ln][:2]
+    q = subprocess.run(
+        [
+            "nvidia-smi",
+            "--query-gpu=utilization.gpu,power.draw,pstate",
+            "--format=csv,noheader",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    ).stdout.strip()
+    out["gpu"] = q
+    with contextlib.suppress(ValueError, IndexError):
+        out["util"] = int(q.split(",")[0].strip().rstrip("%").strip())
+    return out
+
+
+def _run_hack_evidence(ienv, env, hid, workdir, tag):
+    """Run one hack through the launcher and collect where it rendered."""
+    _cli(ienv, "preview", hid, "--seconds", "40")
+    _wait_until(lambda: _status(ienv).get("running"), 6.0)
+    time.sleep(7.0)
+    state = {}
+    with contextlib.suppress(OSError, ValueError):
+        state = json.loads(pathlib.Path(_rt_dir(), SUPERVISOR_STATE).read_text())
+    child = state.get("child_pid")
+    ev = {
+        "hack": hid,
+        "child_pid": child,
+        "env": _proc_env(child) if child else {},
+        "smi": _smi_evidence(child) if child else {},
+    }
+    with contextlib.suppress(OSError):
+        lines = [
+            ln
+            for ln in pathlib.Path(_rt_dir(), HACK_LOG)
+            .read_text(errors="replace")[-20000:]
+            .splitlines()
+            if ln.startswith("RENDERER=")
+        ]
+        ev["renderer"] = lines[-1][9:] if lines else ""
+    frame = _grab_frame(env)
+    ev["coverage"] = hti.coverage_fraction(frame[2]) if frame else 0.0
+    shots = os.path.join(workdir, "shots")
+    os.makedirs(shots, exist_ok=True)
+    png = os.path.join(shots, f"offload-{tag}-{hid}.png")
+    ppm = os.path.join(shots, f"offload-{tag}-{hid}.ppm")
+    ok, _ = _capture_grim(ppm, 0.125, env)
+    if ok and _screenshot_to_png(ppm, png, env, 0.25)[0]:
+        ev["png"] = os.path.basename(png)
+    _cli(ienv, "stop")
+    _wait_until(lambda: not _status(ienv).get("running"), 6.0)
+    return ev
+
+
+@_guard
+def phase_offloadproof(results, checks, env, workdir, pw):
+    """Prove that per-process offload really happens on AC, and never on battery.
+
+    Mode off is the integrated-GPU baseline; mode auto is the default. For every tier of
+    hack the evidence is the hack's own environment, the renderer string, nvidia-smi and
+    a screenshot. Battery is simulated with a fake sysfs root (nothing is unplugged)."""
+    proof: dict[str, Any] = {}
+    results["offloadproof"] = proof
+    cache_dir = tempfile.mkdtemp(prefix="ncz-ht-cache-")
+    ienv = _isolated_env(env, {"XDG_CACHE_HOME": cache_dir})
+    _cli(ienv, "stop")
+    _cli(ienv, "config", "set", "verify-render", "false")
+    gpus = _json_cli(ienv, "gpus", "--json") or []
+    nvidia = next(
+        (g for g in gpus if not g["display"] and g["vendor"] == "nvidia"), None
+    )
+    if nvidia is None:
+        _record(
+            checks, "offload-proof", "skip", "no non-display NVIDIA GPU on this host"
+        )
+        return
+    _cli(ienv, "calibrate", "--json", timeout=240.0)
+    tiers = _tier_rows()
+    listing = _json_cli(ienv, "list", "--json") or []
+    installed = {r["id"] for r in listing if r.get("installed")}
+
+    def shader(h):
+        return h.startswith(("hyprsaver_", "xshadertoy_", "blackhole_"))
+
+    picks = []
+    for label, cls in (("strong", "strong"), ("mid", "mid"), ("weak", "weak")):
+        hid = next(
+            (
+                h
+                for h, c in sorted(tiers.items())
+                if c == cls and h in installed and shader(h)
+            ),
+            None,
+        )
+        if label == "mid" and hid is None:
+            hid = "blackhole_gles3" if "blackhole_gles3" in installed else None
+        if hid:
+            picks.append((label, hid))
+    if "blackhole_gles3" in installed and all(h != "blackhole_gles3" for _, h in picks):
+        picks.append(("blackhole", "blackhole_gles3"))
+    ac = _json_cli(ienv, "plan", picks[0][1], "--json") or {}
+    proof["ac_online"] = not ac.get("on_battery", True)
+    proof["gpus"] = gpus
+    proof["switcheroo_present"] = bool(shutil.which("switcherooctl"))
+    proof["runs"] = []
+    _record(
+        checks,
+        "offload-ac-online",
+        "pass" if proof["ac_online"] else "skip",
+        f"AC online: {proof['ac_online']}; switcherooctl installed: {proof['switcheroo_present']} (the environment fallback is used when it is absent)",
+    )
+    for mode in ("off", "auto"):
+        _cli(ienv, "set-gpu", mode)
+        for label, hid in picks:
+            ev = _run_hack_evidence(ienv, env, hid, workdir, mode)
+            ev.update({"mode": mode, "tier": label})
+            proof["runs"].append(ev)
+            e = ev["env"]
+            renderer = ev.get("renderer", "")
+            on_nvidia = "NVIDIA" in renderer
+            if mode == "off":
+                good = (
+                    not on_nvidia
+                    and "__NV_PRIME_RENDER_OFFLOAD" not in e
+                    and ev["coverage"] >= 0.15
+                )
+                what = "iGPU baseline"
+            else:
+                smi = ev.get("smi") or {}
+                good = (
+                    on_nvidia
+                    and e.get("__NV_PRIME_RENDER_OFFLOAD") == "1"
+                    and "__EGL_VENDOR_LIBRARY_FILENAMES" not in e
+                    and (smi.get("pmon_lists_pid") or smi.get("util", 0) > 0)
+                    and ev["coverage"] >= 0.15
+                )
+                what = "offload on AC"
+                if not proof["ac_online"]:
+                    good = not on_nvidia
+                    what = "on battery: no offload"
+            _record(
+                checks,
+                f"offload-{mode}-{label}-{hid.replace('_gles3', '')}",
+                "pass" if good else "fail",
+                f"{what}: renderer '{renderer}', env {e}, nvidia-smi pid listed {ev['smi'].get('pmon_lists_pid')}, "
+                f"util {ev['smi'].get('util')} pstate/power '{ev['smi'].get('gpu')}', coverage {ev['coverage']:.2f}",
+                evidence=ev.get("png"),
+                metrics={"renderer": renderer, "env": e, "smi": ev["smi"]},
+            )
+    _cli(ienv, "set-gpu", "auto")
+
+    # Battery: a fake sysfs root that shows a battery and no mains supply.
+    fake = tempfile.mkdtemp(prefix="ncz-ht-sysfs-")
+    os.makedirs(os.path.join(fake, "class", "power_supply", "BAT0"))
+    os.makedirs(os.path.join(fake, "class", "power_supply", "AC0"))
+    pathlib.Path(fake, "class", "power_supply", "BAT0", "type").write_text("Battery\n")
+    pathlib.Path(fake, "class", "power_supply", "AC0", "type").write_text("Mains\n")
+    pathlib.Path(fake, "class", "power_supply", "AC0", "online").write_text("0\n")
+    os.symlink("/sys/class/drm", os.path.join(fake, "class", "drm"))
+    for extra in os.listdir("/sys"):
+        if extra != "class":
+            with contextlib.suppress(OSError):
+                os.symlink(os.path.join("/sys", extra), os.path.join(fake, extra))
+    benv = dict(ienv)
+    benv["NCZ_SCREENSAVER_SYSFS"] = fake
+    for label, hid in picks:
+        plan = _json_cli(benv, "plan", hid, "--json") or {}
+        _record(
+            checks,
+            f"offload-battery-plan-{hid.replace('_gles3', '')}",
+            "pass"
+            if plan.get("offload") is False and plan.get("on_battery")
+            else "fail",
+            f"simulated battery, gpu-offload auto: plan {plan}",
+        )
+    label, hid = picks[0]
+    ev = _run_hack_evidence(benv, env, hid, workdir, "battery")
+    ev.update({"mode": "auto-on-battery", "tier": label})
+    proof["runs"].append(ev)
+    good = (
+        "NVIDIA" not in ev.get("renderer", "")
+        and "__NV_PRIME_RENDER_OFFLOAD" not in ev["env"]
+    )
+    _record(
+        checks,
+        f"offload-battery-run-{hid.replace('_gles3', '')}",
+        "pass" if good else "fail",
+        f"simulated battery: renderer '{ev.get('renderer')}', env {ev['env']}",
+        evidence=ev.get("png"),
+    )
+    shutil.rmtree(fake, ignore_errors=True)
+    _cli(ienv, "stop")
+
+
 @_guard
 def phase_gpu(results, checks, env, workdir, pw):
     """Hybrid GPUs: per-process PRIME offload of a few hacks to the NVIDIA GPU
@@ -3525,6 +3758,8 @@ def run_phases(
         )
     if "gpuclass" in phases:
         phase_gpuclass(results, checks_by_phase["gpuclass"], env, workdir, pw)
+    if "offloadproof" in phases:
+        phase_offloadproof(results, checks_by_phase["offloadproof"], env, workdir, pw)
     if "gpu" in phases:
         phase_gpu(results, checks_by_phase["gpu"], env, workdir, pw)
     if "multioutput" in phases:

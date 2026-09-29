@@ -30,6 +30,7 @@ PHASES = [
     "color",
     "chooser",
     "gpuclass",
+    "offloadproof",
 ]
 
 
@@ -179,6 +180,28 @@ def main():
             for h, r in cost:
                 L.append(
                     f"| {h} | {r['gpu']} | `{r['hack']}` | {r['display'].get('fps', '-')} | {r['target'].get('fps', '-')} | {r.get('copy_ms', '-')} |"
+                )
+            L.append("")
+
+    op = {h: d["offloadproof"] for h, d in data.items() if d.get("offloadproof")}
+    if op:
+        L.append("## Offload proof (per process, evidence per tier)")
+        L.append("")
+        for h, o in op.items():
+            L.append(
+                f"{h}: AC online {o.get('ac_online')}, switcherooctl installed {o.get('switcheroo_present')}. Mode off is the iGPU baseline; mode auto is the default."
+            )
+            L.append("")
+            L.append(
+                "| Mode | Tier | Hack | Renderer | Offload variables in the hack process | nvidia-smi | Coverage |"
+            )
+            L.append("|---|---|---|---|---|---|---|")
+            for r in o.get("runs", []):
+                smi = r.get("smi") or {}
+                L.append(
+                    f"| {r['mode']} | {r['tier']} | `{r['hack']}` | {esc(str(r.get('renderer', '')))} | "
+                    f"{esc(', '.join(f'{k}={v}' for k, v in sorted(r.get('env', {}).items())) or 'none')} | "
+                    f"pid listed {smi.get('pmon_lists_pid')}, util {smi.get('util')}, {esc(str(smi.get('gpu', '')))} | {r.get('coverage', 0):.2f} |"
                 )
             L.append("")
 

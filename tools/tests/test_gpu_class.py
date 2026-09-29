@@ -153,6 +153,7 @@ FAKE_CALIBRATOR = textwrap.dedent(
 TIERS = textwrap.dedent(
     """\
     # id\tmin\tuhd630\tuhd630_scaled\tmali\tnavi14\trtx2060\tmeasured
+    hyprsaver_light_gles3\tweak\t60.0/16.7\t60.0/16.7\t60.0/16.7\t-\t-\t2026-09-29 test
     light_gles3\tweak\t60.0/16.7\t60.0/16.7\t60.0/16.7\t-\t-\t2026-09-29 test
     medium_gles3\tmid\t14.0/80.0\t28.0/45.0\t48.0/21.0\t-\t-\t2026-09-29 test
     heavy_gles3\tstrong\t9.0/120.0\t12.0/95.0\t20.0/60.0\t-\t-\t2026-09-29 test
@@ -597,3 +598,23 @@ def test_mid_class_uses_measured_render_hints(env, monkeypatch):
     assert "NCZ_RENDER_SCALE" not in env.render_env("hyprsaver_other_gles3", S)
     fixed = {**S, "render-scale-mode": "fixed", "render-scale": 1.0}
     assert "NCZ_RENDER_SCALE" not in env.render_env("hyprsaver_slow_gles3", fixed)
+
+
+def test_on_ac_every_shader_hack_goes_to_the_discrete_gpu(env):
+    _disp, nv = classes_pegasus(env)
+    shader = env.plan_for("hyprsaver_light_gles3", S)
+    assert shader["offload"] and shader["gpu"]["id"] == nv["id"]
+    classic = env.plan_for("light_gles3", S)
+    assert not classic["offload"]
+
+
+def test_on_battery_no_hack_offloads_even_shader_hacks(env):
+    layout(env, "nvidia+intel", ac=False)
+    disp, nv = env.list_gpus()
+    seed_cache(env, {disp["id"]: {"class": "weak"}, nv["id"]: {"class": "strong"}})
+    for hid in ("hyprsaver_light_gles3", "heavy_gles3", "light_gles3"):
+        assert not env.plan_for(hid, S)["offload"]
+    child = env.build_child_env(
+        "hyprsaver_light_gles3", S, base_env={"HOME": str(env.tmp)}
+    )
+    assert "__NV_PRIME_RENDER_OFFLOAD" not in child and "DRI_PRIME" not in child
