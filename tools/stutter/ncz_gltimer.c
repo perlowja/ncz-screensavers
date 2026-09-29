@@ -32,13 +32,6 @@ static double now_ms(void)
 
 static double t0 = -1, last_swap = -1, slow_ms = 8.0;
 static FILE *fr, *ev;
-static unsigned long nframes;
-
-static void flush_all(void)
-{
-    if (fr) fflush(fr);
-    if (ev) fflush(ev);
-}
 
 static void onsig(int n)
 {
@@ -50,7 +43,10 @@ __attribute__((constructor)) static void init(void)
 {
     const char *p = getenv("NCZ_GLTIMER_OUT"), *s = getenv("NCZ_GLTIMER_SLOW_MS");
     char path[512];
-    if (s && atof(s) >= 0.5) slow_ms = atof(s);
+    if (s) {
+        double v = atof(s);
+        if (v >= 0.5) slow_ms = v;
+    }
     if (p) {
         snprintf(path, sizeof path, "%s.frames", p);
         fr = fopen(path, "w");
@@ -61,8 +57,7 @@ __attribute__((constructor)) static void init(void)
     }
     signal(SIGINT, onsig);
     signal(SIGTERM, onsig);
-    atexit(flush_all);
-}
+    }
 
 static void slow(const char *name, double t, double d)
 {
@@ -80,7 +75,6 @@ EGLBoolean eglSwapBuffers(EGLDisplay d, EGLSurface s)
     double b = now_ms();
     if (last_swap >= 0 && fr) {
         fprintf(fr, "%.2f %.3f %.3f\n", a - t0, a - last_swap, b - a);
-        nframes++;
     }
     last_swap = a;
     slow("eglSwapBuffers", a, b - a);
