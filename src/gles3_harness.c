@@ -313,9 +313,17 @@ static void apply_render_size(struct app *a, int nw, int nh) {
     int expl = 0;
     int cap = ncz_cfg_max_render_height(&expl);
     const char *rend = g_renderer[0] ? g_renderer : (const char *)glGetString(GL_RENDERER);
-    if (!expl) cap = ncz_render_platform_cap(rend, nh);
-    int rw = nw, rh = nh;
-    int scaled = ncz_render_size(nw, nh, a->rscale, cap, &rw, &rh);
+    /* Test only: NCZ_TEST_SURFACE_SIZE=WxH makes the size/cap/scale logic act as if the surface
+     * were WxH (to measure a 4K operating point on a smaller panel). The viewport destination
+     * stays the real surface size. */
+    int vw = nw, vh = nh, virt = 0;
+    const char *tss = getenv("NCZ_TEST_SURFACE_SIZE");
+    if (tss && sscanf(tss, "%dx%d", &vw, &vh) == 2 && vw >= 2 && vh >= 2) virt = 1;
+    else { vw = nw; vh = nh; }
+    if (!expl) cap = ncz_render_platform_cap(rend, vh);
+    int rw = vw, rh = vh;
+    int scaled = ncz_render_size(vw, vh, a->rscale, cap, &rw, &rh);
+    if (virt && (rw != nw || rh != nh)) scaled = 1;
     if (scaled && !a->viewporter) {
         fprintf(stderr, "[diag] gles3_harness: wp_viewporter unavailable; rendering at native %dx%d\n", nw, nh);
         scaled = 0; rw = nw; rh = nh;

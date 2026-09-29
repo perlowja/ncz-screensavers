@@ -2,7 +2,8 @@
 # runs on the host in ~/bhm : palette x flyby matrix with frame dumps
 export XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
 cd ~/bhm
-systemctl --user stop ncz-screensaver-idled 2>/dev/null; ncz-screensaver stop >/dev/null 2>&1; pkill -f _gles3; sleep 1
+if pgrep -u $(id -u) -f _gles3 >/dev/null; then echo "BUSY: another _gles3 process runs; not touching it (hold the host lock first)"; exit 9; fi
+systemctl --user stop ncz-screensaver-idled 2>/dev/null; ncz-screensaver stop >/dev/null 2>&1; sleep 1
 rm -rf m_*; 
 DUR=${DUR:-24}
 for fb in ${FLYBYS:-orbit slingshot}; do for pal in ${PALS:-stylized kipthorne faithful singularity slingshot whitehole}; do

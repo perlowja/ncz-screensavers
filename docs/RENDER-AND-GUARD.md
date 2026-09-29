@@ -27,3 +27,7 @@ After the context is created the harness checks `GL_RENDERER`. A CPU renderer (l
 ## Run statistics
 
 Every run prints one `[stats]` line at exit and on `SIGUSR1`: shader compile and link counts and time, first-frame time, frame count, and frame-time p50/p95/p99/max for the first 5 s versus steady state. It uses CPU timestamps only (no GPU readback). Periodic framebuffer samples are opt-in via `NCZ_DIAG_FRAMEBUFFER=1`.
+
+## Emulating a 4K panel (test only)
+
+`NCZ_TEST_SURFACE_SIZE=WxH` makes the render-size logic (scale, max-render-height, platform cap, GPU class default) act as if the compositor had configured a WxH surface, while the viewport destination stays the real surface. It measures the GPU cost of a size larger than the attached panel, for example 3840x2160 (native 4K) or 2194x1234 (a 4K panel at output scale 1.75, where layer-shell surfaces are in logical pixels) on a 1080p monitor. The buffer is then larger than the surface and the compositor downsamples it, so the compositor cost is not the real one; the hack cost is. `tools/blackhole-eval/o6sweep3.sh` uses it. Not for production use.
