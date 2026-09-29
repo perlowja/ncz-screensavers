@@ -20,7 +20,20 @@ loop. The build links `libGLESv2`, `libEGL` and the Wayland client libraries onl
     meson setup build && ninja -C build && meson test -C build
 
 Build-time options: `-Dinstall-extras` (install the shaders of development-only
-hacks), `-Dsingularity-plugin` (settings plugin). Package: `debian/`.
+hacks), `-Dsingularity-plugin` (Singularity settings plugin), `-Dgtk4-reference-app`
+(reference GTK4 front end). Package: `debian/`.
+
+## Install matrix
+
+| Where | Install | Settings UI |
+|---|---|---|
+| NCZ-OS (Singularity) | `ncz-screensavers` + `ncz-screensavers-plugin` | Settings > Plugins > Screensaver and Lockscreen |
+| Another GTK/libadwaita distribution | `ncz-screensavers` + `ncz-screensavers-gtk4-reference` | the reference GTK4 application |
+| Another desktop | `ncz-screensavers` | write a front end against `docs/CLI-CONTRACT.md` |
+
+All three packages come from this source and are released together. NCZ-OS ships no
+standalone settings application: the Singularity plugin is its only UI.
+`docs/IMPLEMENTING-ON-ANOTHER-DISTRO.md` lists what the engine needs from a distribution.
 
 ## Run
 

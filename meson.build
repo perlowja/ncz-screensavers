@@ -13,7 +13,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.6.0',
+    version: '0.7.0',
     license: 'GPL-2.0-or-later',
 )
 
@@ -862,6 +862,10 @@ endif
 
 if get_option('singularity-plugin').enabled()
     subdir('plugin')
+endif
+
+if get_option('gtk4-reference-app')
+    subdir('contrib/gtk4-reference-app')
 endif
 
 # ---------------------------------------------------------------------------

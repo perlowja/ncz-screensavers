@@ -1,3 +1,21 @@
+ncz-screensavers (0.7.0) unstable; urgency=medium
+
+  * The standalone settings application is no longer part of the engine package.
+    It is now the reference GTK4 application (contrib/gtk4-reference-app) in its own
+    binary package, ncz-screensavers-gtk4-reference, built from this source and
+    released with it. NCZ-OS uses the Singularity plugin (ncz-screensavers-plugin)
+    and does not install the reference application; upgrading the engine removes
+    the old ncz-screensaver-settings files and its desktop entry.
+  * ncz-screensaver ensure-plugin turns the plugin on once per user at login
+    (from ncz-screensaver-idled.service) without touching the rest of the list.
+  * GPU classes (weak, mid, strong): calibration, per-hack requirements, class
+    aware pools, vendor-agnostic per-process offload, broken.tsv.
+  * docs/CLI-CONTRACT.md and docs/IMPLEMENTING-ON-ANOTHER-DISTRO.md describe the
+    interface a front end or another distribution implements.
+  * Password-only test harness transport.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 17:30:00 -0400
+
 ncz-screensavers (0.6.0) unstable; urgency=medium
 
   * Classics on the shader engine: voronoi, gravitywell, hexstrut, cubestorm,

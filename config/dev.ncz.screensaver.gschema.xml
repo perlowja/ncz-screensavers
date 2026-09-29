@@ -2,7 +2,7 @@
 <!-- NCZ-OS screensaver configuration. Superset of the schema the Singularity
      screensaver-chooser plugin already uses: every pre-existing key keeps its
      name, type and meaning. Read live by ncz-screensaver-idled and
-     ncz-screensaver; written by the chooser plugin and ncz-screensaver-settings. -->
+     ncz-screensaver; written by the Singularity plugin (or any front end). -->
 <schemalist>
   <enum id="dev.ncz.screensaver.BlackholeColorMode">
     <value nick="stylized" value="0"/>

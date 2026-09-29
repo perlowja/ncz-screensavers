@@ -16,8 +16,9 @@ import textwrap
 
 import pytest
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-APP = ROOT / "launcher/ncz-screensaver-settings"
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+REPO = ROOT.parents[1]
+APP = ROOT / "ncz-screensaver-settings"
 PY = (
     "/usr/bin/python3"
     if os.path.exists("/usr/bin/python3")
@@ -131,7 +132,7 @@ FLAGGED = "May run poorly on this graphics chip"
 def harness(tmp_path):
     schemas = tmp_path / "schemas"
     schemas.mkdir()
-    shutil.copy(ROOT / "config/dev.ncz.screensaver.gschema.xml", schemas)
+    shutil.copy(REPO / "config/dev.ncz.screensaver.gschema.xml", schemas)
     subprocess.run(["glib-compile-schemas", str(schemas)], check=True)
     fake = tmp_path / "fake"
     fake.mkdir()

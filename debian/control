@@ -29,10 +29,8 @@ Depends:
  python3,
  libwayland-client0,
 Recommends:
- gir1.2-adw-1,
- gir1.2-gtk-4.0,
  grim,
- python3-gi,
+ ncz-screensavers-plugin,
 Description: native Wayland GLES3 screensavers for NCZ-OS
  A set of 84 OpenGL ES 3 screensavers that run directly on Wayland through
  wlr-layer-shell and EGL, with no X11 or Xwayland dependency: the Black Hole
@@ -43,3 +41,26 @@ Description: native Wayland GLES3 screensavers for NCZ-OS
  in /usr/share/ncz-screensavers/shaders, the chooser catalog in
  /usr/share/ncz-screensaver-chooser/hacks.tsv and the dev.ncz.screensaver
  GSettings schema in /usr/share/glib-2.0/schemas.
+ .
+ The settings UI on NCZ-OS is the Singularity plugin (ncz-screensavers-plugin).
+ Other distributions can drive the engine through the ncz-screensaver command
+ line; ncz-screensavers-gtk4-reference is a GTK4 reference front end.
+ Version 0.7.0 moved the old standalone settings application out of this
+ package.
+
+Package: ncz-screensavers-gtk4-reference
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ncz-screensavers (>= ${source:Version}),
+ python3,
+ python3-gi,
+ gir1.2-gtk-4.0,
+ gir1.2-adw-1,
+Replaces: ncz-screensavers (<< 0.7.0)
+Description: reference GTK4 front end for the ncz-screensavers engine
+ A reference application for distributions and desktops that want to implement
+ the ncz-screensavers engine on Wayland. It is a GTK4 and libadwaita settings
+ window that uses only the public ncz-screensaver command line and the
+ dev.ncz.screensaver GSettings schema; see docs/CLI-CONTRACT.md in the source.
+ It is released together with the engine and is not part of the NCZ-OS image.

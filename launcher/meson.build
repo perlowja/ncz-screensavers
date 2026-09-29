@@ -1,4 +1,5 @@
-# NCZ-OS screensaver launcher, idle daemon and settings UX.
+# NCZ-OS screensaver launcher and idle daemon. The settings UX is the Singularity
+# plugin in plugin/; there is no standalone settings application.
 # Included from the top-level meson.build with subdir('launcher'); it must not
 # call project(). tools/launcher-meson-check.sh builds it from a scratch root.
 
@@ -39,17 +40,12 @@ executable('ncz-screensaver-calibrate',
 install_data('ncz-screensaver',
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x')
-install_data('ncz-screensaver-settings',
-  install_dir: get_option('bindir'),
-  install_mode: 'rwxr-xr-x')
 install_data('ncz-screensaver-run-compat',
   rename: 'ncz-screensaver-run',
   install_dir: get_option('prefix') / get_option('libexecdir'),
   install_mode: 'rwxr-xr-x')
 install_data('ncz-screensaver-idled.service',
   install_dir: get_option('prefix') / 'lib/systemd/user')
-install_data('dev.ncz.screensaver.desktop',
-  install_dir: get_option('datadir') / 'applications')
 
 # The schema and the compatibility catalog copy under
 # share/ncz-screensaver-chooser are installed by the top-level meson.build.

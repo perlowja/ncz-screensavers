@@ -51,7 +51,7 @@ Chosen: three small programs plus one systemd user unit, all keyed on the existi
      '-- idled(C)/resumed(C) -> DPMS off/on
  ncz-screensaver (Python 3, stdlib only): supervisor/launcher/CLI
      start|stop|status|list|preview|set-timeout|set-hack|set-mode|set-color|enable|disable|config
- ncz-screensaver-settings (GTK4 + libadwaita, python3-gi): chooser/timeout/per-hack/color/preview
+ (settings UX: the Singularity plugin on NCZ-OS; the GTK4 app is now the reference application in contrib/)
 ```
 
 ### Idle detection and dismissal
@@ -108,7 +108,7 @@ GPU probing/fidelity tiers, wayshade, ISO builds, kernel changes.
 ## 4. As built and verified (2026-09-29)
 
 Files: `launcher/ncz-screensaver` (Python launcher and CLI), `launcher/ncz-screensaver-idled.c` (idle daemon),
-`launcher/ncz-screensaver-settings` (GTK4 and libadwaita chooser), `launcher/ncz-screensaver-idled.service`,
+`launcher/ncz-screensaver-idled.service`,
 `launcher/ncz-screensaver-run-compat` (old `--start/--stop/--preview` interface), `config/dev.ncz.screensaver.gschema.xml`,
 `debian/ncz-screensavers.postinst` (disables the older `ncz-idle-manager` user unit), `tools/host-test.sh` with
 `tools/host-test-agent.py`, `tools/wl_poke.py` (raw-wire Wayland client: virtual pointer, virtual keyboard, idle inhibitor,

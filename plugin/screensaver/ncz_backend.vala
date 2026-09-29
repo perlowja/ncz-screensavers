@@ -6,6 +6,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     private const string SCHEMA = "dev.ncz.screensaver";
     private const string CATALOG = "/usr/share/ncz-screensavers/hacks.tsv";
     private const string TIERS = "/usr/share/ncz-screensavers/tiers.tsv";
+    private const string PRESETS = "/usr/share/ncz-screensavers/presets.tsv";
     private const string OPTIONS_DIR = "/usr/share/ncz-screensavers/options";
     private const string LAUNCHER = "ncz-screensaver";
     private const string IDLED = "/usr/libexec/ncz-screensaver-idled";
@@ -206,8 +207,19 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             if (f[1] != "bool" && f[1] != "int" && f[1] != "float" && f[1] != "enum" && f[1] != "string")
                 continue;
             string[] choices = f[5] == "" ? new string[0] : f[5].split (",");
-            list.add (new ScreensaverOption (f[0], f[1], f[2], f[3], f[4], choices,
-                                             f[6] == "" ? f[0] : f[6], f[7], f[8] == "" ? "General" : f[8]));
+            string kind = f[1];
+            string label = f[6] == "" ? f[0] : f[6];
+            // A named-scene option becomes a list of the scenes that ship for this hack
+            if (f[0] == "preset" && kind == "string") {
+                var scenes = preset_ids (hack_id);
+                if (scenes.length > 0) {
+                    kind = "enum";
+                    choices = scenes;
+                    label = "Scene";
+                }
+            }
+            list.add (new ScreensaverOption (f[0], kind, f[2] == "" && kind == "enum" ? NO_SCENE : f[2], f[3], f[4], choices,
+                                             label, f[7], f[8] == "" ? "General" : f[8]));
         }
         return list;
     }
@@ -216,7 +228,35 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         return settings.get_value ("hack-options");
     }
 
+    private const string NO_SCENE = "No scene (my own settings)";
+
+    // Scene ids of a hack from presets.tsv, first entry the "no scene" choice.
+    private string[] preset_ids (string hack_id) {
+        string data;
+        try {
+            FileUtils.get_contents (PRESETS, out data);
+        } catch (FileError e) {
+            return new string[0];
+        }
+        var ids = new Gee.ArrayList<string> ();
+        ids.add (NO_SCENE);
+        foreach (unowned string line in data.split ("\n")) {
+            string[] f = line.split ("\t");
+            if (line.has_prefix ("#") || f.length < 5 || f[3] != hack_id)
+                continue;
+            string arg = f[4];
+            if (arg.has_prefix ("--preset="))
+                ids.add (arg.substring (9));
+        }
+        return ids.size > 1 ? ids.to_array () : new string[0];
+    }
+
     public string option_value (string hack_id, string name) {
+        string v = raw_option_value (hack_id, name);
+        return (name == "preset" && v == "") ? NO_SCENE : v;
+    }
+
+    private string raw_option_value (string hack_id, string name) {
         Variant? inner = read_options ().lookup_value (hack_id, new VariantType ("a{ss}"));
         if (inner != null) {
             string? value = null;
@@ -229,7 +269,8 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         return "";
     }
 
-    public void set_option (string hack_id, string name, string value) {
+    public void set_option (string hack_id, string name, string value_in) {
+        string value = (name == "preset" && value_in == NO_SCENE) ? "" : value_in;
         var outer = new VariantBuilder (new VariantType ("a{sa{ss}}"));
         Variant all = read_options ();
         bool wrote = false;

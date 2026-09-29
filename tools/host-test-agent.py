@@ -18,7 +18,7 @@ Phases (selected by the controller via ``--phases``):
               and key dismissal, idle inhibition, lock chain, DPMS
   color     - run blackhole_gles3 in three color modes and confirm they
               actually look different on screen
-  chooser   - exercise ncz-screensaver-settings (dump + self-test + GUI)
+  chooser   - the Singularity plugin is installed and enabled, the old settings app is gone
 
 The agent writes ``results.json`` plus ``shots/`` and ``logs/`` under its
 working directory. ``--selftest`` exercises the PPM helpers on synthetic
@@ -969,7 +969,6 @@ def phase_install(
         "/usr/bin/ncz-screensaver",
         "/usr/libexec/ncz-screensaver-idled",
         os.path.join(HACK_BIN_DIR, "blackhole_gles3"),
-        "/usr/bin/ncz-screensaver-settings",
     ]
     for path in must_exist:
         if os.path.exists(path):
@@ -1465,7 +1464,6 @@ def phase_hacks(
 
 LAUNCHER = "/usr/bin/ncz-screensaver"
 IDLED = "/usr/libexec/ncz-screensaver-idled"
-SETTINGS_APP = "/usr/bin/ncz-screensaver-settings"
 IDLED_UNIT = "ncz-screensaver-idled.service"
 OLD_IDLE_UNIT = "ncz-idle-manager.service"
 
@@ -3574,76 +3572,64 @@ def phase_color(results, checks, env, workdir, launcher_path):
 
 @_guard
 def phase_chooser(results, checks, env, workdir, settings_path, launcher_path):
-    shots = os.path.join(workdir, "shots")
-    os.makedirs(shots, exist_ok=True)
-    ienv = _isolated_env(env)
-    if not os.path.exists(SETTINGS_APP):
-        _record(checks, "settings-installed", "fail", f"{SETTINGS_APP} missing")
-        return
-    d = subprocess.run(
-        [SETTINGS_APP, "--dump"],
+    """The settings UX is the Singularity plugin: it must be installed and enabled, and
+    the old standalone application must be gone (files, dpkg list, desktop entries)."""
+    so = "/opt/singularity/lib/singularity/plugins/screensaver/libscreensaver.so"
+    _record(checks, "plugin-installed", "pass" if os.path.isfile(so) else "fail", so)
+    genv = dict(env, G_MESSAGES_DEBUG="")
+    genv["XDG_DATA_DIRS"] = "/opt/singularity/share:" + genv.get(
+        "XDG_DATA_DIRS", "/usr/local/share:/usr/share"
+    )
+    p = subprocess.run(
+        ["gsettings", "get", "dev.sinty.desktop", "enabled-plugins"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=genv,
+        check=False,
+    )
+    _record(
+        checks,
+        "plugin-enabled",
+        "pass" if "'screensaver'" in p.stdout else "fail",
+        p.stdout.strip()[-200:] or p.stderr[-120:],
+    )
+    gone = [
+        f
+        for f in (
+            "/usr/bin/ncz-screensaver-settings",
+            "/usr/share/applications/dev.ncz.screensaver.desktop",
+        )
+        if os.path.exists(f)
+    ]
+    listed = subprocess.run(
+        ["dpkg", "-L", "ncz-screensavers"], capture_output=True, text=True, check=False
+    ).stdout
+    stale = [ln for ln in listed.splitlines() if "screensaver-settings" in ln]
+    _record(
+        checks,
+        "standalone-app-absent",
+        "pass" if not gone and not stale else "fail",
+        f"files={gone or 'none'} engine-package-list={stale or 'none'}",
+    )
+    cli = subprocess.run(
+        [LAUNCHER, "list", "--json"],
         capture_output=True,
         text=True,
         timeout=30,
-        env=ienv,
+        env=_isolated_env(env),
         check=False,
     )
     try:
-        dump = json.loads(d.stdout)
-        n = len(dump.get("catalog", []))
+        n = len(json.loads(cli.stdout))
     except ValueError:
         n = -1
     _record(
         checks,
-        "settings-dump",
+        "cli-catalog",
         "pass" if n >= 80 else "fail",
-        f"{n} catalog entries in --dump {d.stderr[-120:]}",
+        f"{n} catalog entries from ncz-screensaver list",
     )
-    try:
-        s = subprocess.run(
-            [SETTINGS_APP, "--self-test"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            env=ienv,
-            check=False,
-        )
-        lines = [ln for ln in s.stdout.splitlines() if ln.startswith(("PASS", "FAIL"))]
-        bad = [ln for ln in lines if ln.startswith("FAIL")]
-        pathlib.Path(workdir, "logs", "settings-selftest.txt").write_text(
-            s.stdout + s.stderr
-        )
-        _record(
-            checks,
-            "settings-self-test",
-            "pass" if s.returncode == 0 and lines and not bad else "fail",
-            f"rc={s.returncode}, {len(lines)} checks, failures={bad[:3]} {s.stderr[-150:]}",
-            evidence="logs/settings-selftest.txt",
-        )
-    except subprocess.TimeoutExpired:
-        _record(checks, "settings-self-test", "fail", "timed out after 60 s")
-    app = subprocess.Popen(
-        [SETTINGS_APP],
-        env=ienv,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    try:
-        time.sleep(5.0)
-        png = os.path.join(shots, "settings.png")
-        ok, detail = _screenshot_to_png("", png, env, 0.5)
-        _record(
-            checks,
-            "settings-screenshot",
-            "pass" if ok and app.poll() is None else "fail",
-            f"window alive={app.poll() is None}; {detail}",
-            evidence="shots/settings.png",
-        )
-    finally:
-        app.terminate()
-        with contextlib.suppress(subprocess.TimeoutExpired):
-            app.wait(timeout=5)
 
 
 def _summarize(checks_by_phase: dict[str, list[Check]]) -> dict[str, int]:

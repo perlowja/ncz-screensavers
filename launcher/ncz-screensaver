@@ -2241,6 +2241,66 @@ def cmd_plan(args):
     return 0
 
 
+PLUGIN_MODULE = "screensaver"
+PLUGIN_SO = "/opt/singularity/lib/singularity/plugins/screensaver/libscreensaver.so"
+SHELL_SCHEMA = "dev.sinty.desktop"
+
+
+def shell_gsettings(*args):
+    env = gsettings_env()
+    env["XDG_DATA_DIRS"] = "/opt/singularity/share:" + env.get(
+        "XDG_DATA_DIRS", "/usr/local/share:/usr/share"
+    )
+    env["GSETTINGS_SCHEMA_DIR"] = "/opt/singularity/share/glib-2.0/schemas"
+    return subprocess.run(
+        ["gsettings", *args],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+        env=env,
+    )
+
+
+def cmd_ensure_plugin(_args):
+    """Turn the Settings plugin on once for this user, keeping the rest of their list.
+
+    Runs at login from the idle daemon unit. It adds "screensaver" to the shell's
+    enabled-plugins when the plugin is installed and this user has not been through
+    the step before; a plugin the user switches off afterwards stays off.
+    """
+    if not Path(PLUGIN_SO).is_file() or not shutil.which("gsettings"):
+        return 0
+    state = (
+        Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
+        / "ncz-screensavers"
+    )
+    marker = state / "plugin-enabled"
+    if marker.exists():
+        return 0
+    got = shell_gsettings("get", SHELL_SCHEMA, "enabled-plugins")
+    if got.returncode != 0:
+        log("shell schema not available; not enabling the plugin")
+        return 0
+    try:
+        current = parse_gvariant(got.stdout.strip())
+    except (ValueError, SyntaxError):
+        return 0
+    if PLUGIN_MODULE not in current:
+        put = shell_gsettings(
+            "set",
+            SHELL_SCHEMA,
+            "enabled-plugins",
+            gvariant_text([*current, PLUGIN_MODULE]),
+        )
+        if put.returncode != 0:
+            log(f"could not enable the plugin: {put.stderr.strip()}")
+            return 1
+    state.mkdir(parents=True, exist_ok=True)
+    marker.write_text("1\n")
+    return 0
+
+
 def cmd_gpus(args):
     settings, _ = load_settings()
     rows = []
@@ -2316,6 +2376,10 @@ def build_parser():
     s.add_argument("hack")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_plan)
+    s = sub.add_parser(
+        "ensure-plugin", help="enable the Settings plugin once for this user"
+    )
+    s.set_defaults(fn=cmd_ensure_plugin)
     s = sub.add_parser("gpus", help="list GPUs, their roles and classes")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_gpus)

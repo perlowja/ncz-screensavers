@@ -5,6 +5,11 @@ option(
 )
 
 option(
+    'gtk4-reference-app', type: 'boolean', value: false,
+    description: 'Also install the reference GTK4/libadwaita front end (contrib/gtk4-reference-app). The Debian packaging turns it on and splits it into ncz-screensavers-gtk4-reference; the NCZ-OS image build leaves it off.',
+)
+
+option(
     'singularity-plugin', type: 'feature', value: 'disabled',
     description: 'Build the Singularity Settings plugin (needs the Singularity SDK: valac, libsingularity vapi and pkg-config file).',
 )
