@@ -20,8 +20,8 @@ Class from `ncz-screensaver calibrate`: a 160-step raymarcher at 1080p; weak at 
 |---|---|---|---|---|---|
 | chimera | amd/amdgpu | display | strong | 5.58 | AMD Radeon Graphics (radeonsi, navi14, ACO, DRM 3.64, 7.2.8-3-t2-trixie) |
 | chimera | intel/i915 | offload target | weak | 45.18 | Mesa Intel(R) UHD Graphics 630 (CFL GT2) |
-| pegasus | intel/i915 | display | weak | 46.54 | Mesa Intel(R) UHD Graphics (CML GT2) |
-| pegasus | nvidia/nvidia | offload target | strong | 3.27 | NVIDIA GeForce RTX 2060/PCIe/SSE2 |
+| pegasus | intel/i915 | display | weak | 46.72 | Mesa Intel(R) UHD Graphics (CML GT2) |
+| pegasus | nvidia/nvidia | offload target | strong | 3.43 | NVIDIA GeForce RTX 2060/PCIe/SSE2 |
 | o6n | other/linlondp | display | mid | 9.94 | Mali-G720-Immortalis |
 
 | Host | Hack | Min class | Display class | Target | Offload | Expected |
@@ -43,13 +43,13 @@ pegasus: AC online True, switcherooctl installed False. Mode off is the iGPU bas
 
 | Mode | Tier | Hack | Renderer | Offload variables in the hack process | nvidia-smi | Coverage |
 |---|---|---|---|---|---|---|
-| off | strong | `xshadertoy_alienbeacon_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 2.35 W, P8 | 1.00 |
-| off | mid | `xshadertoy_bestill1-0_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 1.90 W, P8 | 0.79 |
-| off | weak | `blackhole_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 1.90 W, P8 | 0.99 |
-| auto | strong | `xshadertoy_alienbeacon_gles3` | NVIDIA GeForce RTX 2060/PCIe/SSE2 | NCZ_GPU_CLASS=strong, __GLX_VENDOR_LIBRARY_NAME=nvidia, __NV_PRIME_RENDER_OFFLOAD=1, __VK_LAYER_NV_optimus=NVIDIA_only | pid listed True, util 49, 49 %, 75.89 W, P0 | 1.00 |
-| auto | mid | `xshadertoy_bestill1-0_gles3` | NVIDIA GeForce RTX 2060/PCIe/SSE2 | NCZ_GPU_CLASS=strong, __GLX_VENDOR_LIBRARY_NAME=nvidia, __NV_PRIME_RENDER_OFFLOAD=1, __VK_LAYER_NV_optimus=NVIDIA_only | pid listed True, util 61, 61 %, 78.88 W, P0 | 0.78 |
-| auto | weak | `blackhole_gles3` | NVIDIA GeForce RTX 2060/PCIe/SSE2 | NCZ_GPU_CLASS=strong, __GLX_VENDOR_LIBRARY_NAME=nvidia, __NV_PRIME_RENDER_OFFLOAD=1, __VK_LAYER_NV_optimus=NVIDIA_only | pid listed True, util 37, 37 %, 27.35 W, P0 | 0.98 |
-| auto-on-battery | strong | `xshadertoy_alienbeacon_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 2.13 W, P8 | 1.00 |
+| off | strong | `xshadertoy_alienbeacon_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 1.92 W, P8 | 1.00 |
+| off | mid | `xshadertoy_bestill1-0_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 1.88 W, P8 | 0.79 |
+| off | weak | `blackhole_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 2.39 W, P8 | 1.00 |
+| auto | strong | `xshadertoy_alienbeacon_gles3` | NVIDIA GeForce RTX 2060/PCIe/SSE2 | NCZ_GPU_CLASS=strong, __GLX_VENDOR_LIBRARY_NAME=nvidia, __NV_PRIME_RENDER_OFFLOAD=1, __VK_LAYER_NV_optimus=NVIDIA_only | pid listed True, util 49, 49 %, 75.40 W, P0 | 1.00 |
+| auto | mid | `xshadertoy_bestill1-0_gles3` | NVIDIA GeForce RTX 2060/PCIe/SSE2 | NCZ_GPU_CLASS=strong, __GLX_VENDOR_LIBRARY_NAME=nvidia, __NV_PRIME_RENDER_OFFLOAD=1, __VK_LAYER_NV_optimus=NVIDIA_only | pid listed True, util 61, 61 %, 76.88 W, P0 | 0.78 |
+| auto | weak | `blackhole_gles3` | NVIDIA GeForce RTX 2060/PCIe/SSE2 | NCZ_GPU_CLASS=strong, __GLX_VENDOR_LIBRARY_NAME=nvidia, __NV_PRIME_RENDER_OFFLOAD=1, __VK_LAYER_NV_optimus=NVIDIA_only | pid listed True, util 36, 36 %, 25.99 W, P0 | 0.99 |
+| auto-on-battery | strong | `xshadertoy_alienbeacon_gles3` | Mesa Intel(R) UHD Graphics (CML GT2) | NCZ_GPU_CLASS=weak | pid listed False, util 0, 0 %, 2.34 W, P8 | 1.00 |
 
 ## chimera
 
@@ -124,7 +124,7 @@ pegasus: AC online True, switcherooctl installed False. Mode off is the iGPU bas
 - GLES renderer: Mesa Intel(R) UHD Graphics (CML GT2); OpenGL ES 3.2 Mesa 26.1.6-1
 - Packages: {"libegl-mesa0": "26.1.6-1", "libgbm1": "26.1.6-1", "libgl1-mesa-dri": "26.1.6-1", "libvulkan1": "1.4.357.0-1", "mesa-vulkan-drivers": "26.1.6-1", "ncz-screensavers": "0.5.3+ux"}
 - Compositor: {"name": "labwc", "pid": 156426}
-- Started 2026-09-29T19:56:03Z, finished 2026-09-29T19:57:55Z
+- Started 2026-09-29T20:09:52Z, finished 2026-09-29T20:11:43Z
 
 ### pegasus: env
 
@@ -171,17 +171,17 @@ pegasus: AC online True, switcherooctl installed False. Mode off is the iGPU bas
 | Check | Status | Detail |
 |---|---|---|
 | settings-dump | PASS | 84 catalog entries in --dump |
-| settings-self-test | PASS | rc=0, 6 checks, failures=[]  GTK_A11Y should be set to 'none'.  (process:219306): Gsk-WARNING **: 15:57:48.699: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence-gpuclass/pegasus/logs/settings-selftest.txt) |
+| settings-self-test | PASS | rc=0, 6 checks, failures=[]  GTK_A11Y should be set to 'none'.  (process:222311): Gsk-WARNING **: 16:11:37.456: The new GL renderer has been renamed to gl. Try GSK_RENDERER=help [evidence](host-test-evidence-gpuclass/pegasus/logs/settings-selftest.txt) |
 | settings-screenshot | PASS | window alive=True; wrote /home/pegasus/ncz-host-test/results/shots/settings.png [evidence](host-test-evidence-gpuclass/pegasus/shots/settings.jpg) |
 
 ### pegasus: gpuclass
 
 | Check | Status | Detail |
 |---|---|---|
-| class-calibrated | PASS | display GPU class weak (46.54 ms, calibration, Mesa Intel(R) UHD Graphics (CML GT2)) |
+| class-calibrated | PASS | display GPU class weak (46.72 ms, calibration, Mesa Intel(R) UHD Graphics (CML GT2)) |
 | gpus-listed | PASS | pci-0000_00_02_0 intel/i915 display weak; pci-0000_01_00_0 nvidia/nvidia offload strong |
 | class-cache-per-gpu | PASS | cache entries: ['pci-0000_00_02_0', 'pci-0000_01_00_0'] |
-| class-cache-reused | PASS | second calibrate returned ms=46.54 (first 46.54) |
+| class-cache-reused | PASS | second calibrate returned ms=46.72 (first 46.72) |
 | flagged-list-complete | PASS | class weak: 15 flagged, 15 expected, 84 tier rows, catalog ids without a tier row: none, flagged without expectation text: 0 |
 | default-pool-no-heavy | PASS | pool class weak: 66 hacks, above-class hacks in the pool: none |
 | offload-plan-cityflow | PASS | weak hack, display weak, target nvidia/nvidia strong: offload=False expected False |
@@ -195,12 +195,12 @@ pegasus: AC online True, switcherooctl installed False. Mode off is the iGPU bas
 | Check | Status | Detail |
 |---|---|---|
 | offload-ac-online | PASS | AC online: True; switcherooctl installed: False (the environment fallback is used when it is absent) |
-| offload-off-strong-xshadertoy_alienbeacon | PASS | iGPU baseline: renderer 'Mesa Intel(R) UHD Graphics (CML GT2)', env {'NCZ_GPU_CLASS': 'weak'}, nvidia-smi pid listed False, util 0 pstate/power '0 %, 2.35 W, P8', coverage 1.00 |
-| offload-off-mid-xshadertoy_bestill1-0 | PASS | iGPU baseline: renderer 'Mesa Intel(R) UHD Graphics (CML GT2)', env {'NCZ_GPU_CLASS': 'weak'}, nvidia-smi pid listed False, util 0 pstate/power '0 %, 1.90 W, P8', coverage 0.79 |
-| offload-off-weak-blackhole | PASS | iGPU baseline: renderer 'Mesa Intel(R) UHD Graphics (CML GT2)', env {'NCZ_GPU_CLASS': 'weak'}, nvidia-smi pid listed False, util 0 pstate/power '0 %, 1.90 W, P8', coverage 0.99 |
-| offload-auto-strong-xshadertoy_alienbeacon | PASS | offload on AC: renderer 'NVIDIA GeForce RTX 2060/PCIe/SSE2', env {'__NV_PRIME_RENDER_OFFLOAD': '1', '__GLX_VENDOR_LIBRARY_NAME': 'nvidia', '__VK_LAYER_NV_optimus': 'NVIDIA_only', 'NCZ_GPU_CLASS': 'strong'}, nvidia-smi pid listed True, util 49 pstate/power '49 %, 75.89 W, P0', coverage 1.00 |
-| offload-auto-mid-xshadertoy_bestill1-0 | PASS | offload on AC: renderer 'NVIDIA GeForce RTX 2060/PCIe/SSE2', env {'__NV_PRIME_RENDER_OFFLOAD': '1', '__GLX_VENDOR_LIBRARY_NAME': 'nvidia', '__VK_LAYER_NV_optimus': 'NVIDIA_only', 'NCZ_GPU_CLASS': 'strong'}, nvidia-smi pid listed True, util 61 pstate/power '61 %, 78.88 W, P0', coverage 0.78 |
-| offload-auto-weak-blackhole | PASS | offload on AC: renderer 'NVIDIA GeForce RTX 2060/PCIe/SSE2', env {'__NV_PRIME_RENDER_OFFLOAD': '1', '__GLX_VENDOR_LIBRARY_NAME': 'nvidia', '__VK_LAYER_NV_optimus': 'NVIDIA_only', 'NCZ_GPU_CLASS': 'strong'}, nvidia-smi pid listed True, util 37 pstate/power '37 %, 27.35 W, P0', coverage 0.98 |
+| offload-off-strong-xshadertoy_alienbeacon | PASS | iGPU baseline: renderer 'Mesa Intel(R) UHD Graphics (CML GT2)', env {'NCZ_GPU_CLASS': 'weak'}, nvidia-smi pid listed False, util 0 pstate/power '0 %, 1.92 W, P8', coverage 1.00 |
+| offload-off-mid-xshadertoy_bestill1-0 | PASS | iGPU baseline: renderer 'Mesa Intel(R) UHD Graphics (CML GT2)', env {'NCZ_GPU_CLASS': 'weak'}, nvidia-smi pid listed False, util 0 pstate/power '0 %, 1.88 W, P8', coverage 0.79 |
+| offload-off-weak-blackhole | PASS | iGPU baseline: renderer 'Mesa Intel(R) UHD Graphics (CML GT2)', env {'NCZ_GPU_CLASS': 'weak'}, nvidia-smi pid listed False, util 0 pstate/power '0 %, 2.39 W, P8', coverage 1.00 |
+| offload-auto-strong-xshadertoy_alienbeacon | PASS | offload on AC: renderer 'NVIDIA GeForce RTX 2060/PCIe/SSE2', env {'__NV_PRIME_RENDER_OFFLOAD': '1', '__GLX_VENDOR_LIBRARY_NAME': 'nvidia', '__VK_LAYER_NV_optimus': 'NVIDIA_only', 'NCZ_GPU_CLASS': 'strong'}, nvidia-smi pid listed True, util 49 pstate/power '49 %, 75.40 W, P0', coverage 1.00 |
+| offload-auto-mid-xshadertoy_bestill1-0 | PASS | offload on AC: renderer 'NVIDIA GeForce RTX 2060/PCIe/SSE2', env {'__NV_PRIME_RENDER_OFFLOAD': '1', '__GLX_VENDOR_LIBRARY_NAME': 'nvidia', '__VK_LAYER_NV_optimus': 'NVIDIA_only', 'NCZ_GPU_CLASS': 'strong'}, nvidia-smi pid listed True, util 61 pstate/power '61 %, 76.88 W, P0', coverage 0.78 |
+| offload-auto-weak-blackhole | PASS | offload on AC: renderer 'NVIDIA GeForce RTX 2060/PCIe/SSE2', env {'__NV_PRIME_RENDER_OFFLOAD': '1', '__GLX_VENDOR_LIBRARY_NAME': 'nvidia', '__VK_LAYER_NV_optimus': 'NVIDIA_only', 'NCZ_GPU_CLASS': 'strong'}, nvidia-smi pid listed True, util 36 pstate/power '36 %, 25.99 W, P0', coverage 0.99 |
 | offload-battery-plan-xshadertoy_alienbeacon | PASS | simulated battery, gpu-offload auto: plan {'hack': 'xshadertoy_alienbeacon_gles3', 'min_class': 'strong', 'gpu': 'pci-0000_00_02_0', 'gpu_driver': 'i915', 'offload': False, 'class': 'weak', 'env': [], 'on_battery': True, 'setting': 'auto'} |
 | offload-battery-plan-xshadertoy_bestill1-0 | PASS | simulated battery, gpu-offload auto: plan {'hack': 'xshadertoy_bestill1-0_gles3', 'min_class': 'mid', 'gpu': 'pci-0000_00_02_0', 'gpu_driver': 'i915', 'offload': False, 'class': 'weak', 'env': [], 'on_battery': True, 'setting': 'auto'} |
 | offload-battery-plan-blackhole | PASS | simulated battery, gpu-offload auto: plan {'hack': 'blackhole_gles3', 'min_class': 'weak', 'gpu': 'pci-0000_00_02_0', 'gpu_driver': 'i915', 'offload': False, 'class': 'weak', 'env': [], 'on_battery': True, 'setting': 'auto'} |
