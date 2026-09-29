@@ -1,3 +1,11 @@
+ncz-screensavers (0.3.2) unstable; urgency=medium
+
+  * hyprsaver geometry: visible wireframe (Reinhard capped a lone edge at 50%).
+  * hyprsaver lissajous: continuous curves instead of dots (segment distance).
+  * Launcher latency, reap and DPMS proxy fixes from the four-host matrix.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 14:00:00 +0000
+
 ncz-screensavers (0.3.1) unstable; urgency=medium
 
   * Black Hole: kipthorne (symmetric amber, no shifts) and faithful (Doppler,
