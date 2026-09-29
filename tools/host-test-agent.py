@@ -2832,7 +2832,19 @@ def phase_gpuclass(results, checks, env, workdir, pw):
         (
             h
             for h, c in tiers.items()
-            if c == "weak" and h in {r["id"] for r in listing if r.get("installed")}
+            if c == "weak"
+            and not h.startswith(("hyprsaver_", "xshadertoy_", "blackhole_"))
+            and h in {r["id"] for r in listing if r.get("installed")}
+        ),
+        None,
+    )
+    light_shader = next(
+        (
+            h
+            for h, c in tiers.items()
+            if c == "weak"
+            and h.startswith("hyprsaver_")
+            and h in {r["id"] for r in listing if r.get("installed")}
         ),
         None,
     )
@@ -2846,13 +2858,14 @@ def phase_gpuclass(results, checks, env, workdir, pw):
     )
     best = max(others, key=lambda g: CLASS_RANK[g["class"]])
     matrix = []
-    for hid in (light, heavy_id):
+    for hid in (light, light_shader, heavy_id):
         if not hid:
             continue
         plan = _json_cli(ienv, "plan", hid, "--json") or {}
         need = CLASS_RANK[tiers[hid]]
+        is_shader = hid.startswith(("hyprsaver_", "xshadertoy_", "blackhole_"))
         expect_off = (
-            need > CLASS_RANK[dclass]
+            (need > CLASS_RANK[dclass] or is_shader)
             and CLASS_RANK[best["class"]] > CLASS_RANK[dclass]
             and plan.get("on_battery") is False
         )

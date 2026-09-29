@@ -618,3 +618,12 @@ def test_on_battery_no_hack_offloads_even_shader_hacks(env):
         "hyprsaver_light_gles3", S, base_env={"HOME": str(env.tmp)}
     )
     assert "__NV_PRIME_RENDER_OFFLOAD" not in child and "DRI_PRIME" not in child
+
+
+def test_unmeasurable_hack_gets_a_floor_expectation(env):
+    layout(env, "single-soc")
+    (env.tmp / "tiers.tsv").write_text(
+        "slow_gles3\tstrong\t-\t-\t-\t-\t-\t2026-09-29 test\n"
+    )
+    rows = env.load_tier_rows()
+    assert env.expectation("slow_gles3", "weak", rows) == "under 6 fps on Intel UHD 630"
