@@ -38,3 +38,14 @@ stays reachable on its original `origin/*` ref only.
   (`stylized`, `kipthorne`, `faithful`); the launcher exports the nick as `NCZ_BLACKHOLE_COLORS`.
 - Black Hole: color modes restored (see `docs/blackhole/`), jet rewritten, star field re-hashed.
 - `debian/`: package `ncz-screensavers` 0.2.0 for amd64 and arm64.
+
+## Open licensing conflict (operator decision required)
+
+- `LICENSE` in the repository root is Apache-2.0.
+- `meson.build` declares `license: 'GPL-2.0-or-later'`; `debian/copyright` follows it for project-original files only because it must say something.
+- Vendored and ported code carries its own terms: Black Hole (MIT, Adriwin06/black-hole, `vendor/blackhole-LICENSE.txt`), hyprsaver shaders (MIT, `vendor/hyprsaver/LICENSE`), xshadertoy shaders (MIT, CC0 or CC BY 3.0 per file header, plus original clean-room ports), and the 12 ported classics (xscreensaver permissive notice, jwz and other authors).
+- Apache-2.0 and GPL-2 are not compatible for combined distribution; the choice for project-original files (`src/gles3_*.c`, `launcher/`, `tools/`, `config/`) is open. `debian/copyright` states this conflict in its `Files: *` stanza and needs updating once decided.
+
+## Launcher requirement: SIGKILL fallback (for LEAD 2)
+
+On O6N (Mali-G720, vendor EGL) while the session is locked, the compositor sends frame callbacks only to the lock surface. A hack's `eglSwapBuffers` then blocks inside the driver's `poll` and the process does not react to SIGTERM (observed: main thread in `poll_schedule_timeout`, no CPU use, `timeout -k2` needed SIGKILL, rc 137). The launcher must therefore stop a hack with SIGTERM, wait a short bounded time (about 1 second), then SIGKILL, and must never wait unboundedly on a hack exiting. It should also avoid starting a hack while the session is locked.
