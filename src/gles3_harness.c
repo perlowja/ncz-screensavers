@@ -292,6 +292,10 @@ static double mono_s(void) {
     return t.tv_sec + t.tv_nsec * 1e-9;
 }
 
+/* GL_RENDERER captured while the startup context is current (the platform
+ * render-size caps depend on it). */
+static char g_renderer[256];
+
 /* Opaque region covers the whole (native) surface; re-issued on every resize. */
 static void set_opaque_region(struct app *a) {
     struct wl_region *opaque = wl_compositor_create_region(a->compositor);
@@ -308,7 +312,7 @@ static void set_opaque_region(struct app *a) {
 static void apply_render_size(struct app *a, int nw, int nh) {
     int expl = 0;
     int cap = ncz_cfg_max_render_height(&expl);
-    const char *rend = (const char *)glGetString(GL_RENDERER);
+    const char *rend = g_renderer[0] ? g_renderer : (const char *)glGetString(GL_RENDERER);
     if (!expl) cap = ncz_render_platform_cap(rend, nh);
     int rw = nw, rh = nh;
     int scaled = ncz_render_size(nw, nh, a->rscale, cap, &rw, &rh);
@@ -348,6 +352,7 @@ static void commit_render_size(struct app *a) {
 static void guard_renderer(const char *where) {
     const char *rend = (const char *)glGetString(GL_RENDERER);
     if (!rend) { fprintf(stderr, "[guard] renderer string unavailable at %s\n", where); return; }
+    if (!g_renderer[0]) snprintf(g_renderer, sizeof g_renderer, "%s", rend);
     char gmsg[512];
     if (ncz_gpu_guard_check("", rend, getenv("NCZ_ALLOW_SOFTWARE"), gmsg, sizeof gmsg)) {
         fprintf(stderr, "[guard] %s\n", gmsg);

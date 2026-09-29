@@ -170,7 +170,7 @@ vec3 nebula(vec3 d){
  float warp=skyNoise(v*.65+vec3(7,19,3));
  v+=1.8*vec3(warp,-warp,.5*warp);
  float n=.57*skyNoise(v)+.28*skyNoise(v*2.03+17.1)+.15*skyNoise(v*4.11-9.2);
- float band=exp(-pow((q.y+.24*(warp-.5))/.36,2.));
+ float bq=(q.y+.24*(warp-.5))/.36;float band=exp(-bq*bq);   // not pow(x,2.): pow of a negative base is undefined
  float cloud=smoothstep(.30,.78,n+u_nebula.z)*(.20+.80*band);
  float filaments=smoothstep(.42,.72,n)*cloud;
  // Nebula sampled in HSL with its own decorrelated hue; never falls into the
@@ -205,7 +205,7 @@ vec3 stars(vec3 d){
  float on=step(1.-.0022*u_star_density,n);
  vec2 sp=vec2(hash21(hc+3.1),hash21(hc+8.7))*.6+.2;
  float dist=length(f-sp);
- float s=on*smoothstep(.34,.0,dist);
+ float s=on*(1.-smoothstep(0.,.34,dist));   // smoothstep needs edge0 < edge1
  vec3 c=mix(vec3(.55,.7,1),vec3(1,.72,.45),hash21(hc+7.));
  return c*s*s*(.65+.35*sin(u_seed+n*40.))*2.4;
 }
@@ -253,10 +253,11 @@ vec3 diskNormalAtTime(float t){
 // that maps +Z to diskNormal. Implemented as Rodrigues' rotation about the
 // axis (diskNormal x +Z).
 vec3 toDiskLocal(vec3 p,vec3 n){
- vec3 axis=normalize(cross(n,vec3(0.,0.,1.)));
+ vec3 cz=cross(n,vec3(0.,0.,1.));
+ if(length(cz)<1e-5)return p;         // n ~ +Z: identity (checked before normalize: normalize(0) is undefined)
+ vec3 axis=normalize(cz);
  float ang=acos(clamp(n.z,-1.,1.));    // angle from world +Z
  float c=cos(ang),s=sin(ang);
- if(length(axis)<1e-5)return p;        // n ~ +Z: identity
  return p*c + cross(axis,p)*s + axis*dot(axis,p)*(1.-c);
 }
 // Analytic blackbody colour over ~1000K..40000K, approximating the Planck
