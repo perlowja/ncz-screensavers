@@ -1,3 +1,12 @@
+ncz-screensavers (0.7.1) unstable; urgency=medium
+
+  * Suggests (not Recommends) ncz-screensavers-plugin so other distributions do not
+    pull in the Singularity desktop; the NCZ-OS image installs the plugin.
+  * ncz-screensavers-gtk4-reference: Breaks/Replaces for the file move.
+  * Reference application test runs against the tree schema and skips cleanly.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 19:20:00 -0400
+
 ncz-screensavers (0.7.0) unstable; urgency=medium
 
   * The standalone settings application is no longer part of the engine package.

@@ -10,7 +10,7 @@ set -eu
 ARCH=${1:?arch (amd64|arm64)}
 SRC=${2:?build dir}
 OUT=${3:?output .deb}
-VER=${4:-0.3.0}
+VER=${4:-0.3.1}
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 D=$W/opt/singularity/lib/singularity/plugins/screensaver
@@ -22,7 +22,7 @@ Package: ncz-screensavers-plugin
 Version: $VER
 Architecture: $ARCH
 Maintainer: Jason Perlow <jperlow@gmail.com>
-Depends: ncz-singularity-desktop, ncz-screensavers (>= 0.7.0)
+Depends: ncz-singularity-desktop, ncz-screensavers (>= 0.7.1)
 Section: x11
 Priority: optional
 Description: Screensaver and Lockscreen page for the Singularity desktop
