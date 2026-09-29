@@ -170,7 +170,7 @@ def build_presets(root, ships):
     option schema and return presets.tsv rows: id, title, group, hack, args,
     accuracy, description."""
     base = root / "assets" / "screensaver-chooser" / "options"
-    rows, problems = [], []
+    rows, problems, failed = [], [], set()
     pdir = base / "presets"
     if not pdir.is_dir():
         return rows
@@ -185,7 +185,9 @@ def build_presets(root, ships):
         title, group = PRESET_TITLES.get(hack, (hack, hack))
         for conf in sorted(hdir.glob("*.conf")):
             pid = conf.stem
-            if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", pid):
+            key = f"{hack}/{conf.name}"
+            n_before = len(problems)
+            if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", pid):
                 problems.append(f"{conf.name}: bad preset id")
                 continue
             sec = parse_conf(conf)
@@ -193,7 +195,10 @@ def build_presets(root, ships):
             for k in ("name", "description", "accuracy", "sources"):
                 if not meta.get(k):
                     problems.append(f"{conf.name}: [preset] {k} is required")
-            if meta.get("accuracy") not in ("faithful", "artistic"):
+            for k in ("name", "description", "accuracy"):
+                if any(ch in meta.get(k, "") for ch in "\t\r\n"):
+                    problems.append(f"{conf.name}: [preset] {k} contains a tab or newline")
+            if meta.get("accuracy") and meta.get("accuracy") not in ("faithful", "artistic"):
                 problems.append(f"{conf.name}: accuracy must be faithful or artistic")
             opts = sec.get(hack, {})
             if not opts:
@@ -205,7 +210,8 @@ def build_presets(root, ships):
                 err = check_value(schema[k], v)
                 if err:
                     problems.append(f"{conf.name}: {k}={v}: {err}")
-            if problems and any(conf.name in p for p in problems):
+            if len(problems) > n_before:
+                failed.add(key)
                 continue
             rows.append("\t".join([
                 f"{binary}--{pid}", f"{title}: {meta['name']}", group, binary,

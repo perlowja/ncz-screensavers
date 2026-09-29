@@ -38,7 +38,7 @@ int ncz_cfg_scale_auto(void) { return g_ready ? !strcmp(ncz_opts_get(&g_o, "rend
  * and the environment in the precedence chain, so an explicit selection beats
  * the saved defaults but env and command line still win. */
 static int preset_id_ok(const char *id) {
-    if (!id || !*id) return 0;
+    if (!id || !*id || *id == '-' || strlen(id) > 64) return 0;
     for (const char *p = id; *p; p++)
         if (!((*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9') || *p == '-')) return 0;
     return 1;
@@ -105,7 +105,7 @@ static void list_presets(const char *group) {
             for (int k = 0; k < nseen; k++) if (!strcmp(seen[k], id)) dup = 1;
             if (dup || nseen >= 64) continue;
             snprintf(seen[nseen++], 64, "%s", id);
-            char path[700], name[200], acc[40], desc[400];
+            char path[1024], name[200], acc[40], desc[400];
             snprintf(path, sizeof path, "%s/%s", dirs[i], e->d_name);
             preset_meta(path, "name", name, sizeof name);
             preset_meta(path, "accuracy", acc, sizeof acc);
@@ -175,7 +175,13 @@ int ncz_harness_cfg_init(int argc, char **argv) {
         }
         char tag[96] = "";
         const char *pp = NULL;
-        if (pass == 1 && *ppath) { snprintf(tag, sizeof tag, "preset %s", ncz_opts_get(&g_o, "preset")); pp = ppath; }
+        if (pass == 1 && *ppath) {
+            const char *base = strrchr(ppath, '/');
+            snprintf(tag, sizeof tag, "preset %s", base ? base + 1 : ppath);
+            char *dot = strstr(tag, ".conf");
+            if (dot) *dot = 0;
+            pp = ppath;
+        }
         flags = ncz_opts_resolve_preset(&g_o, prefix, group, NULL, pp, tag, argc, argv, prog, NULL);
         if (pass == 0) {
             const char *pid = hack ? ncz_opts_get(&g_o, "preset") : "";
@@ -185,7 +191,7 @@ int ncz_harness_cfg_init(int argc, char **argv) {
                     ppath[0] = 0;
                 }
             }
-            if (!*ppath) { g_o.quiet = 0; ncz_opts_free(&g_o); continue; }
+            if (!*ppath) { ncz_opts_free(&g_o); continue; }
             ncz_opts_free(&g_o);
         }
     }

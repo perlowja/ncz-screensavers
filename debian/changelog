@@ -1,3 +1,14 @@
+ncz-screensavers (0.5.0) unstable; urgency=medium
+
+  * Black Hole presets: sagittarius-a-star, m87-star, ton-618, quasar,
+    quasar-edge-on, blazar, microquasar, kerr (faithful or artistic labels);
+    each is also a catalog row (presets.tsv) launching --preset=<id>.
+    New options: preset, disk-outer, jet-length, torus, companion; new eht
+    palette; --list-presets and --print-config.
+  * Render scale ladder ends at 0.35; docs: shader hack guide, scenes design.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 20:00:00 +0000
+
 ncz-screensavers (0.4.0) unstable; urgency=medium
 
   * Black Hole: configurable through one option table (command line,
