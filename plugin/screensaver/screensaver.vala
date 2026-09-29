@@ -10,7 +10,7 @@ public void peas_register_types (TypeModule module) {
 }
 
 public class ScreensaverPlugin : Object, Singularity.Plugin {
-    private ScreensaverBackend backend = new NczScreensaverBackend ();
+    private ScreensaverBackend backend = create_screensaver_backend ();
 
     public void activate (PluginContext context) {
     }
@@ -39,8 +39,6 @@ public class ScreensaverUnavailable : Gtk.Box {
 public class ScreensaverSettings : Gtk.Box {
     private const string[] MODE_IDS = { "off", "one", "random" };
     private const string[] MODE_LABELS = { "Off", "One screensaver", "Random rotation" };
-    private const string[] COLOR_IDS = { "stylized", "kipthorne", "faithful" };
-    private const string[] COLOR_LABELS = { "Stylized", "Kip Thorne (blackbody)", "Faithful (blackbody with Doppler shift)" };
     private const string[] GPU_IDS = { "off", "prime", "auto" };
     private const string[] GPU_LABELS = { "Same GPU as the desktop", "Discrete GPU (PRIME offload)", "Automatic" };
 
@@ -54,7 +52,7 @@ public class ScreensaverSettings : Gtk.Box {
     private SpinRow lock_delay_row;
     private SwitchRow suspend_row;
     private SpinRow display_row;
-    private SelectionRow color_row;
+    private SelectionRow? color_row = null;
     private SelectionRow? gpu_row = null;
     private Gee.HashMap<string, SwitchRow> pool_rows = new Gee.HashMap<string, SwitchRow> ();
     private Gee.HashMap<string, string> hack_by_label = new Gee.HashMap<string, string> ();
@@ -71,7 +69,8 @@ public class ScreensaverSettings : Gtk.Box {
         if (backend.lock_supported)
             build_lock_group ();
         build_display_group ();
-        build_color_group ();
+        if (backend.color_hack != null)
+            build_color_group ();
         if (backend.gpu_offload_supported)
             build_gpu_group ();
         build_hack_groups ();
@@ -143,6 +142,7 @@ public class ScreensaverSettings : Gtk.Box {
         lock_row.switch_btn.notify["active"].connect (() => {
             if (!refreshing)
                 backend.lock_enabled = lock_row.switch_btn.active;
+            lock_delay_row.sensitive = lock_row.switch_btn.active;
         });
         group.add_row (lock_row);
 
@@ -174,23 +174,23 @@ public class ScreensaverSettings : Gtk.Box {
     }
 
     private void build_color_group () {
-        var group = new PreferencesGroup ("Black hole");
+        var group = new PreferencesGroup ("Color model");
         append (group);
 
-        color_row = new SelectionRow ("Color model", COLOR_LABELS, COLOR_LABELS[0]);
+        color_row = new SelectionRow ("Color model", backend.color_labels, backend.color_labels[0]);
         color_row.selected.connect ((label) => {
             if (refreshing)
                 return;
-            int i = index_of (COLOR_LABELS, label);
+            int i = index_of (backend.color_labels, label);
             if (i >= 0)
-                backend.color_mode = COLOR_IDS[i];
+                backend.color_mode = backend.color_ids[i];
         });
         group.add_row (color_row);
 
-        var preview = new ActionRow ("Preview", "Runs the black hole for 30 seconds");
+        var preview = new ActionRow ("Preview", "Runs the screensaver for 30 seconds");
         var button = new Button.with_label ("Preview");
         button.valign = Align.CENTER;
-        button.clicked.connect (() => backend.preview ("blackhole_gles3"));
+        button.clicked.connect (() => backend.preview (backend.color_hack));
         preview.add_suffix (button);
         group.add_row (preview);
     }
@@ -277,8 +277,10 @@ public class ScreensaverSettings : Gtk.Box {
             suspend_row.switch_btn.active = backend.lock_on_suspend;
         }
         display_row.spin_btn.value = minutes (backend.display_off_delay);
-        int ci = index_of (COLOR_IDS, backend.color_mode);
-        color_row.current_value = COLOR_LABELS[ci >= 0 ? ci : 0];
+        if (color_row != null) {
+            int ci = index_of (backend.color_ids, backend.color_mode);
+            color_row.current_value = backend.color_labels[ci >= 0 ? ci : 0];
+        }
         if (gpu_row != null) {
             int gi = index_of (GPU_IDS, backend.gpu_offload);
             gpu_row.current_value = GPU_LABELS[gi >= 0 ? gi : 0];

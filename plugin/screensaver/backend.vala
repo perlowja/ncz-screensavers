@@ -21,6 +21,9 @@ public interface ScreensaverBackend : Object {
     public abstract int lock_delay { get; set; }
     public abstract bool lock_on_suspend { get; set; }
     public abstract int display_off_delay { get; set; }
+    public abstract string? color_hack { get; }
+    public abstract string[] color_ids { owned get; }
+    public abstract string[] color_labels { owned get; }
     public abstract string color_mode { owned get; set; }
     public abstract bool gpu_offload_supported { get; }
     public abstract string gpu_offload { owned get; set; }

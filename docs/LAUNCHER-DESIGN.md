@@ -158,3 +158,31 @@ python3 tools/wl_poke.py motion; python3 tools/wl_poke.py key --codes 50,23,49,2
 If the compositor does not answer at all, `sudo systemctl restart greetd` ends the session and returns to the greeter
 (this closes every application). `wlr-randr --output NAME --off; wlr-randr --output NAME --on` re-enables a panel that a
 crashed DPMS client left off; the idle daemon also powers all outputs on when it exits.
+
+## 6. Singularity Settings plugin: "Screensaver and Lockscreen"
+
+`plugin/screensaver/` is a normal Singularity plugin (libpeas extension of `Singularity.Plugin`, laid out like
+`sensors` and `wallpapers-*` in singularity-plugins): `screensaver.plugin`, `screensaver.vala` (UI), `backend.vala`
+(generic `ScreensaverBackend` contract), `ncz_backend.vala` (the only NCZ-specific file). It is built on libsingularity
+widgets only (`PreferencesGroup`, `SwitchRow`, `SpinRow`, `SelectionRow`, `ActionRow`, `StatusPage`); no libadwaita.
+
+- **Where it appears.** The shell has no plugin API for adding a top-level Settings page yet, so the page is the plugin's
+  settings widget, reached exactly like the other plugins: Settings > Plugins > "Screensaver and Lockscreen" (gear), and it
+  is found by Settings search ("Screensaver and Lockscreen, Plugins / Active Plugins"). When the shell grows an
+  `add_settings_page` hook, `ScreensaverSettings` is a self-contained widget that can be hosted as its own page unchanged.
+- **Enabling.** Like every plugin it is off until listed in `dev.sinty.desktop enabled-plugins` (the test hosts have
+  `'screensaver'` appended; the distro override should list it next to `'sensors'`).
+- **Gate.** `is_available()` checks the settings schema, the catalog, the `ncz-screensaver` launcher and the idle daemon
+  binary; otherwise the page shows a status page instead of controls.
+- **No write-only settings.** Every control has a consumer: mode, chooser, pool, start and change delays, display-off,
+  color model and GPU offload are read by `ncz-screensaver` / `ncz-screensaver-idled`; the lock switch, lock delay and lock
+  on suspend are the shell's own `dev.sinty.lockscreen` keys (the shell is the locker), so `dev.ncz.screensaver lock-enabled`
+  now defaults to false and the idle daemon only locks when explicitly asked. The playlist mode has no editor and is not offered.
+  The GPU row only appears on a hybrid NVIDIA machine.
+- **Build.** `tools/build-plugin.sh SDK_PREFIX OUT_DIR` builds against a Singularity SDK (headers, vapi and pkg-config file
+  from `/opt/singularity`; libsingularity itself is only linked by soname, so the same recipe builds on amd64 and arm64).
+  The main `meson.build` builds it with `-Dsingularity-plugin=enabled`; it installs `libscreensaver.so` (0755) and
+  `screensaver.plugin` (0644) into `/opt/singularity/lib/singularity/plugins/screensaver/`, the layout of the siblings.
+- **Evidence.** `docs/ux-shots/` (CHIMERA, MEDUSA, PEGASUS after a greetd restart and scripted login): settings search
+  result, the Plugins list with the entry, and the plugin page including the black hole, graphics (PEGASUS only) and per-hack
+  groups. Clicking the switches and spin buttons changes `dev.sinty.lockscreen` and `dev.ncz.screensaver` as expected.

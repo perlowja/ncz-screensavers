@@ -1,3 +1,7 @@
+public ScreensaverBackend create_screensaver_backend () {
+    return new NczScreensaverBackend ();
+}
+
 public class NczScreensaverBackend : Object, ScreensaverBackend {
     private const string SCHEMA = "dev.ncz.screensaver";
     private const string LOCK_SCHEMA = "dev.sinty.lockscreen";
@@ -101,6 +105,18 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     public int display_off_delay {
         get { return settings.get_int ("display-off-delay"); }
         set { settings.set_int ("display-off-delay", value); }
+    }
+
+    public string? color_hack {
+        get { return "blackhole_gles3"; }
+    }
+
+    public string[] color_ids {
+        owned get { return { "stylized", "kipthorne", "faithful" }; }
+    }
+
+    public string[] color_labels {
+        owned get { return { "Stylized", "Kip Thorne (blackbody)", "Faithful (blackbody with Doppler shift)" }; }
     }
 
     public string color_mode {
