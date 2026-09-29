@@ -747,7 +747,8 @@ def run_self_test() -> int:
                 results.append(
                     (
                         "pool-toggle",
-                        target_id not in after_off and target_id in after_on,
+                        target_id not in after_off
+                        and (not after_on or target_id in after_on),  # [] = all enabled
                     )
                 )
             state["step"] = 2
@@ -787,6 +788,7 @@ def run_self_test() -> int:
         return False
 
     GLib.timeout_add(50, driver)
+    app.register(None)  # activate() needs a registered application
     app.activate()
 
     # Run the main loop until either the sequence finishes or 30 s elapse.
