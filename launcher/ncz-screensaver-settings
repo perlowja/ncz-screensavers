@@ -68,6 +68,12 @@ MODE_LABEL = {
 # Black hole color choices.
 COLOR_NICKS = ("stylized", "kipthorne", "faithful")
 GPU_NICKS = ("auto", "prime", "off")
+RENDER_PRESETS = (
+    ("auto", "Auto (recommended)", ("auto", 1.0, 0)),
+    ("high", "High (native resolution)", ("fixed", 1.0, 0)),
+    ("balanced", "Balanced (75%)", ("fixed", 0.75, 0)),
+    ("fast", "Fast (50%, 1080p cap)", ("fixed", 0.5, 1080)),
+)
 POOL_NICKS = ("auto", "igpu-only", "all")
 POOL_LABEL = {
     "auto": "Automatic",
@@ -142,6 +148,28 @@ def load_catalog() -> list[dict]:
     except OSError:
         return []
     return rows
+
+
+def load_broken() -> dict[str, tuple[str, str]]:
+    """{hack id: (status, reason)} from broken.tsv; empty when not installed."""
+    for path in (
+        os.environ.get("NCZ_SCREENSAVER_BROKEN", ""),
+        "/usr/share/ncz-screensavers/broken.tsv",
+        "/usr/share/ncz-screensaver-chooser/broken.tsv",
+    ):
+        if path and os.path.isfile(path):
+            out: dict[str, tuple[str, str]] = {}
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    fields = line.rstrip("\n").split("\t")
+                    if (
+                        len(fields) >= 3
+                        and not line.startswith("#")
+                        and fields[1] in ("broken", "suspect")
+                    ):
+                        out[fields[0]] = (fields[1], fields[2])
+            return out
+    return {}
 
 
 def load_tiers() -> dict[str, str]:
@@ -397,6 +425,11 @@ def read_dump(settings: Gio.Settings, catalog_view: list[dict]) -> dict:
         "color": settings.get_string("blackhole-color-mode"),
         "gpu_offload": settings.get_string("gpu-offload"),
         "pool_gpu_class": settings.get_string("pool-gpu-class"),
+        "render": [
+            settings.get_string("render-scale-mode"),
+            settings.get_double("render-scale"),
+            settings.get_int("max-render-height"),
+        ],
     }
 
 
@@ -583,6 +616,23 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             "Only the screensaver process is offloaded; the desktop stays on its GPU."
         )
         page.add(grp)
+        self._render_row = Adw.ComboRow.new()
+        self._render_row.set_title("Render quality")
+        self._render_row.set_subtitle(
+            "Lower quality renders shader screensavers at a smaller size: less GPU load, less stutter on 4K screens"
+        )
+        self._render_row.set_model(
+            Gtk.StringList.new([p[1] for p in RENDER_PRESETS] + ["Custom"])
+        )
+        self._render_row.connect("notify::selected", self._on_render_changed)
+        grp.add(self._render_row)
+        self._render_height_row = Adw.SpinRow.new_with_range(0, 8192, 10)
+        self._render_height_row.set_title("Maximum render height (advanced)")
+        self._render_height_row.set_subtitle(
+            "Pixels; 0 lets Auto decide (choose High for no cap)"
+        )
+        self._render_height_row.connect("changed", self._on_render_height_changed)
+        grp.add(self._render_height_row)
         self._gpu_row = Adw.ComboRow.new()
         self._gpu_row.set_title("Screensaver GPU")
         self._gpu_row.set_model(Gtk.StringList.new([GPU_LABEL[n] for n in GPU_NICKS]))
@@ -611,6 +661,7 @@ class ScreensaverWindow(Adw.ApplicationWindow):
 
         # Group by GPU tier when tiers.tsv is installed, else by catalog group.
         tiers = load_tiers()
+        known = load_broken()
         cat_order = {
             g: i for i, g in enumerate(dict.fromkeys(r["group"] for r in self._catalog))
         }
@@ -655,6 +706,16 @@ class ScreensaverWindow(Adw.ApplicationWindow):
                     badge.add_css_class("dim-label")
                     badge.set_valign(Gtk.Align.CENTER)
                     ar.add_suffix(badge)
+                if r["id"] in known:
+                    flag = Gtk.Label.new(
+                        "Known issue"
+                        if known[r["id"]][0] == "broken"
+                        else "Under review"
+                    )
+                    flag.add_css_class("warning")
+                    flag.set_valign(Gtk.Align.CENTER)
+                    flag.set_tooltip_text(known[r["id"]][1])
+                    ar.add_suffix(flag)
                 if not installed:
                     # Dim rows whose binary is missing; they cannot be previewed.
                     ar.add_css_class("dimmed")
@@ -719,6 +780,9 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             "verify-render",
             "gpu-offload",
             "pool-gpu-class",
+            "render-scale-mode",
+            "render-scale",
+            "max-render-height",
         ):
             self._settings.connect(f"changed::{key}", self._on_setting_changed)
 
@@ -748,6 +812,7 @@ class ScreensaverWindow(Adw.ApplicationWindow):
                     list(POOL_NICKS), self._settings.get_string("pool-gpu-class")
                 )
             )
+            self._refresh_render()
             cur = self._settings.get_string("gpu-offload")
             self._gpu_row.set_selected(_safe_index(list(GPU_NICKS), cur))
             self._refresh_color_combo(self._settings.get_string("blackhole-color-mode"))
@@ -847,6 +912,38 @@ class ScreensaverWindow(Adw.ApplicationWindow):
 
     def _on_display_off_changed(self, row: Adw.SpinRow) -> None:
         self._write_int_minutes("display-off-delay", row)
+
+    def _render_state(self) -> tuple[str, float, int]:
+        return (
+            self._settings.get_string("render-scale-mode"),
+            round(self._settings.get_double("render-scale"), 2),
+            self._settings.get_int("max-render-height"),
+        )
+
+    def _refresh_render(self) -> None:
+        state = self._render_state()
+        idx = next(
+            (i for i, p in enumerate(RENDER_PRESETS) if p[2] == state),
+            len(RENDER_PRESETS),
+        )
+        self._render_row.set_selected(idx)
+        self._render_height_row.set_value(state[2])
+
+    def _on_render_changed(self, row: Adw.ComboRow, _pspec: GObject.ParamSpec) -> None:
+        if self._suppress_changed:
+            return
+        idx = row.get_selected()
+        if idx >= len(RENDER_PRESETS):
+            return
+        mode, scale, height = RENDER_PRESETS[idx][2]
+        self._settings.set_string("render-scale-mode", mode)
+        self._settings.set_double("render-scale", scale)
+        self._settings.set_int("max-render-height", height)
+
+    def _on_render_height_changed(self, row: Adw.SpinRow) -> None:
+        if self._suppress_changed:
+            return
+        self._settings.set_int("max-render-height", int(row.get_value()))
 
     def _on_pool_class_changed(
         self, row: Adw.ComboRow, pspec: GObject.ParamSpec

@@ -1063,6 +1063,10 @@ def _measure_coverage_motion(
     out["tile_coverage"] = hti.tile_coverage(bw, bh, b_buf)
     out["motion"] = hti.frame_diff_fraction(a_buf, b_buf)
     out["baseline_diff"] = hti.frame_diff_fraction(base_buf, b_buf)
+    vm = hti.visual_metrics(bw, bh, b_buf, a_buf)
+    out["visual_reasons"] = ",".join(hti.visual_verdict(vm))
+    for key in ("lit", "lit_colors", "lit_top1", "entropy", "moved_tiles"):
+        out["v_" + key] = vm[key]
     return out
 
 
@@ -1085,6 +1089,19 @@ def _stop_with_launcher(launcher_path: str, env: dict[str, str]) -> tuple[bool, 
     return True, "ok"
 
 
+_SIZE_RE = re.compile(r"render[^\n]{0,40}?(\d{3,5})\s*x\s*(\d{3,5})", re.IGNORECASE)
+
+
+def _render_size(log_text):
+    """(width, height) of the render buffer from the last matching hack log line, or None."""
+    found = None
+    for line in log_text.splitlines():
+        m = _SIZE_RE.search(line)
+        if m:
+            found = (int(m.group(1)), int(m.group(2)))
+    return found
+
+
 def _sparse_floors():
     """{hack id: tile floor} from the package's sparse.tsv (empty if absent)."""
     floors = {}
@@ -1096,6 +1113,18 @@ def _sparse_floors():
                     with contextlib.suppress(ValueError):
                         floors[f[0]] = float(f[1])
     return floors
+
+
+def _known_issues():
+    """{hack id: (status, reason)} from the package's broken.tsv (empty if absent)."""
+    out = {}
+    with contextlib.suppress(OSError):
+        text = pathlib.Path("/usr/share/ncz-screensavers/broken.tsv").read_text()
+        for ln in text.splitlines():
+            f = ln.split("\t")
+            if ln.strip() and not ln.startswith("#") and len(f) >= 3:
+                out[f[0]] = (f[1], f[2])
+    return out
 
 
 def _display_probe(env):
@@ -1351,6 +1380,9 @@ def phase_hacks(
             hits = [ln for ln in log_text.splitlines() if ln.startswith("RENDERER=")]
             if hits:
                 sub["renderer"] = hits[-1][len("RENDERER=") :]
+            size = _render_size(log_text)
+            if size:
+                sub["render_size"] = f"{size[0]}x{size[1]}"
 
         # Documented rule: a hack passes when it is healthy and moving and
         # either fills at least 15% of the pixels (the operator's gate) or,
@@ -1367,6 +1399,10 @@ def phase_hacks(
         if floor is not None:
             sub["sparse_floor"] = floor
         status = "pass" if passed else "fail"
+        known = _known_issues().get(hid)
+        if passed and metrics.get("visual_reasons"):
+            status = "review"
+            sub["visual_reasons"] = metrics["visual_reasons"]
         detail = (
             f"coverage={metrics.get('coverage', 0):.3f} "
             f"motion={metrics.get('motion', 0):.4f} "
@@ -1374,6 +1410,11 @@ def phase_hacks(
             f"alive={alive} leftover={leftover} "
             f"tiles={metrics.get('tile_coverage', 0):.2f} stop={stop_seconds:.2f}s"
         )
+        if status == "review":
+            detail += f" REVIEW (looks wrong: {metrics['visual_reasons']})"
+        if known:
+            detail += f" [listed {known[0]}: {known[1]}]"
+            sub["known_issue"] = known[0]
         if sub["sparse"]:
             detail += " SPARSE (passes via the tile rule only)"
         if not passed:
@@ -1783,6 +1824,41 @@ def phase_launcher(results, checks, env, workdir, launcher_path):
                 "pass" if got is not None and got == expect else "fail",
                 f"{hid} ({tier} tier): offload variables in the hack process={got}, expected {expect} (nvidia_offload={want_nv})",
             )
+
+    # Render cap on the Sky1 board: shader hacks get a 1080 cap on a 4K output.
+    if (doc.get("render") or {}).get("platform") == "sky1-arm64":
+        _cli(ienv, "config", "set", "verify-render", "false")
+        _cli(ienv, "preview", "blackhole_gles3", "--seconds", "20")
+        _wait_until(lambda: _status(ienv).get("running"), 5.0)
+        time.sleep(4.0)
+        raw = ""
+        with contextlib.suppress(OSError, ValueError, KeyError):
+            state = json.loads(
+                pathlib.Path(_rt_dir(), "ncz-screensaver", "state.json").read_text()
+            )
+            raw = (
+                pathlib.Path(f"/proc/{state['child_pid']}/environ")
+                .read_bytes()
+                .decode(errors="replace")
+            )
+        frame = _grab_frame(env)
+        log_text = ""
+        with contextlib.suppress(OSError):
+            log_text = pathlib.Path(_rt_dir(), HACK_LOG).read_text(errors="replace")[
+                -20000:
+            ]
+        _cli(ienv, "stop")
+        size = _render_size(log_text)
+        cap_ok = "NCZ_MAX_RENDER_HEIGHT=1080" in raw.split("\0")
+        buf_ok = size is None or size[1] <= 1080
+        cov = hti.coverage_fraction(frame[2]) if frame else 0.0
+        _record(
+            checks,
+            "render-cap-sky1",
+            "pass" if cap_ok and buf_ok and cov >= 0.5 else "fail",
+            f"cap variable in the hack process={cap_ok}; reported render size={size or 'not reported by the hack'}; "
+            f"full-screen coverage {cov:.2f}",
+        )
 
     # Per-hack options reach the hack as environment variables.
     if os.path.exists(
@@ -3277,6 +3353,8 @@ def _selftest() -> int:
     w, h, rgb = hti.parse_ppm(data)
     case("parse_ppm-dims", w == width and h == height, f"{w}x{h}")
     case("parse_ppm-len", len(rgb) == width * height * 3, f"{len(rgb)} bytes")
+    vm_flat = hti.visual_metrics(16, 16, bytes([0, 90, 160] * 256))
+    case("visual-flat-frame", "flat_fill" in hti.visual_verdict(vm_flat), str(vm_flat))
 
     cov = hti.coverage_fraction(rgb)
     case("coverage-uniform", abs(cov - 1.0) < 1e-9, f"coverage={cov:.3f}")

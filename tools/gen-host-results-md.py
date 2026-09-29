@@ -163,6 +163,10 @@ def main():
                     cells.append(
                         f"PASS sparse (tiles {pct(row['metrics'].get('tile_coverage'))})"
                     )
+                elif row["status"] == "review":
+                    cells.append(
+                        f"**REVIEW** ({row['metrics'].get('visual_reasons', '')})"
+                    )
                 elif row["status"] == "pass":
                     cells.append(f"PASS {pct(row['metrics'].get('coverage'))}")
                 else:
@@ -236,7 +240,18 @@ def main():
                     f"| `{hk['id']}` | {esc(hk.get('group', ''))} | {result} | {pct(m.get('coverage'))} | "
                     f"{pct(m.get('tile_coverage'))} | {pct(m.get('motion'))} | {m.get('stop_seconds', '-')} | {link} |"
                 )
-            failed = [hk for hk in hacks if hk["status"] != "pass"]
+            review = [hk for hk in hacks if hk["status"] == "review"]
+            if review:
+                L.append("")
+                L.append(
+                    f"Flagged REVIEW on {h} (lit and moving, but the picture looks wrong):"
+                )
+                L.append("")
+                for hk in review:
+                    L.append(
+                        f"- `{hk['id']}`: {hk['metrics'].get('visual_reasons', '')}"
+                    )
+            failed = [hk for hk in hacks if hk["status"] not in ("pass", "review")]
             if failed:
                 L.append("")
                 L.append(f"Failures on {h}:")

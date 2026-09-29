@@ -1667,6 +1667,13 @@ install_data('assets/screensaver-chooser/sparse.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('assets/screensaver-chooser/sparse.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+# GPU tiers (see docs/LAUNCHER-DESIGN.md): the launcher and both settings UIs read them.
+install_data('assets/screensaver-chooser/broken.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/broken.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data('assets/screensaver-chooser/render-defaults.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('config/dev.ncz.screensaver.gschema.xml',
              install_dir: get_option('prefix') / 'share' / 'glib-2.0' / 'schemas')
 
