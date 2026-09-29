@@ -1246,6 +1246,8 @@ static void free_crackberg(ModeInfo *mi)
     }
     if (cberg->prog) glDeleteProgram(cberg->prog);
     if (cberg->prog_sky) glDeleteProgram(cberg->prog_sky);
+    if (cberg->vao_empty) glDeleteVertexArrays(1, &cberg->vao_empty);
+    cberg->free_head = NULL;
     if (cberg->post_ok) cs_post_free(&cberg->post);
     free(cberg->norms); free(cberg->heights); free(cberg); CB = NULL;
 }
