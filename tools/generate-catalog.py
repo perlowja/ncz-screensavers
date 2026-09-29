@@ -66,6 +66,39 @@ def main():
     args = ap.parse_args()
     src = args.meson_build.read_text()
     ships = ship_list(src)
+    sparse = args.output.with_name("sparse.tsv")
+    if not sparse.exists():
+        sparse = args.meson_build.parent / "assets" / "screensaver-chooser" / "sparse.tsv"
+    if not sparse.exists():
+        raise SystemExit(f"sparse.tsv not found (looked next to the output and at {sparse})")
+    bad = []
+    seen = set()
+    for n, line in enumerate(sparse.read_text().splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        cols = line.split("\t")
+        dup = cols[0] in seen
+        seen.add(cols[0])
+        problem = None
+        if len(cols) != 3:
+            problem = "needs exactly 3 tab-separated columns"
+        elif cols[0] not in ships:
+            problem = "id is not in the ship set"
+        elif dup:
+            problem = "duplicate id"
+        elif not cols[2].strip():
+            problem = "empty reason"
+        else:
+            try:
+                floor = float(cols[1])
+            except ValueError:
+                floor = -1.0
+            if not 0.0 < floor <= 1.0:
+                problem = "floor must be a number in (0, 1]"
+        if problem:
+            bad.append(f"line {n}: {problem}: {line.strip()[:70]}")
+    if bad:
+        raise SystemExit("sparse.tsv: " + "; ".join(bad))
     order = {"Black Hole Simulation": 0, "hyprsaver": 1, "xshadertoy": 2, "Classics": 3}
     rows = []
     for t in ships:

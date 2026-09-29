@@ -23,7 +23,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.3.3',
+    version: '0.3.4',
     license: 'GPL-2.0-or-later',
 )
 
@@ -1645,6 +1645,12 @@ run_target(
 # hacks.tsv is generated from ncz_ship_bins by tools/generate-catalog.py.
 # ---------------------------------------------------------------------------
 install_data('assets/screensaver-chooser/hacks.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+# Shipped to both directories, like hacks.tsv: the launcher reads share/ncz-screensavers,
+# the chooser plugin reads share/ncz-screensaver-chooser. Do not de-duplicate.
+install_data('assets/screensaver-chooser/sparse.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/sparse.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 install_data('config/dev.ncz.screensaver.gschema.xml',
              install_dir: get_option('prefix') / 'share' / 'glib-2.0' / 'schemas')
