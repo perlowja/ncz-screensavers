@@ -8,7 +8,8 @@ Each DIR is a host-test.sh result directory (or its host subdirectory) from a ru
 perf phase. Rule (operator requirement: weak systems show what works well on them):
   weak    the hack holds >= 30 fps with p95 frame time <= 40 ms on the Intel UHD 630 at its
           DEFAULT render scale for the weak class: 0.5 for shader hacks (--uhd630-scaled),
-          native resolution for the others
+          native resolution for the others, AND on the Mali-G720 (a faster class must never
+          run a weak-ok hack worse, so the pools stay monotone)
   mid     not weak, but the same holds on the Mali-G720 at its platform default
   strong  everything else
 Columns (tab separated): id, min class, then fps/p95_ms for uhd630 (native), uhd630_scaled
@@ -54,7 +55,7 @@ def classify(hid, native, scaled, mali):
     """Minimum class for one hack from its three reference measurements."""
     shader = hid.startswith(SHADER_PREFIXES)
     weak_entry = scaled if (shader and scaled is not None) else native
-    if ok(weak_entry):
+    if ok(weak_entry) and ok(mali):
         return "weak"
     return "mid" if ok(mali) else "strong"
 

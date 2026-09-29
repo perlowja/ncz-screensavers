@@ -473,6 +473,20 @@ def load_tier_rows():
     """
     path = tiers_path()
     rows = {}
+    presets = Path(str(path.parent / "presets.tsv")) if path else None
+    if presets is None:
+        for cand in (
+            "/usr/share/ncz-screensavers/presets.tsv",
+            "/usr/share/ncz-screensaver-chooser/presets.tsv",
+        ):
+            if Path(cand).is_file():
+                presets = Path(cand)
+                break
+    if presets is not None and presets.is_file():
+        for line in presets.read_text().splitlines():
+            f = line.split("\t")
+            if len(f) >= 8 and not line.startswith("#") and f[7] in CLASS_RANK:
+                rows[f[0]] = {"min": f[7], "measured": f[8] if len(f) > 8 else ""}
     if path is None:
         return rows
     names = ("uhd630", "uhd630_scaled", "mali", "navi14", "rtx2060")
@@ -1231,6 +1245,8 @@ def build_child_env(
     if plan["offload"]:
         env.update(gpu_env(plan["gpu"]))
     env.update(render_env(hack_id, settings, plan))
+    if hack_id != "calibrate":
+        env.setdefault("NCZ_GPU_CLASS", plan["class"])
     shader_cache_env(env)
     env.update(hack_option_env(hack_id, settings, options))
     env["NCZ_SCREENSAVER_ACTIVE"] = "1"
@@ -2043,6 +2059,16 @@ def diagnostics(settings, schema_ok):
 
 
 def cmd_calibrate(args):
+    if args.copy_ms:
+        gid, _, val = args.copy_ms.partition("=")
+        if not val:
+            raise SystemExit("--copy-ms expects GPUID=MILLISECONDS")
+        cache = read_class_cache()
+        cache.setdefault(gid, {})["copy_ms"] = float(val)
+        path = class_cache_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"entries": cache}, indent=1) + "\n")
+        return 0
     if read_state():
         log(
             "a screensaver is running; stop it first (calibration never runs during a hack)"
@@ -2063,6 +2089,60 @@ def cmd_calibrate(args):
                 f"{name}: {e['class']} ({ms}, {e.get('source')}, {e.get('renderer') or 'unknown renderer'})"
             )
     return 3 if any(e.get("software") for e in out.values()) else 0
+
+
+def installed_ids(settings):
+    catalog = [r["id"] for r in load_catalog()]
+    pool = settings["random-hacks"] or catalog
+    return [i for i in pool if find_binary(i)]
+
+
+def cmd_pool(args):
+    """The hacks random and playlist mode would use right now, and why others are out."""
+    settings, _ = load_settings()
+    ids = installed_ids(settings)
+    kept = filter_pool(ids, settings)
+    tiers = load_tiers()
+    known = load_broken()
+    why = {}
+    limit = CLASS_RANK[pool_class(settings)]
+    for i in ids:
+        if i in kept:
+            continue
+        if i in known:
+            why[i] = f"listed {known[i][0]}"
+        else:
+            why[i] = f"needs {tiers.get(i, 'strong')} GPU, pool allows {CLASSES[limit]}"
+    out = {"class": CLASSES[limit], "count": len(kept), "ids": kept, "excluded": why}
+    if args.json:
+        print(json.dumps(out))
+    else:
+        print(f"pool class {out['class']}: {len(kept)} of {len(ids)} installed hacks")
+        for i, r in sorted(why.items()):
+            print(f"  out: {i} ({r})")
+    return 0
+
+
+def cmd_plan(args):
+    """Where one hack would render: display GPU or an offload target, and the class."""
+    settings, _ = load_settings()
+    if not known_id(args.hack, load_catalog()):
+        raise SystemExit(f"unknown hack {args.hack}")
+    plan = plan_for(args.hack, settings)
+    gpu = plan["gpu"]
+    out = {
+        "hack": args.hack,
+        "min_class": load_tiers().get(args.hack, "strong"),
+        "gpu": gpu["id"] if gpu else None,
+        "gpu_driver": gpu["driver"] if gpu else None,
+        "offload": plan["offload"],
+        "class": plan["class"],
+        "env": sorted(gpu_env(gpu)) if plan["offload"] else [],
+        "on_battery": not ac_online(),
+        "setting": settings["gpu-offload"],
+    }
+    print(json.dumps(out) if args.json else json.dumps(out, indent=1))
+    return 0
 
 
 def cmd_gpus(args):
@@ -2125,7 +2205,21 @@ def build_parser():
     )
     s.add_argument("--force", action="store_true", help="ignore the cache")
     s.add_argument("--json", action="store_true")
+    s.add_argument(
+        "--copy-ms",
+        metavar="GPUID=MS",
+        help="record a measured cross-GPU frame copy cost for an offload target",
+    )
     s.set_defaults(fn=cmd_calibrate)
+    s = sub.add_parser(
+        "pool", help="hacks random/playlist mode use now, and exclusions"
+    )
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_pool)
+    s = sub.add_parser("plan", help="which GPU one hack would render on")
+    s.add_argument("hack")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_plan)
     s = sub.add_parser("gpus", help="list GPUs, their roles and classes")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_gpus)

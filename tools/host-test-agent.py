@@ -2576,6 +2576,8 @@ def _measure_fps(mod, hid, mode, seconds, warmup=3.0, scale="default"):
         settings["gpu-offload"] = "prime"
     else:
         settings["gpu-offload"] = "off"
+        if mode.startswith("gpu:"):
+            settings["gpu-offload"] = mode[4:]
         if mode.startswith("dri:"):
             extra["DRI_PRIME"] = mode[4:]
     if scale != "default":
@@ -2665,6 +2667,254 @@ def phase_perf(results, checks, env, workdir, mode, seconds):
         "pass" if good == len(perf) else "fail",
         f"{good}/{len(perf)} hacks measured in mode {mode}",
     )
+
+
+CLASS_RANK = {"weak": 0, "mid": 1, "strong": 2}
+
+
+def _tier_rows():
+    """{hack id: min class} from the installed tiers.tsv (empty when absent)."""
+    rows = {}
+    for path in ("/usr/share/ncz-screensavers/tiers.tsv",):
+        with contextlib.suppress(OSError):
+            for ln in pathlib.Path(path).read_text().splitlines():
+                f = ln.split("\t")
+                if len(f) >= 2 and not ln.startswith("#") and f[1] in CLASS_RANK:
+                    rows[f[0]] = f[1]
+    return rows
+
+
+def _json_cli(env, *args, timeout=30.0):
+    try:
+        return json.loads(_cli(env, *args, timeout=timeout).stdout)
+    except ValueError:
+        return None
+
+
+@_guard
+def phase_gpuclass(results, checks, env, workdir, pw):
+    """GPU class calibration, flagged-list completeness, the default pool and offload
+    planning, on the real GPUs of this host (private cache and settings)."""
+    cache_dir = tempfile.mkdtemp(prefix="ncz-ht-cache-")
+    ienv = _isolated_env(env, {"XDG_CACHE_HOME": cache_dir})
+    _cli(ienv, "stop")
+    _cli(ienv, "config", "set", "verify-render", "false")
+    info: dict[str, Any] = {}
+    results["gpuclass"] = info
+
+    cal = _json_cli(ienv, "calibrate", "--force", "--json", timeout=240.0) or {}
+    disp = cal.get("display") or {}
+    info["calibration"] = cal
+    good = (
+        disp.get("source") == "calibration"
+        and disp.get("class") in CLASS_RANK
+        and disp.get("ms", 0) > 0
+        and "llvmpipe" not in str(disp.get("renderer", "")).lower()
+    )
+    _record(
+        checks,
+        "class-calibrated",
+        "pass" if good else "fail",
+        f"display GPU class {disp.get('class')} ({disp.get('ms')} ms, {disp.get('source')}, {disp.get('renderer')})",
+        metrics={
+            k: disp.get(k) for k in ("class", "ms", "renderer", "version", "timer")
+        },
+    )
+    gpus = _json_cli(ienv, "gpus", "--json") or []
+    info["gpus"] = gpus
+    displays = [g for g in gpus if g.get("display")]
+    _record(
+        checks,
+        "gpus-listed",
+        "pass" if gpus and len(displays) == 1 else "fail",
+        "; ".join(
+            f"{g['id']} {g['vendor']}/{g['driver']} {'display' if g['display'] else 'offload'} {g['class']}"
+            for g in gpus
+        ),
+    )
+    cache_file = pathlib.Path(cache_dir, "ncz-screensavers", "gpu-class.json")
+    keys = (
+        sorted(json.loads(cache_file.read_text()).get("entries", {}))
+        if cache_file.is_file()
+        else []
+    )
+    _record(
+        checks,
+        "class-cache-per-gpu",
+        "pass"
+        if keys and set(keys) <= {g["id"] for g in gpus} | {"display"}
+        else "fail",
+        f"cache entries: {keys}",
+    )
+    again = _json_cli(ienv, "calibrate", "--json", timeout=60.0) or {}
+    _record(
+        checks,
+        "class-cache-reused",
+        "pass" if (again.get("display") or {}).get("ms") == disp.get("ms") else "fail",
+        f"second calibrate returned ms={(again.get('display') or {}).get('ms')} (first {disp.get('ms')})",
+    )
+
+    # Flagged list and the default pool with offload off: the display GPU alone decides.
+    _cli(ienv, "set-gpu", "off")
+    tiers = _tier_rows()
+    dclass = disp.get("class", "weak")
+    listing = _json_cli(ienv, "list", "--json") or []
+    if not tiers:
+        _record(checks, "flagged-list-complete", "skip", "no tiers.tsv installed")
+        _record(checks, "default-pool-no-heavy", "skip", "no tiers.tsv installed")
+    else:
+        want = {h for h, c in tiers.items() if CLASS_RANK[c] > CLASS_RANK[dclass]}
+        got = {r["id"] for r in listing if r.get("flagged")}
+        missing = sorted(r["id"] for r in listing if r["id"] not in tiers)
+        noexp = sorted(
+            r["id"] for r in listing if r.get("flagged") and not r.get("expect")
+        )
+        _record(
+            checks,
+            "flagged-list-complete",
+            "pass" if got == want and not missing else "fail",
+            f"class {dclass}: {len(got)} flagged, {len(want)} expected, {len(tiers)} tier rows, "
+            f"catalog ids without a tier row: {missing[:5] or 'none'}, flagged without expectation text: {len(noexp)}",
+            metrics={
+                "flagged": len(got),
+                "expected": len(want),
+                "no_expectation": len(noexp),
+            },
+        )
+        info["flagged"] = sorted(got)
+        pool = _json_cli(ienv, "pool", "--json") or {}
+        heavy = sorted(
+            h
+            for h in pool.get("ids", [])
+            if CLASS_RANK[tiers.get(h, "strong")] > CLASS_RANK[dclass]
+        )
+        _record(
+            checks,
+            "default-pool-no-heavy",
+            "pass" if pool.get("ids") and not heavy else "fail",
+            f"pool class {pool.get('class')}: {pool.get('count')} hacks, above-class hacks in the pool: {heavy or 'none'}",
+            metrics={"pool_class": pool.get("class"), "pool_count": pool.get("count")},
+        )
+        info["pool"] = pool.get("ids", [])
+
+    # Offload planning on multi-GPU hosts.
+    others = [g for g in gpus if not g["display"]]
+    if not others or not tiers:
+        _record(checks, "offload-plan", "skip", "single GPU or no tiers.tsv")
+        return
+    _cli(ienv, "set-gpu", "auto")
+    light = next(
+        (
+            h
+            for h, c in tiers.items()
+            if c == "weak" and h in {r["id"] for r in listing if r.get("installed")}
+        ),
+        None,
+    )
+    heavy_id = next(
+        (
+            h
+            for h, c in tiers.items()
+            if c == "strong" and h in {r["id"] for r in listing if r.get("installed")}
+        ),
+        None,
+    )
+    best = max(others, key=lambda g: CLASS_RANK[g["class"]])
+    matrix = []
+    for hid in (light, heavy_id):
+        if not hid:
+            continue
+        plan = _json_cli(ienv, "plan", hid, "--json") or {}
+        need = CLASS_RANK[tiers[hid]]
+        expect_off = (
+            need > CLASS_RANK[dclass]
+            and CLASS_RANK[best["class"]] > CLASS_RANK[dclass]
+            and plan.get("on_battery") is False
+        )
+        row = {
+            "hack": hid,
+            "min_class": tiers[hid],
+            "display_class": dclass,
+            "target": best["id"],
+            "target_class": best["class"],
+            "plan": plan,
+            "expected_offload": expect_off,
+        }
+        matrix.append(row)
+        _record(
+            checks,
+            f"offload-plan-{hid.replace('_gles3', '')}",
+            "pass" if plan.get("offload") == expect_off else "fail",
+            f"{tiers[hid]} hack, display {dclass}, target {best['vendor']}/{best['driver']} {best['class']}: offload={plan.get('offload')} expected {expect_off}",
+        )
+    info["offload_matrix"] = matrix
+
+    # Force each non-display GPU for one light hack: it must render on that GPU, and the
+    # compositor must stay untouched. The frame rate against the display GPU gives the
+    # cross-GPU copy cost.
+    mod = _load_launcher()
+    for tgt in others:
+        if not light:
+            break
+        _cli(ienv, "set-gpu", tgt["id"])
+        _cli(ienv, "preview", light, "--seconds", "20")
+        _wait_until(lambda: _status(ienv).get("running"), 5.0)
+        time.sleep(4.0)
+        frame = _grab_frame(env)
+        renderer = ""
+        with contextlib.suppress(OSError):
+            lines = [
+                ln
+                for ln in pathlib.Path(_rt_dir(), HACK_LOG)
+                .read_text(errors="replace")[-20000:]
+                .splitlines()
+                if ln.startswith("RENDERER=")
+            ]
+            renderer = lines[-1][9:] if lines else ""
+        cov = hti.coverage_fraction(frame[2]) if frame else 0.0
+        _cli(ienv, "stop")
+        want = str((cal.get(tgt["id"]) or {}).get("renderer", ""))
+        bad_env = sorted(
+            k
+            for k in _compositor_env_all()
+            if k
+            in (
+                "DRI_PRIME",
+                "__NV_PRIME_RENDER_OFFLOAD",
+                "__EGL_VENDOR_LIBRARY_FILENAMES",
+                "MESA_VK_DEVICE_SELECT",
+            )
+        )
+        ok = (
+            bool(renderer)
+            and (not want or renderer == want or want in renderer)
+            and cov >= 0.15
+            and not bad_env
+        )
+        _record(
+            checks,
+            f"offload-forced-{tgt['vendor']}-{tgt['driver']}",
+            "pass" if ok else "fail",
+            f"forced {tgt['id']}: renderer '{renderer}' (calibrated '{want}'), coverage {cov:.2f}, compositor offload variables {bad_env or 'none'}",
+            metrics={"renderer": renderer, "coverage": cov},
+        )
+        fps_disp = _measure_fps(mod, light, "default", 8.0, scale="native")
+        fps_tgt = _measure_fps(mod, light, f"gpu:{tgt['id']}", 8.0, scale="native")
+        row = {"gpu": tgt["id"], "hack": light, "display": fps_disp, "target": fps_tgt}
+        if "fps" in fps_disp and "fps" in fps_tgt:
+            cost = max(0.0, 1000.0 / fps_tgt["fps"] - 1000.0 / fps_disp["fps"])
+            row["copy_ms"] = round(cost, 2)
+            _cli(ienv, "calibrate", "--copy-ms", f"{tgt['id']}={cost:.2f}")
+        info.setdefault("offload_copy", []).append(row)
+        _record(
+            checks,
+            f"offload-copy-cost-{tgt['vendor']}-{tgt['driver']}",
+            "pass" if "copy_ms" in row else "fail",
+            f"{light} at native resolution: display GPU {fps_disp.get('fps')} fps (p95 {fps_disp.get('p95_ms')} ms), "
+            f"{tgt['id']} {fps_tgt.get('fps')} fps (p95 {fps_tgt.get('p95_ms')} ms), copy cost {row.get('copy_ms')} ms",
+            metrics=row,
+        )
+    _cli(ienv, "set-gpu", "auto")
 
 
 @_guard
@@ -3273,6 +3523,8 @@ def run_phases(
             os.environ.get("HT_PERF_MODE", "default"),
             float(os.environ.get("HT_PERF_SECONDS", "10")),
         )
+    if "gpuclass" in phases:
+        phase_gpuclass(results, checks_by_phase["gpuclass"], env, workdir, pw)
     if "gpu" in phases:
         phase_gpu(results, checks_by_phase["gpu"], env, workdir, pw)
     if "multioutput" in phases:

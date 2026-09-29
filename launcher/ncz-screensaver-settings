@@ -25,6 +25,8 @@ import argparse
 import contextlib
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 
@@ -67,28 +69,35 @@ MODE_LABEL = {
 }
 # Black hole color choices.
 COLOR_NICKS = ("stylized", "kipthorne", "faithful")
-GPU_NICKS = ("auto", "prime", "off")
 RENDER_PRESETS = (
     ("auto", "Auto (recommended)", ("auto", 1.0, 0)),
     ("high", "High (native resolution)", ("fixed", 1.0, 0)),
     ("balanced", "Balanced (75%)", ("fixed", 0.75, 0)),
     ("fast", "Fast (50%, 1080p cap)", ("fixed", 0.5, 1080)),
 )
-POOL_NICKS = ("auto", "igpu-only", "all")
+POOL_NICKS = ("auto", "weak", "mid", "all")
 POOL_LABEL = {
-    "auto": "Automatic",
-    "igpu-only": "Only screensavers that run well on integrated GPUs",
+    "auto": "Automatic (recommended)",
+    "weak": "Only screensavers that run well on weak graphics chips",
+    "mid": "Also screensavers that need a mid-range GPU",
     "all": "All screensavers",
 }
-TIER_TITLES = (
-    ("igpu", "Works well on iGPUs"),
-    ("discrete", "Best with discrete GPU"),
+# Legacy stored values mapped to their current nick when reading.
+POOL_ALIASES = {"igpu-only": "weak"}
+GOOD_TITLE = "Works well on this graphics chip"
+FLAGGED_TITLE = "May run poorly on this graphics chip"
+FLAG_BADGE = "May stutter"
+FLAG_TOOLTIP = (
+    "This screensaver is heavier than this graphics chip handles smoothly. "
+    "It may stutter; the note shows what was measured on similar hardware."
 )
-GPU_LABEL = {
-    "auto": "Automatic (heavy screensavers on the NVIDIA GPU)",
-    "prime": "Always the NVIDIA GPU (PRIME offload)",
-    "off": "Same GPU as the desktop",
-}
+CLASS_TITLE = {"weak": "Weak", "mid": "Mid-range", "strong": "Strong"}
+VENDOR_LABEL = {"nvidia": "NVIDIA", "amd": "AMD", "intel": "Intel"}
+GPU_AUTO_HINT = (
+    "Automatic keeps light screensavers on the display GPU and sends heavy ones "
+    "to the best other GPU. On battery, Automatic keeps everything on the "
+    "display GPU."
+)
 COLOR_LABEL = {
     "stylized": "Stylized",
     "kipthorne": "Kip Thorne (blackbody)",
@@ -172,27 +181,157 @@ def load_broken() -> dict[str, tuple[str, str]]:
     return {}
 
 
-def load_tiers() -> dict[str, str]:
-    """{hack id: "igpu"|"discrete"} from tiers.tsv; empty when not installed."""
-    candidates = [
-        os.environ.get("NCZ_SCREENSAVER_TIERS", ""),
-        "/usr/share/ncz-screensavers/tiers.tsv",
-        "/usr/share/ncz-screensaver-chooser/tiers.tsv",
-    ]
-    for path in candidates:
-        if path and os.path.isfile(path):
-            tiers: dict[str, str] = {}
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    fields = line.rstrip("\n").split("\t")
-                    if (
-                        len(fields) >= 2
-                        and not line.startswith("#")
-                        and fields[1] in ("igpu", "discrete")
-                    ):
-                        tiers[fields[0]] = fields[1]
-            return tiers
-    return {}
+def cli_cmd() -> list[str]:
+    """Argv prefix of the launcher CLI; NCZ_SCREENSAVER_CLI overrides (tests)."""
+    return [os.environ.get("NCZ_SCREENSAVER_CLI") or "ncz-screensaver"]
+
+
+def cli_json(args: list[str]):
+    """Run a launcher command that prints JSON; None on any failure."""
+    try:
+        proc = subprocess.run(
+            cli_cmd() + args, capture_output=True, text=True, timeout=15, check=False
+        )
+        return json.loads(proc.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+def normalize_pool(value: str) -> str:
+    """Map legacy pool-gpu-class values (igpu-only) to the current nicks."""
+    value = POOL_ALIASES.get(value, value)
+    return value if value in POOL_NICKS else "auto"
+
+
+def short_renderer(name: str) -> str:
+    """'Mesa Intel(R) UHD Graphics 630 (CFL GT2)' -> 'Mesa Intel UHD Graphics 630'."""
+    name = name.replace("(R)", "").replace("(TM)", "")
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", name)
+    return re.sub(r"\s+", " ", name).strip()
+
+
+def class_summary(status: dict | None, gpus: list[dict] | None) -> str:
+    """Text for the 'Graphics chip class' row from status/gpus JSON."""
+    cls = (status or {}).get("gpu_class")
+    if not cls:
+        return "Not measured yet"
+    parts = []
+    ms = (status or {}).get("gpu_class_score_ms")
+    if ms and (status or {}).get("gpu_class_source") == "calibration":
+        parts.append(f"{ms:.1f} ms on the calibration test")
+    else:
+        parts.append("estimated from the chip name")
+    disp = next((g for g in gpus or [] if g.get("display")), None)
+    if disp and disp.get("renderer"):
+        parts.append(short_renderer(disp["renderer"]))
+    return f"{CLASS_TITLE.get(cls, cls.title())} ({'; '.join(parts)})"
+
+
+def gpu_choices(gpus: list[dict] | None, stored: str) -> list[tuple[str, str]]:
+    """(value, label) rows for the Screensaver GPU combo."""
+    out = [("auto", "Automatic"), ("off", "Off (use the display GPU)")]
+    for g in gpus or []:
+        if g.get("display"):
+            continue
+        vendor = VENDOR_LABEL.get(g.get("vendor", ""), str(g.get("vendor", "")).title())
+        cls = CLASS_TITLE.get(g.get("class", ""), g.get("class", "unknown"))
+        out.append(
+            (g["id"], f"{vendor} {g.get('driver', '')} ({cls})".replace("  ", " "))
+        )
+    if stored == "prime":
+        out.append(("prime", "Always the best other GPU (legacy)"))
+    elif stored not in dict(out):
+        out.append((stored, f"{stored} (not found)"))
+    return out
+
+
+def load_overlay() -> dict[str, dict]:
+    """{hack id: row} from `ncz-screensaver list --json`; empty if unavailable."""
+    rows = cli_json(["list", "--json"])
+    if not isinstance(rows, list):
+        return {}
+    return {r["id"]: r for r in rows if isinstance(r, dict) and "id" in r}
+
+
+def compute_groups(
+    catalog: list[dict],
+    overlay: dict[str, dict],
+    installed: dict[str, bool],
+    known: dict[str, tuple[str, str]],
+    show_all: bool,
+) -> list[dict]:
+    """Group model shared by the window and --dump.
+
+    Each group: {title, collapsed, expander, rows}; each row: id, title, group,
+    flagged, badge, subtitle, tooltip, issue, issue_reason, installed.
+    """
+    rows = []
+    for r in catalog:
+        ov = overlay.get(r["id"], {})
+        flagged = bool(ov.get("flagged"))
+        issue = ov.get("issue") or (known[r["id"]][0] if r["id"] in known else "")
+        reason = ov.get("issue_reason") or (
+            known[r["id"]][1] if r["id"] in known else ""
+        )
+        ok = installed.get(r["id"], False)
+        expect = ov.get("expect") or ""
+        if not ok:
+            sub = "not installed"
+        elif flagged:
+            sub = expect or "may stutter on this graphics chip"
+        else:
+            sub = r["group"]
+        rows.append(
+            {
+                "id": r["id"],
+                "title": r["title"],
+                "group": r["group"],
+                "flagged": flagged,
+                "badge": FLAG_BADGE if flagged else "",
+                "subtitle": sub,
+                "tooltip": FLAG_TOOLTIP if flagged else "",
+                "expect": expect,
+                "issue": issue,
+                "issue_reason": reason,
+                "installed": ok,
+            }
+        )
+    if not any(r["flagged"] for r in rows):
+        groups: dict[str, list[dict]] = {}
+        for r in rows:
+            r["subtitle"] = r["subtitle"] if not r["installed"] else r["id"]
+            groups.setdefault(r["group"], []).append(r)
+        return [
+            {"title": g, "collapsed": False, "expander": False, "rows": v}
+            for g, v in groups.items()
+        ]
+    order = {g: i for i, g in enumerate(dict.fromkeys(r["group"] for r in rows))}
+
+    def key(r: dict):
+        return (order[r["group"]], r["title"].lower())
+
+    good = sorted((r for r in rows if not r["flagged"]), key=key)
+    bad = sorted((r for r in rows if r["flagged"]), key=key)
+    out = []
+    if good:
+        out.append(
+            {"title": GOOD_TITLE, "collapsed": False, "expander": False, "rows": good}
+        )
+    out.append(
+        {
+            "title": FLAGGED_TITLE,
+            "collapsed": not show_all,
+            "expander": True,
+            "rows": bad,
+        }
+    )
+    return out
+
+
+def flag_warning(row: dict) -> str:
+    """Body text of the confirmation shown before running a flagged hack."""
+    note = f" ({row['expect']})" if row.get("expect") else ""
+    return f"This screensaver may stutter on this graphics chip{note}. Run it anyway?"
 
 
 def load_option_schema(hack_id: str) -> list[dict]:
@@ -404,9 +543,31 @@ def open_settings() -> Gio.Settings | None:
         return None
 
 
-def read_dump(settings: Gio.Settings, catalog_view: list[dict]) -> dict:
+def build_model(settings: Gio.Settings, catalog: list[dict], dirs: list[str]) -> dict:
+    """Everything the window and --dump derive from the launcher CLI."""
+    installed = {r["id"]: is_installed(r["id"], dirs) for r in catalog}
+    overlay = load_overlay()
+    show_all = settings.get_boolean("show-all-hacks")
+    groups = compute_groups(catalog, overlay, installed, load_broken(), show_all)
+    status = cli_json(["status", "--json"])
+    gpus = cli_json(["gpus", "--json"])
+    gpus = gpus if isinstance(gpus, list) else None
+    return {
+        "groups": groups,
+        "status": status if isinstance(status, dict) else None,
+        "gpus": gpus,
+        "show_all_switch": any(g["expander"] for g in groups),
+        "installed": installed,
+    }
+
+
+def read_dump(
+    settings: Gio.Settings, catalog_view: list[dict], model: dict | None = None
+) -> dict:
     """Compose the JSON shape required by --dump."""
     pool = settings.get_strv("random-hacks")
+    model = model or {}
+    stored_gpu = settings.get_string("gpu-offload")
     return {
         "mode": settings.get_string("mode"),
         "hack_id": settings.get_string("hack-id"),
@@ -423,8 +584,28 @@ def read_dump(settings: Gio.Settings, catalog_view: list[dict]) -> dict:
             for r in catalog_view
         ],
         "color": settings.get_string("blackhole-color-mode"),
-        "gpu_offload": settings.get_string("gpu-offload"),
-        "pool_gpu_class": settings.get_string("pool-gpu-class"),
+        "gpu_offload": stored_gpu,
+        "gpu_choices": [
+            {"value": v, "label": lbl}
+            for v, lbl in gpu_choices(model.get("gpus"), stored_gpu)
+        ],
+        "pool_gpu_class": normalize_pool(settings.get_string("pool-gpu-class")),
+        "pool_gpu_class_stored": settings.get_string("pool-gpu-class"),
+        "pool_choices": [{"value": n, "label": POOL_LABEL[n]} for n in POOL_NICKS],
+        "show_all_hacks": settings.get_boolean("show-all-hacks"),
+        "show_all_switch": model.get("show_all_switch", False),
+        "gpu_class_summary": class_summary(model.get("status"), model.get("gpus")),
+        "groups": [
+            {
+                "title": g["title"],
+                "collapsed": g["collapsed"],
+                "rows": [
+                    {k: r[k] for k in ("id", "flagged", "badge", "subtitle")}
+                    for r in g["rows"]
+                ],
+            }
+            for g in model.get("groups", [])
+        ],
         "render": [
             settings.get_string("render-scale-mode"),
             settings.get_double("render-scale"),
@@ -438,11 +619,34 @@ def read_dump(settings: Gio.Settings, catalog_view: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def run_cli_async(args: list[str], done=None) -> None:
+    """Run a launcher command in the background; done(text) gets its output."""
+    try:
+        proc = Gio.Subprocess.new(
+            cli_cmd() + args,
+            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_MERGE,
+        )
+    except GLib.Error as e:
+        if done:
+            done(str(e))
+        return
+
+    def finished(p: Gio.Subprocess, res: Gio.AsyncResult) -> None:
+        try:
+            _ok, out, _err = p.communicate_utf8_finish(res)
+        except GLib.Error as e:
+            out = str(e)
+        if done:
+            done((out or "").strip())
+
+    proc.communicate_utf8_async(None, None, finished)
+
+
 def run_subprocess(args: list[str]) -> None:
     """Run a `ncz-screensaver` command non-blocking via Gio.Subprocess."""
     flags = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
     try:
-        proc = Gio.Subprocess.new(args, flags)
+        proc = Gio.Subprocess.new(cli_cmd() + args[1:], flags)
     except GLib.Error as e:
         sys.stderr.write(f"spawn {args}: {e}\n")
         return
@@ -470,9 +674,18 @@ def stop_preview() -> None:
 class ScreensaverWindow(Adw.ApplicationWindow):
     """The single Screensaver & Lock settings/chooser window."""
 
-    def __init__(self, app: Adw.Application, settings: Gio.Settings) -> None:
+    def __init__(
+        self,
+        app: Adw.Application,
+        settings: Gio.Settings,
+        autocalibrate: bool = True,
+    ) -> None:
         super().__init__(application=app)
         self._settings = settings
+        self._status: dict | None = None
+        self._gpus: list[dict] | None = None
+        self._gpu_values: list[str] = ["auto", "off"]
+        self._flagged_expander: Adw.ExpanderRow | None = None
         # Guard flag: skip writes triggered by our own GSettings callbacks so
         # external "changed" handlers do not produce feedback loops.
         self._suppress_changed = False
@@ -500,7 +713,9 @@ class ScreensaverWindow(Adw.ApplicationWindow):
 
         page = Adw.PreferencesPage()
         toolbar.set_content(page)
-        self.set_content(toolbar)
+        self._toasts = Adw.ToastOverlay()
+        self._toasts.set_child(toolbar)
+        self.set_content(self._toasts)
 
         self._build_screensaver_group(page)
         self._build_lock_group(page)
@@ -512,6 +727,8 @@ class ScreensaverWindow(Adw.ApplicationWindow):
         self._search.connect("search-changed", self._on_search_changed)
         self._connect_settings_signals()
         self._refresh_from_settings()
+        if autocalibrate:
+            self._maybe_autocalibrate()
 
     # ---- groups -----------------------------------------------------------
 
@@ -633,9 +850,18 @@ class ScreensaverWindow(Adw.ApplicationWindow):
         )
         self._render_height_row.connect("changed", self._on_render_height_changed)
         grp.add(self._render_height_row)
+        self._class_row = Adw.ActionRow.new()
+        self._class_row.set_title("Graphics chip class")
+        self._class_btn = Gtk.Button.new_with_label("Recalibrate")
+        self._class_btn.set_valign(Gtk.Align.CENTER)
+        self._class_btn.connect("clicked", self._on_recalibrate)
+        self._class_row.add_suffix(self._class_btn)
+        grp.add(self._class_row)
+        self._load_status()
         self._gpu_row = Adw.ComboRow.new()
         self._gpu_row.set_title("Screensaver GPU")
-        self._gpu_row.set_model(Gtk.StringList.new([GPU_LABEL[n] for n in GPU_NICKS]))
+        self._gpu_row.set_subtitle(GPU_AUTO_HINT)
+        self._gpu_row.set_model(Gtk.StringList.new([]))
         self._gpu_row.connect("notify::selected", self._on_gpu_changed)
         grp.add(self._gpu_row)
 
@@ -659,67 +885,64 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             row["id"]: is_installed(row["id"], self._dirs) for row in self._catalog
         }
 
-        # Group by GPU tier when tiers.tsv is installed, else by catalog group.
-        tiers = load_tiers()
-        known = load_broken()
-        cat_order = {
-            g: i for i, g in enumerate(dict.fromkeys(r["group"] for r in self._catalog))
-        }
-        groups: dict[str, list[dict]] = {}
-        order: list[str] = []
-        if tiers:
-            for tier, title in TIER_TITLES:
-                rows = [
-                    r for r in self._catalog if tiers.get(r["id"], "discrete") == tier
-                ]
-                rows.sort(key=lambda r: (cat_order[r["group"]], r["title"].lower()))
-                if rows:
-                    order.append(title)
-                    groups[title] = rows
-        else:
-            for row in self._catalog:
-                g = row["group"]
-                if g not in groups:
-                    order.append(g)
-                    groups[g] = []
-                groups[g].append(row)
+        model = build_model(self._settings, self._catalog, self._dirs)
+        self._groups = model["groups"]
+        self._by_id = {r["id"]: r for g in self._groups for r in g["rows"]}
 
         self._rows_by_id: dict[str, dict] = {}
         self._first_radio: Gtk.CheckButton | None = None
 
-        for group_name in order:
-            rows = groups[group_name]
-            grp = Adw.PreferencesGroup.new()
-            grp.set_title(f"{group_name} ({len(rows)})")
-            page.add(grp)
+        if model["show_all_switch"]:
+            sgrp = Adw.PreferencesGroup.new()
+            page.add(sgrp)
+            self._show_all_row = Adw.SwitchRow.new()
+            self._show_all_row.set_title("Show all screensavers")
+            self._show_all_row.set_subtitle(
+                "Also list screensavers that may run poorly on this graphics chip"
+            )
+            self._show_all_row.connect("notify::active", self._on_show_all_changed)
+            sgrp.add(self._show_all_row)
+        else:
+            self._show_all_row = None
 
-            for r in rows:
-                installed = self._installed[r["id"]]
+        for g in self._groups:
+            grp = Adw.PreferencesGroup.new()
+            page.add(grp)
+            if g["expander"]:
+                exp = Adw.ExpanderRow.new()
+                exp.set_title(f"{g['title']} ({len(g['rows'])})")
+                exp.set_expanded(not g["collapsed"])
+                grp.add(exp)
+                self._flagged_expander = exp
+                add = exp.add_row
+            else:
+                grp.set_title(f"{g['title']} ({len(g['rows'])})")
+                add = grp.add
+
+            for r in g["rows"]:
+                installed = r["installed"]
                 ar = Adw.ActionRow.new()
                 ar.set_title(r["title"])
-                label = r["group"] if tiers else r["id"]
-                ar.set_subtitle(label if installed else "not installed")
-                if tiers:
-                    badge = Gtk.Label.new(
-                        "iGPU" if tiers.get(r["id"]) == "igpu" else "Discrete"
-                    )
-                    badge.add_css_class("dim-label")
+                ar.set_subtitle(r["subtitle"])
+                if r["flagged"]:
+                    badge = Gtk.Label.new(r["badge"])
+                    badge.add_css_class("warning")
                     badge.set_valign(Gtk.Align.CENTER)
+                    badge.set_tooltip_text(r["tooltip"])
                     ar.add_suffix(badge)
-                if r["id"] in known:
+                    ar.set_tooltip_text(r["tooltip"])
+                if r["issue"]:
                     flag = Gtk.Label.new(
-                        "Known issue"
-                        if known[r["id"]][0] == "broken"
-                        else "Under review"
+                        "Known issue" if r["issue"] == "broken" else "Under review"
                     )
                     flag.add_css_class("warning")
                     flag.set_valign(Gtk.Align.CENTER)
-                    flag.set_tooltip_text(known[r["id"]][1])
+                    flag.set_tooltip_text(r["issue_reason"])
                     ar.add_suffix(flag)
                 if not installed:
                     # Dim rows whose binary is missing; they cannot be previewed.
                     ar.add_css_class("dimmed")
-                grp.add(ar)
+                add(ar)
 
                 # Prefix: a radio Gtk.CheckButton (group behavior) only shown
                 # when the current mode is "one"; visibility is toggled in
@@ -780,6 +1003,7 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             "verify-render",
             "gpu-offload",
             "pool-gpu-class",
+            "show-all-hacks",
             "render-scale-mode",
             "render-scale",
             "max-render-height",
@@ -809,17 +1033,80 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             self._verify_row.set_active(self._settings.get_boolean("verify-render"))
             self._pool_row.set_selected(
                 _safe_index(
-                    list(POOL_NICKS), self._settings.get_string("pool-gpu-class")
+                    list(POOL_NICKS),
+                    normalize_pool(self._settings.get_string("pool-gpu-class")),
                 )
             )
             self._refresh_render()
-            cur = self._settings.get_string("gpu-offload")
-            self._gpu_row.set_selected(_safe_index(list(GPU_NICKS), cur))
+            self._refresh_gpu_combo(self._settings.get_string("gpu-offload"))
+            show_all = self._settings.get_boolean("show-all-hacks")
+            if self._show_all_row is not None:
+                self._show_all_row.set_active(show_all)
+            if self._flagged_expander is not None:
+                self._flagged_expander.set_expanded(show_all)
             self._refresh_color_combo(self._settings.get_string("blackhole-color-mode"))
             self._refresh_pool_switches()
             self._refresh_radio()
         finally:
             self._suppress_changed = False
+
+    def _refresh_gpu_combo(self, stored: str) -> None:
+        """Rebuild the GPU combo from the launcher's GPU list."""
+        choices = gpu_choices(self._gpus, stored)
+        self._gpu_values = [v for v, _l in choices]
+        model = self._gpu_row.get_model()
+        model.splice(0, model.get_n_items(), [lbl for _v, lbl in choices])
+        self._gpu_row.set_selected(_safe_index(self._gpu_values, stored))
+
+    def _load_status(self) -> None:
+        """Fetch class/GPU info from the CLI and update the class row."""
+        status = cli_json(["status", "--json"])
+        gpus = cli_json(["gpus", "--json"])
+        self._status = status if isinstance(status, dict) else None
+        self._gpus = gpus if isinstance(gpus, list) else None
+        self._class_row.set_subtitle(class_summary(self._status, self._gpus))
+
+    def _reload_class(self) -> None:
+        self._load_status()
+        self._suppress_changed = True
+        try:
+            self._refresh_gpu_combo(self._settings.get_string("gpu-offload"))
+        finally:
+            self._suppress_changed = False
+
+    def _maybe_autocalibrate(self) -> None:
+        """Measure once at startup when the class is only a table guess."""
+        st = self._status
+        if st is None or st.get("running"):
+            return
+        if st.get("gpu_class_source") not in (None, "table"):
+            return
+        self._class_btn.set_sensitive(False)
+
+        def done(_text: str) -> None:
+            self._class_btn.set_sensitive(True)
+            self._reload_class()
+
+        run_cli_async(["calibrate"], done)
+
+    def _on_recalibrate(self, _btn: Gtk.Button) -> None:
+        self._class_btn.set_sensitive(False)
+
+        def done(text: str) -> None:
+            self._class_btn.set_sensitive(True)
+            self._reload_class()
+            lines = [ln for ln in text.splitlines() if ln.strip()]
+            msg = lines[-1] if lines else "Calibration finished"
+            self._toasts.add_toast(Adw.Toast.new(msg))
+
+        run_cli_async(["calibrate", "--force"], done)
+
+    def _on_show_all_changed(
+        self, row: Adw.SwitchRow, pspec: GObject.ParamSpec
+    ) -> None:
+        self._write_bool("show-all-hacks", row, pspec)
+        if self._flagged_expander is not None:
+            self._flagged_expander.set_expanded(row.get_active())
 
     def _refresh_color_combo(self, current: str) -> None:
         """Rebuild the color combo entries; preserve the current value."""
@@ -958,8 +1245,8 @@ class ScreensaverWindow(Adw.ApplicationWindow):
         if self._suppress_changed:
             return
         idx = row.get_selected()
-        if 0 <= idx < len(GPU_NICKS):
-            self._settings.set_string("gpu-offload", GPU_NICKS[idx])
+        if 0 <= idx < len(self._gpu_values):
+            self._settings.set_string("gpu-offload", self._gpu_values[idx])
 
     def _on_verify_changed(self, row: Adw.SwitchRow, pspec: GObject.ParamSpec) -> None:
         self._write_bool("verify-render", row, pspec)
@@ -974,7 +1261,39 @@ class ScreensaverWindow(Adw.ApplicationWindow):
             # deactivation so the choice isn't clobbered when another row
             # becomes active.
             return
+        info = self._by_id.get(hack_id)
+        if info and info["flagged"]:
+            self._confirm_flagged(
+                info,
+                lambda: self._settings.set_string("hack-id", hack_id),
+                self._revert_radio,
+            )
+            return
         self._settings.set_string("hack-id", hack_id)
+
+    def _revert_radio(self) -> None:
+        self._suppress_changed = True
+        try:
+            self._refresh_radio()
+        finally:
+            self._suppress_changed = False
+
+    def _confirm_flagged(self, info: dict, proceed, cancel=None) -> None:
+        """Ask before running a hack flagged as too heavy; user may proceed."""
+        dlg = Adw.MessageDialog.new(self, "Run this screensaver?", flag_warning(info))
+        dlg.add_response("cancel", "Cancel")
+        dlg.add_response("run", "Run anyway")
+        dlg.set_default_response("cancel")
+        dlg.set_close_response("cancel")
+
+        def answered(_d: Adw.MessageDialog, resp: str) -> None:
+            if resp == "run":
+                proceed()
+            elif cancel:
+                cancel()
+
+        dlg.connect("response", answered)
+        dlg.present()
 
     def _on_pool_toggled(
         self, sw: Gtk.Switch, _pspec: GObject.ParamSpec, hack_id: str
@@ -1010,6 +1329,10 @@ class ScreensaverWindow(Adw.ApplicationWindow):
         OptionsDialog(self, self._settings, hack, schema).present()
 
     def _on_preview_clicked(self, _btn: Gtk.Button, hack_id: str) -> None:
+        info = self._by_id.get(hack_id)
+        if info and info["flagged"]:
+            self._confirm_flagged(info, lambda: preview_hack(hack_id))
+            return
         preview_hack(hack_id)
 
     def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
@@ -1042,12 +1365,15 @@ def _safe_index(values: list[str], value: str) -> int:
 class ScreensaverApp(Adw.Application):
     """Adwaita application; one window, the settings UI."""
 
-    def __init__(self, settings: Gio.Settings) -> None:
+    def __init__(self, settings: Gio.Settings, autocalibrate: bool = True) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
         self._settings = settings
+        self._autocalibrate = autocalibrate
 
     def do_activate(self) -> None:  # type: ignore[override]
-        ScreensaverWindow(self, self._settings).present()
+        ScreensaverWindow(
+            self, self._settings, autocalibrate=self._autocalibrate
+        ).present()
 
 
 # ---------------------------------------------------------------------------
@@ -1080,7 +1406,7 @@ def run_self_test() -> int:
     if not _has_display():
         return 2
 
-    app = ScreensaverApp(settings)
+    app = ScreensaverApp(settings, autocalibrate=False)
 
     # Snapshot every key we may touch so we can restore at the end.
     saved = {
@@ -1262,8 +1588,12 @@ def main(argv: list[str]) -> int:
         )
 
     if args.dump:
-        catalog = build_catalog_view(load_catalog(), hack_dirs())
-        sys.stdout.write(json.dumps(read_dump(settings, catalog), indent=2) + "\n")
+        raw = load_catalog()
+        catalog = build_catalog_view(raw, hack_dirs())
+        model = build_model(settings, raw, hack_dirs())
+        sys.stdout.write(
+            json.dumps(read_dump(settings, catalog, model), indent=2) + "\n"
+        )
         return 0
 
     if args.self_test:

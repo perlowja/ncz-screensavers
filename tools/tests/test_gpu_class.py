@@ -304,7 +304,7 @@ def test_calibrate_command_refuses_while_a_hack_runs(env, monkeypatch):
     layout(env, "single-soc")
     monkeypatch.setattr(env, "read_state", lambda: {"pid": 1})
     monkeypatch.setattr(env, "load_settings", lambda: (dict(env.DEFAULTS), True))
-    args = type("A", (), {"force": False, "json": True})()
+    args = type("A", (), {"force": False, "json": True, "copy_ms": None})()
     assert env.cmd_calibrate(args) == 3
     assert env.read_class_cache() == {}
 
@@ -542,3 +542,45 @@ def test_flag_and_expectation_text(env):
 def test_legacy_tier_names_still_load(env):
     (env.tmp / "tiers.tsv").write_text("a_gles3\tigpu\nb_gles3\tdiscrete\n")
     assert env.load_tiers() == {"a_gles3": "weak", "b_gles3": "strong"}
+
+
+def test_copy_ms_command_records_cost_and_survives_recalibration(env, monkeypatch):
+    layout(env, "nvidia+intel")
+    _disp, nv = env.list_gpus()
+    args = type("A", (), {"force": False, "json": True, "copy_ms": f"{nv['id']}=9.5"})()
+    assert env.cmd_calibrate(args) == 0
+    assert env.read_class_cache()[nv["id"]]["copy_ms"] == 9.5
+    monkeypatch.setenv("FAKE_MS", "2.7")
+    entry = env.gpu_class(S, nv, force=True)
+    assert entry["copy_ms"] == 9.5
+
+
+def test_pool_and_plan_commands(env, monkeypatch, capsys):
+    layout(env, "single-soc")
+    seed_display(env, "weak")
+    settings = dict(env.DEFAULTS)
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    monkeypatch.setattr(env, "installed_ids", lambda s: list(IDS))
+    monkeypatch.setattr(env, "known_id", lambda h, c: True)
+    monkeypatch.setattr(env, "load_catalog", list)
+    assert env.cmd_pool(type("A", (), {"json": True})()) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["class"] == "weak" and out["ids"] == ["light_gles3"]
+    assert set(out["excluded"]) == {"medium_gles3", "heavy_gles3"}
+    assert env.cmd_plan(type("A", (), {"hack": "heavy_gles3", "json": True})()) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["offload"] is False
+    assert plan["min_class"] == "strong"
+    assert plan["class"] == "weak"
+
+
+def test_child_env_exports_the_class_of_the_rendering_gpu(env):
+    classes_pegasus(env)
+    heavy = env.build_child_env("heavy_gles3", S, base_env={"HOME": str(env.tmp)})
+    light = env.build_child_env("light_gles3", S, base_env={"HOME": str(env.tmp)})
+    assert heavy["NCZ_GPU_CLASS"] == "strong"  # offloaded to the NVIDIA GPU
+    assert light["NCZ_GPU_CLASS"] == "weak"  # stays on the Intel iGPU
+    mine = env.build_child_env(
+        "light_gles3", S, base_env={"HOME": str(env.tmp), "NCZ_GPU_CLASS": "mid"}
+    )
+    assert mine["NCZ_GPU_CLASS"] == "mid"  # an explicit value wins

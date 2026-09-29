@@ -14,7 +14,9 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     private Settings? settings;
     private Settings? lock_settings;
     private Gee.ArrayList<ScreensaverHack> catalog = new Gee.ArrayList<ScreensaverHack> ();
-    private Gee.HashSet<string> igpu_ids = new Gee.HashSet<string> ();
+    private Gee.HashSet<string> flagged_ids = new Gee.HashSet<string> ();
+    private Gee.HashMap<string, string> expects = new Gee.HashMap<string, string> ();
+    private string gpu_class_text = "";
     private bool tiers_loaded = false;
     private Gee.HashMap<string, string> issues = new Gee.HashMap<string, string> ();
 
@@ -25,6 +27,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             settings.changed.connect (() => changed ());
             load_catalog ();
             load_tiers ();
+            load_launcher_state ();
             load_issues ();
         }
         if (lock_settings != null)
@@ -89,12 +92,65 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             if (line == "" || line.has_prefix ("#"))
                 continue;
             string[] f = line.split ("\t");
-            if (f.length >= 2 && (f[1] == "igpu" || f[1] == "discrete")) {
+            if (f.length >= 2 && (f[1] == "weak" || f[1] == "mid" || f[1] == "strong" || f[1] == "igpu" || f[1] == "discrete"))
                 tiers_loaded = true;
-                if (f[1] == "igpu")
-                    igpu_ids.add (f[0]);
-            }
         }
+    }
+
+    // Run the launcher and parse its JSON output; null when it cannot run.
+    private static Json.Node? launcher_json (string sub) {
+        try {
+            var proc = new Subprocess (SubprocessFlags.STDOUT_PIPE | SubprocessFlags.STDERR_SILENCE,
+                                       LAUNCHER, sub, "--json");
+            string? out_text = null;
+            proc.communicate_utf8 (null, null, out out_text, null);
+            if (!proc.get_successful () || out_text == null)
+                return null;
+            var parser = new Json.Parser ();
+            parser.load_from_data (out_text);
+            return parser.get_root ();
+        } catch (Error e) {
+            return null;
+        }
+    }
+
+    // Read flagged hacks and the display GPU class from the launcher.
+    private void load_launcher_state () {
+        string cls = "weak";
+        double ms = 0;
+        var status = launcher_json ("status");
+        if (status != null && status.get_node_type () == Json.NodeType.OBJECT) {
+            var o = status.get_object ();
+            if (o.has_member ("gpu_class") && !o.get_null_member ("gpu_class"))
+                cls = o.get_string_member ("gpu_class");
+            if (o.has_member ("gpu_class_score_ms") && !o.get_null_member ("gpu_class_score_ms"))
+                ms = o.get_double_member ("gpu_class_score_ms");
+        }
+        string name = cls == "" ? "Weak" : cls.substring (0, 1).up () + cls.substring (1);
+        gpu_class_text = ms > 0 ? "%s (%.1f ms on the calibration test)".printf (name, ms) : name;
+
+        var list = launcher_json ("list");
+        if (list == null)
+            return;
+        Json.Array? items = null;
+        if (list.get_node_type () == Json.NodeType.ARRAY)
+            items = list.get_array ();
+        else if (list.get_node_type () == Json.NodeType.OBJECT && list.get_object ().has_member ("hacks"))
+            items = list.get_object ().get_array_member ("hacks");
+        if (items == null)
+            return;
+        items.foreach_element ((arr, i, node) => {
+            if (node.get_node_type () != Json.NodeType.OBJECT)
+                return;
+            var h = node.get_object ();
+            if (!h.has_member ("id"))
+                return;
+            string id = h.get_string_member ("id");
+            if (h.has_member ("flagged") && h.get_boolean_member ("flagged"))
+                flagged_ids.add (id);
+            if (h.has_member ("expect") && !h.get_null_member ("expect"))
+                expects[id] = h.get_string_member ("expect");
+        });
     }
 
     public bool is_available () {
@@ -219,8 +275,25 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         get { return tiers_loaded; }
     }
 
-    public bool igpu_friendly (string id) {
-        return igpu_ids.contains (id);
+    public bool has_flags {
+        get { return !flagged_ids.is_empty; }
+    }
+
+    public bool is_flagged (string id) {
+        return flagged_ids.contains (id);
+    }
+
+    public string expectation (string id) {
+        return expects.has_key (id) ? expects[id] : "";
+    }
+
+    public bool show_all {
+        get { return settings.get_boolean ("show-all-hacks"); }
+        set { settings.set_boolean ("show-all-hacks", value); }
+    }
+
+    public string gpu_class_label {
+        owned get { return gpu_class_text; }
     }
 
     public string render_quality {
@@ -261,7 +334,10 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
     }
 
     public string pool_class {
-        owned get { return settings.get_string ("pool-gpu-class"); }
+        owned get {
+            string v = settings.get_string ("pool-gpu-class");
+            return v == "igpu-only" ? "weak" : v;
+        }
         set { settings.set_string ("pool-gpu-class", value); }
     }
 

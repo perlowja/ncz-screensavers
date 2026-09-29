@@ -1657,6 +1657,10 @@ install_data('assets/screensaver-chooser/broken.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('assets/screensaver-chooser/broken.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
+install_data('assets/screensaver-chooser/tiers.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
+install_data('assets/screensaver-chooser/tiers.tsv',
+             install_dir: get_option('prefix') / 'share' / 'ncz-screensaver-chooser')
 install_data('assets/screensaver-chooser/render-defaults.tsv',
              install_dir: get_option('prefix') / 'share' / 'ncz-screensavers')
 install_data('config/dev.ncz.screensaver.gschema.xml',

@@ -131,25 +131,23 @@ def main():
     if tiers.exists():
         bad = []
         seen = set()
+        cell = r"\d+(\.\d+)?/\d+(\.\d+)?"
         for n, line in enumerate(tiers.read_text().splitlines(), 1):
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
             cols = line.split("\t")
             problem = None
-            if len(cols) != 7:
-                problem = "needs exactly 7 tab-separated columns"
-            elif cols[0] not in ships:
-                problem = "id is not in the ship set"
+            if len(cols) != 8:
+                problem = "needs exactly 8 tab-separated columns"
+            elif cols[0] not in ships and "--" not in cols[0]:
+                problem = "id is not in the ship set (preset rows use hack--preset)"
             elif cols[0] in seen:
                 problem = "duplicate id"
-            elif cols[1] not in ("igpu", "discrete"):
-                problem = "tier must be igpu or discrete"
-            elif not all(
-                c == "-" or re.fullmatch(r"\d+(\.\d+)?/\d+(\.\d+)?", c)
-                for c in cols[2:6]
-            ):
+            elif cols[1] not in ("weak", "mid", "strong"):
+                problem = "min class must be weak, mid or strong"
+            elif not all(c == "-" or re.fullmatch(cell, c) for c in cols[2:7]):
                 problem = "GPU columns must be fps/p95_ms or -"
-            elif not cols[6].strip():
+            elif not cols[7].strip():
                 problem = "empty measured column"
             seen.add(cols[0])
             if problem:

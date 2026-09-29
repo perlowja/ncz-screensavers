@@ -67,8 +67,13 @@ public class ScreensaverSettings : Gtk.Box {
     private const string[] GPU_LABELS = { "Automatic (heavy screensavers on the discrete GPU)", "Always the discrete GPU", "Same GPU as the desktop" };
     private const string[] RENDER_IDS = { "auto", "high", "balanced", "fast", "custom" };
     private const string[] RENDER_LABELS = { "Auto (recommended)", "High (native resolution)", "Balanced (75%)", "Fast (50%, 1080p cap)", "Custom" };
-    private const string[] POOL_IDS = { "auto", "igpu-only", "all" };
-    private const string[] POOL_LABELS = { "Automatic", "Only screensavers that run well on integrated GPUs", "All screensavers" };
+    private const string[] POOL_IDS = { "auto", "weak", "mid", "all" };
+    private const string[] POOL_LABELS = {
+        "Automatic",
+        "Only screensavers that run well on weak graphics chips",
+        "Also screensavers that need a mid-range GPU",
+        "All screensavers"
+    };
 
     private ScreensaverBackend backend;
     private bool refreshing = false;
@@ -77,6 +82,8 @@ public class ScreensaverSettings : Gtk.Box {
     private SpinRow start_row;
     private SpinRow rotate_row;
     private SelectionRow pool_row;
+    private PreferencesGroup? flagged_group = null;
+    private SwitchRow? show_all_row = null;
     private SelectionRow render_row;
     private SpinRow render_height_row;
     private SwitchRow lock_row;
@@ -176,6 +183,12 @@ public class ScreensaverSettings : Gtk.Box {
                 backend.pool_class = POOL_IDS[i];
         });
         group.add_row (pool_row);
+
+        // Read-only: class of the graphics chip driving the display
+        if (backend.gpu_class_label != "") {
+            var info = new ActionRow ("Graphics chip class", backend.gpu_class_label);
+            group.add_row (info);
+        }
     }
 
     private void build_lock_group () {
@@ -277,36 +290,51 @@ public class ScreensaverSettings : Gtk.Box {
     }
 
     private void build_hack_groups () {
-        var by_title = new Gee.HashMap<string, PreferencesGroup> ();
         var group_order = new Gee.ArrayList<string> ();
         foreach (var hack in backend.hacks ()) {
             if (!group_order.contains (hack.group_name))
                 group_order.add (hack.group_name);
         }
+        var sorted = new Gee.ArrayList<ScreensaverHack> ();
+        sorted.add_all (backend.hacks ());
+        sorted.sort ((a, b) => {
+            int ga = group_order.index_of (a.group_name);
+            int gb = group_order.index_of (b.group_name);
+            return ga != gb ? ga - gb : strcmp (a.title.down (), b.title.down ());
+        });
 
-        string[] passes = backend.has_tiers ? new string[] { "Works well on iGPUs", "Best with discrete GPU" } : new string[] { "" };
-        foreach (string pass in passes) {
-            var sorted = new Gee.ArrayList<ScreensaverHack> ();
-            foreach (var hack in backend.hacks ()) {
-                if (backend.has_tiers && (backend.igpu_friendly (hack.id) != (pass == "Works well on iGPUs")))
-                    continue;
-                sorted.add (hack);
-            }
-            sorted.sort ((a, b) => {
-                int ga = group_order.index_of (a.group_name);
-                int gb = group_order.index_of (b.group_name);
-                return ga != gb ? ga - gb : strcmp (a.title.down (), b.title.down ());
+        if (backend.has_tiers && backend.has_flags) {
+            // Two groups; the flagged one stays hidden until "Show all" is on
+            show_all_row = new SwitchRow ("Show all screensavers",
+                                          "Also list screensavers that may run poorly on this graphics chip");
+            show_all_row.switch_btn.notify["active"].connect (() => {
+                if (refreshing)
+                    return;
+                backend.show_all = show_all_row.switch_btn.active;
+                flagged_group.visible = show_all_row.switch_btn.active;
             });
-            foreach (var hack in sorted) {
-                string title = backend.has_tiers ? pass : hack.group_name;
-                PreferencesGroup? group = by_title.has_key (title) ? by_title[title] : null;
-                if (group == null) {
-                    group = new PreferencesGroup (title, "Screensavers used in random mode");
-                    by_title[title] = group;
-                    append (group);
-                }
-                add_hack_row (group, hack);
+            var switch_group = new PreferencesGroup ();
+            switch_group.add_row (show_all_row);
+            append (switch_group);
+
+            var good = new PreferencesGroup ("Works well on this graphics chip", "Screensavers used in random mode");
+            flagged_group = new PreferencesGroup ("May run poorly on this graphics chip", "Screensavers used in random mode");
+            append (good);
+            append (flagged_group);
+            foreach (var hack in sorted)
+                add_hack_row (backend.is_flagged (hack.id) ? flagged_group : good, hack);
+            return;
+        }
+
+        var by_title = new Gee.HashMap<string, PreferencesGroup> ();
+        foreach (var hack in sorted) {
+            PreferencesGroup? group = by_title.has_key (hack.group_name) ? by_title[hack.group_name] : null;
+            if (group == null) {
+                group = new PreferencesGroup (hack.group_name, "Screensavers used in random mode");
+                by_title[hack.group_name] = group;
+                append (group);
             }
+            add_hack_row (group, hack);
         }
     }
 
@@ -334,7 +362,7 @@ public class ScreensaverSettings : Gtk.Box {
             });
             var preview = new Button.with_label ("Preview");
             preview.valign = Align.CENTER;
-            preview.clicked.connect (() => backend.preview (hack.id));
+            preview.clicked.connect (() => start_preview (hack.id));
             actions.add_suffix (reset);
             actions.add_suffix (preview);
             by_group[order[order.size - 1]].add_row (actions);
@@ -393,6 +421,8 @@ public class ScreensaverSettings : Gtk.Box {
         string id = hack.id;
         string issue = backend.known_issue (id);
         string? subtitle = backend.has_tiers ? hack.group_name : null;
+        if (backend.is_flagged (id))
+            subtitle = (subtitle != null ? subtitle + " - " : "") + warning_text (id);
         if (issue != "")
             subtitle = (subtitle != null ? subtitle + " - " : "") + "known issue: " + issue;
         var row = new SwitchRow (hack.title, subtitle);
@@ -402,10 +432,34 @@ public class ScreensaverSettings : Gtk.Box {
         });
         var button = new Button.with_label ("Preview");
         button.valign = Align.CENTER;
-        button.clicked.connect (() => backend.preview (id));
+        button.clicked.connect (() => start_preview (id));
         row.add_suffix (button);
         group.add_row (row);
         pool_rows[id] = row;
+    }
+
+    private string warning_text (string id) {
+        string expect = backend.expectation (id);
+        return expect != "" ? "\u26a0 may stutter - " + expect : "\u26a0 may stutter on this graphics chip";
+    }
+
+    // Flagged hacks ask first; without a parent application, preview at once.
+    private void start_preview (string id) {
+        var window = get_root () as Gtk.Window;
+        if (!backend.is_flagged (id) || window == null || window.application == null) {
+            backend.preview (id);
+            return;
+        }
+        var dialog = new ConfirmDialog (window.application, "Preview anyway?", "dialog-warning-symbolic",
+                                        warning_text (id).replace ("\u26a0 ", "This screensaver may run poorly here: "),
+                                        "Preview");
+        dialog.set_secondary ("Cancel");
+        dialog.transient_for = window;
+        dialog.response.connect ((r) => {
+            if (r == ConfirmDialog.Response.PRIMARY)
+                backend.preview (id);
+        });
+        dialog.present ();
     }
 
     private void set_hack_enabled (string id, bool enabled) {
@@ -470,6 +524,11 @@ public class ScreensaverSettings : Gtk.Box {
             enabled.add (e);
         foreach (var entry in pool_rows.entries)
             entry.value.switch_btn.active = enabled.is_empty || enabled.contains (entry.key);
+
+        if (show_all_row != null) {
+            show_all_row.switch_btn.active = backend.show_all;
+            flagged_group.visible = backend.show_all;
+        }
 
         foreach (var binding in option_bindings)
             binding.refresh (backend);

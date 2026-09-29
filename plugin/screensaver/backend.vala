@@ -37,7 +37,14 @@ public interface ScreensaverBackend : Object {
     public abstract string hack_id { owned get; set; }
     public abstract string[] enabled_hacks { owned get; set; }
     public abstract bool has_tiers { get; }
-    public abstract bool igpu_friendly (string id);
+    // True when some hack is expected to run poorly on this graphics chip.
+    public abstract bool has_flags { get; }
+    public abstract bool is_flagged (string id);
+    // Short expectation such as "about 12 fps on Intel UHD 630"; empty if unknown.
+    public abstract string expectation (string id);
+    public abstract bool show_all { get; set; }
+    // Human-readable class of the display GPU, e.g. "Weak (46.5 ms on the calibration test)".
+    public abstract string gpu_class_label { owned get; }
     // Empty when the hack has no known defect, else a short reason.
     public abstract string known_issue (string id);
     public abstract string pool_class { owned get; set; }
