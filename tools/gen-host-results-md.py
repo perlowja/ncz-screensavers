@@ -29,6 +29,7 @@ PHASES = [
     "session",
     "color",
     "chooser",
+    "gpuclass",
 ]
 
 
@@ -136,6 +137,50 @@ def main():
             f"| {h} | {d.get('arch', '?')} | {esc(d.get('kernel', '?'))} | {esc(gpu)} | {pkg} | {s.get('pass', 0)} | {s.get('fail', 0)} | {s.get('skip', 0)} |"
         )
     L.append("")
+
+    gc = {h: d["gpuclass"] for h, d in data.items() if d.get("gpuclass")}
+    if gc:
+        L.append("## GPU class, offload and copy cost")
+        L.append("")
+        L.append(
+            "Class from `ncz-screensaver calibrate`: a 160-step raymarcher at 1080p; weak at 20 ms or more, mid from 8 to 20 ms, strong below 8 ms."
+        )
+        L.append("")
+        L.append("| Host | GPU | Role | Class | Score (ms) | Renderer |")
+        L.append("|---|---|---|---|---|---|")
+        for h, g in gc.items():
+            cal = g.get("calibration") or {}
+            for gpu in g.get("gpus", []):
+                e = cal.get("display") if gpu["display"] else cal.get(gpu["id"])
+                e = e or {}
+                role = "display" if gpu["display"] else "offload target"
+                L.append(
+                    f"| {h} | {gpu['vendor']}/{gpu['driver']} | {role} | {e.get('class', '?')} | {e.get('ms', '-')} | {esc(str(e.get('renderer', '')))} |"
+                )
+        L.append("")
+        rows = [(h, r) for h, g in gc.items() for r in g.get("offload_matrix", [])]
+        if rows:
+            L.append(
+                "| Host | Hack | Min class | Display class | Target | Offload | Expected |"
+            )
+            L.append("|---|---|---|---|---|---|---|")
+            for h, r in rows:
+                pl = r.get("plan", {})
+                L.append(
+                    f"| {h} | `{r['hack']}` | {r['min_class']} | {r['display_class']} | {r['target']} ({r['target_class']}) | {pl.get('offload')} | {r['expected_offload']} |"
+                )
+            L.append("")
+        cost = [(h, r) for h, g in gc.items() for r in g.get("offload_copy", [])]
+        if cost:
+            L.append(
+                "| Host | Target GPU | Hack | Display GPU fps | Target GPU fps | Copy cost (ms) |"
+            )
+            L.append("|---|---|---|---|---|---|")
+            for h, r in cost:
+                L.append(
+                    f"| {h} | {r['gpu']} | `{r['hack']}` | {r['display'].get('fps', '-')} | {r['target'].get('fps', '-')} | {r.get('copy_ms', '-')} |"
+                )
+            L.append("")
 
     if args.notes:
         L.append(Path(args.notes).read_text().rstrip())

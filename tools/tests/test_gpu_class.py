@@ -584,3 +584,16 @@ def test_child_env_exports_the_class_of_the_rendering_gpu(env):
         "light_gles3", S, base_env={"HOME": str(env.tmp), "NCZ_GPU_CLASS": "mid"}
     )
     assert mine["NCZ_GPU_CLASS"] == "mid"  # an explicit value wins
+
+
+def test_mid_class_uses_measured_render_hints(env, monkeypatch):
+    layout(env, "single-soc")
+    seed_display(env, "mid")
+    hints = env.tmp / "hints.tsv"
+    hints.write_text("hyprsaver_slow_gles3\t0.5\t60\tnote\n")
+    monkeypatch.setenv("NCZ_SCREENSAVER_RENDER_HINTS", str(hints))
+    got = env.render_env("hyprsaver_slow_gles3", S)
+    assert got["NCZ_RENDER_SCALE"] == "0.50"
+    assert "NCZ_RENDER_SCALE" not in env.render_env("hyprsaver_other_gles3", S)
+    fixed = {**S, "render-scale-mode": "fixed", "render-scale": 1.0}
+    assert "NCZ_RENDER_SCALE" not in env.render_env("hyprsaver_slow_gles3", fixed)

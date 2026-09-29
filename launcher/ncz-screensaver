@@ -1123,6 +1123,24 @@ def default_render_cap():
     return 0
 
 
+def load_render_hints():
+    """{hack id: render scale} measured to reach a smooth frame rate on a mid-class GPU."""
+    for cand in (
+        os.environ.get("NCZ_SCREENSAVER_RENDER_HINTS", ""),
+        "/usr/share/ncz-screensavers/render-hints.tsv",
+        "/usr/share/ncz-screensaver-chooser/render-hints.tsv",
+    ):
+        if cand and Path(cand).is_file():
+            out = {}
+            for line in Path(cand).read_text().splitlines():
+                f = line.split("\t")
+                if len(f) >= 2 and not line.startswith("#"):
+                    with contextlib.suppress(ValueError):
+                        out[f[0]] = float(f[1])
+            return out
+    return {}
+
+
 def render_env(hack_id, settings, plan=None):
     """NCZ_RENDER_SCALE / NCZ_MAX_RENDER_HEIGHT for shader hacks (or per-hack overrides)."""
     per_hack = (settings.get("hack-options") or {}).get(hack_id, {})
@@ -1155,6 +1173,14 @@ def render_env(hack_id, settings, plan=None):
     ):
         scale = WEAK_DEFAULT_SCALE
     plan = plan or plan_for(hack_id, settings)
+    if (
+        plan["class"] == "mid"
+        and "render-scale" not in override
+        and scale >= 1.0
+        and str(settings.get("render-scale-mode", "auto")) == "auto"
+        and is_shader_hack(hack_id)
+    ):
+        scale = min(scale, load_render_hints().get(hack_id, 1.0))
     if (
         plan["offload"]
         and plan["copy_ms"] > COPY_BUDGET_MS

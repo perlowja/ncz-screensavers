@@ -5,11 +5,18 @@
 # runs it inside the user's real Wayland session, and pulls results.json,
 # screenshots and logs back.  See docs/LAUNCHER-DESIGN.md and docs/HOST-TEST-RESULTS.md.
 #
-# Authentication is delegated: HOST_TEST_SSH is a command prefix invoked as
+# Authentication is by password on every host (fleet policy: no dependence on ssh keys or an
+# agent). The default transport is `sshpass -e ssh` with password authentication forced, so a
+# missing or wrong password fails instead of silently using a key. The password comes from,
+# in this order: HT_SSH_PW_<ALIAS> (alias upper case, - as _), SSHPASS, or a mode-0600 file
+# named by HT_SSH_PWFILE (default ~/.ht-ssh-pw) holding "alias=password" lines or one bare
+# password. The value @user means "the host's login name", the convention on the lab test
+# hosts. It is handed to sshpass through the environment only, never on a command line.
+# Host keys stay checked (accept-new): after a reinstall, verify the fingerprint once and
+# update known_hosts. HOST_TEST_SSH, a command prefix invoked as
 #   $HOST_TEST_SSH <alias> <remote command...>
-# (default: plain ssh with BatchMode).  HT_SUDO_PW, when set, is forwarded to
-# the agent through stdin only, never on a command line (the special value
-# @user sends the host's login name, the convention on the lab test hosts).
+# still replaces the whole transport. HT_SUDO_PW, when set, is forwarded to the agent
+# through stdin only, never on a command line (@user as above).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -71,15 +78,43 @@ done
 [ ${#hosts[@]} -gt 0 ] || hosts=("${ALL_HOSTS[@]}")
 [ -n "$results" ] || results="./host-test-results/$(date -u +%Y%m%dT%H%M%SZ)"
 
+ssh_password() { # ssh_password <alias>: print the password source value for the host
+    local a="$1" var v f line
+    var="HT_SSH_PW_$(printf '%s' "$a" | tr 'a-z-' 'A-Z_')"
+    v="${!var:-${SSHPASS:-}}"
+    if [ -z "$v" ]; then
+        f="${HT_SSH_PWFILE:-$HOME/.ht-ssh-pw}"
+        if [ -r "$f" ]; then
+            if [ "$(stat -c %a "$f" 2>/dev/null)" != 600 ]; then
+                echo "host-test: $f must have mode 0600" >&2
+                return 1
+            fi
+            line=$(grep -m1 "^$a=" "$f" | cut -d= -f2-)
+            [ -n "$line" ] || line=$(grep -m1 -v '=' "$f")
+            v="$line"
+        fi
+    fi
+    [ "$v" = "@user" ] && v="${HOST_USER[$a]}"
+    if [ -z "$v" ]; then
+        echo "host-test: no ssh password for $a: set SSHPASS (or HT_SSH_PW_${a^^}), or HT_SSH_PWFILE; @user means the login name" >&2
+        return 1
+    fi
+    printf '%s' "$v"
+}
+
 rsh() { # rsh <alias> <remote command...>
     local alias="$1"; shift
     if [ -n "${HOST_TEST_SSH:-}" ]; then
         # shellcheck disable=SC2086
         $HOST_TEST_SSH "$alias" "$@"
-    else
-        ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
-            "${HOST_USER[$alias]}@${HOST_IP[$alias]}" "$@"
+        return
     fi
+    command -v sshpass >/dev/null 2>&1 || { echo "host-test: sshpass is not installed" >&2; return 127; }
+    local pw
+    pw=$(ssh_password "$alias") || return 1
+    SSHPASS="$pw" sshpass -e ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+        -o NumberOfPasswordPrompts=1 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
+        "${HOST_USER[$alias]}@${HOST_IP[$alias]}" "$@"
 }
 
 hostlock() { # hostlock <alias> <host-lock.sh args...>
