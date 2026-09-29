@@ -842,11 +842,12 @@ legacy_gles3_hacks = [
 # A ported hack keeps its <hack>_gles3 binary name; the GL1 immediate-mode
 # original is only built with -Dlegacy-classics=true, as <hack>_legacy_gles3,
 # for one release of A/B comparison.  See docs/CLASSICS-SHADER-PORT.md.
-classics_shader_ported = ['voronoi', 'gravitywell', 'hexstrut', 'cubestorm', 'crackberg', 'cityflow']
+classics_shader_ported = ['voronoi', 'gravitywell', 'hexstrut', 'cubestorm', 'crackberg', 'cityflow', 'noof', 'geodesic']
 # extra vendored xscreensaver helper sources a port still needs (rotators, RNG)
 classics_shader_extras = {
     'hexstrut': ['src/rotator.c', 'src/yarandom.c'],
     'cubestorm': ['src/rotator.c', 'src/yarandom.c'],
+    'geodesic': ['src/rotator.c', 'src/yarandom.c'],
 }
 legacy_classics = get_option('legacy-classics')
 
