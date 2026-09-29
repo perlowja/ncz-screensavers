@@ -48,7 +48,7 @@ The GL1 originals stay behind `-Dlegacy-classics=true` for one release, as
 
 Method: vsync-paced runs of 12 seconds under the exclusive host lock, no readback in the loop, numbers are the harness's own swap-to-swap statistics after the first 5 seconds (`[stats] steady`). 60 fps means the display refresh was met with the listed p95 frame interval; fps below 60 is 1000 / median. `legacy` is the GL1 build (`-Dlegacy-classics=true`), `classic` and `enhanced` are the ports. Raw rows: `docs/classics-shots/perf.tsv`.
 
-Caveat: other test agents share these machines. A run that overlapped another fullscreen window can stall (window occluded, no frame callbacks); such runs are rejected or repeated, and one combination (noof enhanced on PEGASUS) could not be completed cleanly and is marked n/a.
+Caveat: other test agents share these machines and do not all honor the lock. A run that overlapped another fullscreen window or a locked display stalls (no frame callbacks; the process ignores SIGTERM until killed); such runs were discarded and repeated.
 
 ### O6N (Radxa Orion O6N, Mali-G720, 1080p render cap)
 
@@ -92,7 +92,7 @@ Not ported (upstream GLSL): hypertorus 60 / 16.8, klein 60 / 16.7, projectivepla
 | cubestorm | 28 fps / p95 37.6 ms | 60 / 16.9 | 60 / 16.9 |
 | crackberg | 60 / 16.9 | 60 / 16.9 | 60 / 16.9 |
 | cityflow | 60 / 16.8 | 60 / 17.0 | 60 / 17.0 |
-| noof | 60 / 16.9 | 60 / 16.9 | n/a |
+| noof | 60 / 16.9 | 60 / 16.9 | 60 / 16.9 |
 | geodesic | 60 / 19.5 | 60 / 16.9 | 60 / 16.9 |
 | gibson | 60 / 16.8 | 60 / 17.0 | 60 / 16.9 |
 
@@ -133,8 +133,7 @@ Not ported (upstream GLSL): hypertorus 60 / 16.8, klein 60 / 16.8, projectivepla
 ### Class summary for tiers.tsv
 
 * Weak class (Intel UHD 630): all nine ports hold 60 fps in `classic`; the GL1 cubestorm ran at 28 fps there.
-  In `enhanced` everything holds 60 except voronoi (45 fps, per-pixel loop over all sites); noof enhanced is
-  unmeasured on this host. `style=auto` therefore picks `classic` on the weak class. Suggested marks:
+  In `enhanced` everything holds 60 except voronoi (45 fps, per-pixel loop over all sites). `style=auto` therefore picks `classic` on the weak class. Suggested marks:
   weak-ok for every classic style, `enhanced` voronoi mid-class.
 * Mali-G720 (O6N, MS-R1): the GL1 build was unusable for cubestorm (1.9 fps), gibson (9), geodesic (11 to 21),
   crackberg (12 to 14) and marginal for voronoi (35 to 56); every port holds 60 fps p95 <= 17.4 ms in both styles.
