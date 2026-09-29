@@ -391,7 +391,11 @@ public class ScreensaverSettings : Gtk.Box {
 
     private void add_hack_row (PreferencesGroup group, ScreensaverHack hack) {
         string id = hack.id;
-        var row = new SwitchRow (hack.title, backend.has_tiers ? hack.group_name : null);
+        string issue = backend.known_issue (id);
+        string? subtitle = backend.has_tiers ? hack.group_name : null;
+        if (issue != "")
+            subtitle = (subtitle != null ? subtitle + " - " : "") + "known issue: " + issue;
+        var row = new SwitchRow (hack.title, subtitle);
         row.switch_btn.notify["active"].connect (() => {
             if (!refreshing)
                 set_hack_enabled (id, row.switch_btn.active);
