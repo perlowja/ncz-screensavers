@@ -1,15 +1,15 @@
 ncz-screensaver-idled: debug: bound wl_seat (advertised v9)
 ncz-screensaver-idled: debug: bound ext_idle_notifier_v1 v2
 ncz-screensaver-idled: debug: bound zwlr_output_power_manager_v1 v1
-ncz-screensaver-idled: debug: bound output power for wl_output=0x560fd8f61000
+ncz-screensaver-idled: debug: bound output power for wl_output=0x55cde8909f50
 ncz-screensaver-idled: debug: plan recomputed: saver=6 lock=10 dpms=-1 lock_on_suspend=0
 ncz-screensaver-idled: debug: output power mode event: mode=1
-ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_360
+ncz-screensaver-idled: debug: logind session=/org/freedesktop/login1/session/_3271
 ncz-screensaver-idled: debug: acquired sleep inhibitor fd=11
-ncz-screensaver-idled: info: lock spawned pid=60243
-ncz-screensaver-idled: debug: lock pid=60243 exited status=768
+ncz-screensaver-idled: info: lock spawned pid=105537
+ncz-screensaver-idled: debug: lock pid=105537 exited status=768
 ncz-screensaver-idled: warn: lock client ended abnormally (Child process exited with code 3)
-ncz-screensaver-idled: debug: child pid=60242 exited status=0
-ncz-screensaver-idled: info: lock spawned pid=60245
-ncz-screensaver-idled: debug: lock pid=60245 exited status=0
+ncz-screensaver-idled: debug: child pid=105536 exited status=0
+ncz-screensaver-idled: info: lock spawned pid=105539
+ncz-screensaver-idled: debug: lock pid=105539 exited status=0
 ncz-screensaver-idled: info: SIGTERM/INT received, shutting down

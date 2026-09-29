@@ -1,0 +1,20 @@
+RENDERER=Mesa Intel(R) UHD Graphics (CML GT2)
+VENDOR=Intel
+GLSL=OpenGL ES GLSL ES 3.20
+[diag] gles3_harness: calling init...
+[diag] xshadertoy shader=/usr/share/ncz-screensavers/shaders/rigrekt.glsl
+[diag] xshadertoy init ok: program=4 vbo=2 GL=OpenGL ES 3.2 Mesa 26.1.6-1 uniforms ires=0 itime=1 iframe=-1 imouse=-1 iseed=-1 ichan0..3=-1,-1,-1,-1
+[diag] xshadertoy iSeed=0.423473,0.748042,0.227216,0.378094
+[diag] gles3_harness: init returned
+[diag] initial draw: 1920x1080 configured=1
+[diag] initial draw_cb returned; swapping
+[diag] frame #0
+[diag] frame #1
+[diag] frame #2
+[diag] xshadertoy frame=4 gl_error=0x0 samples=160,181,160; 144,157,144; 163,175,163; 0,0,0
+[diag] frame #3
+[diag] frame #4
+[diag] framebuffer frame=4 pixels=2073600 nonblack=1555200 hash=7c4c1e0dbc076a82 gl_error=0x0 srgb=off min_dark=(R0,G0,B0) p1=0 p5=0 hist[0..15]=1569306,718515,269183,367502,351632,360590,311031,288304,289870,300866,320442,278580,235085,251763,212817,95314
+gles3_harness: wl_display_connect failed
+gles3_harness: wl_display_connect failed
+gles3_harness: wl_display_connect failed

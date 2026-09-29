@@ -2870,9 +2870,6 @@ def run_phases(
     overall_fail = False
     sinty_before = _sinty_lock(env, "false")
     offload_before = None
-    if os.environ.get("HT_GPU_OFFLOAD"):
-        offload_before = _set_offload(env, os.environ["HT_GPU_OFFLOAD"])
-        results["gpu_offload"] = os.environ["HT_GPU_OFFLOAD"]
     # The older swayidle based manager would lock the session in the middle of
     # a long run; pause it and restore it at the end.
     paused = []
@@ -2887,6 +2884,10 @@ def run_phases(
         results.pop("_pw", None)
     if "install" in phases:
         phase_install(results, checks_by_phase["install"], env, deb, pw, workdir)
+    if os.environ.get("HT_GPU_OFFLOAD") and offload_before is None:
+        # The key only exists once the package under test is installed.
+        offload_before = _set_offload(env, os.environ["HT_GPU_OFFLOAD"])
+        results["gpu_offload"] = os.environ["HT_GPU_OFFLOAD"]
     if "hacks" in phases:
         results["_pw"] = pw
         # Resolve now: the catalog on the host is only current once the package
