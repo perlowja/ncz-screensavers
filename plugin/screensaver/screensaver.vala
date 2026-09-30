@@ -46,6 +46,8 @@ public class OptionBinding : Object {
             ((SpinRow) row).spin_btn.value = double.parse (value);
         else if (row is EntryRow)
             ((EntryRow) row).text = value;
+        else if (row is ExpanderRow)
+            ((ExpanderRow) row).subtitle = option.display (value);
     }
 }
 
@@ -427,6 +429,27 @@ public class ScreensaverSettings : Gtk.Box {
             option_bindings.add (new OptionBinding (hack_id, option, row));
             return row;
         case "enum":
+            if (option.group_titles.size > 0 && option.name != "preset") {
+                var outer = new ExpanderRow (option.label, option.display (current));
+                foreach (var title in option.group_titles) {
+                    var inner = new ExpanderRow (title, "%d choices".printf (option.group_choices[title].size));
+                    foreach (var choice in option.group_choices[title]) {
+                        string id = choice;
+                        var item = new ActionRow (option.display (id));
+                        var use = new Button.with_label ("Use");
+                        use.valign = Align.CENTER;
+                        use.clicked.connect (() => {
+                            backend.set_option (hack_id, option.name, id);
+                            outer.subtitle = option.display (id);
+                        });
+                        item.add_suffix (use);
+                        inner.add_row (item);
+                    }
+                    outer.add_row (inner);
+                }
+                option_bindings.add (new OptionBinding (hack_id, option, outer));
+                return outer;
+            }
             var row = new SelectionRow (option.label, option.choices, current);
             row.selected.connect ((item) => {
                 if (!refreshing)

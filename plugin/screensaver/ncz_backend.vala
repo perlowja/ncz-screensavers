@@ -310,10 +310,35 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
                 dflt = NO_SCENE;
                 label = "Scene";
             }
-            list.add (new ScreensaverOption (name, kind, dflt, member_str (o, "min"), member_str (o, "max"), choices,
+            var opt = new ScreensaverOption (name, kind, dflt, member_str (o, "min"), member_str (o, "max"), choices,
                                              label == "" ? name : label, member_str (o, "description"),
                                              member_str (o, "group") == "" ? "General" : member_str (o, "group"),
-                                             member_str (o, "level") == "advanced"));
+                                             member_str (o, "level") == "advanced");
+            if (o.has_member ("choice_labels") && o.get_member ("choice_labels").get_node_type () == Json.NodeType.OBJECT) {
+                var cl = o.get_object_member ("choice_labels");
+                foreach (unowned string k in cl.get_members ())
+                    opt.choice_labels[k] = member_str (cl, k);
+            }
+            if (o.has_member ("choice_groups") && o.get_member ("choice_groups").get_node_type () == Json.NodeType.ARRAY) {
+                o.get_array_member ("choice_groups").foreach_element ((a3, j3, gn) => {
+                    if (gn.get_node_type () != Json.NodeType.OBJECT)
+                        return;
+                    var go = gn.get_object ();
+                    string gl = member_str (go, "label");
+                    if (gl == "" || !go.has_member ("choices") || go.get_member ("choices").get_node_type () != Json.NodeType.ARRAY)
+                        return;
+                    var members = new Gee.ArrayList<string> ();
+                    go.get_array_member ("choices").foreach_element ((a4, j4, cn) => {
+                        if (cn.get_node_type () == Json.NodeType.VALUE && !cn.is_null ())
+                            members.add (cn.get_string ());
+                    });
+                    if (!members.is_empty) {
+                        opt.group_titles.add (gl);
+                        opt.group_choices[gl] = members;
+                    }
+                });
+            }
+            list.add (opt);
         });
         return;
     }

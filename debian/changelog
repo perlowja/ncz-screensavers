@@ -1,3 +1,10 @@
+ncz-screensavers (0.7.4) unstable; urgency=medium
+
+  * options: typed JSON schemas (enum choices in range, boolean defaults) and .conf presets
+    are listed; the plugin shows grouped enums (choice_groups, choice_labels) as a two-level picker.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 20:25:00 -0400
+
 ncz-screensavers (0.7.3) unstable; urgency=medium
 
   * Option schemas from the hack itself: when no options file ships, the launcher reads

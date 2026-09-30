@@ -19,6 +19,13 @@ public class ScreensaverOption : Object {
     public string description { get; construct; }
     public string group_name { get; construct; }
     public bool advanced { get; construct; }
+    public Gee.ArrayList<string> group_titles = new Gee.ArrayList<string> ();
+    public Gee.HashMap<string, Gee.ArrayList<string>> group_choices = new Gee.HashMap<string, Gee.ArrayList<string>> ();
+    public Gee.HashMap<string, string> choice_labels = new Gee.HashMap<string, string> ();
+
+    public string display (string value) {
+        return choice_labels.has_key (value) ? choice_labels[value] : value;
+    }
 
     public ScreensaverOption (string name, string kind, string default_value, string min_value, string max_value,
                               string[] choices, string label, string description, string group_name,

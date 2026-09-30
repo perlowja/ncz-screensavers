@@ -1068,14 +1068,21 @@ def _rows_from_json(path, hack_id):
         if not name or kind not in OPTION_TYPES:
             continue
         rng = o.get("range") or [o.get("min", ""), o.get("max", "")]
+        choices = [str(c) for c in o.get("choices", [])]
+        if kind == "enum" and not choices and isinstance(rng, list):
+            choices, rng = [str(c) for c in rng], ["", ""]  # range may carry the choices
+        if kind in ("bool", "string") or len(rng) < 2:
+            rng = ["", ""]
+        default = o.get("default", "")
+        default = str(default).lower() if isinstance(default, bool) else str(default)
         rows.append(
             {
                 "name": name,
                 "type": kind,
-                "default": str(o.get("default", "")),
+                "default": default,
                 "min": "" if rng[0] is None else str(rng[0]),
                 "max": "" if rng[1] is None else str(rng[1]),
-                "choices": [str(c) for c in o.get("choices", [])],
+                "choices": choices,
                 "label": str(o.get("label") or name),
                 "description": str(o.get("description", "")),
                 "group": str(o.get("group") or "General"),
@@ -1128,6 +1135,19 @@ def load_presets(hack_id):
         break
     seen = {p["id"] for p in out}
     base = options_dir() / "presets" / short_name(hack_id)
+    for f in sorted(base.glob("*.conf")) if base.is_dir() else []:
+        if f.stem not in seen and ID_RE.match(f.stem):
+            seen.add(f.stem)
+            out.append(
+                {
+                    "id": f.stem,
+                    "row_id": f"{hack_id}--{f.stem}",
+                    "title": f.stem.replace("-", " ").title(),
+                    "accuracy": "",
+                    "description": "",
+                    "min_class": "",
+                }
+            )
     for f in sorted(base.glob("*.json")) if base.is_dir() else []:
         try:
             data = json.loads(f.read_text())
