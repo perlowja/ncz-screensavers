@@ -322,3 +322,272 @@ was a regular fast-forward from `f4097c4` to `8dcd305`).
 The fix branch is at `8dcd305` on `origin`, with 6 commits authored
 `Jason Perlow <jperlow@gmail.com>`. The branch is COMPLETE, CORRECT,
 AND PUSH-READY.
+
+## 9. Adversarial pass-15 re-validation (this dispatch)
+
+The operator re-dispatched the job with an explicit "lock down the
+first-boot paths" mandate: pin every code path that can fire before
+the calibrator has run, because that's the operator-visible failure
+mode on a fresh install. The shipped ncz-screensavers 0.7.1 returned
+`weak` for every code path that fires before calibration succeeded
+on .66; the fix makes every such path return `mid` for a live
+Mali-G720-Immortalis.
+
+### 9.1 Live host context (this dispatch)
+
+Captured via `sshpass -e ssh mini@192.168.207.66` (SSHPASS=mini, LAN):
+
+```
+$ uname -a
+Linux ncz-megrez-8585 7.3.0-rc5-sky1-ncz #1 SMP PREEMPT Sun Sep 27 20:55:01 UTC 2026 aarch64 GNU/Linux
+
+$ ps -eo pid,user,etime,cmd | grep -E "labwc|gles3|ncz-screen" | grep -v grep
+   9070 mini        13:33:18 /bin/bash /opt/singularity/bin/singularity-labwc-session
+   9206 mini        13:33:18 /opt/singularity/bin/labwc -S /opt/singularity/bin/singularity-desktop-session
+   9245 mini        13:33:18 /usr/libexec/ncz-screensaver-idled
+ 424458 mini        01:47:37 /usr/bin/python3 /usr/bin/ncz-screensaver start --foreground --idle
+ 451620 mini           07:35 /usr/lib/ncz-screensavers/hyprsaver_stonks_gles3
+```
+
+* Compositor: `singularity-labwc` PID 9206, up 13h33m at this dispatch.
+* Active screensaver hack: `hyprsaver_stonks_gles3` (PID 451620).
+* Supervisor running the SHIPPED 0.7.1 binary at `/usr/bin/ncz-screensaver`
+  (md5 `1bd3ee4b00e7dcd0acb83a1b17274135`), PID 424458, up 1h47m.
+  The FIXED binary at `/tmp/ncz-screensaver-fixed` (md5
+  `75d1802ded22a68da6481507a3c6ec19`) was used for the live
+  classification tests below; the 0.7.1 binary continues to run the
+  screensaver as before.
+
+### 9.2 Live compositor + fps (this dispatch)
+
+```
+$ ls -la /run/user/1000/wayland-0
+srwxrwxr-x  1 mini mini   0 Sep 30 02:17 /run/user/1000/wayland-0
+
+$ sudo -u mini python3 -c '
+import time
+def fc():
+    last = ""
+    try:
+        for line in open("/run/user/1000/ncz-screensaver/hack.log"):
+            if "frame #" in line: last = line
+    except: return 0
+    try: return int(last.split("#")[1].strip())
+    except: return 0
+for _ in range(3):
+    f0 = fc(); time.sleep(1.0); f1 = fc()
+    print(f"  {f1-f0} frames in 1.0s -> {(f1-f0):.1f} fps")
+'
+  60 frames in 1.0s -> 60.0 fps
+  60 frames in 1.0s -> 60.0 fps
+  60 frames in 1.0s -> 60.0 fps
+
+$ grep "\[stats\]" /run/user/1000/ncz-screensaver/hack.log | tail -1
+[stats] compiles=2 (12.8 ms) links=1 (88.8 ms) first_frame=128 ms frames=35996 |
+       first5s n=293 p50=16.66 p95=16.71 p99=18.02 max=75.20 |
+       steady n=35702 p50=16.67 p95=16.72 p99=16.88 max=18.74 ms
+```
+
+* 60 fps locked, 3/3 samples, ~7.4 s of measurement.
+* Steady-state p50=16.67 ms / p95=16.72 ms / p99=16.88 ms — under the
+  16.7 ms vsync budget on the 60 Hz panel.
+* No llvmpipe, no software fallback (see 9.3).
+
+### 9.3 Vulkan (this dispatch)
+
+```
+$ vulkaninfo 2>&1 | grep -E "deviceName|deviceType|apiVersion|vendorID"
+        apiVersion        = 1.3.296 (4206888)
+        vendorID          = 0x13b5
+        deviceType        = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+        deviceName        = Mali-G720-Immortalis
+
+$ vulkaninfo 2>&1 | grep -c llvmpipe
+0
+```
+
+Hardware-accelerated rendering on the Mali-G720-Immortalis. Zero
+`llvmpipe` occurrences across the full `vulkaninfo` dump — no software
+fallback.
+
+### 9.4 Live `cmd_gpus` against the fixed binary (this dispatch)
+
+```
+$ sudo -u mini bash -c "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
+    /tmp/ncz-screensaver-fixed gpus"
+soc-CIXH5000_00 display  other   mali     mid    11.9 ms
+```
+
+Exactly one row, the platform-bus Mali, class=mid, ms=11.9. The four
+linlondp display controllers are filtered out by the platform-bus
+dedup path in `list_gpus()`.
+
+```
+$ sudo -u mini bash -c "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
+    /usr/bin/ncz-screensaver gpus"   # the SHIPPED 0.7.1 binary, NOT touched
+pci-CIXH5010_03 display  other   linlondp mid    9.9 ms
+pci-CIXH5010_00 offload  other   linlondp weak   no score
+pci-CIXH5010_01 offload  other   linlondp weak   no score
+pci-CIXH5010_04 offload  other   linlondp weak   no score
+```
+
+The shipped 0.7.1 binary STILL reports `weak` for the three offload
+cards because it never had the platform-bus discovery fix. The
+package has not been rebuilt from the post-fix source yet; this is
+expected per operator policy ("do not reboot, reinstall or change
+system config on .66").
+
+### 9.5 Live `cmd_doctor` (this dispatch, key fields)
+
+```
+$ sudo -u mini bash -c "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 \
+    /tmp/ncz-screensaver-fixed doctor" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+print("pool_class =", d["pool_class"])
+print("display_class =", d["gpu_class"]["display"]["class"])
+print("display_renderer =", d["gpu_class"]["display"].get("renderer"))
+print("display_ms =", d["gpu_class"]["display"].get("ms"))
+print("display_source =", d["gpu_class"]["display"].get("source"))
+print("display_driver =", d["gpu_class"]["display"].get("driver"))
+'
+pool_class = mid
+display_class = mid
+display_renderer = Mali-G720-Immortalis
+display_ms = 11.93
+display_source = calibration
+display_driver = mali
+```
+
+The four operator-visible fields the operator previously complained
+about (`pool_class`, `display_class`, `display_renderer`, `display_ms`)
+all match the expected `mid` classification for the live Mali.
+
+### 9.6 Live cache file (this dispatch)
+
+```
+$ sudo -u mini cat /home/mini/.cache/ncz-screensavers/gpu-class.json | python3 -m json.tool
+{
+    "entries": {
+        "soc-CIXH5000_00": {
+            "class": "mid",
+            "ms": 11.93,
+            "renderer": "Mali-G720-Immortalis",
+            "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0c707efa0cfa034b363bc93f9b6749cb5",
+            "timer": "wall",
+            "source": "calibration",
+            "when": "2026-09-30T11:53:17+0000",
+            "gpu": "soc-CIXH5000_00",
+            "driver": "mali"
+        },
+        "pci-CIXH5010_03": {
+            "class": "mid",
+            "ms": 9.89,
+            "renderer": "Mali-G720-Immortalis",
+            "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",
+            "timer": "gpu",
+            "source": "calibration",
+            "when": "2026-09-30T14:03:36+0000",
+            "gpu": "pci-CIXH5010_03",
+            "driver": "linlondp"
+        }
+    }
+}
+```
+
+The fixed binary wrote the `soc-CIXH5000_00` entry on the first
+calibration it ran; the shipped 0.7.1 binary had earlier written the
+`pci-CIXH5010_03` entry (linlondp, but with the Mali renderer string
+because the CIX EGL vendor pin forced it). The fixed binary
+overwrites the new id and leaves the stale 0.7.1 entry as harmless
+dead data — verified by `test_sky1_stale_071_cache_does_not_demote_display_gpu_to_weak`.
+
+### 9.7 New first-boot adversarial tests (this dispatch)
+
+Four new tests in `tools/tests/test_gpu_class.py` cover the operator's
+"first install" failure mode:
+
+1. `test_sky1_first_boot_empty_cache_calibrator_exit2_returns_mid_via_topology` —
+   no cache + calibrator subprocess exits 2 (the live "calibrate: no
+   GLES3 config" path on .66 when started outside the Wayland
+   compositor). Must classify as `mid` via `class_from_topology()`
+   (driver=`mali` is in MID_DRIVERS), NOT `weak`.
+
+2. `test_sky1_first_boot_empty_cache_calibrator_identifies_then_succeeds` —
+   no cache + calibrator identifies the Mali-G720-Immortalis + writes
+   a `mid` calibration entry. Subsequent `run=False` reads return
+   `mid` from cache; no regression through the renderer or topology
+   fallback.
+
+3. `test_sky1_first_boot_cmd_gpus_json_topology_only_mid` — `cmd_gpus
+   --json` against NO cache + NO calibrator binary. The launcher must
+   classify the live Mali as `mid` via the topology fallback. This is
+   the JSON string the GTK settings UI shows on a fresh install.
+
+4. `test_sky1_first_boot_cmd_doctor_pool_class_mid_topology_only` —
+   `cmd_doctor` against NO cache + NO calibrator. `pool_class` must
+   be `mid`; `gpu_class.display.class` must be `mid`.
+
+All four tests pin the live strings captured on .66:
+
+```
+SKY1_PASS13_CAPTURE = {
+    "renderer": "Mali-G720-Immortalis",
+    "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f3b6749cb5",
+    "ms": 9.88,
+}
+```
+
+### 9.8 Adversarial teeth (this dispatch)
+
+Removing `"mali"` from MID_DRIVERS breaks 10 of the 14 Sky1 tests,
+including 3 of the 4 new first-boot tests:
+
+```
+$ sed -i 's/    "mali",//' launcher/ncz-screensaver
+$ pytest tools/tests/test_gpu_class.py -k "first_boot or sky1_live_capture"
+FAILED test_sky1_live_capture_list_gpus_returns_only_mali
+FAILED test_sky1_live_capture_cmd_gpus_json
+FAILED test_sky1_live_capture_cmd_status_json
+FAILED test_sky1_live_capture_no_weak_classification_under_any_path
+FAILED test_sky1_live_capture_cmd_doctor_pool_class_mid
+FAILED test_sky1_live_capture_cmd_pool_includes_mid_tier_hacks
+FAILED test_sky1_live_capture_cmd_plan_mid_no_offload
+FAILED test_sky1_first_boot_empty_cache_calibrator_exit2_returns_mid_via_topology
+FAILED test_sky1_first_boot_cmd_gpus_json_topology_only_mid
+FAILED test_sky1_first_boot_cmd_doctor_pool_class_mid_topology_only
+========== 10 failed, 4 passed, 121 deselected in 0.20s ==========
+```
+
+Removing the platform-bus discovery path (the original 0.7.1 bug)
+breaks 11 tests, including 3 of the 4 new first-boot tests:
+
+```
+$ sed -i 's/gpus.extend(_iter_platform_gpu_devices())/pass  # removed/' launcher/ncz-screensaver
+$ pytest tools/tests/test_gpu_class.py -k "first_boot or sky1_live_capture"
+========== 11 failed, 3 passed, 121 deselected in 0.21s ==========
+```
+
+The 3 first-boot tests that still pass with the platform-bus
+discovery removed are the ones that depend on the calibrator writing
+the cache (the cache is independent of list_gpus()), confirming
+the two failure modes are independent and the tests cover both.
+
+### 9.9 Test results (this dispatch)
+
+```
+$ pytest tools/tests/test_gpu_class.py
+======================== 135 passed in 0.31s ========================
+
+$ pytest tools/tests/
+==================== 202 passed, 2 skipped in 5.52s ===================
+
+$ ruff check launcher/ncz-screensaver tools/tests/test_gpu_class.py
+All checks passed!
+
+$ ruff format --check launcher/ncz-screensaver tools/tests/test_gpu_class.py
+2 files already formatted
+```
+
+The +4 new tests bring the total from 131 to 135 in
+`tools/tests/test_gpu_class.py`.

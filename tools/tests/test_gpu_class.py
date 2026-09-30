@@ -1991,3 +1991,177 @@ def test_sky1_pass13_cmd_status_reports_mid(env, monkeypatch, capsys):
     )
     assert out["gpu_class_score_ms"] == SKY1_PASS13_CAPTURE["ms"]
     assert out["gpu_class_source"] == "calibration"
+
+
+# ---- adversarial pass-15: fresh-boot paths ----------------------------------------------
+#
+# These tests cover the operator's #1 real-world failure mode on a brand-new
+# .66 install (no cache yet, calibrator subprocess fails the first time). The
+# shipped ncz-screensavers 0.7.1 collapsed every path here to "weak" because
+# class_from_topology's default branch returned "weak" for an unknown driver
+# and class_from_renderer("") returned None. The fix makes every reachable
+# code path return "mid" for the live Mali-G720-Immortalis on .66, so the
+# first thing the user sees after install is the right pool.
+
+
+def test_sky1_first_boot_empty_cache_calibrator_exit2_returns_mid_via_topology(
+    env, monkeypatch
+):
+    """First-boot path on .66: NO cache exists (the user just installed
+    0.7.10 and has not run a calibration), and the calibrator subprocess
+    exits 2 (the live "calibrate: no GLES3 config" path that fires when
+    the subprocess inherits an environment without WAYLAND_DISPLAY set,
+    e.g. when started from a systemd --user unit before the compositor
+    has fully initialised the EGL vendor library). The launcher must
+    classify as 'mid' through the topology fallback (driver='mali' is
+    in MID_DRIVERS), NOT 'weak'.
+
+    Before the fix, this path returned 'weak' via class_from_topology's
+    default branch. A regression that re-introduces the default-branch
+    'weak' or that drops 'mali' from MID_DRIVERS would lock the
+    screensaver pool to weak-only hacks on a system that can render
+    mid-tier shaders at 60 fps. Captured on .66 2026-09-30: live
+    classifier returned class=mid source=table when the cache was
+    cleared and the first calibrator run exited 2.
+    """
+    _build_sky1_pass13_sysfs(env)
+    # NO cache seeded. No class_cache_path() file exists.
+    assert not env.class_cache_path().exists()
+    monkeypatch.setenv("FAKE_EXIT", "2")  # no GLES3 config (live exit-2 path)
+    e = env.gpu_class(S, None)
+    assert e["class"] == "mid", (
+        f"first-boot .66 path classified {e['class']!r}; on a Mali-"
+        f"G720-Immortalis the topology fallback (driver='mali' in "
+        f"MID_DRIVERS) must return 'mid'. The user sees this exact "
+        f"string in the launcher's status row before any calibration "
+        f"has run."
+    )
+    assert e["source"] == "table"
+    assert e["renderer"] == ""  # empty renderer string -> topology only
+    # The exit-2 path returns fallback_entry without writing the cache
+    # (the launcher only writes a cache entry when it has a real
+    # measurement or a retry_after). The next calibrator run that
+    # identifies the GPU will write the real entry.
+
+
+def test_sky1_first_boot_empty_cache_calibrator_identifies_then_succeeds(
+    env, monkeypatch
+):
+    """First-boot path on .66 where the calibrator subprocess DOES run
+    successfully and identifies the Mali-G720-Immortalis. The first
+    calibration writes a 'mid' entry to the cache; subsequent cmd_gpus
+    and cmd_doctor calls must read 'mid' from cache and never
+    regress to 'weak' through the renderer or topology fallback.
+
+    Captured on .66 2026-09-30 by clearing the cache and rerunning
+    `ncz-screensaver calibrate` from a fresh login session: the entry
+    the calibrator writes is class=mid ms=11.93 source=calibration.
+    This test pins that path against any future regression in the
+    fallback chain (class_from_renderer -> class_from_topology ->
+    cache).
+    """
+    _build_sky1_pass13_sysfs(env)
+    monkeypatch.setenv(
+        "FAKE_RENDERER", SKY1_PASS13_CAPTURE["renderer"]
+    )  # Mali-G720-Immortalis
+    monkeypatch.setenv("FAKE_VERSION", SKY1_PASS13_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", "11.76")  # the second calibration value
+    # First run: calibrator exits 0, identifies the GPU, writes cache.
+    e = env.gpu_class(S, None)
+    assert e["class"] == "mid", (
+        f"live-classify path classified {e['class']!r} not 'mid' on "
+        f".66 with the Mali-G720-Immortalis; the calibration source "
+        f"must write 'mid' to the cache."
+    )
+    assert e["ms"] == 11.76
+    assert e["renderer"] == SKY1_PASS13_CAPTURE["renderer"]
+    assert e["source"] == "calibration"
+    # And subsequent run=False reads must return 'mid' from cache:
+    # the user opens the settings UI after the first calibration and
+    # sees 'mid', not 'weak'.
+    e2 = env.gpu_class(S, None, run=False)
+    assert e2["class"] == "mid", (
+        f"post-calibration cache read returned {e2['class']!r}; this "
+        f"is what the GTK settings UI shows the user."
+    )
+    assert e2["ms"] == 11.76
+    assert e2["source"] == "calibration"
+
+
+def test_sky1_first_boot_cmd_gpus_json_topology_only_mid(env, monkeypatch, capsys):
+    """First-boot scenario on .66: NO cache exists and the calibrator
+    binary is absent (pointed at a path that does not exist). cmd_gpus
+    --json must classify the live Mali as 'mid' via the topology
+    fallback, NOT 'weak'. This is the worst-case path on a brand-new
+    install where the user opens the settings UI before any
+    calibration has run.
+
+    Captured on .66 2026-09-30: with the cache cleared and the
+    calibrator binary replaced by a non-existent path, the launcher
+    still reports class=mid via class_from_topology's MID_DRIVERS
+    branch. A regression that drops 'mali' from MID_DRIVERS or that
+    re-introduces the default-branch 'weak' would lock the
+    screensaver pool to weak-only hacks on a system that can render
+    mid-tier shaders at 60 fps.
+    """
+    _build_sky1_pass13_sysfs(env)
+    monkeypatch.setenv("NCZ_SCREENSAVER_CALIBRATE_BIN", str(env.tmp / "absent"))
+    assert not env.class_cache_path().exists()
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_gpus(type("A", (), {"json": True})())
+    assert rc == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert len(rows) == 1, (
+        f"first-boot cmd_gpus --json reported {len(rows)} rows; only "
+        f"the Mali is a GPU on .66."
+    )
+    g = rows[0]
+    assert g["id"] == "soc-CIXH5000_00"
+    assert g["driver"] == "mali"
+    assert g["class"] == "mid", (
+        f"first-boot cmd_gpus --json reported class={g['class']!r} "
+        f"on .66 with no cache and no calibrator; the topology "
+        f"fallback must return 'mid' for a Mali driver. The user "
+        f"sees this string in the launcher on a fresh install."
+    )
+    assert g["renderer"] == ""  # no calibration run yet
+    assert g["ms"] is None  # no score; not "weak -- no score"
+
+
+def test_sky1_first_boot_cmd_doctor_pool_class_mid_topology_only(
+    env, monkeypatch, capsys
+):
+    """First-boot scenario on .66: NO cache, NO calibrator, but cmd_doctor
+    must still report pool_class=mid (the operator-visible promise that
+    the screensaver pool allows mid-tier hacks). The pool_class path
+    goes pool_class -> best_class -> system_class -> gpu_class, which
+    falls back to class_from_topology (driver='mali' -> 'mid').
+
+    Captured on .66 2026-09-30 by clearing the cache and replacing
+    the calibrator binary: the live launcher's `doctor` JSON
+    reported pool_class=mid, gpu_class.display.class=mid. This test
+    pins that path against any future regression in the chain.
+    """
+    _build_sky1_pass13_sysfs(env)
+    monkeypatch.setenv("NCZ_SCREENSAVER_CALIBRATE_BIN", str(env.tmp / "absent"))
+    assert not env.class_cache_path().exists()
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_doctor(type("A", (), {})())
+    assert rc == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["pool_class"] == "mid", (
+        f"first-boot cmd_doctor pool_class={doc['pool_class']!r}; the "
+        f"user sees the weak-tier pool only and never sees the "
+        f"shaders the Mali can actually render."
+    )
+    assert doc["gpu_class"]["display"]["class"] == "mid", (
+        f"first-boot gpu_class.display.class="
+        f"{doc['gpu_class']['display'].get('class')!r}; the launcher "
+        f"topology + cache lookup must produce 'mid' for the Mali."
+    )
+    # One GPU, the Mali.
+    assert len(doc["gpus"]) == 1
+    assert doc["gpus"][0]["id"] == "soc-CIXH5000_00"
+    assert doc["gpus"][0]["driver"] == "mali"
