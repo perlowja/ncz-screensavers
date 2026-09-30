@@ -1118,6 +1118,8 @@ def option_level(row):
 def load_presets(hack_id):
     """Presets of a hack from presets.tsv: id, title, accuracy, description, min class."""
     out = []
+    # NCZ_SCREENSAVER_PRESETS fully replaces the system candidates: an unreadable
+    # override yields no TSV presets (it never falls back to the system files).
     override = os.environ.get("NCZ_SCREENSAVER_PRESETS")
     for cand in (
         (override,)

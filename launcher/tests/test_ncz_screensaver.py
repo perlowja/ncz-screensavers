@@ -576,5 +576,33 @@ class GpuPolicyTests(unittest.TestCase):
         self.assertEqual(out.stdout.strip(), "")
 
 
+class PresetOverrideTests(unittest.TestCase):
+    """NCZ_SCREENSAVER_PRESETS replaces the system presets.tsv candidates."""
+
+    ROW = "r1\tTitle\tx\tacme\t--preset=fast\tgood\tDescription\tweak\n"
+
+    def _ids(self, override):
+        with tempfile.TemporaryDirectory() as d:
+            env = dict(os.environ)
+            env.pop("NCZ_SCREENSAVER_PRESETS", None)
+            if override is not None:
+                env["NCZ_SCREENSAVER_PRESETS"] = override(d)
+            with (
+                mock.patch.dict(os.environ, env, clear=True),
+                mock.patch.object(ns, "options_dir", return_value=Path(d) / "opts"),
+            ):
+                return [p["id"] for p in ns.load_presets("acme")]
+
+    def test_override_file_is_read(self):
+        def ov(d):
+            (Path(d) / "p.tsv").write_text(self.ROW)
+            return str(Path(d) / "p.tsv")
+
+        self.assertEqual(self._ids(ov), ["fast"])
+
+    def test_unreadable_override_does_not_fall_back_to_system(self):
+        self.assertEqual(self._ids(lambda d: str(Path(d) / "missing.tsv")), [])
+
+
 if __name__ == "__main__":
     unittest.main()
