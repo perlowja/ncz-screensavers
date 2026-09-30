@@ -13,8 +13,8 @@ queries with a wall-clock fallback), the "heavy raymarch" case of `tools/probe/g
 
 | Class | Reference time | Typical hardware | Measured |
 |---|---|---|---|
-| weak | 20 ms or more | Intel UHD/HD, low-end integrated, VideoCore, Mali-G3x/G5x | Intel UHD 630: 45.0 ms (CHIMERA), 46.5 ms (LEAD 12, PEGASUS) |
-| mid | 8 to 20 ms | Mali-G720, mid iGPUs and APUs | Mali-G720-Immortalis: 9.94 ms (O6N, LEAD 12: 9.9 ms) |
+| weak | 20 ms or more | Intel UHD/HD, low-end integrated, VideoCore, Mali-G31 / Mali-G52 (Bifrost low-end) | Intel UHD 630: 45.0 ms (CHIMERA), 46.5 ms (LEAD 12, PEGASUS) |
+| mid | 8 to 20 ms | Mali-G720 and other Valhall/Immortalis parts, mid iGPUs and APUs | Mali-G720-Immortalis: 9.94 ms (O6N, LEAD 12: 9.9 ms, MS-R1 cixmini: 9.88 ms) |
 | strong | under 8 ms | discrete GPUs, big iGPUs | AMD Navi14 (Radeon Pro 5500M): 5.57 ms; RTX 2060: 2.7 ms (LEAD 12) |
 
 Thresholds live in `CLASS_WEAK_MS` and `CLASS_MID_MS` in `launcher/ncz-screensaver`.
@@ -133,7 +133,7 @@ Offload evidence (2026-09-29, `--phases env,install,gpuclass,offloadproof`, full
 |---|---|---|---|---|
 | Intel iGPU on the panel + NVIDIA dGPU (PEGASUS) | UHD 630, weak 46.5 ms | RTX 2060, strong 3.7 ms | every shader hack renders on the RTX, classics stay on the iGPU | hack env has `__NV_PRIME_RENDER_OFFLOAD=1`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, `__VK_LAYER_NV_optimus=NVIDIA_only`; renderer "NVIDIA GeForce RTX 2060/PCIe/SSE2"; `nvidia-smi pmon` lists the hack pid; GPU util 31-39 %, P0 (P8 and 0 % with offload off) |
 | AMD dGPU on the panel + idle Intel iGPU (CHIMERA, MEDUSA is identical) | Radeon Pro 5500M, strong 5.6 ms | UHD 630, weak 45.0 ms | nothing offloaded (the iGPU is slower) | forcing `pci-0000_00_02_0` renders on "Mesa Intel(R) UHD Graphics 630 (CFL GT2)" via `DRI_PRIME=pci-0000_00_02_0`; compositor untouched; light hack 60 fps on both GPUs |
-| single SoC GPU (O6N, MS-R1) | Mali-G720, mid 9.9 ms | none | no offload | cache entry per GPU id `pci-CIXH5010_00` |
+| single SoC GPU (O6N, MS-R1) | Mali-G720, mid 9.9 ms | none | no offload | cache entry per GPU id `soc-CIXH5000_00` (Sky1 / cixmini / MS-R1; the platform-bus Mali is exposed via `/sys/class/misc/mali0`, not as a DRM card) |
 | battery (simulated with a fake sysfs root) | any | any | no second GPU wakes | plan offload=false for every tier; a real run renders on the Intel GPU with no offload variables |
 
 Not measurable on this fleet: AMD APU + AMD dGPU and MUX-switch layouts (covered by the
