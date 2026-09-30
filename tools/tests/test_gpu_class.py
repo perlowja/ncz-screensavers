@@ -1650,3 +1650,344 @@ def test_calibration_happens_inside_the_supervisor_after_state_exists(env, monke
     monkeypatch.setattr(env.signal, "signal", lambda *a: None)
     sup.run()
     assert order[:2] == ["state", "calibrate"]
+
+
+# ----------------------------------------------------------------------------
+# Pass-13: pinning the operator-reported scenario verbatim
+# ----------------------------------------------------------------------------
+# The operator's complaint (2026-09-30, after the previous passes had merged
+# their fixes into the source tree) was that
+#   $ ncz-screensaver gpus
+# still reported "weak" for every card on .66 (cixmini / MS-R1 / Sky1 /
+# Mali-G720-Immortalis). The previous tests pin the underlying detection
+# logic in isolation (renderer pattern, sysfs layout, topology fallback,
+# stale cache), but the operator-visible behaviour is the integration of
+# them: cmd_gpus text + JSON output, plus the cmd_doctor verdict.
+#
+# The two tests below pin that integration against the EXACT strings
+# captured live on .66 on 2026-09-30. They run the launcher source
+# against the live sysfs + cache layout via the in-memory test rig, so
+# the assertion is independent of which binary happens to be installed
+# at /usr/bin/ncz-screensaver on the host — and they catch any future
+# regression that re-introduces the "weak" verdict for the Mali at the
+# integration level.
+#
+# The captured inputs are:
+#   - GLES renderer:  "Mali-G720-Immortalis"
+#   - GLES version:   "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f3b6749cb5"
+#                     (truncated to the actual upstream substring;
+#                      full string is 84 chars but the fix only matches the
+#                      pattern prefix).
+#   - cache file:     the shipped ncz-screensavers 0.7.1 cache entry the
+#                     live host had at 2026-09-30T08:43:03Z — pci-CIXH5010_03
+#                     classified 'weak' ms=20.2 against the Mali renderer.
+#   - sysfs:          four DRM cards (CIXH5010:00/:01/:03/:04) driven by
+#                     linlondp, the platform-bus CIXH5000:00 driven by
+#                     mali, and /sys/class/misc/mali0 with the short-form
+#                     device symlink (../../../CIXH5000:00).
+# The expected outputs are what the fixed source produces when run against
+# those inputs:
+#   - cmd_gpus text:   exactly one row, soc-CIXH5000_00 mid, ms=9.88.
+#   - cmd_gpus JSON:   same GPU, class=mid, renderer="Mali-G720-Immortalis".
+#   - cmd_doctor:      pool_class=mid, gpus has one entry (the Mali),
+#                      gpu_class.display.class=mid.
+#   - cmd_status JSON: gpu_class=mid, gpu_class_score_ms=9.88.
+# A regression that demotes the GPU to weak, removes the platform-bus
+# fallback, breaks the stale-cache filter, or changes the cache key
+# would fail at least one of these.
+
+
+SKY1_PASS13_CAPTURE = {
+    # Exact strings from /run/user/1000/ncz-screensaver/hack.log line 4
+    # on 2026-09-30: GL_VERSION=OpenGL ES 3.2 v1.r53p0-... and RENDERER=
+    # Mali-G720-Immortalis (line 5).
+    "renderer": "Mali-G720-Immortalis",
+    "version": ("OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f3b6749cb5"),
+    # ms from the calibration the live host reported in the 0.7.10 cache
+    # file (soc-CIXH5000_00 entry, 2026-09-30T08:55:21Z).
+    "ms": 9.88,
+}
+
+
+def _build_sky1_pass13_sysfs(env):
+    """Mirror the .66 sysfs layout exactly as captured on 2026-09-30:
+    four DRM cards (CIXH5010:00, :01, :03, :04 -- :02 absent from DRM)
+    driven by linlondp, plus the standalone platform-bus CIXH5000:00
+    driven by mali, surfaced via /sys/class/misc/mali0 with the
+    short-form device symlink that the live host exposes.
+    """
+    for i, slot in enumerate(SKY1_LIVE_DRM_SLOTS):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            "linlondp",
+            slot,
+            connected=(slot == "CIXH5010:03"),
+        )
+        (env.sysfs / f"class/drm/card{i}/device/drm").mkdir(parents=True, exist_ok=True)
+        (env.sysfs / f"class/drm/card{i}/device/drm/renderD128").touch()
+    misc = env.sysfs / "class/misc/mali0"
+    misc.mkdir(parents=True)
+    (misc / "dev").write_text("10:262\n")
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "uevent").write_text("DRIVER=mali\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    os.symlink(os.path.relpath(gpu_dev, str(misc)), misc / "device")
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology, env.switcheroo_envs):
+        fn.cache_clear()
+
+
+def test_sky1_pass13_cmd_gpus_reports_mid_against_live_capture(
+    env, monkeypatch, capsys
+):
+    """Pin the operator-visible cmd_gpus text output for the live .66
+    host after the fix: exactly one row, the platform-bus Mali, class=mid.
+
+    cmd_gpus runs `gpu_class(run=False)` -- it only reads from cache.
+    On a fresh boot the new id (soc-CIXH5000_00) is not cached yet,
+    so the ms is "no score" and the class comes from the topology
+    fallback (driver=mali -> MID_DRIVERS -> mid). After a calibration
+    the cache carries the ms.
+
+    The shipped ncz-screensavers 0.7.1 reports four weak linlondp rows
+    because the old list_gpus() does not surface the platform-bus
+    mali0 device. The fixed source must report a single mid row
+    regardless of cache state. Captures the exact strings from .66 on
+    2026-09-30 (renderer, version, ms).
+    """
+    _build_sky1_pass13_sysfs(env)
+    # Stale 0.7.1 cache entry: the bytes captured on .66 at
+    # 2026-09-30T08:43:03Z. The test asserts the launcher ignores it
+    # because the GPU id is now soc-CIXH5000_00.
+    seed_cache(
+        env,
+        {
+            "pci-CIXH5010_03": {
+                "class": "weak",
+                "ms": 20.2,
+                "renderer": SKY1_PASS13_CAPTURE["renderer"],
+                "version": SKY1_PASS13_CAPTURE["version"],
+                "timer": "wall",
+                "source": "calibration",
+                "when": "2026-09-30T08:43:03+0000",
+                "driver": "linlondp",
+                "gpu": "pci-CIXH5010_03",
+            }
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_gpus(type("A", (), {"json": False})())
+    assert rc == 0
+    out = capsys.readouterr().out.strip().splitlines()
+    assert len(out) == 1, (
+        f"cmd_gpus reported {len(out)} rows on Sky1 -- the linlondp "
+        f"display controllers must not appear; only the platform-bus "
+        f"Mali is a GPU. Rows: {out!r}"
+    )
+    row = out[0].split()
+    # Text format: "<id> <role> <vendor> <driver> <class> <ms>"
+    assert row[0] == "soc-CIXH5000_00"
+    assert row[1] == "display"
+    assert row[3] == "mali"
+    assert row[4] == "mid", (
+        f"GPU classified as {row[4]!r} not 'mid' -- the operator sees "
+        f"this exact string in the launcher. The fix must surface the "
+        f"Mali-G720-Immortalis as 'mid'."
+    )
+    # run=False + no cache for the new GPU -> ms is "no score". After
+    # a calibration the ms field is populated; that's covered by the
+    # cmd_gpus_json test below.
+    assert row[5] == "no", (
+        f"cmd_gpus (run=False) shows ms={row[5]!r}; expected 'no score' "
+        f"because the test rig seeded only the stale 0.7.1 cache entry."
+    )
+    # Stale 0.7.1 cache entry is still in the file (launcher never
+    # deletes cache; only overwrites the key it just classified).
+    on_disk = json.loads(env.class_cache_path().read_text())
+    assert "pci-CIXH5010_03" in on_disk["entries"]
+    assert "soc-CIXH5000_00" not in on_disk["entries"], (
+        "cmd_gpus (run=False) must NOT write to the cache -- only the "
+        "calibrator path writes. The stale entry remains untouched."
+    )
+
+
+def test_sky1_pass13_cmd_gpus_json_reports_only_mali_mid(env, monkeypatch, capsys):
+    """Pin the operator-visible cmd_gpus --json output for the live
+    .66 host: exactly one GPU entry, the platform-bus Mali, with
+    class=mid (the renderer/ms come from cache when present, from
+    the topology fallback otherwise).
+
+    cmd_gpus runs `gpu_class(run=False)`, so the calibrator does not
+    fire in this test. We seed the cache with the live .66 entry the
+    fixed binary writes (soc-CIXH5000_00 mid ms=9.88) plus the stale
+    0.7.1 entry (pci-CIXH5010_03 weak). The fixed output is one row
+    (soc-CIXH5000_00 mid), the stale entry is ignored.
+
+    The shipped ncz-screensavers 0.7.1 emits four entries (one mid from
+    the cache hit, three weak from the topology fallback). The fixed
+    source emits one. The settings UI consumes this JSON; a regression
+    here is exactly what the operator sees on the desktop.
+    """
+    _build_sky1_pass13_sysfs(env)
+    seed_cache(
+        env,
+        {
+            # The live 0.7.10 cache entry the fixed binary writes.
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": SKY1_PASS13_CAPTURE["ms"],
+                "renderer": SKY1_PASS13_CAPTURE["renderer"],
+                "version": SKY1_PASS13_CAPTURE["version"],
+                "timer": "gpu",
+                "source": "calibration",
+                "when": "2026-09-30T08:55:21+0000",
+                "gpu": "soc-CIXH5000_00",
+                "driver": "mali",
+            },
+            # Stale 0.7.1 entry. Must be ignored by the launcher.
+            "pci-CIXH5010_03": {
+                "class": "weak",
+                "ms": 20.2,
+                "renderer": SKY1_PASS13_CAPTURE["renderer"],
+                "version": SKY1_PASS13_CAPTURE["version"],
+                "timer": "wall",
+                "source": "calibration",
+                "when": "2026-09-30T08:43:03+0000",
+                "driver": "linlondp",
+                "gpu": "pci-CIXH5010_03",
+            },
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_gpus(type("A", (), {"json": True})())
+    assert rc == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert len(rows) == 1, (
+        f"cmd_gpus --json reported {len(rows)} GPUs on Sky1 -- only the "
+        f"Mali is a GPU. Rows: {rows!r}"
+    )
+    g = rows[0]
+    assert g["id"] == "soc-CIXH5000_00"
+    assert g["driver"] == "mali"
+    assert g["display"] is True
+    assert g["class"] == "mid", (
+        f"GPU class={g['class']!r} not 'mid' on .66 (Sky1 / Mali-G720-"
+        f"Immortalis). The settings UI shows this exact value to the "
+        f"user."
+    )
+    assert g["ms"] == SKY1_PASS13_CAPTURE["ms"]
+    assert g["renderer"] == SKY1_PASS13_CAPTURE["renderer"]
+
+
+def test_sky1_pass13_cmd_doctor_pool_class_mid(env, monkeypatch, capsys):
+    """Pin the operator-visible cmd_doctor JSON for the live .66 host:
+    pool_class=mid, gpus has one entry (the Mali),
+    gpu_class.display.class=mid, gpu.display_class=integrated.
+
+    This is the integration-level promise. The shipped ncz-screensavers
+    0.7.1 reported pool_class=weak, which restricted the screensaver
+    pool to weak-tier hacks and locked the user out of the shaders the
+    Mali-G720-Immortalis can actually render at 60 fps.
+    """
+    _build_sky1_pass13_sysfs(env)
+    # The cmd_doctor path calls gpu_class(run=False). Seed the cache
+    # with the live .66 0.7.10 entry the fixed binary writes.
+    seed_cache(
+        env,
+        {
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": SKY1_PASS13_CAPTURE["ms"],
+                "renderer": SKY1_PASS13_CAPTURE["renderer"],
+                "version": SKY1_PASS13_CAPTURE["version"],
+                "timer": "gpu",
+                "source": "calibration",
+                "when": "2026-09-30T08:55:21+0000",
+                "gpu": "soc-CIXH5000_00",
+                "driver": "mali",
+            }
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_doctor(type("A", (), {})())
+    assert rc == 0
+    doc = json.loads(capsys.readouterr().out)
+    # The central promise: pool_class=mid, not weak.
+    assert doc["pool_class"] == "mid", (
+        f"cmd_doctor pool_class={doc['pool_class']!r}; the user sees the "
+        f"weak-tier pool only and never sees the shaders the Mali can "
+        f"actually render."
+    )
+    # GPU topology: only one GPU, the Mali.
+    assert len(doc["gpus"]) == 1, (
+        f"cmd_doctor gpus has {len(doc['gpus'])} entries; only the Mali "
+        f"is a GPU. Entries: {doc['gpus']!r}"
+    )
+    g = doc["gpus"][0]
+    assert g["id"] == "soc-CIXH5000_00"
+    assert g["driver"] == "mali"
+    assert g["display"] is True
+    assert g["display_only"] is False
+    # gpu_class.display.class=mid.
+    gc = doc["gpu_class"]["display"]
+    assert gc["class"] == "mid", (
+        f"gpu_class.display.class={gc.get('class')!r}; the launcher "
+        f"topology + cache lookup must produce 'mid' for the Mali."
+    )
+    assert gc["renderer"] == SKY1_PASS13_CAPTURE["renderer"]
+    assert gc["ms"] == SKY1_PASS13_CAPTURE["ms"]
+    # No offload targets: Sky1 has no second GPU.
+    assert doc["offload"]["targets"] == []
+    # The display_class is 'integrated' (the connected linlondp card is
+    # not nvidia/amdgpu). This is a display topology fact, not a class
+    # fact; it must stay 'integrated' regardless of the GPU fix.
+    assert doc["gpu"]["display_class"] == "integrated"
+    assert doc["gpu"]["nvidia_offload"] is False
+
+
+def test_sky1_pass13_cmd_status_reports_mid(env, monkeypatch, capsys):
+    """Pin the operator-visible cmd_status --json output for the live
+    .66 host: gpu_class=mid, gpu_class_score_ms=9.88,
+    gpu_class_source=calibration.
+
+    This is what the idle daemon and the GTK settings UI poll. The
+    shipped ncz-screensavers 0.7.1 reports gpu_class=weak here, which
+    is the operator's complaint at the topmost level.
+    """
+    _build_sky1_pass13_sysfs(env)
+    seed_cache(
+        env,
+        {
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": SKY1_PASS13_CAPTURE["ms"],
+                "renderer": SKY1_PASS13_CAPTURE["renderer"],
+                "version": SKY1_PASS13_CAPTURE["version"],
+                "timer": "gpu",
+                "source": "calibration",
+                "when": "2026-09-30T08:55:21+0000",
+                "gpu": "soc-CIXH5000_00",
+                "driver": "mali",
+            }
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_status(type("A", (), {"json": True, "diagnostics": False})())
+    assert rc in (0, 3)
+    out = json.loads(capsys.readouterr().out)
+    assert out["gpu_class"] == "mid", (
+        f"cmd_status --json reported gpu_class={out['gpu_class']!r} -- "
+        f"the user sees this exact string in the launcher's status row."
+    )
+    assert out["gpu_class_score_ms"] == SKY1_PASS13_CAPTURE["ms"]
+    assert out["gpu_class_source"] == "calibration"
