@@ -1118,13 +1118,16 @@ def option_level(row):
 def load_presets(hack_id):
     """Presets of a hack from presets.tsv: id, title, accuracy, description, min class."""
     out = []
+    override = os.environ.get("NCZ_SCREENSAVER_PRESETS")
     for cand in (
-        "/usr/share/ncz-screensavers/presets.tsv",
-        "/usr/share/ncz-screensaver-chooser/presets.tsv",
+        (override,)
+        if override
+        else (
+            "/usr/share/ncz-screensavers/presets.tsv",
+            "/usr/share/ncz-screensaver-chooser/presets.tsv",
+        )
     ):
         p = Path(cand)
-        if os.environ.get("NCZ_SCREENSAVER_PRESETS"):
-            p = Path(os.environ["NCZ_SCREENSAVER_PRESETS"])
         try:
             text = p.read_text()
         except OSError:
