@@ -1051,6 +1051,7 @@ def _read_schema_file(path, hack_id):
     return rows
 
 
+SYSTEM_HACK_DIRS = ("/usr/lib/ncz-screensavers/", "/usr/libexec/ncz-screensavers/")
 BASIC_OPTIONS = ("preset", "seed", "palette", "style", "speed")
 OPTION_TYPES = ("bool", "int", "float", "enum", "string")
 
@@ -1191,7 +1192,14 @@ def dumped_schema(hack_id):
     """Rows from `<hack> --dump-schema` (tab-separated, ten columns), for hacks that
     describe their own options and ship no options file. Empty when unavailable."""
     binary = find_binary(hack_id)
-    if not binary:
+    # only shipped catalog hacks from the system directories; a directory override
+    # (tests, users) never runs a binary just to learn its options
+    if (
+        not binary
+        or os.environ.get("NCZ_SCREENSAVER_DIRS")
+        or not binary.startswith(SYSTEM_HACK_DIRS)
+        or not any(r["id"] == hack_id for r in load_catalog())
+    ):
         return ()
     try:
         proc = subprocess.run(

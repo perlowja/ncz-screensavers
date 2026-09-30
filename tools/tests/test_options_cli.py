@@ -123,6 +123,12 @@ def test_schema_falls_back_to_the_hack_dump_schema(mod, tmp_path, monkeypatch):
     hack.chmod(0o755)
     monkeypatch.setenv("NCZ_SCREENSAVER_DIRS", str(bindir))
     mod.dumped_schema.cache_clear()
+    assert mod.load_option_schema("dumpy_gles3") == []  # an override never runs the binary
+    monkeypatch.delenv("NCZ_SCREENSAVER_DIRS")
+    monkeypatch.setattr(mod, "SYSTEM_HACK_DIRS", (str(bindir) + "/",))
+    monkeypatch.setattr(mod, "find_binary", lambda h: str(hack))
+    monkeypatch.setattr(mod, "load_catalog", lambda: [{"id": "dumpy_gles3", "title": "D", "group": "G"}])
+    mod.dumped_schema.cache_clear()
     rows = {r["name"]: r for r in mod.load_option_schema("dumpy_gles3")}
     assert (
         rows["seed"]["env"] == "NCZ_XSHADERTOY_DUMPY_SEED"
