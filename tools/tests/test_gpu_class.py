@@ -815,7 +815,9 @@ def test_sky1_live_capture_no_weak_classification_under_any_path(env, monkeypatc
     # 2. Topology fallback: every GPU list_gpus returns must classify as mid.
     for g in env.list_gpus():
         cls = env.class_from_topology(g)
-        assert cls == "mid", f"GPU {g['id']} classified {cls} not mid (driver={g['driver']})"
+        assert cls == "mid", (
+            f"GPU {g['id']} classified {cls} not mid (driver={g['driver']})"
+        )
     # 3. End-to-end calibration against the live renderer/version.
     monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
     monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
