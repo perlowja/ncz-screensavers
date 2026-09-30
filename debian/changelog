@@ -1,3 +1,10 @@
+ncz-screensavers (0.7.6) unstable; urgency=medium
+
+  * --dump-schema is run only for shipped catalog hacks in the system directories, never
+    for a directory override; filter_pool tolerates legacy and unknown tier names.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 21:00:00 -0400
+
 ncz-screensavers (0.7.5) unstable; urgency=medium
 
   * Option loading hardened (null JSON fields, unreadable presets, XDG_STATE_HOME with ~,
