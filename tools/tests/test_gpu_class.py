@@ -130,8 +130,7 @@ LAYOUTS = {
     ),
 }
 
-FAKE_CALIBRATOR = textwrap.dedent(
-    """\
+FAKE_CALIBRATOR = textwrap.dedent("""\
     #!/bin/sh
     # fake ncz-screensaver-calibrate: FAKE_MS, FAKE_RENDERER, FAKE_VERSION, FAKE_EXIT drive it
     [ -n "$FAKE_EXIT" ] && [ "$FAKE_EXIT" != 0 ] && exit "$FAKE_EXIT"
@@ -147,18 +146,15 @@ FAKE_CALIBRATOR = textwrap.dedent(
     else
         printf '{"renderer":"%s","version":"%s","platform":"fake","timer":"gpu","frames":20,"ms":%s}\\n' "$r" "$v" "$ms"
     fi
-    """
-)
+    """)
 
-TIERS = textwrap.dedent(
-    """\
+TIERS = textwrap.dedent("""\
     # id\tmin\tuhd630\tuhd630_scaled\tmali\tnavi14\trtx2060\tmeasured
     hyprsaver_light_gles3\tweak\t60.0/16.7\t60.0/16.7\t60.0/16.7\t-\t-\t2026-09-29 test
     light_gles3\tweak\t60.0/16.7\t60.0/16.7\t60.0/16.7\t-\t-\t2026-09-29 test
     medium_gles3\tmid\t14.0/80.0\t28.0/45.0\t48.0/21.0\t-\t-\t2026-09-29 test
     heavy_gles3\tstrong\t9.0/120.0\t12.0/95.0\t20.0/60.0\t-\t-\t2026-09-29 test
-    """
-)
+    """)
 
 
 @pytest.fixture
@@ -222,6 +218,226 @@ S = {"gpu-offload": "auto", "pool-gpu-class": "auto"}
 )
 def test_renderer_table(env, renderer, expected):
     assert env.class_from_renderer(renderer) == expected
+
+
+# Strings captured on 2026-09-29 from MS-R1 / cixmini (192.168.207.66, Sky1,
+# Mali-G720-Immortalis). Both the GLES renderer string returned by the
+# calibrator and the Vulkan deviceName/driverName returned by vulkaninfo, plus
+# every plausible variant ARM has shipped for the Valhall/Immortalis family
+# we expect to see on this SoC family going forward.
+SKY1_RENDERERS = [
+    "Mali-G720-Immortalis",
+    "Mali-G720 MC7",
+    "Mali-G715-Immortalis",
+    "Mali-G715 MC7",
+    "Mali-G710 MC7",
+    "Mali-G610 MC4",
+    "Mali-G610",
+    # Vulkan's driverName/driverInfo path also returns the bare "Mali-G720" or
+    # the form with the "Immortalis" suffix; both are mid-tier.
+    "Mali-G720",
+]
+
+
+@pytest.mark.parametrize("renderer", SKY1_RENDERERS)
+def test_sky1_mali_g720_immortalis_is_mid_not_weak(env, renderer):
+    """Regression: Mali-G720-Immortalis and its Immortalis-class siblings must
+    classify as 'mid', not 'weak'. The /sys/class/drm/card* entries on Sky1 are
+    linlondp display controllers (no GPU); the actual GPU is a separate
+    /sys/devices/platform/CIXH5000:00/misc/mali0 character device driven by
+    the 'mali' platform bus driver (a CIX-specific glue around the upstream
+    mali_kbase, loaded because panthor is blacklisted on this kernel).
+    """
+    assert env.class_from_renderer(renderer) == "mid"
+
+
+# The previous weak pattern was "mali-g[35]\d\b", which under-classified
+# every Valhall / Immortalis GPU (Mali-G57, G610, G615, G620, G710, G715,
+# G720) as weak. The tightened weak pattern is "mali-g(?:31|52)\b"; the
+# mid pattern was widened to spell out the same Valhall / Immortalis set.
+@pytest.mark.parametrize(
+    "renderer,expected",
+    [
+        # Genuinely weak Mali parts (Bifrost low-end).
+        ("Mali-G31", "weak"),
+        ("Mali-G31 MC2", "weak"),
+        ("Mali-G52", "weak"),
+        ("Mali-G52 MC2", "weak"),
+        # Valhall / Immortalis parts: mid, never weak.
+        ("Mali-G57", "mid"),
+        ("Mali-G610", "mid"),
+        ("Mali-G610 MC4", "mid"),
+        ("Mali-G615", "mid"),
+        ("Mali-G620", "mid"),
+        ("Mali-G710", "mid"),
+        ("Mali-G715", "mid"),
+        ("Mali-G720", "mid"),
+        ("Mali-G720-Immortalis", "mid"),
+        ("Mali-G720 MC7", "mid"),
+        # Older T-series and Mali-400 stay weak (the launcher never saw one
+        # on NCZ-OS, but the table needs to keep the existing promise).
+        ("Mali-T720", "weak"),
+        ("Mali-T880", "weak"),
+        ("Mali-400 MP2", "weak"),
+    ],
+)
+def test_mali_weak_pattern_does_not_swallow_valhall(env, renderer, expected):
+    """The Mali weak pattern is narrowed to G31/G52 only; G57 and the
+    G610/G615/G620/G710/G715/G720 / Immortalis family stay mid. The mid
+    pattern is widened to spell them out so a renderer string like
+    'Mali-G57' never falls through to weak.
+    """
+    assert env.class_from_renderer(renderer) == expected
+
+
+@pytest.mark.parametrize(
+    "driver,expected",
+    [
+        # The real driver on .66 is the platform-bus 'mali' (CIX glue for
+        # mali_kbase). It must classify as mid, not weak: that's how a Mali
+        # GPU ends up classified when only the sysfs topology is available
+        # (no cache, no calibrator, the launcher fell back to the table).
+        ("mali", "mid"),
+        # The upstream driver names used on other platforms.
+        ("mali_kbase", "mid"),
+        ("panthor", "mid"),
+        ("panfrost", "mid"),
+        # A pure display controller like linlondp (no 3D pipeline of its own)
+        # is not a GPU and should not be in this list at all; we filter it
+        # out earlier in list_gpus() instead. class_from_topology only ever
+        # sees a GPU that survived list_gpus().
+        ("i915", "weak"),
+        ("xe", "weak"),
+        ("amdgpu", "mid"),
+    ],
+)
+def test_sky1_mali_platform_driver_is_mid(env, driver, expected):
+    """Regression: the 'mali' platform driver on Sky1 (CIXH5000:00) is the
+    same hardware as upstream mali_kbase. The fallback topology classifier
+    must treat it as mid so a GPU system is never demoted to weak.
+    """
+    gpu = {
+        "vendor": "other",
+        "driver": driver,
+        "discrete": False,
+        "render": True,
+        "id": "soc-mali",
+        "display": True,
+        "card": "card0",
+        "slot": "CIXH5000:00",
+        "device": "",
+        "boot_vga": False,
+    }
+    assert env.class_from_topology(gpu) == expected
+
+
+def test_sky1_linlondp_display_controllers_are_filtered_from_gpus(env):
+    """Regression for 192.168.207.66: Sky1 exposes four DRM cards driven by
+    the 'linlondp' display controller, none of which is a 3D GPU. The actual
+    GPU is the /sys/devices/platform/CIXH5000:00/misc/mali0 character device
+    driven by the 'mali' platform bus driver. list_gpus() must not list the
+    linlondp cards as GPUs (which previously forced them to 'weak' via
+    class_from_topology) — they should be filtered out and the GPU entry
+    should come from the platform-bus GPU device.
+    """
+    # Four linlondp display controllers with no vendor/device, like on .66.
+    for i, slot in enumerate(
+        ("CIXH5010:00", "CIXH5010:01", "CIXH5010:02", "CIXH5010:03")
+    ):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            "linlondp",
+            slot,
+            connected=(i == 3),
+        )
+        # The cards do have render nodes (writeback) on .66.
+        (env.sysfs / f"class/drm/card{i}/device/drm").mkdir(parents=True, exist_ok=True)
+        (env.sysfs / f"class/drm/card{i}/device/drm/renderD128").touch()
+    # The actual GPU is a /sys/class/misc/mali0 character device, parent
+    # platform device CIXH5000:00, driven by the 'mali' platform bus driver.
+    misc = env.sysfs / "class/misc/mali0"
+    misc.mkdir(parents=True)
+    (misc / "dev").write_text("10:262\n")
+    (misc / "uevent").write_text("MAJOR=10\nMINOR=262\nDEVNAME=mali0\nDEVMODE=0666\n")
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "modalias").write_text("acpi:CIXH5000:\n")
+    (gpu_dev / "uevent").write_text("DRIVER=mali\nMODALIAS=acpi:CIXH5000:\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    # Mirror /sys/class/misc/mali0/device -> /sys/devices/platform/.../misc/mali0
+    # the kernel exposes for every registered misc device.
+    target = gpu_dev / "misc/mali0"
+    target.mkdir(parents=True)
+    os.symlink(target, misc / "device")
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+    gpus = env.list_gpus()
+    # Exactly one GPU, the Mali; no linlondp display controller.
+    assert len(gpus) == 1
+    g = gpus[0]
+    assert g["driver"] == "mali"
+    assert g["display"] is True
+    assert g["id"] == "soc-CIXH5000_00"
+    # The topology reports the same SoC as the display.
+    assert env.gpu_topology()["display_class"] == "integrated"
+
+
+def test_sky1_mali_gpu_is_classified_mid_end_to_end(env, monkeypatch):
+    """End-to-end regression for 192.168.207.66: with the Sky1 sysfs layout,
+    the launcher's GPU class detection returns 'mid' (the calibrated class
+    on the real hardware) — never 'weak'. This is the central guarantee of
+    the operator's policy: never demote a real GPU to weak.
+    """
+    for i, slot in enumerate(
+        ("CIXH5010:00", "CIXH5010:01", "CIXH5010:02", "CIXH5010:03")
+    ):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            "linlondp",
+            slot,
+            connected=(i == 3),
+        )
+        (env.sysfs / f"class/drm/card{i}/device/drm").mkdir(parents=True, exist_ok=True)
+        (env.sysfs / f"class/drm/card{i}/device/drm/renderD128").touch()
+    misc = env.sysfs / "class/misc/mali0"
+    misc.mkdir(parents=True)
+    (misc / "dev").write_text("10:262\n")
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "uevent").write_text("DRIVER=mali\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    target = gpu_dev / "misc/mali0"
+    target.mkdir(parents=True)
+    os.symlink(target, misc / "device")
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+
+    monkeypatch.setenv("FAKE_RENDERER", "Mali-G720-Immortalis")
+    monkeypatch.setenv(
+        "FAKE_VERSION",
+        "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0c707efa0cfa034b363bc93f9b6749cb5",
+    )
+    monkeypatch.setenv("FAKE_MS", "9.88")
+    e = env.gpu_class(S, None)
+    assert e["class"] == "mid"
+    assert e["ms"] == 9.88
+    assert e["renderer"] == "Mali-G720-Immortalis"
+    # And in the gpus listing: every entry is mid, none is weak.
+    for g in env.list_gpus():
+        cls = env.gpu_class(S, g, run=False)["class"]
+        assert cls == "mid", f"GPU {g['id']} classified {cls} not mid"
 
 
 @pytest.mark.parametrize(
