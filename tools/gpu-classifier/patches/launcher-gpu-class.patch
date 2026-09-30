@@ -1,0 +1,66 @@
+# patches/launcher-gpu-class.patch — unified diff for /usr/bin/ncz-screensaver 0.7.1.
+#
+# Apply this on the gitlab-side mirror (gitlab.com/ncz-os/ncz-screensavers)
+# after landing tools/gpu-classifier/ in this branch. The patch is
+# conservative: it changes one block in gpu_class() (the code==3 refusal
+# branch) and one line where the calibrator subprocess env is built
+# (to call augment_calibrator_env).
+#
+# Apply with:
+#     git checkout master
+#     git am --signoff < tools/gpu-classifier/patches/launcher-gpu-class.patch
+#     # then copy tools/gpu-classifier/ into the working tree at the
+#     # right sys.path search location
+#
+# The patch file is also rendered textually below in ncz_screensaver_patch.py
+# for reviewers who want to read it as code rather than as a diff.
+
+--- a/usr/bin/ncz-screensaver
++++ b/usr/bin/ncz-screensaver
+@@ -1,8 +1,16 @@
+ #!/usr/bin/python3
+ """ncz-screensaver - launcher, supervisor and CLI for the NCZ-OS screensavers.
+ 
+ The idle daemon (ncz-screensaver-idled) runs `ncz-screensaver start --idle`
+ when the seat goes idle and `ncz-screensaver stop` on input.  This program
+ picks a hack from the dev.ncz.screensaver settings, runs it in its own process
+ group, rotates it, benches hacks that crash or render black, and stops it
+ cleanly.  See docs/LAUNCHER-DESIGN.md.  Standard library only.
+ """
+ 
++# The fix for "GPU class shows weak on .66 (Mali-G720-Immortalis) when no
++# compositor is running" lives in tools/gpu-classifier/. This import resolves
++# it from /usr/share/ncz-screensavers/gpu-classifier/ in the installed image;
++# during development, tools/gpu-classifier/ is on PYTHONPATH.
++try:
++    from gpu_classifier import classify_from_calibrator_result, augment_calibrator_env
++except ImportError:
++    classify_from_calibrator_result = None
++    augment_calibrator_env = lambda env: env
++
+ import argparse
+ import ast
+ import contextlib
+@@ -820,7 +828,12 @@ def gpu_class(settings, gpu=None, run=True, force=False):
+     env = build_child_env("calibrate", settings, offload=False)
+     if gpu is not None and not gpu.get("display"):
+         drop_egl_vendor_pins(env)
+     env.update(gpu_env(gpu))
+     for name in ("NCZ_ALLOW_SOFTWARE", "NCZ_CALIBRATE_MS"):
+         env.pop(name, None)
++    # Sky1 + cixgpu-pro: inject the loader path so the calibrator sees the
++    # real Mali instead of falling back to llvmpipe. No-op on every other
++    # platform. See tools/gpu-classifier/calibrator_env.py.
++    augment_calibrator_env(env)
+     code, ident = _calibrator_json(["--identify"], env, 30)
+     if code == 3:
+-        return {"class": "weak", "source": "refused", "software": True}
++        # THE FIX: refusal + real hardware bound -> use the topology
++        # fallback (or the renderer-table answer if a renderer is known).
++        # On a real software-only system (server, headless VM, CI), the
++        # original 'weak' verdict is preserved.
++        return classify_from_calibrator_result(
++            code=3, gpu=gpu, renderer_hint="", ms_hint=None,
++        ).to_dict()
+     if ident is None:
+         return entry or fallback_entry("", gpu)
