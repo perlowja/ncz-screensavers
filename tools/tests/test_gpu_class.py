@@ -893,6 +893,79 @@ def test_sky1_live_capture_no_weak_classification_under_any_path(env, monkeypatc
     assert e["renderer"] == SKY1_LIVE_CAPTURE["renderer"]
 
 
+def test_sky1_stale_071_cache_does_not_demote_display_gpu_to_weak(
+    env, monkeypatch, capsys
+):
+    """Adversarial pass-15: a fresh .66 boot still ships the stale cache
+    file left by shipped ncz-screensavers 0.7.1. That cache contains a
+    single entry under the *old* PCI-style GPU id 'pci-CIXH5010_03'
+    (the linlondp display controller 0.7.1 picked), classified 'weak'
+    with ms=20.2 against the Mali-G720-Immortalis renderer string.
+
+    After the 0.7.10 fix, the display GPU is keyed as
+    'soc-CIXH5000_00', so the cache lookup misses and the launcher
+    must fall through to the topology fallback (driver=mali ->
+    MID_DRIVERS -> 'mid'). A regression that keyed the cache by
+    something stable across driver renames (e.g. PCI_SLOT_NAME) would
+    pull in the stale 'weak' entry and the user would once again sit
+    at a desktop where the screensaver pool is restricted to weak-only
+    hacks — exactly the failure the operator reported.
+
+    This test pins the contract that the stale 0.7.1 cache file is
+    harmless: even with the exact stale contents observed on .66 at
+    2026-09-30T08:43:03Z, `gpu_class(settings, run=False)` returns
+    class=mid and the cmd_status --json output reflects it. The stale
+    entry is left in the file untouched (the launcher never deletes
+    cache entries; it only overwrites the key it just classified).
+    """
+    _build_sky1_live_sysfs(env)
+    # The exact stale cache file observed on the live .66 host after
+    # shipped 0.7.1 ran a calibration pass on the linlondp card.
+    stale_entry = {
+        "class": "weak",
+        "ms": 20.2,
+        "renderer": "Mali-G720-Immortalis",
+        "version": ("OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5"),
+        "timer": "wall",
+        "source": "calibration",
+        "when": "2026-09-30T08:43:03+0000",
+        "driver": "linlondp",
+        "gpu": "pci-CIXH5010_03",
+    }
+    seed_cache(env, {"pci-CIXH5010_03": stale_entry})
+    # run=False reads cache + fallback_entry; must return 'mid' via the
+    # topology path (driver='mali' is in MID_DRIVERS).
+    e = env.gpu_class(S, None, run=False)
+    assert e["class"] == "mid", (
+        f"stale 0.7.1 cache demoted Mali to {e['class']!r}; the launcher "
+        f"must classify by the new GPU id ({env.display_gpu()['id']!r}) and "
+        f"fall through to the topology table."
+    )
+    assert e["source"] == "table"
+    # Stale cache file is unchanged: the launcher wrote nothing because
+    # run=False. Future calibrator runs will overwrite soc-CIXH5000_00
+    # and leave pci-CIXH5010_03 as harmless dead data.
+    on_disk = json.loads(env.class_cache_path().read_text())
+    assert "pci-CIXH5010_03" in on_disk["entries"]
+    assert "soc-CIXH5000_00" not in on_disk["entries"]
+    # And cmd_status --json must show gpu_class=mid.
+    args = type("A", (), {"json": True, "diagnostics": False})()
+    rc = env.cmd_status(args)
+    assert rc in (0, 3)
+    out = json.loads(capsys.readouterr().out)
+    assert out["gpu_class"] == "mid", (
+        f"cmd_status --json reported gpu_class={out['gpu_class']!r} with a "
+        f"stale 0.7.1 cache file present — the user would see the weak-tier "
+        f"verdict back."
+    )
+    # And cmd_doctor must still say pool_class=mid (the operator-visible
+    # promise that the pool allows mid-tier hacks on .66).
+    env.cmd_doctor(args)
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["pool_class"] == "mid"
+    assert doc["gpu_class"]["display"]["class"] == "mid"
+
+
 def test_sky1_live_capture_cmd_doctor_pool_class_mid(env, monkeypatch, capsys):
     """Pin the operator-visible `ncz-screensaver doctor` report for the
     live .66 layout: pool_class=mid, gpu.display_class=integrated,
