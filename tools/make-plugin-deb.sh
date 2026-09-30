@@ -10,7 +10,7 @@ set -eu
 ARCH=${1:?arch (amd64|arm64)}
 SRC=${2:?build dir}
 OUT=${3:?output .deb}
-VER=${4:-0.3.9}
+VER=${4:-0.3.10}
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 D=$W/opt/singularity/lib/singularity/plugins/screensaver
@@ -22,7 +22,7 @@ Package: ncz-screensavers-plugin
 Version: $VER
 Architecture: $ARCH
 Maintainer: Jason Perlow <jperlow@gmail.com>
-Depends: ncz-singularity-desktop, ncz-screensavers (>= 0.7.6), libglib2.0-bin
+Depends: ncz-singularity-desktop, ncz-screensavers (>= 0.7.7), libglib2.0-bin
 Section: x11
 Priority: optional
 Description: Screensaver and Lockscreen page for the Singularity desktop
@@ -50,10 +50,13 @@ if { [ "$1" = configure ] || [ "$1" = triggered ]; } && [ -d "$S" ]; then
         case "$list" in
             "[]"|"@as []") list="['screensaver']" ;;
             *"'screensaver'"*) ;;
-            *) list=$(printf '%s' "$list" | sed "s/\]\s*$/, 'screensaver']/") ;;
+            *) list=$(printf '%s' "$list" | sed "s/][[:space:]]*$/, 'screensaver']/") ;;
         esac
         printf '[dev.sinty.desktop]\nenabled-plugins=%s\n' "$list" > "$OV"
-        glib-compile-schemas "$S" 2>/dev/null || rm -f "$OV"
+        if ! glib-compile-schemas "$S" 2>/var/log/ncz-screensavers-plugin-schema.log; then
+            echo "ncz-screensavers-plugin: schema compile failed, see /var/log/ncz-screensavers-plugin-schema.log" >&2
+            rm -f "$OV"
+        fi
     fi
 fi
 exit 0

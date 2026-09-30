@@ -182,7 +182,9 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             var h = node.get_object ();
             if (!h.has_member ("id"))
                 return;
-            string id = h.get_string_member ("id");
+            string id = member_str (h, "id");
+            if (id == "")
+                return;
             if (h.has_member ("flagged") && h.get_boolean_member ("flagged"))
                 flagged_ids.add (id);
             if (h.has_member ("expect") && !h.get_null_member ("expect"))
@@ -369,8 +371,11 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public void set_option (string hack_id, string name, string value_in) {
         string value = value_in;
-        if (name == "preset" && scene_title_to_id.has_key (hack_id))
-            value = scene_title_to_id[hack_id].has_key (value_in) ? scene_title_to_id[hack_id][value_in] : "";
+        if (name == "preset" && scene_title_to_id.has_key (hack_id)) {
+            if (!scene_title_to_id[hack_id].has_key (value_in))
+                return;
+            value = scene_title_to_id[hack_id][value_in];
+        }
         var outer = new VariantBuilder (new VariantType ("a{sa{ss}}"));
         Variant all = read_options ();
         bool wrote = false;
@@ -444,10 +449,19 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
 
     public void recalibrate () {
         try {
-            Process.spawn_async (null, { LAUNCHER, "calibrate", "--force" }, null,
-                                 SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL | SpawnFlags.STDERR_TO_DEV_NULL,
-                                 null, null);
-        } catch (SpawnError e) {
+            var proc = new Subprocess (SubprocessFlags.STDOUT_SILENCE | SubprocessFlags.STDERR_SILENCE,
+                                       LAUNCHER, "calibrate", "--force");
+            proc.wait_async.begin (null, (obj, res) => {
+                try {
+                    proc.wait_async.end (res);
+                } catch (Error e) {
+                    warning ("screensaver calibrate failed: %s", e.message);
+                }
+                load_launcher_state ();
+                flags_changed ();
+                changed ();
+            });
+        } catch (Error e) {
             warning ("screensaver calibrate failed: %s", e.message);
         }
     }

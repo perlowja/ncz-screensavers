@@ -2512,6 +2512,8 @@ def cmd_ensure_plugin(_args):
         / "ncz-screensavers"
     )
     marker = state / "plugin-enabled"
+    with contextlib.suppress(OSError):
+        state.mkdir(parents=True, exist_ok=True)
     if marker.exists():
         return 0
     got = shell_gsettings("get", SHELL_SCHEMA, "enabled-plugins")
@@ -2532,7 +2534,6 @@ def cmd_ensure_plugin(_args):
         if put.returncode != 0:
             log(f"could not enable the plugin: {put.stderr.strip()}")
             return 1
-    state.mkdir(parents=True, exist_ok=True)
     marker.write_text("1\n")
     return 0
 

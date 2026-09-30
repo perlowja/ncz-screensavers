@@ -1,3 +1,10 @@
+ncz-screensavers (0.7.7) unstable; urgency=medium
+
+  * Plugin refreshes after a GPU re-measure; postinst uses POSIX sed and logs schema errors;
+    a scene title that no longer resolves is ignored instead of clearing the stored scene.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 21:10:00 -0400
+
 ncz-screensavers (0.7.6) unstable; urgency=medium
 
   * --dump-schema is run only for shipped catalog hacks in the system directories, never
