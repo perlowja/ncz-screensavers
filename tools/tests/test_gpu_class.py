@@ -388,6 +388,63 @@ def test_sky1_linlondp_display_controllers_are_filtered_from_gpus(env):
     assert env.gpu_topology()["display_class"] == "integrated"
 
 
+def test_sky1_mali_short_symlink_layout_also_resolves(env):
+    """Regression for the second sysfs layout the live .66 host exposes:
+    `/sys/class/misc/mali0/device` is a *relative* symlink to the bare
+    platform-device name (`../../../CIXH5000:00`) instead of the long path
+    that goes through `/misc/mali0`. Both forms are accepted by
+    _iter_platform_gpu_devices; this test pins the short form so the
+    `else` branch cannot be deleted without breaking the live host.
+    """
+    for i, slot in enumerate(
+        ("CIXH5010:00", "CIXH5010:01", "CIXH5010:02", "CIXH5010:03")
+    ):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            "linlondp",
+            slot,
+            connected=(i == 3),
+        )
+        (env.sysfs / f"class/drm/card{i}/device/drm").mkdir(parents=True, exist_ok=True)
+        (env.sysfs / f"class/drm/card{i}/device/drm/renderD128").touch()
+    misc = env.sysfs / "class/misc/mali0"
+    misc.mkdir(parents=True)
+    (misc / "dev").write_text("10:262\n")
+    # The platform device is /sys/devices/platform/CIXH5000:00, bound to
+    # the 'mali' driver. No /misc/<name> sibling directory exists.
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "modalias").write_text("acpi:CIXH5000:\n")
+    (gpu_dev / "uevent").write_text("DRIVER=mali\nMODALIAS=acpi:CIXH5000:\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    # The kernel exposes the misc symlink as a *relative* path with `..`s
+    # (readlink on the live host prints `../../../CIXH5000:00`). The real
+    # sysfs mount table makes pathlib.resolve() land on
+    # /sys/devices/platform/CIXH5000:00. A plain tmpfs mirror cannot
+    # replay the mount table, so we point the symlink at the same target
+    # via a relative path — the launcher only inspects the *resolved*
+    # path, not the readlink output, so the form of the symlink does
+    # not matter as long as resolve() reaches the platform device.
+    os.symlink(os.path.relpath(gpu_dev, str(misc)), misc / "device")
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+    gpus = env.list_gpus()
+    assert len(gpus) == 1
+    g = gpus[0]
+    assert g["driver"] == "mali"
+    assert g["display"] is True
+    assert g["id"] == "soc-CIXH5000_00"
+    assert g["slot"] == "CIXH5000:00"
+    assert g["vendor"] == "other"
+    assert env.class_from_topology(g) == "mid"
+
+
 def test_sky1_mali_gpu_is_classified_mid_end_to_end(env, monkeypatch):
     """End-to-end regression for 192.168.207.66: with the Sky1 sysfs layout,
     the launcher's GPU class detection returns 'mid' (the calibrated class
@@ -438,6 +495,108 @@ def test_sky1_mali_gpu_is_classified_mid_end_to_end(env, monkeypatch):
     for g in env.list_gpus():
         cls = env.gpu_class(S, g, run=False)["class"]
         assert cls == "mid", f"GPU {g['id']} classified {cls} not mid"
+
+
+def _build_sky1_sysfs(env):
+    """Build the full Sky1 / MS-R1 sysfs mirror (four linlondp cards +
+    one /sys/class/misc/mali0 → CIXH5000:00 bound to the 'mali' driver)
+    and return the list_gpus() result. Used by the cmd_gpus/cmd_status
+    integration tests below."""
+    for i, slot in enumerate(
+        ("CIXH5010:00", "CIXH5010:01", "CIXH5010:02", "CIXH5010:03")
+    ):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            "linlondp",
+            slot,
+            connected=(i == 3),
+        )
+        (env.sysfs / f"class/drm/card{i}/device/drm").mkdir(parents=True, exist_ok=True)
+        (env.sysfs / f"class/drm/card{i}/device/drm/renderD128").touch()
+    misc = env.sysfs / "class/misc/mali0"
+    misc.mkdir(parents=True)
+    (misc / "dev").write_text("10:262\n")
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "uevent").write_text("DRIVER=mali\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    target = gpu_dev / "misc/mali0"
+    target.mkdir(parents=True)
+    os.symlink(target, misc / "device")
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+
+
+def test_sky1_cmd_gpus_json_lists_only_the_mali_mid(env, monkeypatch, capsys):
+    """Regression for 192.168.207.66: `ncz-screensaver gpus --json` must
+    report exactly one entry — the Mali — and that entry must be `class=mid`.
+    The previous code reported four linlondp cards (one mid from a stale
+    cache, three weak from the topology fallback) on a real GPU system.
+    """
+    _build_sky1_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", "Mali-G720-Immortalis")
+    monkeypatch.setenv("FAKE_MS", "9.88")
+    args = type("A", (), {"json": True})()
+    assert env.cmd_gpus(args) == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert len(rows) == 1
+    g = rows[0]
+    assert g["id"] == "soc-CIXH5000_00"
+    assert g["driver"] == "mali"
+    assert g["class"] == "mid"
+    assert g["display"] is True
+    assert g["vendor"] == "other"
+
+
+def test_sky1_cmd_gpus_text_format(env, monkeypatch, capsys):
+    """`ncz-screensaver gpus` (text) must print a single line whose
+    columns match the operator-visible format: role, vendor, driver,
+    class, score. The fix removes the three spurious 'weak' lines on .66.
+    """
+    _build_sky1_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", "Mali-G720-Immortalis")
+    monkeypatch.setenv("FAKE_MS", "9.88")
+    args = type("A", (), {"json": False})()
+    assert env.cmd_gpus(args) == 0
+    text = capsys.readouterr().out.strip().splitlines()
+    assert len(text) == 1
+    parts = text[0].split()
+    assert parts[0] == "soc-CIXH5000_00"
+    assert parts[1] == "display"
+    assert parts[2] == "other"
+    assert parts[3] == "mali"
+    assert parts[4] == "mid"
+
+
+def test_sky1_cmd_status_reports_mid_class(env, monkeypatch, capsys):
+    """Regression for 192.168.207.66: `ncz-screensaver status --json`
+    must report `gpu_class=mid` (or hit the calibrator and report mid
+    via the calibration score). The previous code reported gpu_class=mid
+    only because of a stale `pci-CIXH5010_03` cache entry; the fix moves
+    the verdict onto the actual Mali GPU id and keeps the same class.
+    """
+    _build_sky1_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", "Mali-G720-Immortalis")
+    monkeypatch.setenv(
+        "FAKE_VERSION",
+        "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",
+    )
+    monkeypatch.setenv("FAKE_MS", "9.88")
+    args = type("A", (), {"json": True, "diagnostics": False})()
+    rc = env.cmd_status(args)
+    assert rc in (0, 3)  # 3 because there is no running hack in the test rig
+    out = json.loads(capsys.readouterr().out)
+    assert out["gpu_class"] == "mid"
+    # gpu_class_source is "table" because the test rig has no cache yet
+    # (the live host has a stale entry that would report "calibration"
+    # under the legacy id — both paths end at "mid").
+    assert out["gpu_class_source"] in ("table", "calibration")
 
 
 @pytest.mark.parametrize(
