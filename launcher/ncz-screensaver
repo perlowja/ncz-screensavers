@@ -585,6 +585,14 @@ def class_from_ms(ms):
 
 
 # Fallback when calibration cannot run: renderer string to class, first match wins.
+#
+# The weak pattern narrows the Mali-G3xx/G5xx family to the parts that are
+# actually weak in practice. Mali-G31 and Mali-G52 are the Bifrost low-end
+# parts that sit in this tier. Mali-G57 (a Valhall part) and the entire
+# Mali-G6xx/G7xx / Immortalis family are mid-tier; the mid pattern below
+# catches the G610/G615/G620/G710/G715/G720 members, but we also spell out
+# the bare forms and "Mali-G57" so the launcher never demotes a real
+# Mali-G720-Immortalis (or its siblings) to weak on a Sky1 / CIXH5000 host.
 RENDERER_TABLE = (
     (
         r"nvidia|geforce|quadro|\brtx\b|\bgtx\b|radeon rx|navi ?[1-9]\d|apple m\d",
@@ -593,18 +601,58 @@ RENDERER_TABLE = (
     (r"intel.*arc.*a[57]\d\d", "strong"),
     (
         (
-            r"intel.*(uhd|hd graphics|gma|iris(?! xe))|mali-g[35]\d\b|mali-t|mali-4"
+            r"intel.*(uhd|hd graphics|gma|iris(?! xe))"
+            r"|mali-g(?:31|52)\b|mali-t\d|mali-4\d\d"
             r"|videocore|v3d|vc4|powervr|adreno \(?[3-5]\d\d|llvmpipe|softpipe"
         ),
         "weak",
     ),
     (
         (
-            r"immortalis|mali-g[67]\d\d|iris xe|intel.*arc|radeon (graphics|vega)"
+            r"immortalis"
+            r"|mali-g(?:57|6[0-9]\d|7[0-9]\d)"
+            r"|mali-g[67]\d\d"
+            r"|iris xe|intel.*arc|radeon (graphics|vega)"
             r"|vega \d+|adreno \(?[67]\d\d|apple"
         ),
         "mid",
     ),
+)
+
+
+# Drivers that drive a 3D pipeline and put pixels on the screen. The list is
+# consulted by class_from_topology() when calibration has no score for a GPU
+# and the renderer string is unknown. The platform-bus 'mali' (CIXH5000:00 on
+# Sky1, a glue driver around the upstream mali_kbase) is intentionally listed
+# here — without it a fresh install on MS-R1 / cixmini would classify the
+# actual GPU as 'weak' because only the device-tree / sysfs topology is
+# available before the calibrator has had a chance to run.
+MID_DRIVERS = (
+    "mali",
+    "mali_kbase",
+    "panthor",
+    "panfrost",
+    "msm",
+    "amdgpu",
+)
+
+# Drivers that drive a display controller but have no 3D pipeline of their
+# own. A DRM card bound to one of these is not a render-capable GPU: its
+# renderD nodes are writeback paths for display composition, not GLES /
+# Vulkan render targets. On hosts like Sky1 (CIXH5000:00 + four CIXH5010:0x
+# linlondp cards) the linlondp cards must be filtered out of list_gpus() so
+# they don't get classified via the topology fallback; the real GPU is the
+# separate platform-bus /sys/class/misc/mali0 device.
+DISPLAY_ONLY_DRIVERS = (
+    "linlondp",
+    "linlon_dp",
+    "komeda",
+    "vkms",
+    "dw_hdmi",
+    "imx-drm",
+    "meson-drm",
+    "sun4i-drm",
+    "vc4",
 )
 
 
@@ -628,9 +676,56 @@ def list_gpus():
 
     Each entry: id (pci-0000_01_00_0), slot, vendor (intel|amd|nvidia|other), driver,
     device (pci device id), display (owns a connected connector), boot_vga, discrete.
+
+    Sources, in order:
+      1. /sys/class/drm/card* — the canonical way to find a GPU; entries
+         driven by a display-only driver (linlondp, komeda, vc4, ...) are
+         filtered out when a separate, real GPU device exists (the 3D render
+         is not the display controller).
+      2. /sys/class/misc/mali* and /sys/devices/platform/*/misc/mali* — the
+         standalone /dev/mali0 character device on SoCs like CIX Sky1, where
+         the 3D GPU is not exposed as a DRM card. The parent's
+         /sys/.../driver symlink names the driver ('mali' on Sky1,
+         'mali_kbase' upstream, 'panthor' on newer kernels, ...).
     """
+    gpus = list(_iter_drm_gpu_cards())
+    # Standalone SoC GPU on a character device, e.g. /dev/mali0 on Sky1.
+    gpus.extend(_iter_platform_gpu_devices())
+    if not gpus:
+        return gpus
+    # Drop display-only DRM cards once we have at least one real GPU; on
+    # hosts like Sky1 the linlondp cards have renderD writeback nodes but
+    # no 3D pipeline, so they don't belong in the GPU list at all.
+    real = [g for g in gpus if not g.get("display_only")]
+    if real and len(real) < len(gpus):
+        gpus = real
+    # A display controller that has no render node (Pi vc4, Sky1 komeda) is
+    # not a GPU: the display role belongs to the render GPU that sits on
+    # the same kind of bus.
+    if any(g["render"] for g in gpus) and not all(g["render"] for g in gpus):
+        shown = next((g for g in gpus if g["display"]), None)
+        renderers = [g for g in gpus if g["render"]]
+        if shown is not None and not shown["render"]:
+            pci = bool(PCI_SLOT_RE.match(shown["slot"]))
+            same = [g for g in renderers if bool(PCI_SLOT_RE.match(g["slot"])) == pci]
+            for g in renderers:
+                g["display"] = False
+            (same or renderers)[0]["display"] = True
+        gpus = renderers
+    if gpus and not any(g["display"] for g in gpus):
+        for g in gpus:
+            g["display"] = g["boot_vga"]
+        if not any(g["display"] for g in gpus):
+            gpus[0]["display"] = True
+    gpus.sort(key=lambda g: not g["display"])
+    return gpus
+
+
+def _iter_drm_gpu_cards():
+    """Yield a gpu dict for every /sys/class/drm/card*. Display-only drivers
+    (linlondp, komeda, ...) are flagged with display_only=True so list_gpus()
+    can drop them once a real GPU is found elsewhere on the host."""
     drm = sysfs_root() / "class" / "drm"
-    gpus = []
     for card in sorted(drm.glob("card[0-9]*")):
         if not re.fullmatch(r"card\d+", card.name):
             continue
@@ -653,39 +748,83 @@ def list_gpus():
         has_render = any((dev / "drm").glob("renderD*"))
         vendor = VENDORS.get(_read(dev / "vendor").lower(), "other")
         discrete = vendor == "nvidia" or (vendor == "amd" and vram >= 2 * 1024**3)
-        gpus.append(
-            {
-                "id": gid,
-                "card": card.name,
-                "slot": slot,
-                "vendor": vendor,
-                "driver": driver,
-                "device": _read(dev / "device").lower().removeprefix("0x"),
-                "display": connected,
-                "boot_vga": _read(dev / "boot_vga") == "1",
-                "discrete": discrete,
-                "render": has_render,
-            }
-        )
-    # A display controller that has no render node (Pi vc4, Sky1 komeda) is not a GPU:
-    # the display role belongs to the render GPU that sits on the same kind of bus.
-    if any(g["render"] for g in gpus) and not all(g["render"] for g in gpus):
-        shown = next((g for g in gpus if g["display"]), None)
-        renderers = [g for g in gpus if g["render"]]
-        if shown is not None and not shown["render"]:
-            pci = bool(PCI_SLOT_RE.match(shown["slot"]))
-            same = [g for g in renderers if bool(PCI_SLOT_RE.match(g["slot"])) == pci]
-            for g in renderers:
-                g["display"] = False
-            (same or renderers)[0]["display"] = True
-        gpus = renderers
-    if gpus and not any(g["display"] for g in gpus):
-        for g in gpus:
-            g["display"] = g["boot_vga"]
-        if not any(g["display"] for g in gpus):
-            gpus[0]["display"] = True
-    gpus.sort(key=lambda g: not g["display"])
-    return gpus
+        yield {
+            "id": gid,
+            "card": card.name,
+            "slot": slot,
+            "vendor": vendor,
+            "driver": driver,
+            "device": _read(dev / "device").lower().removeprefix("0x"),
+            "display": connected,
+            "boot_vga": _read(dev / "boot_vga") == "1",
+            "discrete": discrete,
+            "render": has_render,
+            "display_only": driver in DISPLAY_ONLY_DRIVERS,
+        }
+
+
+def _iter_platform_gpu_devices():
+    """Yield a gpu dict for every standalone GPU exposed via a misc
+    character device and the platform bus driver that bound it. The Sky1
+    Mali is the canonical case: /sys/class/misc/mali0 with its device
+    symlink resolving to /sys/devices/platform/CIXH5000:00, whose driver
+    symlink points at /sys/bus/platform/drivers/mali (a CIX-specific glue
+    driver around the upstream mali_kbase, loaded because panthor is
+    blacklisted on this kernel). The synthetic id is 'soc-<platform-device-name>'
+    so a cached calibration entry is keyed off something stable across
+    reboots.
+    """
+    root = sysfs_root()
+    for misc in sorted((root / "class" / "misc").glob("mali*")):
+        device_link = misc / "device"
+        if not device_link.is_symlink():
+            continue
+        try:
+            target = device_link.resolve(strict=False)
+        except OSError:
+            continue
+        try:
+            rel = os.path.relpath(target, root)
+        except ValueError:
+            continue
+        parts = [p for p in rel.split("/") if p and p != ".."]
+        if not parts:
+            continue
+        # The kernel exposes the misc character device as either
+        #   /sys/class/misc/mali0 -> ../../../CIXH5000:00 (-> /sys/devices/platform/CIXH5000:00)
+        # or, on other layouts,
+        #   /sys/class/misc/mali0 -> /sys/devices/platform/CIXH5000:00/misc/mali0
+        # Pick the parent of /misc when that segment is in the path, else
+        # use the resolved path directly.
+        if "misc" in parts and parts[-2] == "misc":
+            plat_parts = parts[:-2]
+        else:
+            plat_parts = parts
+        if not plat_parts:
+            continue
+        plat_dev = root.joinpath(*plat_parts)
+        drv_link = plat_dev / "driver"
+        if not drv_link.is_symlink():
+            continue
+        driver = os.path.basename(os.readlink(drv_link))
+        if not driver:
+            # No driver bound — there is no GPU yet; skip.
+            continue
+        plat_name = plat_dev.name
+        gid = f"soc-{plat_name.replace(':', '_').replace('.', '_')}"
+        yield {
+            "id": gid,
+            "card": "",
+            "slot": plat_name,
+            "vendor": "other",
+            "driver": driver,
+            "device": "",
+            "display": False,
+            "boot_vga": False,
+            "discrete": False,
+            "render": True,
+            "display_only": False,
+        }
 
 
 def display_gpu():
@@ -769,7 +908,7 @@ def class_from_topology(gpu=None):
         return "strong"
     if gpu["driver"] in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
         return "weak"
-    if gpu["driver"] in ("mali_kbase", "panthor", "panfrost", "msm", "amdgpu"):
+    if gpu["driver"] in MID_DRIVERS:
         return "mid"
     return "weak"
 
@@ -1106,7 +1245,10 @@ def _rows_from_json(path, hack_id):
         rng = o.get("range") or [o.get("min", ""), o.get("max", "")]
         choices = [str(c) for c in (o.get("choices") or [])]
         if kind == "enum" and not choices and isinstance(rng, list):
-            choices, rng = [str(c) for c in rng], ["", ""]  # range may carry the choices
+            choices, rng = [str(c) for c in rng], [
+                "",
+                "",
+            ]  # range may carry the choices
         if kind in ("bool", "string") or len(rng) < 2:
             rng = ["", ""]
         default = o.get("default")
