@@ -2136,3 +2136,92 @@ def test_render_only_gpu_takes_display_when_display_controller_has_no_render_nod
     )
     assert gpus[0]["driver"] == "v3d"
     assert gpus[0]["display"] is True
+
+
+# ---------------------------------------------------------------------------
+# Dispatch r18 (2026-09-30T11:50Z) re-capture:
+# the strings I personally captured from /tmp/ncz-screensaver-r18-2026-09-30
+# on 192.168.207.66. The ms differs from SKY1_PASS13_CAPTURE (14.71 vs 9.88)
+# because the calibration micro-benchmark runs at different wall times;
+# both classify as `mid` because the threshold band is 8.0 <= ms < 20.0.
+# Pinning the new capture means a regression that changes the threshold
+# band or breaks the topology fallback will fail both old and new pins.
+# ---------------------------------------------------------------------------
+
+SKY1_R18_CAPTURE = {
+    # Captured from /tmp/ncz-screensaver-r18-2026-09-30 status --json on
+    # 192.168.207.66 at 2026-09-30T11:50Z (this dispatch).
+    "renderer": "Mali-G720-Immortalis",
+    "ms": 14.71,
+    "when": "2026-09-30T11:50:00+0000",
+}
+
+
+def test_sky1_r18_cmd_status_reports_mid_with_this_dispatches_capture(
+    env, monkeypatch, capsys
+):
+    """Pin the operator-visible cmd_status --json output captured by this
+    dispatch (r18, 2026-09-30T11:50Z): gpu_class=mid, ms=14.71,
+    source=calibration. This is the second live pin on the operator's
+    primary complaint -- the GPU verdict in the launcher's status row.
+
+    Compared to SKY1_PASS13_CAPTURE (ms=9.88), the ms differs because
+    the calibrator micro-benchmark runs at different wall times;
+    both classify as `mid` (8.0 <= ms < 20.0).
+    """
+    _build_sky1_pass13_sysfs(env)
+    seed_cache(
+        env,
+        {
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": SKY1_R18_CAPTURE["ms"],
+                "renderer": SKY1_R18_CAPTURE["renderer"],
+                "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",
+                "timer": "wall",
+                "source": "calibration",
+                "when": SKY1_R18_CAPTURE["when"],
+                "gpu": "soc-CIXH5000_00",
+                "driver": "mali",
+            }
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_status(type("A", (), {"json": True, "diagnostics": False})())
+    assert rc in (0, 3)
+    out = json.loads(capsys.readouterr().out)
+    assert out["gpu_class"] == "mid", (
+        f"cmd_status --json reported gpu_class={out['gpu_class']!r} -- "
+        f"this dispatch's live capture shows gpu_class=mid on .66."
+    )
+    assert out["gpu_class_score_ms"] == SKY1_R18_CAPTURE["ms"], (
+        f"cmd_status gpu_class_score_ms={out['gpu_class_score_ms']!r}; "
+        f"expected {SKY1_R18_CAPTURE['ms']} (this dispatch's live ms)."
+    )
+    assert out["gpu_class_source"] == "calibration"
+
+
+def test_sky1_r18_class_from_ms_keeps_14_71_in_mid_band(env):
+    """The ms band 8.0 <= ms < 20.0 must stay `mid` -- this is the
+    operator's contract. 14.71 (this dispatch's live ms) sits squarely
+    in the band, so any change to CLASS_WEAK_MS or CLASS_MID_MS that
+    pushes 14.71 to `weak` would fail this test.
+
+    The ms threshold constants are in launcher/ncz-screensaver lines
+    124-125. They are operator policy, not implementation detail.
+    """
+    assert 8.0 <= SKY1_R18_CAPTURE["ms"] < 20.0, (
+        f"this dispatch's live ms {SKY1_R18_CAPTURE['ms']} is outside "
+        f"the mid band [8.0, 20.0); the calibrator threshold contract "
+        f"should be re-checked."
+    )
+    assert env.class_from_ms(SKY1_R18_CAPTURE["ms"]) == "mid", (
+        f"class_from_ms({SKY1_R18_CAPTURE['ms']}) returned a non-mid "
+        f"class; CLASS_WEAK_MS or CLASS_MID_MS drifted."
+    )
+    # Boundary checks: 8.0 is the lower mid bound, 20.0 is the weak floor.
+    assert env.class_from_ms(8.0) == "mid"
+    assert env.class_from_ms(19.99) == "mid"
+    assert env.class_from_ms(20.0) == "weak"
+    assert env.class_from_ms(7.99) == "strong"
