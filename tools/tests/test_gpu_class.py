@@ -290,6 +290,71 @@ def test_mali_weak_pattern_does_not_swallow_valhall(env, renderer, expected):
     assert env.class_from_renderer(renderer) == expected
 
 
+# Adversarial: the previous fix tightened the mid pattern to spell out
+# Mali-G57 and the G6XX/G7XX / Immortalis family but only spelled the
+# three-digit forms (G610..G720). Real Valhall parts that ship as the
+# two-digit bare form ('Mali-G68', 'Mali-G77', 'Mali-G78', the canonical
+# 2019-2020 Valhall lineup per ARM's product pages) fell through to no
+# match and were caught by neither mid nor weak. The mid pattern is now
+# extended with mali-g(?:6[0-9]|7[0-9])\b so a fresh host whose renderer
+# string reads 'Mali-G77' is classified mid, not 'no match -> weak via
+# the unknown-renderer path'.
+@pytest.mark.parametrize(
+    "renderer",
+    [
+        # Bare two-digit Valhall parts (2019-2020, still in production).
+        "Mali-G68",
+        "Mali-G68 MC4",
+        "Mali-G77",
+        "Mali-G77 MC7",
+        "Mali-G78",
+        "Mali-G78 MC9",
+        # G7[0-9] alone covers G70, G71, ..., G79 (G715/G720 still match).
+        "Mali-G71",
+        "Mali-G72",
+        "Mali-G76",
+        "Mali-G79",
+    ],
+)
+def test_mali_two_digit_valhall_is_mid(env, renderer):
+    """Adversarial regression: every Mali-G[6-7]X two-digit Valhall part
+    must classify as mid, not 'no match'. The fix in 8f221fb only spelled
+    the three-digit forms (G610..G720); this commit closes that gap."""
+    cls = env.class_from_renderer(renderer)
+    assert cls == "mid", (
+        f"{renderer!r} classified {cls!r} not mid; the Valhall two-digit "
+        "family must not fall through to unknown"
+    )
+
+
+# The two-digit mid pattern must NOT swallow the Bifrost low-end parts
+# (G31 / G52) or non-Valhall names like 'Mali-G310' / 'Mali-G520' /
+# 'Mali-G6150'. Adversarial sanity for the regex \b anchor.
+@pytest.mark.parametrize(
+    "renderer,expected",
+    [
+        ("Mali-G31", "weak"),
+        ("Mali-G31 MC2", "weak"),
+        ("Mali-G52", "weak"),
+        ("Mali-G52 MC2", "weak"),
+        # Three-character +1: G310, G520 are Bifrost mid-range (G31 with
+        # extra shader cores); they are not Valhall, they stay no-match
+        # (the table must NOT classify them at all).
+        ("Mali-G310", None),
+        ("Mali-G520", None),
+        # Edge: Mali-G700 is 3-digit, technically matches the original
+        # 6\d\d / 7\d\d; it is also no real product but we want stable
+        # semantics either way.
+        ("Mali-G700", "mid"),
+        # T-series and Mali-400 stay weak.
+        ("Mali-T720", "weak"),
+        ("Mali-400 MP2", "weak"),
+    ],
+)
+def test_mali_two_digit_pattern_does_not_swallow_bifrost(env, renderer, expected):
+    assert env.class_from_renderer(renderer) == expected
+
+
 @pytest.mark.parametrize(
     "driver,expected",
     [

@@ -610,8 +610,8 @@ RENDERER_TABLE = (
     (
         (
             r"immortalis"
-            r"|mali-g(?:57|6[0-9]\d|7[0-9]\d)"
-            r"|mali-g[67]\d\d"
+            r"|mali-g(?:5[7-9]|6\d\d|7\d\d)"
+            r"|mali-g(?:6[0-9]|7[0-9])\b"
             r"|iris xe|intel.*arc|radeon (graphics|vega)"
             r"|vega \d+|adreno \(?[67]\d\d|apple"
         ),
