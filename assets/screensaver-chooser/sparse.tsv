@@ -7,7 +7,7 @@
 # over a run (see docs/SPARSE-HACKS.md) and far above an empty frame, which scores 0.
 hyprsaver_geometry_gles3	0.10	rotating wireframe polyhedra, lines only
 hyprsaver_hypercube_gles3	0.10	4D tesseract wireframe, lines only
-hyprsaver_stonks_gles3	0.10	candlestick chart on black
-hyprsaver_tesla_gles3	0.10	three electrodes and thin lightning arcs on black
+hyprsaver_ticker_gles3	0.10	candlestick chart on black
+hyprsaver_arccoil_gles3	0.10	three electrodes and thin lightning arcs on black
 hyprsaver_gridwave_gles3	0.10	synthwave floor grid below a black sky
 cubestorm_gles3	0.10	tube of wire cubes drifting over black (upstream xscreensaver behavior)

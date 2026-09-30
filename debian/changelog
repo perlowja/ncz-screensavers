@@ -1,3 +1,14 @@
+ncz-screensavers (0.7.10) unstable; urgency=medium
+
+  * Neutral catalog ids: hyprsaver_matrix/stonks/tesla become hyprsaver_digitalrain/ticker/arccoil
+    (Digital Rain, Ticker, Arc Coil) and gibson becomes datatowers (Data Towers). Stored hack-id,
+    random-hacks, playlist and hack-options are migrated on load.
+  * Catalog and tier tables also read <name>.d/*.tsv drop-ins for add-on packages.
+  * The neongravity-1, neontriangulator, selfreflect, stardome and stripeytorus shaders no longer
+    ship in this package (moving to the NCZ-only ncz-screensavers-extra).
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 22:30:00 -0400
+
 ncz-screensavers (0.7.9) unstable; urgency=medium
 
   * Preset table lookup: NCZ_SCREENSAVER_PRESETS replaces the system candidates instead of

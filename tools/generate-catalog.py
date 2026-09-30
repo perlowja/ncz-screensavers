@@ -22,10 +22,14 @@ CLASSICS = {
     "geodesic",
     "gravitywell",
     "noof",
-    "gibson",
+    "datatowers",
 }
 TITLES = {
     "blackhole": "Black Hole",
+    "digitalrain": "Digital Rain",
+    "ticker": "Ticker",
+    "arccoil": "Arc Coil",
+    "datatowers": "Data Towers",
 }
 
 

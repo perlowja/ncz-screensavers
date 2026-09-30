@@ -20,10 +20,10 @@ import os
 import random
 import re
 import shutil
-import tempfile
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -124,6 +124,12 @@ CLASS_RANK = {c: i for i, c in enumerate(CLASSES)}
 CLASS_WEAK_MS = 20.0  # reference micro-benchmark at or above this: weak
 CLASS_MID_MS = 8.0  # at or above this (and below weak): mid; below: strong
 LEGACY_TIERS = {"igpu": "weak", "discrete": "strong"}
+RENAMED_IDS = {
+    "hyprsaver_matrix_gles3": "hyprsaver_digitalrain_gles3",
+    "hyprsaver_stonks_gles3": "hyprsaver_ticker_gles3",
+    "hyprsaver_tesla_gles3": "hyprsaver_arccoil_gles3",
+    "gibson_gles3": "datatowers_gles3",
+}
 COPY_BUDGET_MS = 8.0  # measured dGPU-to-scanout copy above this lowers the render scale
 WEAK_DEFAULT_SCALE = 0.5  # render scale shader hacks get on a weak GPU in Auto
 GPU_ENV_NEVER = ("DRI_PRIME", "__NV_PRIME_RENDER_OFFLOAD", "__VK_LAYER_NV_optimus")
@@ -212,7 +218,21 @@ def load_settings():
             values[parts[1]] = parse_gvariant(parts[2])
         except (ValueError, SyntaxError):
             continue
-    return values, True
+    return migrate_ids(values), True
+
+
+def migrate_ids(values):
+    """Map screensaver ids stored before the catalog renames to their current ids."""
+    if values.get("hack-id") in RENAMED_IDS:
+        values["hack-id"] = RENAMED_IDS[values["hack-id"]]
+    for key in ("random-hacks", "playlist"):
+        if isinstance(values.get(key), list):
+            values[key] = [RENAMED_IDS.get(i, i) for i in values[key]]
+    if isinstance(values.get("hack-options"), dict):
+        values["hack-options"] = {
+            RENAMED_IDS.get(k, k): v for k, v in values["hack-options"].items()
+        }
+    return values
 
 
 def gvariant_text(value):
@@ -321,12 +341,21 @@ def catalog_path():
     return None
 
 
+def with_dropins(path):
+    """PATH plus the sorted *.tsv files in PATH's sibling "<stem>.d" directory (add-on packages)."""
+    if path is None:
+        return []
+    extra = path.parent / (path.stem + ".d")
+    return [path] + (sorted(extra.glob("*.tsv")) if extra.is_dir() else [])
+
+
 def load_catalog():
     path = catalog_path()
     rows = []
     if path is None:
         return rows
-    for line in path.read_text().splitlines():
+    text = "\n".join(p.read_text() for p in with_dropins(path))
+    for line in text.splitlines():
         if not line.strip() or line.startswith("#"):
             continue
         fields = line.split("\t")
@@ -500,7 +529,7 @@ def load_tier_rows():
     if path is None:
         return rows
     names = ("uhd630", "uhd630_scaled", "mali", "navi14", "rtx2060")
-    for line in path.read_text().splitlines():
+    for line in "\n".join(p.read_text() for p in with_dropins(path)).splitlines():
         f = line.split("\t")
         if len(f) < 2 or line.startswith("#"):
             continue

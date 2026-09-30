@@ -13,7 +13,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.7.9',
+    version: '0.7.10',
     license: 'GPL-2.0-or-later',
 )
 
@@ -44,7 +44,7 @@ ncz_ship_bins = [
     'hyprsaver_kaleidoscope_gles3',
     'hyprsaver_lissajous_gles3',
     'hyprsaver_marble_gles3',
-    'hyprsaver_matrix_gles3',
+    'hyprsaver_digitalrain_gles3',
     'hyprsaver_mobius_gles3',
     'hyprsaver_oscilloscope_gles3',
     'hyprsaver_planet_gles3',
@@ -53,10 +53,10 @@ ncz_ship_bins = [
     'hyprsaver_snowfall_gles3',
     'hyprsaver_sonar_gles3',
     'hyprsaver_starfield_gles3',
-    'hyprsaver_stonks_gles3',
+    'hyprsaver_ticker_gles3',
     'hyprsaver_temple_gles3',
     'hyprsaver_terminal_gles3',
-    'hyprsaver_tesla_gles3',
+    'hyprsaver_arccoil_gles3',
     'hyprsaver_tunnel_gles3',
     'hyprsaver_voronoi_gles3',
     'hyprsaver_waterfall_gles3',
@@ -79,18 +79,13 @@ ncz_ship_bins = [
     'xshadertoy_goldenapollian_gles3',
     'xshadertoy_hexplasma_gles3',
     'xshadertoy_logarithmiccircles_gles3',
-    'xshadertoy_neongravity-1_gles3',
-    'xshadertoy_neontriangulator_gles3',
     'xshadertoy_noxfire_gles3',
     'xshadertoy_polarnight_gles3',
     'xshadertoy_prococean_gles3',
     'xshadertoy_protophore_gles3',
     'xshadertoy_rigrekt_gles3',
-    'xshadertoy_selfreflect_gles3',
     'xshadertoy_skyline_gles3',
-    'xshadertoy_stardome_gles3',
     'xshadertoy_starnest_gles3',
-    'xshadertoy_stripeytorus_gles3',
     'xshadertoy_neonhorizon_gles3',
     'xshadertoy_topologica_gles3',
     'xshadertoy_trainmandala_gles3',
@@ -108,7 +103,7 @@ ncz_ship_bins = [
     'geodesic_gles3',
     'gravitywell_gles3',
     'noof_gles3',
-    'gibson_gles3',
+    'datatowers_gles3',
 ]
 
 # ---------------------------------------------------------------------------
@@ -294,13 +289,16 @@ foreach ms_shader : install_extras ? [
                  install_dir: shader_install_dir + '/magmasimplex',
                  install_tag: 'runtime-shaders')
 endforeach
+# Catalog ids differ from the vendored shader file names for these three.
+hyprsaver_ids = {'matrix': 'digitalrain', 'stonks': 'ticker', 'tesla': 'arccoil'}
 foreach s : hyprsaver_shaders
-    if ncz_ship_bins.contains('hyprsaver_' + s + '_gles3')
+    hid = hyprsaver_ids.get(s, s)
+    if ncz_ship_bins.contains('hyprsaver_' + hid + '_gles3')
         install_data('vendor/hyprsaver/shaders/' + s + '.frag',
                      install_dir: shader_install_dir, install_tag: 'runtime-shaders')
     endif
     executable(
-        'hyprsaver_' + s + '_gles3',
+        'hyprsaver_' + hid + '_gles3',
         files(common_gles3_sources + [
             'src/gles3_harness.c',
             'src/gles3_hyprsaver.c',
@@ -310,10 +308,10 @@ foreach s : hyprsaver_shaders
         c_args: gles3_native_c_args + [
             # Quoted because meson/gcc splits 'tunnel.frag' on the dot.
             '-DSHADER_FILE="@0@.frag"'.format(s),
-            '-DHACK_PREFIX=hyprsaver_@0@'.format(s),
-            '-DHACK_TABLE=hyprsaver_@0@_xscreensaver_function_table'.format(s),
+            '-DHACK_PREFIX=hyprsaver_@0@'.format(hid),
+            '-DHACK_TABLE=hyprsaver_@0@_xscreensaver_function_table'.format(hid),
         ],
-        install: ncz_ship_bins.contains('hyprsaver_' + s + '_gles3'), install_dir: ncz_libdir,
+        install: ncz_ship_bins.contains('hyprsaver_' + hid + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
 
@@ -909,9 +907,11 @@ endif
 # hack in src/classics_shader/, same xscreensaver_function_table symbol as
 # the GL1 original so the harness, catalog and packaging are unchanged.
 # -----------------------------------------------------------------------
+# gibson ships as datatowers (neutral catalog id); source and symbols keep the upstream name.
+classics_ids = {'gibson': 'datatowers'}
 foreach cname : classics_shader_ported
     executable(
-        cname + '_gles3',
+        classics_ids.get(cname, cname) + '_gles3',
         files(common_gles3_sources + [
             'src/gles3_harness.c',
             'src/classics_shader/cs_' + cname + '.c',
@@ -921,6 +921,6 @@ foreach cname : classics_shader_ported
         c_args: gles3_native_c_args + [
             '-DHACK_TABLE=@0@_xscreensaver_function_table'.format(cname),
         ],
-        install: ncz_ship_bins.contains(cname + '_gles3'), install_dir: ncz_libdir,
+        install: ncz_ship_bins.contains(classics_ids.get(cname, cname) + '_gles3'), install_dir: ncz_libdir,
     )
 endforeach
