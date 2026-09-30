@@ -31,9 +31,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Mapping, MutableMapping
-
 
 # ---------------------------------------------------------------------------
 # Tunables (the five files Live here, not the upstream launcher behaviour)
@@ -49,9 +48,7 @@ CIXGPU_PRO_LIBDIR = Path("/opt/cixgpu-pro/lib/aarch64-linux-gnu")
 
 # The CIX glvnd vendor pin. Required so EGL's vendor lookup picks libEGL_cix
 # instead of falling through to Mesa. Verified on .66 (2026-09-30).
-CIXGPU_VENDOR_JSON = Path(
-    "/opt/cixgpu-compat/share/glvnd/egl_vendor.d/40_cix.json"
-)
+CIXGPU_VENDOR_JSON = Path("/opt/cixgpu-compat/share/glvnd/egl_vendor.d/40_cix.json")
 
 # Only Sky1 has /opt/cixgpu-pro/. The helper detects that by checking
 # CIXGPU_PRO_LIBDIR exists AND that .so can dlopen libmali.so.0 from it;
@@ -121,9 +118,7 @@ def sky1_loader_paths_available() -> bool:
         return False
     # One representative .so must be present so we are not pointing at a
     # torn / empty upgrade.
-    if not (CIXGPU_PRO_LIBDIR / "libmali.so.0").is_file():
-        return False
-    return True
+    return (CIXGPU_PRO_LIBDIR / "libmali.so.0").is_file()
 
 
 def augment_calibrator_env(env: MutableMapping[str, str]) -> MutableMapping[str, str]:
@@ -191,15 +186,18 @@ def augment_calibrator_env(env: MutableMapping[str, str]) -> MutableMapping[str,
     # WAYLAND_DISPLAY nor DISPLAY are set, the calibrator's default
     # EGL platform picks ZINK -> llvmpipe -> exit 3. Surfaceless picks
     # the GBM device directly without needing a display server.
-    if "WAYLAND_DISPLAY" not in env and "DISPLAY" not in env:
-        if "__EGL_PLATFORM" not in env:
-            env["__EGL_PLATFORM"] = "surfaceless"
+    if (
+        "WAYLAND_DISPLAY" not in env
+        and "DISPLAY" not in env
+        and "__EGL_PLATFORM" not in env
+    ):
+        env["__EGL_PLATFORM"] = "surfaceless"
 
     return env
 
 
 def augmented_calibrator_env(
-    base: Optional[Mapping[str, str]] = None,
+    base: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Convenience wrapper: returns a fresh dict from `base` (default
     os.environ) augmented for the calibrator subprocess.
@@ -215,8 +213,8 @@ def augmented_calibrator_env(
 __all__ = [
     "CIXGPU_PRO_LIBDIR",
     "CIXGPU_VENDOR_JSON",
-    "is_sky1_arm64",
-    "sky1_loader_paths_available",
     "augment_calibrator_env",
     "augmented_calibrator_env",
+    "is_sky1_arm64",
+    "sky1_loader_paths_available",
 ]

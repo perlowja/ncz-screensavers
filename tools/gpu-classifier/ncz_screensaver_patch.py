@@ -67,20 +67,19 @@
 
 from __future__ import annotations
 
-from typing import Mapping, Optional
+from collections.abc import Mapping
 
 from gpu_classifier import (
-    ClassifierEntry,
     EXIT_SOFTWARE_REFUSED,
-    classify_from_calibrator_result,
     augment_calibrator_env,
+    classify_from_calibrator_result,
     discover_gpus,
 )
 
 
 def _refusal_fallback_dict(
-    gpu: Optional[Mapping[str, object]],
-    all_gpus: Optional[list] = None,
+    gpu: Mapping[str, object] | None,
+    all_gpus: list | None = None,
 ) -> dict:
     """Splice-site replacement for the launcher's `if code == 3:` line.
 
@@ -106,9 +105,9 @@ def _refusal_fallback_dict(
 
 def _no_ident_fallback_dict(
     code: int,
-    gpu: Optional[Mapping[str, object]],
+    gpu: Mapping[str, object] | None,
     renderer_hint: str,
-    all_gpus: Optional[list] = None,
+    all_gpus: list | None = None,
 ) -> dict:
     """Splice-site replacement for the launcher's `if ident is None:`
     branch.
@@ -129,9 +128,9 @@ def _no_ident_fallback_dict(
 
 
 __all__ = [
-    "_refusal_fallback_dict",
     "_no_ident_fallback_dict",
-    "classify_from_calibrator_result",
+    "_refusal_fallback_dict",
     "augment_calibrator_env",
+    "classify_from_calibrator_result",
     "discover_gpus",
 ]

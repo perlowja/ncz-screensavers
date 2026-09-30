@@ -13,15 +13,15 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-import unittest.mock as mock
 from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PKG_PARENT = os.path.dirname(_HERE)
 if _PKG_PARENT not in sys.path:
     sys.path.insert(0, _PKG_PARENT)
 
-from calibrator_env import (  # noqa: E402
+from calibrator_env import (
     CIXGPU_PRO_LIBDIR,
     CIXGPU_VENDOR_JSON,
     augment_calibrator_env,
@@ -57,13 +57,19 @@ class PlatformDetectionTests(unittest.TestCase):
         very host it was written for."""
         with mock.patch("os.uname") as u:
             u.return_value = mock.Mock(machine="aarch64")
-            with mock.patch.object(Path, "is_dir",
-                                   new=mock.Mock(return_value=True)), \
-                 mock.patch.object(Path, "iterdir",
-                                   return_value=iter([
-                                       Path("/sys/bus/acpi/devices/CIXH1003:00"),
-                                       Path("/sys/bus/acpi/devices/ACPI0003:00"),
-                                   ])):
+            with (
+                mock.patch.object(Path, "is_dir", new=mock.Mock(return_value=True)),
+                mock.patch.object(
+                    Path,
+                    "iterdir",
+                    return_value=iter(
+                        [
+                            Path("/sys/bus/acpi/devices/CIXH1003:00"),
+                            Path("/sys/bus/acpi/devices/ACPI0003:00"),
+                        ]
+                    ),
+                ),
+            ):
                 self.assertTrue(is_sky1_arm64())
 
     def test_device_tree_path_is_detected(self):
@@ -71,10 +77,12 @@ class PlatformDetectionTests(unittest.TestCase):
         device-tree instead of ACPI) must still be detected."""
         with mock.patch("os.uname") as u:
             u.return_value = mock.Mock(machine="aarch64")
-            with mock.patch.object(Path, "is_dir",
-                                   new=mock.Mock(return_value=False)), \
-                 mock.patch.object(Path, "read_bytes",
-                                   return_value=b"cix,sky1\0arm,vexpress\0"):
+            with (
+                mock.patch.object(Path, "is_dir", new=mock.Mock(return_value=False)),
+                mock.patch.object(
+                    Path, "read_bytes", return_value=b"cix,sky1\0arm,vexpress\0"
+                ),
+            ):
                 self.assertTrue(is_sky1_arm64())
 
 
@@ -91,23 +99,35 @@ class NoOpTests(unittest.TestCase):
         we skip the mutation assertion there and only check the contract
         via `test_no_op_when_libdir_absent` below."""
         if is_sky1_arm64() and sky1_loader_paths_available():
-            self.skipTest("running on a Sky1 host with cixgpu-pro; "
-                          "non-sky1 contract covered by "
-                          "test_no_op_when_libdir_absent")
-        env = {"LD_LIBRARY_PATH": "/usr/lib/x86_64-linux-gnu", "WAYLAND_DISPLAY": "wayland-0"}
+            self.skipTest(
+                "running on a Sky1 host with cixgpu-pro; "
+                "non-sky1 contract covered by "
+                "test_no_op_when_libdir_absent"
+            )
+        env = {
+            "LD_LIBRARY_PATH": "/usr/lib/x86_64-linux-gnu",
+            "WAYLAND_DISPLAY": "wayland-0",
+        }
         before = dict(env)
         result = augment_calibrator_env(env)
-        self.assertEqual(env, before,
-                         "augment_calibrator_env must not mutate env on non-Sky1")
+        self.assertEqual(
+            env, before, "augment_calibrator_env must not mutate env on non-Sky1"
+        )
         # Returns the same dict (mutated or not).
         self.assertIs(result, env)
 
     def test_no_op_when_libdir_absent(self):
         # Simulate Sky1 + no cixgpu-pro install by mocking the constants.
-        with mock.patch.object(sys.modules["calibrator_env"], "CIXGPU_PRO_LIBDIR",
-                              new=Path("/no/such/dir")), \
-             mock.patch.object(sys.modules["calibrator_env"], "is_sky1_arm64",
-                              return_value=True):
+        with (
+            mock.patch.object(
+                sys.modules["calibrator_env"],
+                "CIXGPU_PRO_LIBDIR",
+                new=Path("/no/such/dir"),
+            ),
+            mock.patch.object(
+                sys.modules["calibrator_env"], "is_sky1_arm64", return_value=True
+            ),
+        ):
             env = {"PATH": "/usr/bin"}
             before = dict(env)
             augment_calibrator_env(env)
@@ -118,13 +138,19 @@ class NoOpTests(unittest.TestCase):
         # Force sky1_loader_paths_available to False so the helper short-
         # circuits before it can ever call is_dir() / is_file() on the
         # mocked Path.
-        with mock.patch.object(sys.modules["calibrator_env"], "CIXGPU_PRO_LIBDIR",
-                              new=Path("/tmp")), \
-             mock.patch.object(sys.modules["calibrator_env"], "is_sky1_arm64",
-                              return_value=True), \
-             mock.patch.object(sys.modules["calibrator_env"],
-                               "sky1_loader_paths_available",
-                               return_value=False):
+        with (
+            mock.patch.object(
+                sys.modules["calibrator_env"], "CIXGPU_PRO_LIBDIR", new=Path("/tmp")
+            ),
+            mock.patch.object(
+                sys.modules["calibrator_env"], "is_sky1_arm64", return_value=True
+            ),
+            mock.patch.object(
+                sys.modules["calibrator_env"],
+                "sky1_loader_paths_available",
+                return_value=False,
+            ),
+        ):
             env = {}
             before = dict(env)
             augment_calibrator_env(env)
@@ -140,11 +166,14 @@ class Sky1EnvAugmentationTests(unittest.TestCase):
         Sky1 with the cixgpu-pro install present. Each test that uses
         this must patch the libdir existence check."""
         return (
-            mock.patch.object(sys.modules["calibrator_env"], "is_sky1_arm64",
-                              return_value=True),
-            mock.patch.object(sys.modules["calibrator_env"],
-                              "sky1_loader_paths_available",
-                              return_value=True),
+            mock.patch.object(
+                sys.modules["calibrator_env"], "is_sky1_arm64", return_value=True
+            ),
+            mock.patch.object(
+                sys.modules["calibrator_env"],
+                "sky1_loader_paths_available",
+                return_value=True,
+            ),
         )
 
     def test_sets_ld_library_path_on_empty_env(self):
@@ -170,20 +199,31 @@ class Sky1EnvAugmentationTests(unittest.TestCase):
             self.assertEqual(env["LD_LIBRARY_PATH"], existing)
 
     def test_sets_vendor_pin_if_file_exists(self):
-        with self._sky1_with_cixgpu()[0], self._sky1_with_cixgpu()[1], \
-             mock.patch.object(sys.modules["calibrator_env"], "CIXGPU_VENDOR_JSON",
-                               new=Path("/tmp/fake-vendor.json")), \
-             mock.patch("os.path.isfile", return_value=True):
+        with (
+            self._sky1_with_cixgpu()[0],
+            self._sky1_with_cixgpu()[1],
+            mock.patch.object(
+                sys.modules["calibrator_env"],
+                "CIXGPU_VENDOR_JSON",
+                new=Path("/tmp/fake-vendor.json"),
+            ),
+            mock.patch("os.path.isfile", return_value=True),
+        ):
             env = {}
             augment_calibrator_env(env)
-            self.assertEqual(env["__EGL_VENDOR_LIBRARY_FILENAMES"], "/tmp/fake-vendor.json")
+            self.assertEqual(
+                env["__EGL_VENDOR_LIBRARY_FILENAMES"], "/tmp/fake-vendor.json"
+            )
 
     def test_skips_vendor_pin_when_file_missing(self):
         """If 40_cix.json is missing (the file lives in the separate
         cixgpu-compat package; some operator setups do that), do not
         set a broken path."""
-        with self._sky1_with_cixgpu()[0], self._sky1_with_cixgpu()[1], \
-             mock.patch("os.path.isfile", return_value=False):
+        with (
+            self._sky1_with_cixgpu()[0],
+            self._sky1_with_cixgpu()[1],
+            mock.patch("os.path.isfile", return_value=False),
+        ):
             env = {}
             augment_calibrator_env(env)
             self.assertNotIn("__EGL_VENDOR_LIBRARY_FILENAMES", env)
@@ -195,7 +235,9 @@ class Sky1EnvAugmentationTests(unittest.TestCase):
         with self._sky1_with_cixgpu()[0], self._sky1_with_cixgpu()[1]:
             env = {"__EGL_VENDOR_LIBRARY_FILENAMES": "/op/path/40_cix.json"}
             augment_calibrator_env(env)
-            self.assertEqual(env["__EGL_VENDOR_LIBRARY_FILENAMES"], "/op/path/40_cix.json")
+            self.assertEqual(
+                env["__EGL_VENDOR_LIBRARY_FILENAMES"], "/op/path/40_cix.json"
+            )
 
     def test_sets_ncz_gpu_backend_to_mali(self):
         with self._sky1_with_cixgpu()[0], self._sky1_with_cixgpu()[1]:
@@ -255,12 +297,17 @@ class Sky1AugmentedFullStackTests(unittest.TestCase):
     keys comes out exactly as the .66 live probe showed."""
 
     def test_full_stack_matches_v66_probe(self):
-        with mock.patch.object(sys.modules["calibrator_env"], "is_sky1_arm64",
-                               return_value=True), \
-             mock.patch.object(sys.modules["calibrator_env"],
-                               "sky1_loader_paths_available",
-                               return_value=True), \
-             mock.patch("os.path.isfile", return_value=True):
+        with (
+            mock.patch.object(
+                sys.modules["calibrator_env"], "is_sky1_arm64", return_value=True
+            ),
+            mock.patch.object(
+                sys.modules["calibrator_env"],
+                "sky1_loader_paths_available",
+                return_value=True,
+            ),
+            mock.patch("os.path.isfile", return_value=True),
+        ):
             env = {}
             augment_calibrator_env(env)
             # This is the dict we proved works on .66 by hand:
@@ -271,7 +318,9 @@ class Sky1AugmentedFullStackTests(unittest.TestCase):
             #   /usr/libexec/.../ncz-screensaver-calibrate --identify
             #   =>  {"renderer":"Mali-G720-Immortalis", ...}
             self.assertEqual(env["LD_LIBRARY_PATH"], str(CIXGPU_PRO_LIBDIR))
-            self.assertEqual(env["__EGL_VENDOR_LIBRARY_FILENAMES"], str(CIXGPU_VENDOR_JSON))
+            self.assertEqual(
+                env["__EGL_VENDOR_LIBRARY_FILENAMES"], str(CIXGPU_VENDOR_JSON)
+            )
             self.assertEqual(env["NCZ_GPU_BACKEND"], "mali")
             self.assertEqual(env["__EGL_PLATFORM"], "surfaceless")
 

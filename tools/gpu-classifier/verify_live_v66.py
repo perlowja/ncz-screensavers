@@ -21,24 +21,25 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
 from gpu_classifier import (
-    EXIT_ERROR,
     EXIT_NO_CONFIG,
     EXIT_OK,
     EXIT_SOFTWARE_REFUSED,
-    classify_from_calibrator_result,
     class_from_ms,
     class_from_renderer,
     class_from_topology,
+    classify_from_calibrator_result,
     discover_gpus,
     driver_is_display_controller,
     driver_is_hardware_gpu,
 )
+
 try:
     from calibrator_env import (
         augmented_calibrator_env,
         is_sky1_arm64,
         sky1_loader_paths_available,
     )
+
     _HAS_CALIBRATOR_ENV = True
 except ImportError:
     _HAS_CALIBRATOR_ENV = False
@@ -51,9 +52,9 @@ except ImportError:
 
 VULKAN_DEVICE_NAME = "Mali-G720-Immortalis"
 GL_VERSION = "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5"
-BENCHMARK_MS_DISPLAY = 9.88   # pci-CIXH5010_03 entry in gpu-class.json
-BENCHMARK_MS_MALI = 11.76     # soc-CIXH5000_00 entry in gpu-class.json
-BENCHMARK_MS_PRIOR = 17.812   # the first capture (this session)
+BENCHMARK_MS_DISPLAY = 9.88  # pci-CIXH5010_03 entry in gpu-class.json
+BENCHMARK_MS_MALI = 11.76  # soc-CIXH5000_00 entry in gpu-class.json
+BENCHMARK_MS_PRIOR = 17.812  # the first capture (this session)
 LLVMIPE_RENDERER = "llvmpipe (LLVM 21.1.8, 128 bits)"
 
 # What /sys/class/misc/mali0/device/driver points at on .66.
@@ -94,13 +95,28 @@ V66_DISPLAY_GPU_DRM = {
 
 # Every DRM card on .66 (4 cards, all linlondp).
 V66_ALL_DRM_CARDS = [
-    {**V66_DISPLAY_GPU_DRM, "id": "pci-CIXH5010_00", "card": "card0",
-     "slot": "CIXH5010:00", "display": False},
-    {**V66_DISPLAY_GPU_DRM, "id": "pci-CIXH5010_01", "card": "card1",
-     "slot": "CIXH5010:01", "display": False},
+    {
+        **V66_DISPLAY_GPU_DRM,
+        "id": "pci-CIXH5010_00",
+        "card": "card0",
+        "slot": "CIXH5010:00",
+        "display": False,
+    },
+    {
+        **V66_DISPLAY_GPU_DRM,
+        "id": "pci-CIXH5010_01",
+        "card": "card1",
+        "slot": "CIXH5010:01",
+        "display": False,
+    },
     V66_DISPLAY_GPU_DRM,
-    {**V66_DISPLAY_GPU_DRM, "id": "pci-CIXH5010_04", "card": "card3",
-     "slot": "CIXH5010:04", "display": False},
+    {
+        **V66_DISPLAY_GPU_DRM,
+        "id": "pci-CIXH5010_04",
+        "card": "card3",
+        "slot": "CIXH5010:04",
+        "display": False,
+    },
 ]
 
 V66_ALL_GPUS = V66_ALL_DRM_CARDS + [V66_MISC_MALI_GPU]
@@ -122,7 +138,8 @@ def main() -> int:
     print("Source-of-truth strings in fixtures/v66-live/STRINGS.txt.")
 
     banner("1) Pure-function primitives")
-    print(textwrap.dedent(f"""
+    print(
+        textwrap.dedent(f"""
         class_from_ms({BENCHMARK_MS_DISPLAY})
             -> {class_from_ms(BENCHMARK_MS_DISPLAY)!r}
             # {BENCHMARK_MS_DISPLAY} is in the [8.0, 20.0) band -> the 'mid' bucket.
@@ -140,10 +157,12 @@ def main() -> int:
             # llvmpipe matches the row-3 weak regex. The launcher was returning
             # this verdict on .66 when the calibrator's subprocess ran with
             # the system loader path (only Mesa/llvmpipe visible).
-    """).strip())
+    """).strip()
+    )
 
     banner("2) Driver-name predicates (the .66-specific contracts)")
-    print(textwrap.dedent(f"""
+    print(
+        textwrap.dedent(f"""
         driver_is_hardware_gpu("mali")
             -> {driver_is_hardware_gpu("mali")!r}
             # /sys/class/misc/mali0/device/driver on .66 -> "mali" (platform
@@ -161,10 +180,12 @@ def main() -> int:
             -> {driver_is_display_controller("komeda")!r}
         driver_is_display_controller("i915")
             -> {driver_is_display_controller("i915")!r}
-    """).strip())
+    """).strip()
+    )
 
     banner("3) Topology classifier")
-    print(textwrap.dedent(f"""
+    print(
+        textwrap.dedent(f"""
         class_from_topology({{driver=mali, discrete=False, sysfs_kind=misc}})
             -> {class_from_topology(V66_MISC_MALI_GPU)!r}
             # The misc/mali0 entry on .66 must say 'mid'.
@@ -173,7 +194,8 @@ def main() -> int:
             -> {class_from_topology(V66_DISPLAY_GPU_DRM)!r}
             # The DRM card entry alone says 'weak' (display controller).
             # The 'mid' verdict requires the misc entry to be passed too.
-    """).strip())
+    """).strip()
+    )
 
     banner("4) THE FIX: actual reproducer on .66 (calibrator exit=2 + all_gpus)")
     print("Pre-fix behaviour (still present in /usr/bin/ncz-screensaver 0.7.1):")
@@ -190,7 +212,9 @@ def main() -> int:
     print("    code = EXIT_NO_CONFIG  (calibrator: 'calibrate: no GLES3 config', rc=2)")
     print("    gpu  = display_gpu()  (DRM card, driver=linlondp)")
     print("    all_gpus = discover_gpus() = [4 DRM cards (linlondp), 1 misc (mali)]")
-    print("    renderer_hint = 'Mali-G720-Immortalis'  (cached from previous calibration)")
+    print(
+        "    renderer_hint = 'Mali-G720-Immortalis'  (cached from previous calibration)"
+    )
     print()
     print("Post-fix verdict:")
     e = classify_from_calibrator_result(
@@ -225,7 +249,8 @@ def main() -> int:
 
     banner("7) Legitimate software-only box (no hardware bound)")
     e = classify_from_calibrator_result(
-        code=EXIT_SOFTWARE_REFUSED, gpu=None,
+        code=EXIT_SOFTWARE_REFUSED,
+        gpu=None,
     )
     print(json.dumps(e.to_dict(), indent=4))
     print()
@@ -238,14 +263,21 @@ def main() -> int:
         print(f"Found {len(gpus)} GPU(s) on this host:")
         for g in gpus:
             kind = g.get("sysfs_kind", "?")
-            tag = "[HW]" if driver_is_hardware_gpu(g["driver"]) else \
-                  "[DC]" if driver_is_display_controller(g["driver"]) else "[??]"
-            print(f"  {tag} {kind:4} id={g['id']:18} driver={g['driver']:12} "
-                  f"display={g['display']} render={g['render']}")
+            tag = (
+                "[HW]"
+                if driver_is_hardware_gpu(g["driver"])
+                else "[DC]"
+                if driver_is_display_controller(g["driver"])
+                else "[??]"
+            )
+            print(
+                f"  {tag} {kind:4} id={g['id']:18} driver={g['driver']:12} "
+                f"display={g['display']} render={g['render']}"
+            )
         drm = [g for g in gpus if g["sysfs_kind"] == "drm"]
         misc = [g for g in gpus if g["sysfs_kind"] == "misc"]
         print()
-        print(f"On .66 specifically we expect: 4 drm (linlondp) + 1 misc (mali)")
+        print("On .66 specifically we expect: 4 drm (linlondp) + 1 misc (mali)")
         print(f"On this build-pool host we found: {len(drm)} drm + {len(misc)} misc.")
     else:
         print("(no /sys available; skipping live enumeration)")
@@ -253,7 +285,9 @@ def main() -> int:
     if _HAS_CALIBRATOR_ENV:
         banner("9) Sky1 loader-path env (what gpu_class() will hand to the calibrator)")
         print(f"is_sky1_arm64():                          {is_sky1_arm64()}")
-        print(f"sky1_loader_paths_available():            {sky1_loader_paths_available()}")
+        print(
+            f"sky1_loader_paths_available():            {sky1_loader_paths_available()}"
+        )
         print()
         print("Empty env (the .66 user-mini session state -- no compositor alive):")
         env: dict = {}
@@ -267,7 +301,9 @@ def main() -> int:
         out = augmented_calibrator_env(env)
         for k in sorted(out):
             print(f"    {k} = {out[k]}")
-        print("    (note: no __EGL_PLATFORM override -- the compositor's platform wins)")
+        print(
+            "    (note: no __EGL_PLATFORM override -- the compositor's platform wins)"
+        )
 
     banner("End of verification")
     print()

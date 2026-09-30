@@ -1,0 +1,26 @@
+# pyproject.toml — ruff configuration for tools/gpu-classifier.
+#
+# The directory name 'tools/gpu-classifier/' uses a dash to match the
+# upstream tooling convention (apt path, systemd unit names, etc.).
+# Python module names should not contain dashes (N999), so disable that
+# one rule on the package's __init__.py.
+#
+# The README.md and tests/fixtures/patched_launcher.py files are excluded
+# from the formatter:
+#   - README.md is markdown, not Python (ruff format occasionally tries
+#     to reformat Python snippets inside the markdown, which is wrong).
+#   - tests/fixtures/patched_launcher.py is the committed copy of the
+#     upstream /usr/bin/ncz-screensaver with the patch applied; we
+#     intentionally preserve its formatting (it mirrors the upstream
+#     style 1:1) and rebuild it with build_patched_launcher_fixture.sh.
+#
+# The rest of the configuration uses ruff defaults.
+[tool.ruff]
+extend-exclude = [
+    "tools/gpu-classifier/README.md",
+    "tools/gpu-classifier/tests/fixtures/patched_launcher.py",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tools/gpu-classifier/__init__.py" = ["N999"]
+"tools/gpu-classifier/tests/*.py" = ["RUF012"]

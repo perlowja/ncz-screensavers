@@ -24,10 +24,9 @@ from __future__ import annotations
 
 import os
 import re
-import sys
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Mapping, Optional
 
 # Re-export the Sky1 calibrator-env augmentation function so callers
 # (the upstream launcher /usr/bin/ncz-screensaver) can do a single
@@ -54,7 +53,7 @@ except ImportError:
 CLASSES = ("weak", "mid", "strong")
 CLASS_RANK = {c: i for i, c in enumerate(CLASSES)}
 CLASS_WEAK_MS = 20.0  # reference micro-benchmark at or above this: weak
-CLASS_MID_MS = 8.0    # at or above this (and below weak): mid; below: strong
+CLASS_MID_MS = 8.0  # at or above this (and below weak): mid; below: strong
 LEGACY_TIERS = {"igpu": "weak", "discrete": "strong"}
 
 
@@ -122,7 +121,7 @@ RENDERER_TABLE: tuple[tuple[str, str], ...] = (
 )
 
 
-def class_from_renderer(renderer: str) -> Optional[str]:
+def class_from_renderer(renderer: str) -> str | None:
     r"""First RENDERER_TABLE regex that matches `renderer` (case insensitive).
 
     Returns None when no regex matches.
@@ -176,65 +175,81 @@ def class_from_renderer(renderer: str) -> Optional[str]:
 # by topology instead of returning weak.
 # ---------------------------------------------------------------------------
 
-DRIVER_NAMES_MID: frozenset[str] = frozenset({
-    "mali",          # Sky1 / CIX vendor stack: /sys/class/misc/mali0/device/driver
-    "mali_kbase",    # Kernel module name (some tools report this)
-    "panthor",       # CIX open driver alternative (future Sky1)
-    "panfrost",      # Mesa open Mali driver
-    "msm",           # Qualcomm Adreno
-    "amdgpu",        # AMD discrete + APUs
-})
+DRIVER_NAMES_MID: frozenset[str] = frozenset(
+    {
+        "mali",  # Sky1 / CIX vendor stack: /sys/class/misc/mali0/device/driver
+        "mali_kbase",  # Kernel module name (some tools report this)
+        "panthor",  # CIX open driver alternative (future Sky1)
+        "panfrost",  # Mesa open Mali driver
+        "msm",  # Qualcomm Adreno
+        "amdgpu",  # AMD discrete + APUs
+    }
+)
 
-DRIVER_NAMES_DISPLAY_CONTROLLER: frozenset[str] = frozenset({
-    "linlondp",      # Sky1 display controller (DRM cards 0..3 on .66)
-    "komeda",        # Arm display controller
-    "vkms",          # Virtual KMS
-    "imx-drm",       # i.MX display controller
-    "meson-drm",     # Amlogic display controller
-    "sun4i-drm",     # Allwinner display controller
-    "v3d",           # (also has 3D — see HARDWARE_GPU_DRIVERS_DRM)
-    "vc4",           # (also has 3D)
-    "vc6",           # (also has 3D)
-})
+DRIVER_NAMES_DISPLAY_CONTROLLER: frozenset[str] = frozenset(
+    {
+        "linlondp",  # Sky1 display controller (DRM cards 0..3 on .66)
+        "komeda",  # Arm display controller
+        "vkms",  # Virtual KMS
+        "imx-drm",  # i.MX display controller
+        "meson-drm",  # Amlogic display controller
+        "sun4i-drm",  # Allwinner display controller
+        "v3d",  # (also has 3D — see HARDWARE_GPU_DRIVERS_DRM)
+        "vc4",  # (also has 3D)
+        "vc6",  # (also has 3D)
+    }
+)
 
 # A device with one of these driver names bound IS a real 3D GPU.
 # (Bridges: 'i915', 'xe', 'nvidia', 'nouveau', 'radeon' may also be hardware
 #  but their topology class is 'weak' on iGPU / 'strong' on discrete, so
 #  they are listed separately below.)
-DRIVER_NAMES_HARDWARE_GPU_DRM: frozenset[str] = frozenset({
-    # discrete (strong on topology)
-    "nvidia",        # NVIDIA proprietary
-    "nouveau",       # NVIDIA open
-    "amdgpu",        # AMD discrete (and APUs; APUs use 'mid' branch)
-    # mid
-    "mali", "mali_kbase", "panthor", "panfrost", "msm",
-    # weak — Intel iGPU, Broadcom VC, Vivante, Lima, PowerVR
-    "i915",          # Intel pre-Xe
-    "xe",            # Intel Xe / Arc iGPU
-    "v3d",           # Pi 4
-    "vc4",           # Pi 3
-    "vc6",           # Pi 5
-    "lima",          # Mali 4xx (Open)
-    "etnaviv",       # Vivante
-    # PowerVR — pvrsrvkm is the upstream kernel module (renamed from
-    # 'rogue' to 'pvrsrvkm' on newer kernels). Both names exist on real
-    # hardware depending on the kernel version. `sgx` is the legacy
-    # TI / i.MX6 SGX driver. imx-gpu is the NXP i.MX DRM GPU node name
-    # in some kernels.
-    "pvrsrvkm", "rogue", "sgx", "imx-gpu",
-    # NOTE: 'exynos' was here previously but is the Samsung DECON / FIMD
-    # display CONTROLLER driver, not a 3D GPU. Mali on Exynos boards is
-    # under 'mali' (already listed). Removed.
-})
+DRIVER_NAMES_HARDWARE_GPU_DRM: frozenset[str] = frozenset(
+    {
+        # discrete (strong on topology)
+        "nvidia",  # NVIDIA proprietary
+        "nouveau",  # NVIDIA open
+        "amdgpu",  # AMD discrete (and APUs; APUs use 'mid' branch)
+        # mid
+        "mali",
+        "mali_kbase",
+        "panthor",
+        "panfrost",
+        "msm",
+        # weak — Intel iGPU, Broadcom VC, Vivante, Lima, PowerVR
+        "i915",  # Intel pre-Xe
+        "xe",  # Intel Xe / Arc iGPU
+        "v3d",  # Pi 4
+        "vc4",  # Pi 3
+        "vc6",  # Pi 5
+        "lima",  # Mali 4xx (Open)
+        "etnaviv",  # Vivante
+        # PowerVR — pvrsrvkm is the upstream kernel module (renamed from
+        # 'rogue' to 'pvrsrvkm' on newer kernels). Both names exist on real
+        # hardware depending on the kernel version. `sgx` is the legacy
+        # TI / i.MX6 SGX driver. imx-gpu is the NXP i.MX DRM GPU node name
+        # in some kernels.
+        "pvrsrvkm",
+        "rogue",
+        "sgx",
+        "imx-gpu",
+        # NOTE: 'exynos' was here previously but is the Samsung DECON / FIMD
+        # display CONTROLLER driver, not a 3D GPU. Mali on Exynos boards is
+        # under 'mali' (already listed). Removed.
+    }
+)
 
-DRIVER_NAMES_HARDWARE_GPU_MISC: frozenset[str] = frozenset({
-    # /sys/class/misc/* devices that ARE 3D GPUs (not misc sensors, not
-    # DMA engines). On Sky1 the Mali-G720 is here, not under /dev/dri.
-    "mali", "mali_kbase",
-})
+DRIVER_NAMES_HARDWARE_GPU_MISC: frozenset[str] = frozenset(
+    {
+        # /sys/class/misc/* devices that ARE 3D GPUs (not misc sensors, not
+        # DMA engines). On Sky1 the Mali-G720 is here, not under /dev/dri.
+        "mali",
+        "mali_kbase",
+    }
+)
 
 
-def driver_is_hardware_gpu(driver: Optional[str], *, sysfs_kind: str = "any") -> bool:
+def driver_is_hardware_gpu(driver: str | None, *, sysfs_kind: str = "any") -> bool:
     """True iff `driver` is the basename of a symlink that means "a real 3D
     GPU is bound to this device".
 
@@ -248,12 +263,12 @@ def driver_is_hardware_gpu(driver: Optional[str], *, sysfs_kind: str = "any") ->
         return False
     if sysfs_kind in ("drm", "any") and driver in DRIVER_NAMES_HARDWARE_GPU_DRM:
         return True
-    if sysfs_kind in ("misc", "any") and driver in DRIVER_NAMES_HARDWARE_GPU_MISC:
-        return True
-    return False
+    return bool(
+        sysfs_kind in ("misc", "any") and driver in DRIVER_NAMES_HARDWARE_GPU_MISC
+    )
 
 
-def driver_is_display_controller(driver: Optional[str]) -> bool:
+def driver_is_display_controller(driver: str | None) -> bool:
     """True iff `driver` is a display-only controller (KMS, scanout) with
     no 3D pipeline of its own."""
     return (driver or "") in DRIVER_NAMES_DISPLAY_CONTROLLER
@@ -276,6 +291,7 @@ def driver_is_display_controller(driver: Optional[str]) -> bool:
 # HAS_HARDWARE_ANY and TOPOLOGY_CLASS_ANY to decide what to return.
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class GpuTopology:
     """A small subset of the launcher's gpu dict — what the refusal fallback
@@ -294,13 +310,13 @@ class GpuTopology:
     below.
     """
 
-    driver: Optional[str]
+    driver: str | None
     discrete: bool = False
     display: bool = True
-    sysfs_kind: Optional[str] = None  # "drm" | "misc" | None
+    sysfs_kind: str | None = None  # "drm" | "misc" | None
 
     @classmethod
-    def from_dict(cls, gpu: Optional[Mapping[str, object]]) -> "GpuTopology":
+    def from_dict(cls, gpu: Mapping[str, object] | None) -> GpuTopology:
         if not gpu:
             return cls(driver=None, discrete=False, display=True, sysfs_kind=None)
         sk = gpu.get("sysfs_kind")
@@ -331,6 +347,7 @@ class GpuTopology:
 # ---------------------------------------------------------------------------
 # Topology classifier (verbatim from the launcher's class_from_topology)
 # ---------------------------------------------------------------------------
+
 
 def class_from_topology(gpu) -> str:
     """Coarse class from sysfs alone: used only when no renderer string is
@@ -425,7 +442,7 @@ class ClassifierEntry:
     cls: str
     source: str
     software: bool = False
-    ms: Optional[float] = None
+    ms: float | None = None
     renderer: str = ""
     version: str = ""
     note: str = ""
@@ -433,7 +450,11 @@ class ClassifierEntry:
 
     def to_dict(self) -> dict:
         """Drop-in replacement shape for the upstream dict-returning API."""
-        out: dict = {"class": self.cls, "source": self.source, "software": self.software}
+        out: dict = {
+            "class": self.cls,
+            "source": self.source,
+            "software": self.software,
+        }
         if self.ms is not None:
             out["ms"] = self.ms
         if self.renderer:
@@ -449,11 +470,11 @@ class ClassifierEntry:
 def classify_from_calibrator_result(
     *,
     code: int,
-    gpu: Optional[Mapping[str, object]],
+    gpu: Mapping[str, object] | None,
     renderer_hint: str = "",
-    ms_hint: Optional[float] = None,
+    ms_hint: float | None = None,
     version_hint: str = "",
-    all_gpus: Optional[Iterable[Mapping[str, object]]] = None,
+    all_gpus: Iterable[Mapping[str, object]] | None = None,
 ) -> ClassifierEntry:
     """The refusal-aware classifier — the fix for .66 and similar hosts.
 
@@ -551,11 +572,10 @@ def classify_from_calibrator_result(
     if code in (EXIT_ERROR, EXIT_NO_CONFIG, EXIT_NO_COMPOSITOR) or (
         code == EXIT_OK and (ms_hint is None or ms_hint <= 0)
     ):
-        cls = (
-            class_from_renderer(renderer_hint)
-            or (class_from_topology(effective_topo)
-                if effective_topo.has_hardware() or effective_topo.driver is None
-                else "weak")
+        cls = class_from_renderer(renderer_hint) or (
+            class_from_topology(effective_topo)
+            if effective_topo.has_hardware() or effective_topo.driver is None
+            else "weak"
         )
         return ClassifierEntry(
             cls=cls,
@@ -636,7 +656,7 @@ def classify_from_calibrator_result(
 # ---------------------------------------------------------------------------
 
 
-def class_from_topology_compat(gpu: Optional[Mapping[str, object]]) -> str:
+def class_from_topology_compat(gpu: Mapping[str, object] | None) -> str:
     """Dict-shape wrapper around `class_from_topology`. Verbatim behaviour
     from the launcher: returns "weak" if gpu is None, otherwise the
     topology class."""
@@ -654,6 +674,7 @@ def class_from_topology_compat(gpu: Optional[Mapping[str, object]]) -> str:
 # verify_live_v66.py script uses to prove "the classifier sees the .66
 # GPU correctly" end-to-end.
 # ---------------------------------------------------------------------------
+
 
 def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
     """List every 3D GPU on the system, from both /sys/class/drm/card*
@@ -692,7 +713,9 @@ def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
             dev = card / "device"
             link = dev / "driver"
             try:
-                driver = os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+                driver = (
+                    os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+                )
             except OSError:
                 driver = ""
             slot = ""
@@ -707,8 +730,9 @@ def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
                     slot = os.path.basename(os.readlink(dev))
                 except OSError:
                     pass
-            gid = ("pci-" + slot.replace(":", "_").replace(".", "_")
-                   if slot else card.name)
+            gid = (
+                "pci-" + slot.replace(":", "_").replace(".", "_") if slot else card.name
+            )
             try:
                 connected = any(
                     (c / "status").read_text().strip() == "connected"
@@ -742,20 +766,22 @@ def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
             discrete = vendor_name == "nvidia" or (
                 vendor_name == "amd" and vram >= 2 * 1024**3
             )
-            out.append({
-                "id": gid,
-                "card": card.name,
-                "slot": slot,
-                "vendor": vendor_name,
-                "driver": driver,
-                "device": device.removeprefix("0x") if device else "",
-                "display": connected,
-                "boot_vga": boot_vga,
-                "discrete": discrete,
-                "render": has_render,
-                "sysfs_kind": "drm",
-                "sysfs_path": str(card),
-            })
+            out.append(
+                {
+                    "id": gid,
+                    "card": card.name,
+                    "slot": slot,
+                    "vendor": vendor_name,
+                    "driver": driver,
+                    "device": device.removeprefix("0x") if device else "",
+                    "display": connected,
+                    "boot_vga": boot_vga,
+                    "discrete": discrete,
+                    "render": has_render,
+                    "sysfs_kind": "drm",
+                    "sysfs_path": str(card),
+                }
+            )
 
     # 2. /sys/class/misc/mali*  (Sky1: this is the real 3D GPU)
     misc = root / "class" / "misc"
@@ -764,7 +790,9 @@ def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
             dev = entry / "device"
             link = dev / "driver"
             try:
-                driver = os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+                driver = (
+                    os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+                )
             except OSError:
                 driver = ""
             if not driver_is_hardware_gpu(driver, sysfs_kind="misc"):
@@ -780,20 +808,22 @@ def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
                 # Platform devices don't have a PCI slot; use the misc name.
                 slot = entry.name
             gid = "soc-" + slot.replace(":", "_").replace(".", "_")
-            out.append({
-                "id": gid,
-                "card": "",  # no DRM card for misc devices
-                "slot": slot,
-                "vendor": "arm",
-                "driver": driver,
-                "device": "",
-                "display": False,  # doesn't own a KMS connector
-                "boot_vga": False,
-                "discrete": False,
-                "render": True,    # 3D-capable
-                "sysfs_kind": "misc",
-                "sysfs_path": str(entry),
-            })
+            out.append(
+                {
+                    "id": gid,
+                    "card": "",  # no DRM card for misc devices
+                    "slot": slot,
+                    "vendor": "arm",
+                    "driver": driver,
+                    "device": "",
+                    "display": False,  # doesn't own a KMS connector
+                    "boot_vga": False,
+                    "discrete": False,
+                    "render": True,  # 3D-capable
+                    "sysfs_kind": "misc",
+                    "sysfs_path": str(entry),
+                }
+            )
 
     # Promote display=True from a display-controller-only entry to a
     # hardware-GPU entry that has render=True on the same kind of bus.
@@ -804,29 +834,29 @@ def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
 
 __all__ = [
     "CLASSES",
+    "CLASS_MID_MS",
     "CLASS_RANK",
     "CLASS_WEAK_MS",
-    "CLASS_MID_MS",
-    "LEGACY_TIERS",
-    "RENDERER_TABLE",
-    "DRIVER_NAMES_MID",
     "DRIVER_NAMES_DISPLAY_CONTROLLER",
     "DRIVER_NAMES_HARDWARE_GPU_DRM",
     "DRIVER_NAMES_HARDWARE_GPU_MISC",
-    "driver_is_hardware_gpu",
-    "driver_is_display_controller",
-    "discover_gpus",
-    "GpuTopology",
+    "DRIVER_NAMES_MID",
+    "EXIT_ERROR",
+    "EXIT_NO_COMPOSITOR",
+    "EXIT_NO_CONFIG",
+    "EXIT_OK",
+    "EXIT_SOFTWARE_REFUSED",
+    "LEGACY_TIERS",
+    "RENDERER_TABLE",
     "ClassifierEntry",
+    "GpuTopology",
+    "augment_calibrator_env",
     "class_from_ms",
     "class_from_renderer",
     "class_from_topology",
     "class_from_topology_compat",
     "classify_from_calibrator_result",
-    "augment_calibrator_env",
-    "EXIT_OK",
-    "EXIT_ERROR",
-    "EXIT_NO_CONFIG",
-    "EXIT_SOFTWARE_REFUSED",
-    "EXIT_NO_COMPOSITOR",
+    "discover_gpus",
+    "driver_is_display_controller",
+    "driver_is_hardware_gpu",
 ]

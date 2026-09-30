@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import importlib.machinery
 import importlib.util
-import os
-import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -27,7 +25,6 @@ from unittest import mock
 
 # Make the package importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import gpu_classifier  # noqa: E402
 
 # The patched launcher lives at tests/fixtures/patched_launcher.py and
 # is a copy of /usr/bin/ncz-screensaver with our patch applied. We
@@ -53,9 +50,7 @@ def _load_patched_launcher():
     fixtures_dir = str(_FIXTURE.parent)
     if fixtures_dir not in sys.path:
         sys.path.insert(0, fixtures_dir)
-    loader = importlib.machinery.SourceFileLoader(
-        "patched_launcher", str(_FIXTURE)
-    )
+    loader = importlib.machinery.SourceFileLoader("patched_launcher", str(_FIXTURE))
     spec = importlib.util.spec_from_loader("patched_launcher", loader)
     m = importlib.util.module_from_spec(spec)
     sys.modules["patched_launcher"] = m
@@ -66,26 +61,71 @@ def _load_patched_launcher():
 
 # Real /sys data from .66 (mirrors what discover_gpus() returns there)
 V66_ALL_GPUS = [
-    {"id": "pci-CIXH5010_00", "card": "card0", "slot": "CIXH5010:00",
-     "vendor": "other", "driver": "linlondp", "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True,
-     "sysfs_kind": "drm"},
-    {"id": "pci-CIXH5010_01", "card": "card1", "slot": "CIXH5010:01",
-     "vendor": "other", "driver": "linlondp", "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True,
-     "sysfs_kind": "drm"},
-    {"id": "pci-CIXH5010_03", "card": "card2", "slot": "CIXH5010:03",
-     "vendor": "other", "driver": "linlondp", "device": "",
-     "display": True, "boot_vga": False, "discrete": False, "render": True,
-     "sysfs_kind": "drm"},
-    {"id": "pci-CIXH5010_04", "card": "card3", "slot": "CIXH5010:04",
-     "vendor": "other", "driver": "linlondp", "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True,
-     "sysfs_kind": "drm"},
-    {"id": "soc-mali0", "card": "", "slot": "mali0",
-     "vendor": "arm", "driver": "mali", "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True,
-     "sysfs_kind": "misc"},
+    {
+        "id": "pci-CIXH5010_00",
+        "card": "card0",
+        "slot": "CIXH5010:00",
+        "vendor": "other",
+        "driver": "linlondp",
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "sysfs_kind": "drm",
+    },
+    {
+        "id": "pci-CIXH5010_01",
+        "card": "card1",
+        "slot": "CIXH5010:01",
+        "vendor": "other",
+        "driver": "linlondp",
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "sysfs_kind": "drm",
+    },
+    {
+        "id": "pci-CIXH5010_03",
+        "card": "card2",
+        "slot": "CIXH5010:03",
+        "vendor": "other",
+        "driver": "linlondp",
+        "device": "",
+        "display": True,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "sysfs_kind": "drm",
+    },
+    {
+        "id": "pci-CIXH5010_04",
+        "card": "card3",
+        "slot": "CIXH5010:04",
+        "vendor": "other",
+        "driver": "linlondp",
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "sysfs_kind": "drm",
+    },
+    {
+        "id": "soc-mali0",
+        "card": "",
+        "slot": "mali0",
+        "vendor": "arm",
+        "driver": "mali",
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "sysfs_kind": "misc",
+    },
 ]
 
 
@@ -105,7 +145,8 @@ class PatchedLauncherTests(unittest.TestCase):
         it on a known input returns a ClassifierEntry-shaped result."""
         # The stub returns None; the real one returns a ClassifierEntry.
         result = self.m.classify_from_calibrator_result(
-            code=3, gpu={"driver": "mali", "discrete": False, "display": False},
+            code=3,
+            gpu={"driver": "mali", "discrete": False, "display": False},
             renderer_hint="Mali-G720-Immortalis",
         )
         self.assertIsNotNone(result)
@@ -118,8 +159,10 @@ class PatchedLauncherTests(unittest.TestCase):
 
     def test_all_known_gpus_merges_drm_and_misc(self):
         """On .66 the union has 4 DRM + 1 misc = 5 entries."""
-        with mock.patch.object(self.m, "list_gpus", return_value=V66_ALL_GPUS[:4]), \
-             mock.patch.object(self.m, "discover_gpus", return_value=[V66_ALL_GPUS[4]]):
+        with (
+            mock.patch.object(self.m, "list_gpus", return_value=V66_ALL_GPUS[:4]),
+            mock.patch.object(self.m, "discover_gpus", return_value=[V66_ALL_GPUS[4]]),
+        ):
             gpus = self.m._all_known_gpus()
             self.assertEqual(len(gpus), 5)
             ids = {g["id"] for g in gpus}
@@ -130,8 +173,11 @@ class PatchedLauncherTests(unittest.TestCase):
         """The Sky1 loader path augmentation runs on .66 (which IS
         sky1-arm64)."""
         import calibrator_env as ce
-        with mock.patch.object(ce, "is_sky1_arm64", return_value=True), \
-             mock.patch.object(ce, "sky1_loader_paths_available", return_value=True):
+
+        with (
+            mock.patch.object(ce, "is_sky1_arm64", return_value=True),
+            mock.patch.object(ce, "sky1_loader_paths_available", return_value=True),
+        ):
             out = self.m.augment_calibrator_env({})
             self.assertIn("LD_LIBRARY_PATH", out)
             self.assertIn("/opt/cixgpu-pro", out["LD_LIBRARY_PATH"])
@@ -141,6 +187,7 @@ class PatchedLauncherTests(unittest.TestCase):
     def test_augment_calibrator_env_is_noop_off_sky1(self):
         """Not on Sky1 -> no augmentation."""
         import calibrator_env as ce
+
         with mock.patch.object(ce, "is_sky1_arm64", return_value=False):
             out = self.m.augment_calibrator_env({})
             self.assertEqual(out, {})
@@ -156,21 +203,18 @@ class PatchedLauncherTests(unittest.TestCase):
         # and no JSON; mock list_gpus() and _all_known_gpus() to
         # return the .66 GPU set.
         display_gpu = V66_ALL_GPUS[2]  # pci-CIXH5010_03 (display=True)
-        with mock.patch.object(self.m, "_calibrator_json",
-                               return_value=(3, None)), \
-             mock.patch.object(self.m, "list_gpus",
-                               return_value=V66_ALL_GPUS[:4]), \
-             mock.patch.object(self.m, "build_child_env",
-                               return_value={}), \
-             mock.patch.object(self.m, "gpu_env",
-                               return_value={}), \
-             mock.patch.object(self.m, "read_class_cache",
-                               return_value={}), \
-             mock.patch.object(self.m, "_all_known_gpus",
-                               return_value=V66_ALL_GPUS), \
-             mock.patch.object(self.m, "class_cache_path",
-                               return_value=Path("/tmp/empty-cache.json")), \
-             mock.patch.object(self.m, "log"):
+        with (
+            mock.patch.object(self.m, "_calibrator_json", return_value=(3, None)),
+            mock.patch.object(self.m, "list_gpus", return_value=V66_ALL_GPUS[:4]),
+            mock.patch.object(self.m, "build_child_env", return_value={}),
+            mock.patch.object(self.m, "gpu_env", return_value={}),
+            mock.patch.object(self.m, "read_class_cache", return_value={}),
+            mock.patch.object(self.m, "_all_known_gpus", return_value=V66_ALL_GPUS),
+            mock.patch.object(
+                self.m, "class_cache_path", return_value=Path("/tmp/empty-cache.json")
+            ),
+            mock.patch.object(self.m, "log"),
+        ):
             # force=True to skip the cache hit path
             result = self.m.gpu_class(
                 settings={"pool-gpu-class": "auto"},
@@ -188,21 +232,18 @@ class PatchedLauncherTests(unittest.TestCase):
         the misc/mali0 entry passed via _all_known_gpus. Post-fix
         verdict is mid."""
         display_gpu = V66_ALL_GPUS[2]
-        with mock.patch.object(self.m, "_calibrator_json",
-                               return_value=(2, None)), \
-             mock.patch.object(self.m, "list_gpus",
-                               return_value=V66_ALL_GPUS[:4]), \
-             mock.patch.object(self.m, "build_child_env",
-                               return_value={}), \
-             mock.patch.object(self.m, "gpu_env",
-                               return_value={}), \
-             mock.patch.object(self.m, "read_class_cache",
-                               return_value={}), \
-             mock.patch.object(self.m, "_all_known_gpus",
-                               return_value=V66_ALL_GPUS), \
-             mock.patch.object(self.m, "class_cache_path",
-                               return_value=Path("/tmp/empty-cache.json")), \
-             mock.patch.object(self.m, "log"):
+        with (
+            mock.patch.object(self.m, "_calibrator_json", return_value=(2, None)),
+            mock.patch.object(self.m, "list_gpus", return_value=V66_ALL_GPUS[:4]),
+            mock.patch.object(self.m, "build_child_env", return_value={}),
+            mock.patch.object(self.m, "gpu_env", return_value={}),
+            mock.patch.object(self.m, "read_class_cache", return_value={}),
+            mock.patch.object(self.m, "_all_known_gpus", return_value=V66_ALL_GPUS),
+            mock.patch.object(
+                self.m, "class_cache_path", return_value=Path("/tmp/empty-cache.json")
+            ),
+            mock.patch.object(self.m, "log"),
+        ):
             result = self.m.gpu_class(
                 settings={"pool-gpu-class": "auto"},
                 gpu=display_gpu,
@@ -222,27 +263,38 @@ class PatchedLauncherTests(unittest.TestCase):
         # First call: --identify returns the renderer
         # Second call: full benchmark returns ms=9.88
         calibrator_results = [
-            (0, {"renderer": "Mali-G720-Immortalis",
-                 "version": "OpenGL ES 3.2 v1.r53p0-00eac0...",
-                 "ms": 0}),
-            (0, {"renderer": "Mali-G720-Immortalis",
-                 "version": "OpenGL ES 3.2 v1.r53p0-00eac0...",
-                 "ms": 9.88, "timer": "gpu"}),
+            (
+                0,
+                {
+                    "renderer": "Mali-G720-Immortalis",
+                    "version": "OpenGL ES 3.2 v1.r53p0-00eac0...",
+                    "ms": 0,
+                },
+            ),
+            (
+                0,
+                {
+                    "renderer": "Mali-G720-Immortalis",
+                    "version": "OpenGL ES 3.2 v1.r53p0-00eac0...",
+                    "ms": 9.88,
+                    "timer": "gpu",
+                },
+            ),
         ]
-        with mock.patch.object(self.m, "_calibrator_json",
-                               side_effect=calibrator_results), \
-             mock.patch.object(self.m, "list_gpus",
-                               return_value=V66_ALL_GPUS[:4]), \
-             mock.patch.object(self.m, "build_child_env",
-                               return_value={}), \
-             mock.patch.object(self.m, "gpu_env",
-                               return_value={}), \
-             mock.patch.object(self.m, "read_class_cache",
-                               return_value={}), \
-             mock.patch.object(self.m, "class_cache_path",
-                               return_value=Path("/tmp/empty-cache.json")), \
-             mock.patch.object(self.m, "atomic_write"), \
-             mock.patch.object(self.m, "log"):
+        with (
+            mock.patch.object(
+                self.m, "_calibrator_json", side_effect=calibrator_results
+            ),
+            mock.patch.object(self.m, "list_gpus", return_value=V66_ALL_GPUS[:4]),
+            mock.patch.object(self.m, "build_child_env", return_value={}),
+            mock.patch.object(self.m, "gpu_env", return_value={}),
+            mock.patch.object(self.m, "read_class_cache", return_value={}),
+            mock.patch.object(
+                self.m, "class_cache_path", return_value=Path("/tmp/empty-cache.json")
+            ),
+            mock.patch.object(self.m, "atomic_write"),
+            mock.patch.object(self.m, "log"),
+        ):
             result = self.m.gpu_class(
                 settings={"pool-gpu-class": "auto"},
                 gpu=display_gpu,
@@ -271,8 +323,7 @@ class FallbackEntryTests(unittest.TestCase):
         Post-fix: fallback_entry consults discover_gpus() and returns
         'mid' when the misc entry is a real hardware GPU."""
         display_gpu = V66_ALL_GPUS[2]
-        with mock.patch.object(self.m, "discover_gpus",
-                               return_value=[V66_ALL_GPUS[4]]):
+        with mock.patch.object(self.m, "discover_gpus", return_value=[V66_ALL_GPUS[4]]):
             result = self.m.fallback_entry("", display_gpu)
         self.assertEqual(result["class"], "mid")
         self.assertEqual(result["source"], "table")
@@ -281,8 +332,7 @@ class FallbackEntryTests(unittest.TestCase):
         """The cached renderer is 'Mali-G720-Immortalis' which matches
         the row-4 mid regex; fallback_entry must trust it."""
         display_gpu = V66_ALL_GPUS[2]
-        with mock.patch.object(self.m, "discover_gpus",
-                               return_value=[V66_ALL_GPUS[4]]):
+        with mock.patch.object(self.m, "discover_gpus", return_value=[V66_ALL_GPUS[4]]):
             result = self.m.fallback_entry("Mali-G720-Immortalis", display_gpu)
         self.assertEqual(result["class"], "mid")
 
@@ -290,10 +340,10 @@ class FallbackEntryTests(unittest.TestCase):
         """When the renderer says 'llvmpipe' (weak via the table), but
         a real GPU is bound, topology wins and returns 'mid'."""
         display_gpu = V66_ALL_GPUS[2]
-        with mock.patch.object(self.m, "discover_gpus",
-                               return_value=[V66_ALL_GPUS[4]]):
+        with mock.patch.object(self.m, "discover_gpus", return_value=[V66_ALL_GPUS[4]]):
             result = self.m.fallback_entry(
-                "llvmpipe (LLVM 21.1.8, 128 bits)", display_gpu)
+                "llvmpipe (LLVM 21.1.8, 128 bits)", display_gpu
+            )
         self.assertEqual(result["class"], "mid")
 
     def test_fallback_entry_software_only_returns_weak(self):

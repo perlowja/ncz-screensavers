@@ -17,30 +17,24 @@ list_gpus() / display_gpu() produce on .66.
 from __future__ import annotations
 
 import json
-import os
 import sys
 import unittest
 from pathlib import Path
 
 # Make the parent directory importable so we can `import gpu_classifier`
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import gpu_classifier  # noqa: E402
-from gpu_classifier import (  # noqa: E402
+from gpu_classifier import (
     CLASS_MID_MS,
     CLASS_RANK,
     CLASS_WEAK_MS,
-    ClassifierEntry,
-    DRIVER_NAMES_DISPLAY_CONTROLLER,
-    DRIVER_NAMES_HARDWARE_GPU_DRM,
-    DRIVER_NAMES_HARDWARE_GPU_MISC,
-    DRIVER_NAMES_MID,
     EXIT_ERROR,
     EXIT_NO_COMPOSITOR,
     EXIT_NO_CONFIG,
     EXIT_OK,
     EXIT_SOFTWARE_REFUSED,
-    GpuTopology,
     RENDERER_TABLE,
+    ClassifierEntry,
+    GpuTopology,
     class_from_ms,
     class_from_renderer,
     class_from_topology,
@@ -50,7 +44,6 @@ from gpu_classifier import (  # noqa: E402
     driver_is_display_controller,
     driver_is_hardware_gpu,
 )
-
 
 # ---------------------------------------------------------------------------
 # Live-captured strings from 192.168.207.66 (see fixtures/v66-live/STRINGS.txt)
@@ -65,24 +58,60 @@ DRIVER_MALI_V66 = "mali"
 # /sys/class/drm/card*/device/driver symlink target basename on .66
 DRIVER_LINLONDP_V66 = "linlondp"
 # Reference micro-benchmark ms from gpu-class.json cache on .66
-MS_V66_DISPLAY = 9.88      # pci-CIXH5010_03 entry (DRM card)
-MS_V66_MALI = 11.76        # soc-CIXH5000_00 entry (misc/mali0)
-MS_V66_PRIOR = 17.812      # the first capture from the prior worker session
+MS_V66_DISPLAY = 9.88  # pci-CIXH5010_03 entry (DRM card)
+MS_V66_MALI = 11.76  # soc-CIXH5000_00 entry (misc/mali0)
+MS_V66_PRIOR = 17.812  # the first capture from the prior worker session
 
 # The four dicts that list_gpus() produces on .66, captured live
 DRM_CARDS_V66 = [
-    {"id": "pci-CIXH5010_00", "card": "card0", "slot": "CIXH5010:00",
-     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True},
-    {"id": "pci-CIXH5010_01", "card": "card1", "slot": "CIXH5010:01",
-     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True},
-    {"id": "pci-CIXH5010_03", "card": "card2", "slot": "CIXH5010:03",
-     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
-     "display": True, "boot_vga": False, "discrete": False, "render": True},
-    {"id": "pci-CIXH5010_04", "card": "card3", "slot": "CIXH5010:04",
-     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
-     "display": False, "boot_vga": False, "discrete": False, "render": True},
+    {
+        "id": "pci-CIXH5010_00",
+        "card": "card0",
+        "slot": "CIXH5010:00",
+        "vendor": "other",
+        "driver": DRIVER_LINLONDP_V66,
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+    },
+    {
+        "id": "pci-CIXH5010_01",
+        "card": "card1",
+        "slot": "CIXH5010:01",
+        "vendor": "other",
+        "driver": DRIVER_LINLONDP_V66,
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+    },
+    {
+        "id": "pci-CIXH5010_03",
+        "card": "card2",
+        "slot": "CIXH5010:03",
+        "vendor": "other",
+        "driver": DRIVER_LINLONDP_V66,
+        "device": "",
+        "display": True,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+    },
+    {
+        "id": "pci-CIXH5010_04",
+        "card": "card3",
+        "slot": "CIXH5010:04",
+        "vendor": "other",
+        "driver": DRIVER_LINLONDP_V66,
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+    },
 ]
 
 
@@ -117,6 +146,7 @@ def _all_v66_gpus():
 # ---------------------------------------------------------------------------
 # 1. Pure-function primitives
 # ---------------------------------------------------------------------------
+
 
 class ClassFromMsTests(unittest.TestCase):
     """class_from_ms maps a benchmark ms figure to a class."""
@@ -170,10 +200,20 @@ class ClassFromRendererTests(unittest.TestCase):
         the row-4 substring first.
         """
         # Mid-class: Immortalis / Mali-G6xx / G7xx / G8xx
-        for r in ("Mali-G610", "Mali-G615", "Mali-G710", "Mali-G715",
-                  "Mali-G720", "Mali-G720-Immortalis", "Mali-G78",
-                  "Mali-G78 AE", "Mali-G68", "Mali-G77", "Mali-G79",
-                  "Mali-G615 AE"):
+        for r in (
+            "Mali-G610",
+            "Mali-G615",
+            "Mali-G710",
+            "Mali-G715",
+            "Mali-G720",
+            "Mali-G720-Immortalis",
+            "Mali-G78",
+            "Mali-G78 AE",
+            "Mali-G68",
+            "Mali-G77",
+            "Mali-G79",
+            "Mali-G615 AE",
+        ):
             with self.subTest(r=r):
                 self.assertEqual(
                     class_from_renderer(r),
@@ -190,8 +230,16 @@ class ClassFromRendererTests(unittest.TestCase):
         # practice a Mali-G4xx board will have a stronger
         # class_from_topology path through the renderer hint or the
         # misc/mali entry.)
-        for r in ("Mali-G52", "Mali-G57", "Mali-G31", "Mali-G52 MC1",
-                  "Mali-T720", "Mali-T830", "Mali-T860", "Mali-470"):
+        for r in (
+            "Mali-G52",
+            "Mali-G57",
+            "Mali-G31",
+            "Mali-G52 MC1",
+            "Mali-T720",
+            "Mali-T830",
+            "Mali-T860",
+            "Mali-470",
+        ):
             with self.subTest(r=r):
                 self.assertEqual(
                     class_from_renderer(r),
@@ -200,7 +248,9 @@ class ClassFromRendererTests(unittest.TestCase):
                 )
 
     def test_llvmpipe_is_weak(self):
-        self.assertEqual(class_from_renderer("llvmpipe (LLVM 21.1.8, 128 bits)"), "weak")
+        self.assertEqual(
+            class_from_renderer("llvmpipe (LLVM 21.1.8, 128 bits)"), "weak"
+        )
 
     def test_softpipe_is_weak(self):
         self.assertEqual(class_from_renderer("softpipe"), "weak")
@@ -263,22 +313,29 @@ class RendererTableContractTests(unittest.TestCase):
         # matches and we want to catch them first (so a render-string
         # of "llvmpipe (Intel(R) UHD Graphics 630 ...)" doesn't fall
         # through to a mid row). Document that ordering here.
-        strong_rows = [i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "strong"]
+        strong_rows = [
+            i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "strong"
+        ]
         mid_rows = [i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "mid"]
         weak_rows = [i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "weak"]
-        self.assertLess(max(strong_rows), min(mid_rows),
-                        "strong rows must come before mid rows")
+        self.assertLess(
+            max(strong_rows), min(mid_rows), "strong rows must come before mid rows"
+        )
         # And: weak is intentionally BEFORE mid in the upstream so
         # llvmpipe/softpipe catch wins over an "iris xe" substring.
         # Document this — the comment above this test is the spec.
-        self.assertLess(max(weak_rows), min(mid_rows),
-                        "weak rows must come before mid rows so "
-                        "llvmpipe/softpipe win over an iris-xe substring")
+        self.assertLess(
+            max(weak_rows),
+            min(mid_rows),
+            "weak rows must come before mid rows so "
+            "llvmpipe/softpipe win over an iris-xe substring",
+        )
 
 
 # ---------------------------------------------------------------------------
 # 2. Driver-name predicates — the .66 .66-specific contracts
 # ---------------------------------------------------------------------------
+
 
 class DriverPredicatesTests(unittest.TestCase):
     """driver_is_hardware_gpu / driver_is_display_controller."""
@@ -328,6 +385,7 @@ class DriverPredicatesTests(unittest.TestCase):
 # 3. Topology classifier
 # ---------------------------------------------------------------------------
 
+
 class ClassFromTopologyTests(unittest.TestCase):
     """class_from_topology maps a GpuTopology (or dict) to a class."""
 
@@ -337,8 +395,9 @@ class ClassFromTopologyTests(unittest.TestCase):
         self.assertEqual(class_from_topology(_mali_gpu_dict()), "mid")
 
     def test_v66_mali_topo_is_mid(self):
-        topo = GpuTopology(driver=DRIVER_MALI_V66, discrete=False,
-                           display=False, sysfs_kind="misc")
+        topo = GpuTopology(
+            driver=DRIVER_MALI_V66, discrete=False, display=False, sysfs_kind="misc"
+        )
         self.assertEqual(class_from_topology(topo), "mid")
 
     def test_v66_linlondp_display_card_is_weak(self):
@@ -351,66 +410,71 @@ class ClassFromTopologyTests(unittest.TestCase):
         """Backwards compat with the older launcher that reported the
         kernel-module name instead of the platform-driver name."""
         self.assertEqual(
-            class_from_topology({"driver": "mali_kbase", "discrete": False,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "mali_kbase", "discrete": False, "display": True}
+            ),
             "mid",
         )
 
     def test_panthor_is_mid(self):
         self.assertEqual(
-            class_from_topology({"driver": "panthor", "discrete": False,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "panthor", "discrete": False, "display": True}
+            ),
             "mid",
         )
 
     def test_panfrost_is_mid(self):
         self.assertEqual(
-            class_from_topology({"driver": "panfrost", "discrete": False,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "panfrost", "discrete": False, "display": True}
+            ),
             "mid",
         )
 
     def test_amdgpu_discrete_is_strong(self):
         self.assertEqual(
-            class_from_topology({"driver": "amdgpu", "discrete": True,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "amdgpu", "discrete": True, "display": True}
+            ),
             "strong",
         )
 
     def test_amdgpu_apu_is_mid(self):
         # APUs: discrete=False (VRAM < 2 GB) but driver=amdgpu
         self.assertEqual(
-            class_from_topology({"driver": "amdgpu", "discrete": False,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "amdgpu", "discrete": False, "display": True}
+            ),
             "mid",
         )
 
     def test_intel_i915_is_weak(self):
         self.assertEqual(
-            class_from_topology({"driver": "i915", "discrete": False,
-                                 "display": True}),
+            class_from_topology({"driver": "i915", "discrete": False, "display": True}),
             "weak",
         )
 
     def test_intel_xe_is_weak(self):
         self.assertEqual(
-            class_from_topology({"driver": "xe", "discrete": False,
-                                 "display": True}),
+            class_from_topology({"driver": "xe", "discrete": False, "display": True}),
             "weak",
         )
 
     def test_nvidia_discrete_is_strong(self):
         self.assertEqual(
-            class_from_topology({"driver": "nvidia", "discrete": True,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "nvidia", "discrete": True, "display": True}
+            ),
             "strong",
         )
 
     def test_nvidia_igpu_is_weak(self):
         # Optimus / PRIME offload: driver=nvidia, discrete=False
         self.assertEqual(
-            class_from_topology({"driver": "nvidia", "discrete": False,
-                                 "display": True}),
+            class_from_topology(
+                {"driver": "nvidia", "discrete": False, "display": True}
+            ),
             "weak",
         )
 
@@ -434,6 +498,7 @@ class ClassFromTopologyTests(unittest.TestCase):
 # 4. The fix: classify_from_calibrator_result
 # ---------------------------------------------------------------------------
 
+
 class HappyPathTests(unittest.TestCase):
     """Branch 1: code=0 with a real ms number -> calibration path."""
 
@@ -453,7 +518,10 @@ class HappyPathTests(unittest.TestCase):
 
     def test_calibration_dict_shape_matches_upstream(self):
         ent = classify_from_calibrator_result(
-            code=EXIT_OK, gpu=None, ms_hint=17.812, renderer_hint=RENDERER_V66,
+            code=EXIT_OK,
+            gpu=None,
+            ms_hint=17.812,
+            renderer_hint=RENDERER_V66,
         )
         d = ent.to_dict()
         self.assertEqual(d["class"], "mid")
@@ -714,19 +782,25 @@ class ExitCodeTests(unittest.TestCase):
 # 5. ClassifierEntry — dict-shape contract
 # ---------------------------------------------------------------------------
 
-class ClassifierEntryTests(unittest.TestCase):
 
+class ClassifierEntryTests(unittest.TestCase):
     def test_to_dict_skips_empty_fields(self):
         e = ClassifierEntry(cls="mid", source="calibration")
         d = e.to_dict()
-        self.assertEqual(d, {"class": "mid", "source": "calibration",
-                             "software": False})
+        self.assertEqual(
+            d, {"class": "mid", "source": "calibration", "software": False}
+        )
 
     def test_to_dict_includes_all_set_fields(self):
         e = ClassifierEntry(
-            cls="mid", source="refused-by-hardware-driver",
-            software=True, ms=None, renderer=RENDERER_V66,
-            version=VERSION_V66, note="x", extras={"driver": "mali"},
+            cls="mid",
+            source="refused-by-hardware-driver",
+            software=True,
+            ms=None,
+            renderer=RENDERER_V66,
+            version=VERSION_V66,
+            note="x",
+            extras={"driver": "mali"},
         )
         d = e.to_dict()
         self.assertEqual(d["class"], "mid")
@@ -743,6 +817,7 @@ class ClassifierEntryTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # 6. discover_gpus — the bonus enumeration that finds misc/mali0
 # ---------------------------------------------------------------------------
+
 
 class DiscoverGpusTests(unittest.TestCase):
     """discover_gpus() finds both DRM cards and misc/mali0 devices."""
@@ -788,6 +863,7 @@ class DiscoverGpusTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # 7. End-to-end with the real captured JSON cache from .66
 # ---------------------------------------------------------------------------
+
 
 class EndToEndTests(unittest.TestCase):
     """Use the actual gpu-class.json content from .66 as test input."""
