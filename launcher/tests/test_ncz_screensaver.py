@@ -581,27 +581,42 @@ class PresetOverrideTests(unittest.TestCase):
 
     ROW = "r1\tTitle\tx\tacme\t--preset=fast\tgood\tDescription\tweak\n"
 
-    def _ids(self, override):
+    def _run(self, create):
+        """Return (preset ids, presets.tsv paths opened) with the override set."""
+        opened = []
+        real = Path.read_text
+
+        def spy(self_, *a, **k):
+            if self_.name == "presets.tsv" or self_.suffix == ".tsv":
+                opened.append(str(self_))
+            return real(self_, *a, **k)
+
         with tempfile.TemporaryDirectory() as d:
-            env = dict(os.environ)
-            env.pop("NCZ_SCREENSAVER_PRESETS", None)
-            if override is not None:
-                env["NCZ_SCREENSAVER_PRESETS"] = override(d)
+            ov = Path(d) / "p.tsv"
+            if create:
+                ov.write_text(self.ROW)
+            env = {
+                k: v for k, v in os.environ.items() if k != "NCZ_SCREENSAVER_PRESETS"
+            }
+            env["NCZ_SCREENSAVER_PRESETS"] = str(ov)
             with (
                 mock.patch.dict(os.environ, env, clear=True),
                 mock.patch.object(ns, "options_dir", return_value=Path(d) / "opts"),
+                mock.patch.object(Path, "read_text", spy),
             ):
-                return [p["id"] for p in ns.load_presets("acme")]
+                ids = [p["id"] for p in ns.load_presets("acme")]
+            return ids, opened, str(ov)
 
-    def test_override_file_is_read(self):
-        def ov(d):
-            (Path(d) / "p.tsv").write_text(self.ROW)
-            return str(Path(d) / "p.tsv")
+    def test_override_file_is_read_once(self):
+        ids, opened, ov = self._run(True)
+        self.assertEqual(ids, ["fast"])
+        self.assertEqual(opened, [ov])
 
-        self.assertEqual(self._ids(ov), ["fast"])
-
-    def test_unreadable_override_does_not_fall_back_to_system(self):
-        self.assertEqual(self._ids(lambda d: str(Path(d) / "missing.tsv")), [])
+    def test_unreadable_override_tries_only_the_override(self):
+        ids, opened, ov = self._run(False)
+        self.assertEqual(ids, [])
+        # only the override was attempted: no system candidate, no repeat attempt
+        self.assertEqual(opened, [ov])
 
 
 if __name__ == "__main__":
