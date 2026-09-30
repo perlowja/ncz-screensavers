@@ -828,6 +828,163 @@ def test_sky1_live_capture_no_weak_classification_under_any_path(env, monkeypatc
     assert e["renderer"] == SKY1_LIVE_CAPTURE["renderer"]
 
 
+def test_sky1_live_capture_cmd_doctor_pool_class_mid(env, monkeypatch, capsys):
+    """Pin the operator-visible `ncz-screensaver doctor` report for the
+    live .66 layout: pool_class=mid, gpu.display_class=integrated,
+    gpus has exactly one Mali entry, gpu_class.display.class=mid.
+
+    Captured live on 2026-09-30 via
+    `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
+     ncz-screensaver doctor` against the deployed fixed binary
+    (md5 399b5be55fda259e5a732c15a150830b). The shipped 0.7.1 reported
+    pool_class=weak on a fresh install (the topology fallback mapped the
+    linlondp cards to weak and never surfaced the Mali). The fix surfaces
+    the Mali, which class_from_topology() maps to mid via MID_DRIVERS.
+
+    This test pins every operator-visible top-level field that the
+    fix changes. A regression that demotes the GPU to weak, drops the
+    soc-CIXH5000_00 id from the gpus list, or forgets to wire pool_class
+    to best_class() will be caught here.
+    """
+    _build_sky1_live_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_recalibrated"]))
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_doctor(type("A", (), {})())
+    assert rc == 0
+    doc = json.loads(capsys.readouterr().out)
+    # gpu topology: display_class=integrated (the connected linlondp card
+    # is not nvidia/amdgpu). This is the live reality; the fix does NOT
+    # change gpu_topology() — it only changes the GPU list and the class
+    # resolver. A regression that maps "integrated" to "weak" in the
+    # gpu_class.display slot is exactly the operator's complaint.
+    assert doc["gpu"]["display_class"] == "integrated"
+    assert doc["gpu"]["nvidia_offload"] is False
+    # gpus list: one entry, the Mali, marked display=True. The four
+    # linlondp cards are filtered out.
+    assert doc["gpus"] == [
+        {
+            "id": SKY1_LIVE_CAPTURE["gpu_id"],
+            "card": "",
+            "slot": SKY1_LIVE_CAPTURE["gpu_slot"],
+            "vendor": "other",
+            "driver": SKY1_LIVE_CAPTURE["driver"],
+            "device": "",
+            "display": True,
+            "boot_vga": False,
+            "discrete": False,
+            "render": True,
+            "display_only": False,
+        }
+    ]
+    # gpu_class.display.class=mid. This is the field the operator sees;
+    # on a fresh install with no cache, the topology fallback still
+    # resolves to mid because the Mali is in MID_DRIVERS. After a
+    # calibration, the cache drives it.
+    gc = doc["gpu_class"]["display"]
+    assert gc["class"] == "mid", f"doctor gpu_class.display.class={gc.get('class')!r}"
+    assert gc["renderer"] in (
+        SKY1_LIVE_CAPTURE["renderer"],
+        "",  # before the calibrator runs (table fallback)
+    )
+    if gc["renderer"]:
+        assert gc["ms"] == SKY1_LIVE_CAPTURE["ms_recalibrated"]
+    # pool_class=mid: the central promise. The shipped 0.7.1 reported
+    # pool_class=weak on this layout (no cache, no calibration).
+    assert doc["pool_class"] == "mid"
+    # The offload target list is empty on Sky1 (no nvidia).
+    assert doc["offload"]["targets"] == []
+    # The display-only filter is in the JSON: every GPU has display_only
+    # set explicitly (False for the Mali), so a downstream consumer that
+    # filters on it does not have to fall back to a driver-name check.
+    assert all("display_only" in g for g in doc["gpus"])
+
+
+def test_sky1_live_capture_cmd_pool_includes_mid_tier_hacks(env, monkeypatch, capsys):
+    """Pin `ncz-screensaver pool --json` for the live .66 layout:
+    pool class=mid, count > 0 (the mid-tier hacks are in the pool).
+
+    A regression that demotes pool_class to weak would drop every
+    mid-tier hack from the pool and leave only the `weak` tier hacks,
+    which is the operator-visible failure: the user sits at the desktop
+    and never sees the shaders the GPU can actually render.
+    """
+    _build_sky1_live_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_recalibrated"]))
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    # The pool uses installed_ids(); without an actual catalog in the test
+    # rig, pool is empty. We mock installed_ids to return the same IDs the
+    # test's TIERS.tsv knows about (hyprsaver_light_gles3 + light_gles3 +
+    # medium_gles3 + heavy_gles3) — see TIERS above.
+    pool_ids = [
+        "hyprsaver_light_gles3",  # weak
+        "light_gles3",  # weak
+        "medium_gles3",  # mid
+        "heavy_gles3",  # strong — must be excluded at pool=mid
+    ]
+    monkeypatch.setattr(env, "installed_ids", lambda s: pool_ids)
+    rc = env.cmd_pool(type("A", (), {"json": True})())
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    # pool_class=mid; strong-tier hacks are excluded.
+    assert out["class"] == "mid"
+    excluded_names = sorted(out["excluded"].keys())
+    assert excluded_names == ["heavy_gles3"], (
+        f"only heavy_gles3 should be excluded at pool=mid; got {excluded_names}"
+    )
+    # The mid and weak hacks are kept.
+    assert "medium_gles3" in out["ids"]
+    assert "hyprsaver_light_gles3" in out["ids"]
+    assert "light_gles3" in out["ids"]
+    assert out["count"] == 3
+    # And the explanation text mentions "needs strong" — the operator-
+    # visible reason the heavy hack is not in the pool.
+    assert "strong" in out["excluded"]["heavy_gles3"]
+
+
+def test_sky1_live_capture_cmd_plan_mid_no_offload(env, monkeypatch, capsys):
+    """Pin `ncz-screensaver plan medium_gles3 --json` for the live .66
+    layout: gpu=soc-CIXH5000_00, gpu_driver=mali, offload=False,
+    class=mid. This is what the supervisor uses when it asks
+    `ncz-screensaver plan <hack>` to decide whether to spawn the hack
+    on the display GPU or an offload target.
+
+    A regression that flips offload=True on Sky1 would point the hack
+    at a nonexistent nvidia offload target — and the hack would either
+    crash or silently fall back to llvmpipe, which is exactly the
+    software-rendering failure the policy forbids.
+    """
+    _build_sky1_live_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_recalibrated"]))
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    # The test rig has no catalog; known_id() in cmd_plan() rejects
+    # unknown hacks. NCZ_SCREENSAVER_ALLOW_UNLISTED=1 lets cmd_plan()
+    # accept any ID-shaped string so the test can exercise the rest of
+    # the path against a representative mid-tier hack name.
+    monkeypatch.setenv("NCZ_SCREENSAVER_ALLOW_UNLISTED", "1")
+    rc = env.cmd_plan(type("A", (), {"json": True, "hack": "medium_gles3"})())
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["hack"] == "medium_gles3"
+    assert out["gpu"] == SKY1_LIVE_CAPTURE["gpu_id"]
+    assert out["gpu_driver"] == SKY1_LIVE_CAPTURE["driver"]
+    assert out["offload"] is False
+    assert out["class"] == "mid"
+    # env list is empty when not offloading (the supervisor does not
+    # wire __EGL_VENDOR_LIBRARY_FILENAMES / NV_PRIME_RENDER_OFFLOAD).
+    assert out["env"] == []
+    # on_battery is False because we added AC power in _build_sky1_live_sysfs.
+    assert out["on_battery"] is False
+
+
 @pytest.mark.parametrize(
     "ms,expected",
     [
