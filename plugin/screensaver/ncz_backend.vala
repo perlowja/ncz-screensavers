@@ -155,10 +155,15 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         var status = launcher_json ("status");
         if (status != null && status.get_node_type () == Json.NodeType.OBJECT) {
             var o = status.get_object ();
-            if (o.has_member ("gpu_class") && !o.get_null_member ("gpu_class"))
-                cls = o.get_string_member ("gpu_class");
-            if (o.has_member ("gpu_class_score_ms") && !o.get_null_member ("gpu_class_score_ms"))
-                ms = o.get_double_member ("gpu_class_score_ms");
+            string gc = member_str (o, "gpu_class");
+            if (gc != "")
+                cls = gc;
+            if (o.has_member ("gpu_class_score_ms")) {
+                var n = o.get_member ("gpu_class_score_ms");
+                if (n.get_node_type () == Json.NodeType.VALUE && !n.is_null () &&
+                    (n.get_value_type () == typeof (double) || n.get_value_type () == typeof (int64)))
+                    ms = n.get_double ();
+            }
         }
         string name = cls == "" ? "Weak" : cls.substring (0, 1).up () + cls.substring (1);
         gpu_class_text = ms > 0 ? "%s (%.1f ms on the calibration test)".printf (name, ms) : name;
@@ -185,7 +190,8 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             string id = member_str (h, "id");
             if (id == "")
                 return;
-            if (h.has_member ("flagged") && h.get_boolean_member ("flagged"))
+            if (h.has_member ("flagged") && h.get_member ("flagged").get_node_type () == Json.NodeType.VALUE
+                && h.get_member ("flagged").get_value_type () == typeof (bool) && h.get_boolean_member ("flagged"))
                 flagged_ids.add (id);
             if (h.has_member ("expect") && !h.get_null_member ("expect"))
                 expects[id] = h.get_string_member ("expect");
@@ -242,8 +248,13 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
             var all = launcher_json_cmd ({ LAUNCHER, "options", "--all", "--json" });
             if (all != null && all.get_node_type () == Json.NodeType.OBJECT && all.get_object ().has_member ("hacks")) {
                 var hacks_obj = all.get_object ().get_object_member ("hacks");
-                foreach (unowned string id in hacks_obj.get_members ())
-                    parse_options (id, hacks_obj.get_object_member (id));
+                if (hacks_obj != null) {
+                    foreach (unowned string id in hacks_obj.get_members ()) {
+                        var doc = hacks_obj.get_object_member (id);
+                        if (doc != null)
+                            parse_options (id, doc);
+                    }
+                }
             }
         }
         if (!option_cache.has_key (hack_id))
