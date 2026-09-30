@@ -986,7 +986,13 @@ def filter_pool(ids, settings):
     if not tiers:
         return ids
     limit = CLASS_RANK[pool_class(settings)]
-    kept = [i for i in ids if CLASS_RANK[tiers.get(i, "strong")] <= limit]
+    strong = CLASS_RANK["strong"]
+
+    def rank(i):
+        cls = tiers.get(i, "strong")
+        return CLASS_RANK.get(LEGACY_TIERS.get(cls, cls), strong)
+
+    kept = [i for i in ids if rank(i) <= limit]
     return kept or ids
 
 

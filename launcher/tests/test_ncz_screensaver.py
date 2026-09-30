@@ -93,12 +93,23 @@ class EnvTests(unittest.TestCase):
         )
         for name in ns.OFFLOAD_VARS:
             self.assertNotIn(name, off)
-        prime = ns.build_child_env(
-            "x_gles3",
-            {"gpu-offload": "prime"},
-            {"XDG_RUNTIME_DIR": "/x"},
-            "/nonexistent",
-        )
+        nvidia = {
+            "id": "pci-0000_01_00_0",
+            "vendor": "nvidia",
+            "driver": "nvidia",
+            "display": False,
+            "slot": "0000:01:00.0",
+            "device": "1f11",
+        }
+        plan = {"gpu": nvidia, "offload": True, "class": "strong", "copy_ms": 0.0}
+        with mock.patch.object(ns, "switcheroo_envs", return_value={}):
+            prime = ns.build_child_env(
+                "x_gles3",
+                {"gpu-offload": "prime"},
+                {"XDG_RUNTIME_DIR": "/x"},
+                "/nonexistent",
+                offload=plan,
+            )
         self.assertEqual(prime["__NV_PRIME_RENDER_OFFLOAD"], "1")
         self.assertEqual(prime["__VK_LAYER_NV_optimus"], "NVIDIA_only")
         self.assertNotIn("__EGL_VENDOR_LIBRARY_FILENAMES", prime)
@@ -241,7 +252,11 @@ class HackOptionTests(unittest.TestCase):
 
 class RenderAndCacheTests(unittest.TestCase):
     def test_render_env_shader_only_and_cap_from_platform(self):
-        with mock.patch.object(ns, "default_render_cap", return_value=1080):
+        strong = {"gpu": None, "offload": False, "class": "strong", "copy_ms": 0.0}
+        with (
+            mock.patch.object(ns, "default_render_cap", return_value=1080),
+            mock.patch.object(ns, "plan_for", return_value=strong),
+        ):
             self.assertEqual(
                 ns.render_env("blackhole_gles3", {"render-scale-mode": "auto"}),
                 {"NCZ_MAX_RENDER_HEIGHT": "1080"},
@@ -372,34 +387,25 @@ class GpuPolicyTests(unittest.TestCase):
         )
 
     def test_offload_only_for_discrete_tier_in_auto(self):
-        ns.gpu_topology.cache_clear()
-        with mock.patch.object(
-            ns,
-            "gpu_topology",
-            return_value={"display_class": "integrated", "nvidia_offload": True},
-        ):
-            tiers = {"a": "igpu", "b": "discrete"}
+        def plan(hack_id, settings, tiers=None):
+            mode = settings.get("gpu-offload", "auto")
+            heavy = (tiers or {}).get(hack_id) == "strong"
+            return {"offload": mode == "prime" or (mode == "auto" and heavy)}
+
+        with mock.patch.object(ns, "plan_for", side_effect=plan):
+            tiers = {"a": "weak", "b": "strong"}
             self.assertFalse(ns.offload_for("a", {"gpu-offload": "auto"}, tiers))
             self.assertTrue(ns.offload_for("b", {"gpu-offload": "auto"}, tiers))
             self.assertTrue(ns.offload_for("a", {"gpu-offload": "prime"}, tiers))
             self.assertFalse(ns.offload_for("b", {"gpu-offload": "off"}, tiers))
-        with mock.patch.object(
-            ns,
-            "gpu_topology",
-            return_value={"display_class": "integrated", "nvidia_offload": False},
-        ):
-            self.assertFalse(
-                ns.offload_for("b", {"gpu-offload": "auto"}, {"b": "discrete"})
-            )
 
     def test_pool_filter(self):
-        tiers = {"a": "igpu", "b": "discrete"}
-        with mock.patch.object(ns, "load_tiers", return_value=tiers):
-            with mock.patch.object(
-                ns,
-                "gpu_topology",
-                return_value={"display_class": "integrated", "nvidia_offload": False},
-            ):
+        tiers = {"a": "weak", "b": "strong", "c": "igpu", "d": "bogus"}
+        with (
+            mock.patch.object(ns, "load_tiers", return_value=tiers),
+            mock.patch.object(ns, "load_broken", return_value={}),
+        ):
+            with mock.patch.object(ns, "best_class", return_value="weak"):
                 self.assertEqual(
                     ns.filter_pool(["a", "b"], {"pool-gpu-class": "auto"}), ["a"]
                 )
@@ -409,42 +415,22 @@ class GpuPolicyTests(unittest.TestCase):
                 self.assertEqual(
                     ns.filter_pool(["b"], {"pool-gpu-class": "auto"}), ["b"]
                 )
-            with mock.patch.object(
-                ns,
-                "gpu_topology",
-                return_value={"display_class": "discrete", "nvidia_offload": False},
-            ):
+                self.assertEqual(
+                    ns.filter_pool(["a", "c", "d"], {"pool-gpu-class": "igpu-only"}),
+                    ["a", "c"],
+                )
+            with mock.patch.object(ns, "best_class", return_value="strong"):
                 self.assertEqual(
                     ns.filter_pool(["a", "b"], {"pool-gpu-class": "auto"}), ["a", "b"]
                 )
-            with mock.patch.object(
-                ns,
-                "gpu_topology",
-                return_value={"display_class": "integrated", "nvidia_offload": True},
-            ):
-                self.assertEqual(
-                    ns.filter_pool(
-                        ["a", "b"], {"pool-gpu-class": "auto", "gpu-offload": "auto"}
-                    ),
-                    ["a", "b"],
-                )
-                self.assertEqual(
-                    ns.filter_pool(
-                        ["a", "b"], {"pool-gpu-class": "auto", "gpu-offload": "off"}
-                    ),
-                    ["a"],
-                )
-        with mock.patch.object(ns, "load_tiers", return_value={}):
+        with (
+            mock.patch.object(ns, "load_tiers", return_value={}),
+            mock.patch.object(ns, "load_broken", return_value={}),
+        ):
             self.assertEqual(
                 ns.filter_pool(["a", "b"], {"pool-gpu-class": "igpu-only"}), ["a", "b"]
             )
 
-
-@unittest.skipUnless(
-    shutil.which("gsettings") and shutil.which("glib-compile-schemas"),
-    "gsettings needed",
-)
-class LifecycleTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="ncz-ss-test-")
         t = Path(self.tmp)
