@@ -448,7 +448,7 @@ public class ScreensaverSettings : Gtk.Box {
                 randomize.valign = Align.CENTER;
                 randomize.tooltip_text = "Pick a new random seed";
                 randomize.clicked.connect (() => {
-                    row.spin_btn.value = Random.int_range (1, (int32) hi);
+                    row.spin_btn.value = Random.int_range ((int32) (lo < 1 ? 1 : lo), (int32) hi);
                 });
                 var copy = new Button.with_label ("Copy seed");
                 copy.valign = Align.CENTER;
@@ -456,7 +456,7 @@ public class ScreensaverSettings : Gtk.Box {
                 copy.clicked.connect (() => {
                     var display = Gdk.Display.get_default ();
                     if (display != null)
-                        display.get_clipboard ().set_text ("%d".printf ((int) row.spin_btn.value));
+                        display.get_clipboard ().set_content (Gdk.ContentProvider.for_value ("%d".printf ((int) row.spin_btn.value)));
                 });
                 row.add_suffix (randomize);
                 row.add_suffix (copy);

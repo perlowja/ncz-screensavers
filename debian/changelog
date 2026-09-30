@@ -1,3 +1,11 @@
+ncz-screensavers (0.7.3) unstable; urgency=medium
+
+  * Option schemas from the hack itself: when no options file ships, the launcher reads
+    <hack> --dump-schema (xshadertoy family). choice_groups and choice_labels are passed
+    through for long enums.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 20:20:00 -0400
+
 ncz-screensavers (0.7.2) unstable; urgency=medium
 
   * ncz-screensaver options HACK|--all --json: option schema, values, scenes and seed for

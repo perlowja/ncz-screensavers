@@ -227,7 +227,9 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
         if (!o.has_member (name))
             return "";
         var n = o.get_member (name);
-        return n.get_node_type () == Json.NodeType.VALUE && n.get_value_type () == typeof (string) ? n.get_string () : "";
+        if (n.is_null () || n.get_node_type () != Json.NodeType.VALUE || n.get_value_type () != typeof (string))
+            return "";
+        return n.get_string () ?? "";
     }
 
     private bool options_loaded = false;
