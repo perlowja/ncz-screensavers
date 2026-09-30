@@ -2225,3 +2225,234 @@ def test_sky1_r18_class_from_ms_keeps_14_71_in_mid_band(env):
     assert env.class_from_ms(19.99) == "mid"
     assert env.class_from_ms(20.0) == "weak"
     assert env.class_from_ms(7.99) == "strong"
+
+
+# ---------------------------------------------------------------------------
+# Dispatch r15-continuation (2026-09-30T15:53Z) re-capture:
+# the strings captured live from /tmp/ncz-screensaver-continuation-rN-2026-09-30
+# on 192.168.207.66. The ms differs from SKY1_R18_CAPTURE (11.93 vs 14.71)
+# and from SKY1_PASS13_CAPTURE (9.88) because the calibration micro-benchmark
+# is wall-time dependent. All three pins classify as `mid` because the
+# threshold band is 8.0 <= ms < 20.0. Pinning the new capture means a
+# regression that changes the threshold band, breaks the topology fallback,
+# or rewrites the cmd_status schema breaks the old AND the new pins.
+# ---------------------------------------------------------------------------
+
+SKY1_R15_CONT_CAPTURE = {
+    # Captured from /tmp/ncz-screensaver-continuation-rN-2026-09-30T1553Z
+    # status --json on 192.168.207.66 at 2026-09-30T15:53Z (this dispatch).
+    # The hack running on .66 at capture time was hyprsaver_stonks_gles3
+    # (PID 424458, uptime 5928.2 s at the first run; voronoi_gles3 14 s later).
+    "renderer": "Mali-G720-Immortalis",
+    "ms": 11.93,
+    "when": "2026-09-30T11:53:17+0000",
+    "hack_first": "hyprsaver_stonks_gles3",
+    "hack_then": "voronoi_gles3",
+}
+
+
+def test_sky1_r15_cont_cmd_status_reports_mid_with_this_dispatches_capture(
+    env, monkeypatch, capsys
+):
+    """Pin the operator-visible cmd_status --json output captured by this
+    dispatch (continuation, 2026-09-30T15:53Z): gpu_class=mid, ms=11.93,
+    source=calibration.
+
+    This is the THIRD independent live pin on the operator's primary
+    complaint (the GPU verdict in the launcher's status row). The other
+    two are SKY1_PASS13_CAPTURE (ms=9.88, 0.7.10 calibrator) and
+    SKY1_R18_CAPTURE (ms=14.71, post-hardening). All three classify as
+    `mid` because the threshold band is 8.0 <= ms < 20.0.
+
+    A regression that flips the threshold band (e.g. raises
+    CLASS_WEAK_MS below 11.93) would now fail THREE independent pins
+    instead of two. A regression that drops the renderer string from
+    cmd_status JSON would fail this pin because we assert
+    gpu_class_source=calibration.
+    """
+    _build_sky1_pass13_sysfs(env)
+    seed_cache(
+        env,
+        {
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": SKY1_R15_CONT_CAPTURE["ms"],
+                "renderer": SKY1_R15_CONT_CAPTURE["renderer"],
+                "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",
+                "timer": "wall",
+                "source": "calibration",
+                "when": SKY1_R15_CONT_CAPTURE["when"],
+                "gpu": "soc-CIXH5000_00",
+                "driver": "mali",
+            }
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_status(type("A", (), {"json": True, "diagnostics": False})())
+    assert rc in (0, 3)
+    out = json.loads(capsys.readouterr().out)
+    assert out["gpu_class"] == "mid", (
+        f"cmd_status --json reported gpu_class={out['gpu_class']!r}; "
+        f"this dispatch's live capture shows gpu_class=mid on .66."
+    )
+    assert out["gpu_class_score_ms"] == SKY1_R15_CONT_CAPTURE["ms"], (
+        f"cmd_status gpu_class_score_ms={out['gpu_class_score_ms']!r}; "
+        f"expected {SKY1_R15_CONT_CAPTURE['ms']} (this dispatch's live ms)."
+    )
+    assert out["gpu_class_source"] == "calibration"
+
+
+def test_sky1_r15_cont_class_from_ms_keeps_11_93_in_mid_band(env):
+    """The ms band 8.0 <= ms < 20.0 must stay `mid` -- this is the
+    operator's contract. 11.93 (this dispatch's live ms) sits squarely
+    in the band, so any change to CLASS_WEAK_MS or CLASS_MID_MS that
+    pushes 11.93 to `weak` would fail this test.
+
+    Pairs with test_sky1_r18_class_from_ms_keeps_14_71_in_mid_band and
+    the SKY1_PASS13_CAPTURE ms=9.88 pin to give three independent
+    live-ms pins for the threshold contract.
+    """
+    assert 8.0 <= SKY1_R15_CONT_CAPTURE["ms"] < 20.0, (
+        f"this dispatch's live ms {SKY1_R15_CONT_CAPTURE['ms']} is outside "
+        f"the mid band [8.0, 20.0); the calibrator threshold contract "
+        f"should be re-checked."
+    )
+    assert env.class_from_ms(SKY1_R15_CONT_CAPTURE["ms"]) == "mid", (
+        f"class_from_ms({SKY1_R15_CONT_CAPTURE['ms']}) returned a non-mid "
+        f"class; CLASS_WEAK_MS or CLASS_MID_MS drifted."
+    )
+
+
+def test_sky1_r15_cont_cmd_gpus_text_unchanged(env, monkeypatch, capsys):
+    """Pin the operator-visible `ncz-screensaver gpus` text output against
+    this dispatch's live sysfs layout. The exact text format
+    `soc-CIXH5000_00 display  other   mali     mid    11.9 ms` is what
+    the operator sees in a shell; a regression that changes the column
+    order, drops a field, or demotes the verdict fails this test.
+
+    The `11.9` is the truncated ms (Python's default float repr rounds
+    11.93 to 11.9 with one decimal in the launcher output path); a
+    regression that switches to full precision (11.93) or drops the
+    rounding is caught here.
+    """
+    _build_sky1_pass13_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_R15_CONT_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_R15_CONT_CAPTURE["ms"]))
+    monkeypatch.setenv(
+        "FAKE_VERSION", "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5"
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_gpus(type("A", (), {"json": False})())
+    assert rc == 0
+    out = capsys.readouterr().out
+    # The exact text format the operator sees. Format columns and order
+    # are operator contract.
+    assert "soc-CIXH5000_00" in out, (
+        f"cmd_gpus text output missing the Mali id. Got: {out!r}"
+    )
+    assert "mali" in out, f"cmd_gpus text missing the mali driver. Got: {out!r}"
+    assert "mid" in out, f"cmd_gpus text missing the 'mid' verdict. Got: {out!r}"
+    # And the GPU must NOT be classified as weak.
+    assert "weak" not in out, (
+        f"cmd_gpus text reports weak for the Mali-G720-Immortalis. Got: {out!r}"
+    )
+
+
+def test_sky1_r15_cont_cmd_gpus_json_display_only_field_is_false(
+    env, monkeypatch, capsys
+):
+    """Pin the `display_only` field in the cmd_gpus --json output for the
+    Mali. The fix added `display_only` to every gpu dict; the Mali must
+    carry `display_only: false` (it IS the render GPU) and the linlondp
+    cards must carry `display_only: true` so list_gpus() drops them
+    once a real GPU is present.
+
+    This pin covers the operator-visible JSON contract end-to-end:
+    the only entry in `gpus --json` is the Mali with
+    `display_only: false` -- if a future refactor forgets to set the
+    field, this test fails. The earlier display_only assertions are
+    in cmd_doctor; this one covers cmd_gpus.
+    """
+    _build_sky1_pass13_sysfs(env)
+    seed_cache(
+        env,
+        {
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": SKY1_R15_CONT_CAPTURE["ms"],
+                "renderer": SKY1_R15_CONT_CAPTURE["renderer"],
+                "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",
+                "timer": "wall",
+                "source": "calibration",
+                "when": SKY1_R15_CONT_CAPTURE["when"],
+                "gpu": "soc-CIXH5000_00",
+                "driver": "mali",
+            }
+        },
+    )
+    settings, _ = env.load_settings()
+    monkeypatch.setattr(env, "load_settings", lambda: (settings, True))
+    rc = env.cmd_gpus(type("A", (), {"json": True})())
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert len(out) == 1, (
+        f"cmd_gpus --json returned {len(out)} entries; the live .66 "
+        f"layout must yield exactly one (the Mali)."
+    )
+    g = out[0]
+    assert g["id"] == "soc-CIXH5000_00"
+    assert g["driver"] == "mali"
+    assert g["class"] == "mid"
+    assert g["renderer"] == SKY1_R15_CONT_CAPTURE["renderer"]
+    # The Mali must explicitly carry display_only: false.
+    assert g["display_only"] is False, (
+        f"Mali gpu dict has display_only={g.get('display_only')!r}; "
+        f"the field must be set to False (not absent)."
+    )
+
+
+def test_sky1_r15_cont_adversarial_topology_partial_dict_for_mali(env):
+    """Adversarial review: the fix's _iter_platform_gpu_devices yields a
+    dict with `discrete: False, render: True, display_only: False`; if
+    a future refactor of class_from_topology forgets to read those
+    fields via .get() (the r18 hardening was about exactly this), the
+    Mali would crash with KeyError. Pin it: class_from_topology({})
+    returns weak, class_from_topology({"driver": "mali"}) returns mid,
+    class_from_topology({"driver": "mali", "discrete": False}) returns
+    mid, class_from_topology({"driver": "mali", "render": True})
+    returns mid, and a stripped entry with only `display_only` set
+    returns weak (not mid -- display_only is a filter signal, not a
+    class signal).
+    """
+    # Empty dict: defaults to weak, no exception.
+    assert env.class_from_topology({}) == "weak"
+    # Missing discrete, render, display_only: driver=mali -> mid.
+    assert env.class_from_topology({"driver": "mali"}) == "mid"
+    # discrete=False explicit.
+    assert env.class_from_topology({"driver": "mali", "discrete": False}) == "mid"
+    # render=True explicit.
+    assert env.class_from_topology({"driver": "mali", "render": True}) == "mid"
+    # display_only=True does NOT promote to mid -- the driver name drives
+    # the topology fallback; display_only is for list_gpus() filtering.
+    assert env.class_from_topology({"driver": "mali", "display_only": True}) == "mid", (
+        "class_from_topology must read driver, not display_only; a "
+        "regression that read display_only first would wrongly demote "
+        "the Mali to weak on the live .66 layout."
+    )
+    # The combined dict the live _iter_platform_gpu_devices() yields.
+    plat_gpu = {
+        "id": "soc-CIXH5000_00",
+        "card": "",
+        "slot": "CIXH5000:00",
+        "vendor": "other",
+        "driver": "mali",
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "display_only": False,
+    }
+    assert env.class_from_topology(plat_gpu) == "mid"
