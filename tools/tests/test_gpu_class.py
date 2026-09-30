@@ -599,6 +599,233 @@ def test_sky1_cmd_status_reports_mid_class(env, monkeypatch, capsys):
     assert out["gpu_class_source"] in ("table", "calibration")
 
 
+# Strings captured on 2026-09-30 from MS-R1 / cixmini (192.168.207.66, Sky1,
+# Mali-G720-Immortalis) running kernel 7.3.0-rc5-sky1-ncz with the
+# `module_blacklist=panthor` cmdline. Source of truth: live
+# `/home/mini/.cache/ncz-screensavers/gpu-class.json` after the calibrated
+# `gles3_harness` ran inside the real singularity-labwc compositor on tty1.
+# The renderer string comes from `glGetString(GL_RENDERER)`, the version from
+# `glGetString(GL_VERSION)`, the driver from the platform-bus /sys/.../driver
+# symlink, and the synthetic GPU id from the parent platform device of
+# /sys/class/misc/mali0.
+SKY1_LIVE_CAPTURE = {
+    "renderer": "Mali-G720-Immortalis",
+    "version": "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",
+    "vendor": "ARM",
+    "ms_first_calibration": 9.88,  # the first calibration the live host ran
+    "ms_recalibrated": 11.76,  # the second calibration the live host ran
+    "driver": "mali",
+    "gpu_id": "soc-CIXH5000_00",
+    "gpu_slot": "CIXH5000:00",
+    "kernel_cmdline": "module_blacklist=panthor",
+    "device_node": "/dev/mali0",
+}
+
+
+# The live .66 host (Sky1 / MS-R1, kernel 7.3.0-rc5-sky1-ncz) enumerates
+# FIVE platform devices bound to linlondp (CIXH5010:00, :01, :02, :03, :04)
+# but the DRM class only shows FOUR cards — :02 is registered as a linlondp
+# platform device but exposes no DRM card (no /sys/.../CIXH5010:02/drm/
+# subdirectory, no /sys/class/drm/card* link). The earlier Sky1 regression
+# test mirrored the four-card (:00..:03) layout; this mirrors the live
+# layout (:00, :01, :03, :04 with :02 absent in drm) and pins that the
+# detection still works against it. Captured on 2026-09-30 via
+# `ls -la /sys/class/drm/card*/device`.
+SKY1_LIVE_DRM_SLOTS = ("CIXH5010:00", "CIXH5010:01", "CIXH5010:03", "CIXH5010:04")
+
+
+def _build_sky1_live_sysfs(env):
+    """Build the exact sysfs mirror observed on .66 (the live host) on
+    2026-09-30: four DRM cards bound to linlondp at slots CIXH5010:00,
+    :01, :03, :04 (the :02 platform device exists but is not registered
+    as a DRM card), plus the standalone /sys/class/misc/mali0 character
+    device whose parent platform device CIXH5000:00 is bound to the
+    'mali' platform bus driver. The misc symlink is the short form
+    (../../../CIXH5000:00) that the live host exposes."""
+    for i, slot in enumerate(SKY1_LIVE_DRM_SLOTS):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            "linlondp",
+            slot,
+            connected=(slot == "CIXH5010:03"),  # card2 / :03 owns the panel
+        )
+        # The cards do have render nodes (writeback) on .66.
+        (env.sysfs / f"class/drm/card{i}/device/drm").mkdir(parents=True, exist_ok=True)
+        (env.sysfs / f"class/drm/card{i}/device/drm/renderD128").touch()
+    # The platform device CIXH5010:02 exists on .66 but has no DRM card;
+    # no entry for it is added.
+    misc = env.sysfs / "class/misc/mali0"
+    misc.mkdir(parents=True)
+    (misc / "dev").write_text("10:262\n")
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "uevent").write_text("DRIVER=mali\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    # Short-form symlink, exactly as the live host shows it:
+    # /sys/class/misc/mali0/device -> ../../../CIXH5000:00
+    os.symlink(os.path.relpath(gpu_dev, str(misc)), misc / "device")
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+
+
+def test_sky1_live_capture_renderer_string_is_mid(env):
+    """Pins the EXACT GLES renderer string returned by glGetString on the
+    live .66 host (captured 2026-09-30 from
+    /home/mini/.cache/ncz-screensavers/gpu-class.json, from
+    /run/user/1000/ncz-screensaver/hack.log lines that begin
+    'gles3_harness: gpu class' and 'GL_VERSION=OpenGL ES 3.2'). The
+    launcher classifies it as 'mid', never 'weak'.
+    """
+    assert env.class_from_renderer(SKY1_LIVE_CAPTURE["renderer"]) == "mid"
+
+
+def test_sky1_live_capture_version_string_is_mid(env):
+    """Pins the EXACT GLES version string returned by glGetString on the
+    live .66 host. A regression that accidentally anchors the regex on a
+    prefix of this string would be caught here.
+    """
+    v = SKY1_LIVE_CAPTURE["version"]
+    # The version starts with 'OpenGL ES 3.2' — every entry in the table
+    # falls through without a match. The renderer is what gates the
+    # classification, not the version. The fix must keep it that way: the
+    # version alone must NOT classify anything.
+    assert env.class_from_renderer(v) is None
+    # And the renderer (which contains "Mali-G720-Immortalis") classifies mid.
+    assert env.class_from_renderer(SKY1_LIVE_CAPTURE["renderer"]) == "mid"
+
+
+def test_sky1_live_capture_list_gpus_returns_only_mali(env):
+    """Pins list_gpus() against the live .66 sysfs layout (4 DRM cards
+    at :00, :01, :03, :04 with :02 absent, plus the /sys/class/misc/mali0
+    standalone GPU). The returned list must contain exactly ONE entry —
+    the Mali — with id=soc-CIXH5000_00 and class=mid. The four linlondp
+    display controllers must be filtered out."""
+    _build_sky1_live_sysfs(env)
+    gpus = env.list_gpus()
+    assert len(gpus) == 1, (
+        f"live .66 layout must yield exactly one GPU (the Mali); "
+        f"got {len(gpus)}: {[g['id'] for g in gpus]}"
+    )
+    g = gpus[0]
+    assert g["id"] == SKY1_LIVE_CAPTURE["gpu_id"]
+    assert g["slot"] == SKY1_LIVE_CAPTURE["gpu_slot"]
+    assert g["driver"] == SKY1_LIVE_CAPTURE["driver"]
+    assert g["display"] is True
+    assert g["vendor"] == "other"
+    # The topology fallback classifies the mali driver as mid.
+    assert env.class_from_topology(g) == "mid"
+
+
+def test_sky1_live_capture_cmd_gpus_json(env, monkeypatch, capsys):
+    """Pins the EXACT JSON output of `ncz-screensaver gpus --json` against
+    the live .66 sysfs layout. One entry: soc-CIXH5000_00, mali, mid.
+    Captured live on 2026-09-30: the installed code (0.7.1) returned four
+    linlondp cards (one mid via a stale cache, three weak); the fixed
+    code returns one mali entry, mid. `cmd_gpus` does not run the
+    calibrator (run=False) so the ms field is null until a `calibrate`
+    has populated the cache."""
+    _build_sky1_live_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_first_calibration"]))
+    args = type("A", (), {"json": True})()
+    assert env.cmd_gpus(args) == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert len(rows) == 1
+    g = rows[0]
+    assert g["id"] == SKY1_LIVE_CAPTURE["gpu_id"]
+    assert g["slot"] == SKY1_LIVE_CAPTURE["gpu_slot"]
+    assert g["driver"] == SKY1_LIVE_CAPTURE["driver"]
+    assert g["class"] == "mid"
+    # cmd_gpus does not invoke the calibrator; ms/renderer come from the
+    # cache (empty in this test rig) so the launcher falls back to the
+    # table and reports ms=None / renderer="". After a calibrate, both
+    # are populated (see test_sky1_live_capture_cmd_gpus_json_after_calibrate).
+    assert g["ms"] is None
+    assert g["renderer"] == ""
+
+
+def test_sky1_live_capture_cmd_gpus_json_after_calibrate(env, monkeypatch, capsys):
+    """After `ncz-screensaver calibrate` populates the cache with the live
+    renderer's measurement, `ncz-screensaver gpus --json` reports the
+    cached ms/renderer next to the GPU. Captured live on 2026-09-30:
+    a fresh calibrate on .66 wrote ms=11.76, renderer='Mali-G720-Immortalis'
+    into /home/mini/.cache/ncz-screensavers/gpu-class.json for the
+    soc-CIXH5000_00 entry."""
+    _build_sky1_live_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_recalibrated"]))
+    # Force the calibration to actually run by passing a run_calibrate=True.
+    # gpu_class() with default run=True invokes the calibrator only when the
+    # cache for the GPU's id is missing or stale; the test rig starts with
+    # an empty cache, so the calibrate path runs and writes the entry.
+    _ = env.gpu_class(S, None)
+    args = type("A", (), {"json": True})()
+    assert env.cmd_gpus(args) == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert len(rows) == 1
+    g = rows[0]
+    assert g["class"] == "mid"
+    assert g["ms"] == SKY1_LIVE_CAPTURE["ms_recalibrated"]
+    assert g["renderer"] == SKY1_LIVE_CAPTURE["renderer"]
+
+
+def test_sky1_live_capture_cmd_status_json(env, monkeypatch, capsys):
+    """Pins the EXACT JSON output of `ncz-screensaver status --json`
+    against the live .66 sysfs layout and the EXACT renderer/version/ms
+    the live calibrator produced. Captured live: gpu_class=mid,
+    gpu_class_score_ms=11.76 (second calibration) or 9.88 (first). The
+    fixed launcher reports mid both via the cache (after a calibration
+    run) and via the topology fallback (before the calibrator runs)."""
+    _build_sky1_live_sysfs(env)
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_recalibrated"]))
+    args = type("A", (), {"json": True, "diagnostics": False})()
+    rc = env.cmd_status(args)
+    assert rc in (0, 3)
+    out = json.loads(capsys.readouterr().out)
+    assert out["gpu_class"] == "mid"
+    assert out["gpu_class_source"] in ("table", "calibration")
+
+
+def test_sky1_live_capture_no_weak_classification_under_any_path(env, monkeypatch):
+    """Regression for 192.168.207.66 — the central operator-visible promise
+    of this fix: with the live .66 sysfs layout, every code path the
+    launcher can take returns class=mid, never class=weak. This is the
+    table-driven weak/mid/strict table, the topology fallback, and the
+    calibration cache, exercised end-to-end against the exact strings
+    captured from the live host.
+
+    The previous 0.7.1 release reported `weak` for three of the four
+    linlondp cards on a real GPU system (via class_from_topology's
+    default branch). This test pins the post-fix invariant.
+    """
+    _build_sky1_live_sysfs(env)
+    # 1. Table-driven: the live renderer string.
+    assert env.class_from_renderer(SKY1_LIVE_CAPTURE["renderer"]) != "weak"
+    assert env.class_from_renderer(SKY1_LIVE_CAPTURE["renderer"]) == "mid"
+    # 2. Topology fallback: every GPU list_gpus returns must classify as mid.
+    for g in env.list_gpus():
+        cls = env.class_from_topology(g)
+        assert cls == "mid", f"GPU {g['id']} classified {cls} not mid (driver={g['driver']})"
+    # 3. End-to-end calibration against the live renderer/version.
+    monkeypatch.setenv("FAKE_RENDERER", SKY1_LIVE_CAPTURE["renderer"])
+    monkeypatch.setenv("FAKE_VERSION", SKY1_LIVE_CAPTURE["version"])
+    monkeypatch.setenv("FAKE_MS", str(SKY1_LIVE_CAPTURE["ms_recalibrated"]))
+    e = env.gpu_class(S, None)
+    assert e["class"] == "mid", f"calibration classified {e['class']} not mid"
+    assert e["ms"] == SKY1_LIVE_CAPTURE["ms_recalibrated"]
+    assert e["renderer"] == SKY1_LIVE_CAPTURE["renderer"]
+
+
 @pytest.mark.parametrize(
     "ms,expected",
     [
