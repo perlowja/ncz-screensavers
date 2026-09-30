@@ -1,3 +1,10 @@
+ncz-screensavers (0.7.5) unstable; urgency=medium
+
+  * Option loading hardened (null JSON fields, unreadable presets, XDG_STATE_HOME with ~,
+    undecodable --dump-schema output); build-plugin.sh checks the SDK first.
+
+ -- Jason Perlow <jperlow@gmail.com>  Tue, 29 Sep 2026 20:45:00 -0400
+
 ncz-screensavers (0.7.4) unstable; urgency=medium
 
   * options: typed JSON schemas (enum choices in range, boolean defaults) and .conf presets

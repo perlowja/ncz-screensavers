@@ -298,7 +298,7 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
                         choices += cn.get_string ();
                 });
             }
-            if (name == "" || (o.has_member ("common") && o.get_member ("common").get_node_type () == Json.NodeType.VALUE))
+            if (name == "" || (o.has_member ("common") && o.get_member ("common").get_node_type () == Json.NodeType.VALUE && o.get_boolean_member ("common")))
                 return;
             if (name == "preset") {
                 if (titles.size < 2)

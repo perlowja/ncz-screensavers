@@ -6,6 +6,8 @@ set -eu
 SDK=${1:?usage: $0 SDK_PREFIX OUT_DIR}
 OUT=${2:?usage: $0 SDK_PREFIX OUT_DIR}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+[ -f "$SDK/lib/pkgconfig/singularity-1.0.pc" ] || { echo "build-plugin: no singularity-1.0.pc under $SDK/lib/pkgconfig" >&2; exit 1; }
+[ -d "$SDK/share/vala/vapi" ] || { echo "build-plugin: no share/vala/vapi under $SDK" >&2; exit 1; }
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 printf "project('ncz-screensaver-plugin', 'c', version: '0.1.0')\nsubdir('plugin')\n" > "$T/meson.build"

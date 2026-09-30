@@ -13,7 +13,7 @@ project(
         'warning_level=2',
         # Default -O0/-g; downstream packagers usually override.
     ],
-    version: '0.7.4',
+    version: '0.7.5',
     license: 'GPL-2.0-or-later',
 )
 

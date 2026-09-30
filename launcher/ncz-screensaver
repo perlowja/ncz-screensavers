@@ -1068,13 +1068,16 @@ def _rows_from_json(path, hack_id):
         if not name or kind not in OPTION_TYPES:
             continue
         rng = o.get("range") or [o.get("min", ""), o.get("max", "")]
-        choices = [str(c) for c in o.get("choices", [])]
+        choices = [str(c) for c in (o.get("choices") or [])]
         if kind == "enum" and not choices and isinstance(rng, list):
             choices, rng = [str(c) for c in rng], ["", ""]  # range may carry the choices
         if kind in ("bool", "string") or len(rng) < 2:
             rng = ["", ""]
-        default = o.get("default", "")
-        default = str(default).lower() if isinstance(default, bool) else str(default)
+        default = o.get("default")
+        if isinstance(default, bool):
+            default = str(default).lower()
+        else:
+            default = "" if default is None else str(default)
         rows.append(
             {
                 "name": name,
@@ -1091,8 +1094,8 @@ def _rows_from_json(path, hack_id):
                     or f"NCZ_{short_name(hack_id).upper()}_{name.upper().replace('-', '_')}"
                 ),
                 "level": str(o.get("level", "")),
-                "choice_groups": o.get("choice_groups", []),
-                "choice_labels": o.get("choice_labels", {}),
+                "choice_groups": o.get("choice_groups") or [],
+                "choice_labels": o.get("choice_labels") or {},
             }
         )
     return rows
@@ -1112,10 +1115,14 @@ def load_presets(hack_id):
         "/usr/share/ncz-screensavers/presets.tsv",
         "/usr/share/ncz-screensaver-chooser/presets.tsv",
     ):
-        p = Path(os.environ.get("NCZ_SCREENSAVER_PRESETS") or cand)
-        if not p.is_file():
+        p = Path(cand)
+        if os.environ.get("NCZ_SCREENSAVER_PRESETS"):
+            p = Path(os.environ["NCZ_SCREENSAVER_PRESETS"])
+        try:
+            text = p.read_text()
+        except OSError:
             continue
-        for line in p.read_text().splitlines():
+        for line in text.splitlines():
             f = line.split("\t")
             if line.startswith("#") or len(f) < 7 or f[3] != hack_id:
                 continue
@@ -1196,7 +1203,7 @@ def dumped_schema(hack_id):
             stdin=subprocess.DEVNULL,
             env={**os.environ, "NCZ_ALLOW_SOFTWARE": "1"},
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
         return ()
     if proc.returncode != 0:
         return ()
@@ -2485,7 +2492,9 @@ def cmd_ensure_plugin(_args):
     if not Path(PLUGIN_SO).is_file() or not shutil.which("gsettings"):
         return 0
     state = (
-        Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
+        Path(
+            os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state"
+        ).expanduser()
         / "ncz-screensavers"
     )
     marker = state / "plugin-enabled"
