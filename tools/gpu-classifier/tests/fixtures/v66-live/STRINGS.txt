@@ -1,0 +1,94 @@
+# Live-captured strings from 192.168.207.66 (cixmini / MS-R1, Sky1, Mali-G720-Immortalis, arm64)
+# Captured 2026-09-30 05:25 UTC, by zoder worker (mini session, password "mini")
+# NCZ-OS 26.7 Maximilian Desktop (based on Debian testing) build 2026.09.29-4bd67b5f
+# Kernel: 7.3.0-rc5-sky1-ncz #1 SMP PREEMPT Sun Sep 27 20:55:01 UTC 2026 aarch64
+
+# === GPU devices (ls -la /dev/dri, /dev/mali*) ===
+/dev/dri/card0  crw-rw----  1 video 226,0   (bound to linlondp)
+/dev/dri/card1  crw-rw----  1 video 226,1   (bound to linlondp)
+/dev/dri/card2  crw-rw----  1 video 226,2   (bound to linlondp, display=True)
+/dev/dri/card3  crw-rw----  1 video 226,3   (bound to linlondp)
+/dev/dri/renderD128  crw-rw----  1 render 226,128
+/dev/dri/renderD129  crw-rw----  1 render 226,129
+/dev/dri/renderD130  crw-rw----  1 render 226,130
+/dev/dri/renderD131  crw-rw----  1 render 226,131
+/dev/mali0  crw-rw-rw-  1 root 10,262   (bound to mali)
+
+# === /sys/class/misc/mali0/device/driver ===
+# readlink /sys/class/misc/mali0/device/driver -> ../../../bus/platform/drivers/mali
+# basename = "mali"  (NOT "mali_kbase" — that's the kernel module, the platform driver is "mali")
+
+# === /sys/class/drm/card*/device/driver ===
+# card0 -> ../../../bus/platform/drivers/linlondp
+# card1 -> ../../../bus/platform/drivers/linlondp
+# card2 -> ../../../bus/platform/drivers/linlondp   (display=True)
+# card3 -> ../../../bus/platform/drivers/linlondp
+
+# === /sys/module/  (loaded kernel modules containing "mali") ===
+# mali_kbase
+#   /sys/module/mali_kbase/drivers/platform:mali
+
+# === vulkaninfo --summary (live) ===
+# apiVersion         = 1.3.296
+# driverVersion      = 53.0.0
+# vendorID           = 0x13b5
+# deviceID           = 0xc8700000
+# deviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+# deviceName         = Mali-G720-Immortalis
+# driverID           = DRIVER_ID_ARM_PROPRIETARY
+# driverName         = Mali-G720-Immortalis
+# driverInfo         = v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5
+# conformanceVersion = 1.3.9.2
+
+# === eglinfo (live) ===
+# EGL vendor string: ARM
+# EGL version string: 1.5 Valhall-"r53p0-00eac0"
+# EGL client APIs: OpenGL_ES
+# OpenGL ES profile vendor: ARM
+# OpenGL ES profile renderer: Mali-G720-Immortalis
+# OpenGL ES profile version: OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5
+# OpenGL ES profile shading language version: OpenGL ES GLSL ES 3.20
+
+# === Calibrator (ncz-screensaver-calibrate --identify) exit behavior ===
+# WITH labwc env (WAYLAND_DISPLAY=wayland-0, LD_LIBRARY_PATH pinned to /opt/cixgpu-pro/lib,
+#                 __EGL_VENDOR_LIBRARY_FILENAMES pinned to CIX json):
+#   exit 0, JSON identifies as Mali-G720-Immortalis / OpenGL ES 3.2 v1.r53p0
+# WITHOUT labwc env (any ssh session, or tty1):
+#   stderr: MESA: error: ZINK: failed to choose pdev ... (40+ lines)
+#           libEGL warning: egl: failed to create dri2 screen
+#   stderr: calibrate: no GLES3 config
+#   exit code = 2   (NOT 3 — "refused" is exit 3)
+
+# === Compositor ===
+# /run/user/1000/wayland-0  (srwxrwxr-x  mini  mini)
+# labwc process: /opt/singularity/bin/labwc -S /opt/singularity/bin/singularity-desktop-session
+# session c2 (seat0, tty1), 3h 11min idle when probe started
+
+# === Calibrator benchmark numbers (real, in gpu-class.json cache) ===
+# pci-CIXH5010_03 (display GPU on card2, driver=linlondp):
+#   class: mid, ms: 9.88, renderer: Mali-G720-Immortalis, source: calibration, when: 2026-09-30T01:51:52+0000
+# soc-CIXH5000_00 (mali on misc, driver=mali):
+#   class: mid, ms: 11.76, renderer: Mali-G720-Immortalis, source: calibration, when: 2026-09-30T04:20:00+0000
+
+# === Running screensaver ===
+# xshadertoy_bestill4-0_gles3, supervisor pid 140835, uptime ~1h+
+# fps = 60.0 (locked to vsync)
+# log: /run/user/1000/ncz-screensaver/hack.log ([diag] frame #N every 60 frames)
+# confirmed mid classification in log: "gles3_harness: gpu class mid (Mali-G720-Immortalis)"
+# actual frames verified at 60 fps for 5+ seconds
+
+# === The launcher source (verbatim) ===
+# /usr/bin/ncz-screensaver line 822: if code == 3: return {"class": "weak", ...}
+# /usr/bin/ncz-screensaver line 736: class_from_topology returns "weak" for ANY driver
+#   not in (i915, xe, v3d, vc4, lima, etnaviv, mali_kbase, panthor, panfrost, msm, amdgpu)
+# /usr/bin/ncz-screensaver list_gpus() only scans /sys/class/drm/card* — misses /sys/class/misc/mali*
+
+# === Failed reproducer (operator ssh into .66, with NO env) ===
+# $ /usr/libexec/ncz-screensavers/ncz-screensaver-calibrate --identify
+#   ZINK errors + "calibrate: no GLES3 config"
+#   exit code = 2
+# $ python3 ...gpu_class(settings, gpu, run=True)
+#   -> gpu_class falls through to fallback_entry("", gpu)
+#   -> class_from_renderer("") returns None
+#   -> class_from_topology(display_gpu) — display_gpu has driver=linlondp
+#   -> returns "weak"   <-- THE BUG

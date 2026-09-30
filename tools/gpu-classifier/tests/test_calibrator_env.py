@@ -83,6 +83,17 @@ class NoOpTests(unittest.TestCase):
     augment_calibrator_env must leave the env dict unchanged."""
 
     def test_no_op_on_non_sky1(self):
+        """On any non-Sky1 host, augment_calibrator_env must leave the
+        env dict unchanged.
+
+        NB: when this test runs on a Sky1 host (the .66 cixmini is one),
+        `is_sky1_arm64()` returns True and the augmentation WILL run;
+        we skip the mutation assertion there and only check the contract
+        via `test_no_op_when_libdir_absent` below."""
+        if is_sky1_arm64() and sky1_loader_paths_available():
+            self.skipTest("running on a Sky1 host with cixgpu-pro; "
+                          "non-sky1 contract covered by "
+                          "test_no_op_when_libdir_absent")
         env = {"LD_LIBRARY_PATH": "/usr/lib/x86_64-linux-gnu", "WAYLAND_DISPLAY": "wayland-0"}
         before = dict(env)
         result = augment_calibrator_env(env)

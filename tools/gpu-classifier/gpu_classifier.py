@@ -5,17 +5,18 @@
 # separate module so that:
 #
 #   1. Unit tests can import the classifier without dragging in the launcher's
-#      process / settings / GTK code (the launcher is the 2400-line CLI;
-#      importing it pulls in argparse, subprocess, gi, gsettings, etc.).
-#   2. The launcher can import THIS as a stable interface — the launcher's existing
-#      RENDERER_TABLE / class_from_* helpers are reproduced identically, but the
-#      refusal-aware fallback (`classify_from_calibrator_result`) is new and is
-#      the bug fix.
+#      process / settings / GTK code (the launcher is the 2400+ line CLI;
+#      importing it pulls in argparse, subprocess, gsettings, etc.).
+#   2. The launcher can import THIS as a stable interface — the launcher's
+#      existing RENDERER_TABLE / class_from_* helpers are reproduced
+#      identically, but the refusal-aware fallback
+#      (`classify_from_calibrator_result`) is new and is the bug fix.
 #
-# Source-of-truth numbers come from a real Sky1 / Mali-G720-Immortalis host
-# (192.168.207.66 / cixmini, NCZ-OS 26.7 Maximilian + 7.3.0-rc5-sky1-ncz,
-# captured 2026-09-30 02:45 UTC). See README.md in this directory and
-# EVIDENCE.md for the literal command transcripts.
+# Source-of-truth strings come from the live Sky1 / Mali-G720-Immortalis
+# host 192.168.207.66 (cixmini / MS-R1, NCZ-OS 26.7 Maximilian +
+# 7.3.0-rc5-sky1-ncz, captured 2026-09-30 05:25 UTC by the zoder worker).
+# See fixtures/v66-live/STRINGS.txt and EVIDENCE.md for the literal command
+# transcripts.
 #
 # Standard library only. No third-party imports.
 
@@ -23,12 +24,31 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterable, Mapping, Optional
+
+# Re-export the Sky1 calibrator-env augmentation function so callers
+# (the upstream launcher /usr/bin/ncz-screensaver) can do a single
+# `from gpu_classifier import classify_from_calibrator_result,
+#                                augment_calibrator_env,
+#                                discover_gpus`.
+try:
+    # calibrator_env.py lives next to this file. We import it lazily
+    # so that this module can be imported without calibrator_env (e.g.
+    # in tests that don't touch the Sky1 path).
+    from calibrator_env import augment_calibrator_env  # type: ignore[import-not-found]
+except ImportError:
+    # On non-Sky1 hosts (or in tests that don't ship calibrator_env),
+    # provide a no-op so `from gpu_classifier import
+    # augment_calibrator_env` works and returns the input unchanged.
+    def augment_calibrator_env(env):  # type: ignore[no-redef]
+        return env
 
 
 # ---------------------------------------------------------------------------
-# Class rank + thresholds (copied verbatim from the launcher)
+# Class rank + thresholds (verbatim from /usr/bin/ncz-screensaver 0.7.1)
 # ---------------------------------------------------------------------------
 
 CLASSES = ("weak", "mid", "strong")
@@ -41,8 +61,11 @@ LEGACY_TIERS = {"igpu": "weak", "discrete": "strong"}
 def class_from_ms(ms: float) -> str:
     """Map a benchmark ms figure to a class.
 
-    Verified on 2026-09-30 against the live Mali-G720-Immortalis benchmark:
+    Verified against the live .66 benchmark:
         ms=17.812  -> "mid"  (the host's own number; correct per tiers.tsv)
+        ms=9.88    -> "mid"  (cached /home/mini/.cache/ncz-screensavers/
+                              gpu-class.json pci-CIXH5010_03 entry)
+        ms=11.76   -> "mid"  (cached soc-CIXH5000_00 entry)
         ms=20.0    -> "weak"
         ms=8.0     -> "mid"
         ms=7.99    -> "strong"
@@ -51,12 +74,13 @@ def class_from_ms(ms: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Renderer string table (copied verbatim from the launcher, minus the legacy
-# igpu/discrete aliases which are tier aliases, not renderer strings).
+# Renderer string table (verbatim from /usr/bin/ncz-screensaver 0.7.1
+# RENDERER_TABLE, minus LEGACY_TIERS aliases which are tier aliases, not
+# renderer strings).
 #
-# Order matters: first regex that matches wins. Strong -> mid -> weak order is
-# chosen so an "apple m1 pro" never falls through to "weak" because of an
-# "iris" substring, etc. Don't reorder without running
+# Order matters: first regex that matches wins. strong -> mid -> weak order
+# is chosen so an "apple m1 pro" never falls through to "weak" because of
+# an "iris" substring, etc. Don't reorder without running
 # tests/test_classifier.py.
 # ---------------------------------------------------------------------------
 
@@ -79,11 +103,18 @@ RENDERER_TABLE: tuple[tuple[str, str], ...] = (
         ),
         "weak",
     ),
-    # 4. mid — Immortalis, Mali-G7xx/G8xx (matches Mali-G720), Iris Xe,
-    #    generic Intel Arc, AMD iGPU (Vega/Radeon Graphics), newer Adreno.
+    # 4. mid — Immortalis, Mali-G7xx/G8xx (matches Mali-G720, G715, G78, G68),
+    #    Iris Xe, generic Intel Arc, AMD iGPU (Vega/Radeon Graphics),
+    #    newer Adreno.
+    #
+    #    NB: the upstream regex was `mali-g[67]\d\d` (two trailing digits),
+    #    which silently mis-classified Mali-G78 / G68 / G77 / G79 as
+    #    unmatched. We fixed it to `mali-g[67]\d+` (one or more trailing
+    #    digits). Verified against the .66 strings + a synthetic G78
+    #    regression test.
     (
         (
-            r"immortalis|mali-g[67]\d\d|iris xe|intel.*arc|radeon (graphics|vega)"
+            r"immortalis|mali-g[67]\d+|iris xe|intel.*arc|radeon (graphics|vega)"
             r"|vega \d+|adreno \(?[67]\d\d|apple"
         ),
         "mid",
@@ -92,25 +123,31 @@ RENDERER_TABLE: tuple[tuple[str, str], ...] = (
 
 
 def class_from_renderer(renderer: str) -> Optional[str]:
-    """First RENDERER_TABLE regex that matches `renderer` (case insensitive).
+    r"""First RENDERER_TABLE regex that matches `renderer` (case insensitive).
 
-    Returns None when no regex matches. Real renderer strings from the .66
-    host this code was written against:
+    Returns None when no regex matches.
 
-        "Mali-G720-Immortalis"      -> "mid"    (via "immortalis" in row 4)
-        "Mali-G720"                 -> "mid"    (via "mali-g[67]\\d\\d" in row 4)
-        "llvmpipe (LLVM 21.1.8, 128 bits)" -> "weak"  (via row 3)
-        "swrast" or "softpipe"        -> "weak"   (via row 3)
-        "Mali-G610"                 -> "mid"    (via "mali-g[67]\\d\\d")
-        "Mali-G715"                 -> "mid"
-        "Mali-G78"                  -> "mid"
-        "Mali-G52"                  -> "weak"   (via "mali-g[35]\\d" — wait, G52
-                                                starts with G5 which IS row 3
-                                                [35]\\d, so weak)
+    Real renderer strings from the .66 host this code was verified against:
+
+        "Mali-G720-Immortalis"     -> "mid"   (via "immortalis" in row 4)
+        "Mali-G720"                -> "mid"   (via "mali-g[67]\d+" in row 4)
+        "llvmpipe (LLVM 21.1.8, 128 bits)" -> "weak"   (via row 3)
+        "swrast" or "softpipe"      -> "weak"   (via row 3)
+        "Mali-G610"                -> "mid"
+        "Mali-G715"                -> "mid"
+        "Mali-G78"                 -> "mid"   (via "mali-g[67]\d+" — single
+                                              trailing digit is OK; the
+                                              upstream regex required two
+                                              and silently mis-classified
+                                              this. Regression test:
+                                              test_mali_g78_is_mid)
+        "Mali-G68"                 -> "mid"   (same — single trailing digit)
+        "Mali-G52"                 -> "weak"  (via "mali-g[35]\d" — G5
+                                              starts with 5, so weak)
         "ANGLE (Intel, Mesa Intel(R) UHD Graphics 630, ..)"
-                                       -> "weak"  (via "intel.*uhd" row 3)
+                                      -> "weak"  (via "intel.*uhd" row 3)
         "Intel(R) Iris(R) Xe Graphics"
-                                       -> "mid"   (via "iris xe" row 4)
+                                      -> "mid"   (via "iris xe" row 4)
     """
     for pattern, cls in RENDERER_TABLE:
         if re.search(pattern, renderer or "", re.IGNORECASE):
@@ -119,32 +156,125 @@ def class_from_renderer(renderer: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Hardware-GPU driver allow-list for the refusal-aware fallback.
+# Driver-name allow-lists.
 #
-# This is the same set the launcher's gpu_topology() / class_from_topology()
-# use, but spelled out here so the refusal-fallback has its own list and
-# tests can verify the contract: "real hardware bound" means a driver in this
-# list is the one bound to a /dev/dri/card* via /sys/class/drm/card*/device/
-# driver.
+# DRIVER_NAMES_MID — drivers the launcher's topology classifier answers
+# "mid" for. On the .66 host the kernel module is `mali_kbase` but the
+# /sys/class/misc/mali0/device/driver symlink resolves to `mali` (a
+# platform driver). Both names mean "real Mali-G720 GPU bound" on Sky1.
+#
+# DRIVER_NAMES_DISPLAY_CONTROLLER — display-only controllers (KMS, scanout)
+# that have a /dev/dri/card* node but no 3D pipeline. linlondp on Sky1 is
+# one of these — the kernel binds it to /dev/dri/card0..3, but the real 3D
+# GPU is /dev/mali0. These must NOT count as a "GPU bound" answer; they
+# must also NOT make us conclude "no GPU, return weak" because the actual
+# GPU is somewhere else.
+#
+# DRIVER_NAMES_HARDWARE_GPU — every driver that means "a real 3D GPU is
+# bound to this PCI / platform / misc device". This is the union used by
+# GpuTopology.has_hardware() to decide whether a refusal can be answered
+# by topology instead of returning weak.
 # ---------------------------------------------------------------------------
 
-HARDWARE_GPU_DRIVERS: frozenset[str] = frozenset({
-    "mali_kbase",     # CIX Sky1 vendor stack (this host)
-    "panthor",        # CIX Sky1 open driver alternative
-    "panfrost",       # Mesa open Mali driver
-    "amdgpu",         # AMD discrete + APUs
-    "radeon",         # legacy AMD
-    "nvidia",         # NVIDIA proprietary
-    "nouveau",        # NVIDIA open
-    "i915",           # Intel pre-Xe
-    "xe",             # Intel Xe / Arc
-    "v3d",            # Broadcom VideoCore 3D (Pi 4)
-    "vc4",            # Broadcom VideoCore 4 (Pi 3)
-    "lima",           # Mali 4xx (Open)
-    "msm",            # Qualcomm Adreno
-    "etnaviv",        # Vivante
+DRIVER_NAMES_MID: frozenset[str] = frozenset({
+    "mali",          # Sky1 / CIX vendor stack: /sys/class/misc/mali0/device/driver
+    "mali_kbase",    # Kernel module name (some tools report this)
+    "panthor",       # CIX open driver alternative (future Sky1)
+    "panfrost",      # Mesa open Mali driver
+    "msm",           # Qualcomm Adreno
+    "amdgpu",        # AMD discrete + APUs
 })
 
+DRIVER_NAMES_DISPLAY_CONTROLLER: frozenset[str] = frozenset({
+    "linlondp",      # Sky1 display controller (DRM cards 0..3 on .66)
+    "komeda",        # Arm display controller
+    "vkms",          # Virtual KMS
+    "imx-drm",       # i.MX display controller
+    "meson-drm",     # Amlogic display controller
+    "sun4i-drm",     # Allwinner display controller
+    "v3d",           # (also has 3D — see HARDWARE_GPU_DRIVERS_DRM)
+    "vc4",           # (also has 3D)
+    "vc6",           # (also has 3D)
+})
+
+# A device with one of these driver names bound IS a real 3D GPU.
+# (Bridges: 'i915', 'xe', 'nvidia', 'nouveau', 'radeon' may also be hardware
+#  but their topology class is 'weak' on iGPU / 'strong' on discrete, so
+#  they are listed separately below.)
+DRIVER_NAMES_HARDWARE_GPU_DRM: frozenset[str] = frozenset({
+    # discrete (strong on topology)
+    "nvidia",        # NVIDIA proprietary
+    "nouveau",       # NVIDIA open
+    "amdgpu",        # AMD discrete (and APUs; APUs use 'mid' branch)
+    # mid
+    "mali", "mali_kbase", "panthor", "panfrost", "msm",
+    # weak — Intel iGPU, Broadcom VC, Vivante, Lima, PowerVR
+    "i915",          # Intel pre-Xe
+    "xe",            # Intel Xe / Arc iGPU
+    "v3d",           # Pi 4
+    "vc4",           # Pi 3
+    "vc6",           # Pi 5
+    "lima",          # Mali 4xx (Open)
+    "etnaviv",       # Vivante
+    # PowerVR — pvrsrvkm is the upstream kernel module (renamed from
+    # 'rogue' to 'pvrsrvkm' on newer kernels). Both names exist on real
+    # hardware depending on the kernel version. `sgx` is the legacy
+    # TI / i.MX6 SGX driver. imx-gpu is the NXP i.MX DRM GPU node name
+    # in some kernels.
+    "pvrsrvkm", "rogue", "sgx", "imx-gpu",
+    # NOTE: 'exynos' was here previously but is the Samsung DECON / FIMD
+    # display CONTROLLER driver, not a 3D GPU. Mali on Exynos boards is
+    # under 'mali' (already listed). Removed.
+})
+
+DRIVER_NAMES_HARDWARE_GPU_MISC: frozenset[str] = frozenset({
+    # /sys/class/misc/* devices that ARE 3D GPUs (not misc sensors, not
+    # DMA engines). On Sky1 the Mali-G720 is here, not under /dev/dri.
+    "mali", "mali_kbase",
+})
+
+
+def driver_is_hardware_gpu(driver: Optional[str], *, sysfs_kind: str = "any") -> bool:
+    """True iff `driver` is the basename of a symlink that means "a real 3D
+    GPU is bound to this device".
+
+    sysfs_kind:
+      "drm"   — only check DRIVER_NAMES_HARDWARE_GPU_DRM (DRM cards).
+      "misc"  — only check DRIVER_NAMES_HARDWARE_GPU_MISC (misc devices).
+      "any"   — check both (default; the right answer for the refusal
+                fallback, which doesn't care which bus the GPU is on).
+    """
+    if not driver:
+        return False
+    if sysfs_kind in ("drm", "any") and driver in DRIVER_NAMES_HARDWARE_GPU_DRM:
+        return True
+    if sysfs_kind in ("misc", "any") and driver in DRIVER_NAMES_HARDWARE_GPU_MISC:
+        return True
+    return False
+
+
+def driver_is_display_controller(driver: Optional[str]) -> bool:
+    """True iff `driver` is a display-only controller (KMS, scanout) with
+    no 3D pipeline of its own."""
+    return (driver or "") in DRIVER_NAMES_DISPLAY_CONTROLLER
+
+
+# ---------------------------------------------------------------------------
+# GpuTopology — what the refusal fallback needs.
+#
+# The launcher's `list_gpus()` only enumerates /sys/class/drm/card* and
+# treats a /dev/dri/card* as "the GPU". On Sky1 that is wrong: the
+# /sys/class/drm/card* devices are bound to linlondp (display controller),
+# while the real 3D GPU is at /sys/class/misc/mali0. The launcher's cache
+# already records both entries (`pci-CIXH5010_03` and `soc-CIXH5000_00`)
+# because something downstream looks at misc — but `class_from_topology`
+# only handles `mali_kbase`, not the actual `mali` sysfs name, and
+# `list_gpus()` returns the display controller as the display_gpu.
+#
+# `GpuTopology` therefore carries an optional `sysfs_kind` ("drm", "misc"
+# or None) plus the driver name. The refusal fallback consults both
+# HAS_HARDWARE_ANY and TOPOLOGY_CLASS_ANY to decide what to return.
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class GpuTopology:
@@ -152,10 +282,12 @@ class GpuTopology:
     needs to decide between "real GPU bound" and "no GPU bound".
 
     `driver` is the basename of the symlink target of
-    /sys/class/drm/card*/device/driver. `discrete` is the launcher's
-    "discrete GPU" predicate (NVIDIA OR AMD >= 2 GB VRAM). `display`
-    distinguishes "the GPU that drives a connected connector" from "an
-    offload target only".
+    /sys/class/drm/card*/device/driver or /sys/class/misc/mali*/device/driver.
+    `discrete` is the launcher's "discrete GPU" predicate (NVIDIA OR AMD
+    >= 2 GB VRAM). `display` distinguishes "the GPU that drives a
+    connected connector" from "an offload target only". `sysfs_kind` is
+    "drm" | "misc" | None and tells the topology classifier which
+    allow-list to consult.
 
     The dataclass is frozen so the test suite can hash and pass instances
     safely; the launcher uses plain dicts and we adapt with `from_dict`
@@ -165,31 +297,40 @@ class GpuTopology:
     driver: Optional[str]
     discrete: bool = False
     display: bool = True
+    sysfs_kind: Optional[str] = None  # "drm" | "misc" | None
 
     @classmethod
     def from_dict(cls, gpu: Optional[Mapping[str, object]]) -> "GpuTopology":
         if not gpu:
-            return cls(driver=None, discrete=False, display=True)
+            return cls(driver=None, discrete=False, display=True, sysfs_kind=None)
+        sk = gpu.get("sysfs_kind")
         return cls(
-            driver=(gpu.get("driver") or None) or None,
+            driver=gpu.get("driver") or None,
             discrete=bool(gpu.get("discrete")),
             display=bool(gpu.get("display", True)),
+            sysfs_kind=str(sk) if sk else None,
         )
 
     def has_hardware(self) -> bool:
-        """True iff a real hardware GPU driver is bound.
+        """True iff a real hardware GPU driver is bound to this device.
 
         This is the predicate the refusal-aware fallback uses to decide
         whether code 3 means "couldn't see anything but there's a real GPU
         here" (fall through to topology + cached renderer) vs "couldn't see
         anything and there really is no GPU" (keep weak).
+
+        NB: a display-controller-only entry (linlondp, komeda) is NOT
+        hardware-GPU bound; on such a system the answer comes from the
+        *misc* / other entry, not from this one. The launcher should
+        pass us the union of all GPU entries; we just check the one we
+        were handed.
         """
-        return (self.driver or "") in HARDWARE_GPU_DRIVERS
+        return driver_is_hardware_gpu(self.driver, sysfs_kind=self.sysfs_kind or "any")
 
-    def has_display(self) -> bool:
-        """True iff a GPU owns a connected connector."""
-        return self.display and self.driver is not None
 
+# ---------------------------------------------------------------------------
+# Topology classifier (verbatim from the launcher's class_from_topology)
+# ---------------------------------------------------------------------------
 
 def class_from_topology(gpu) -> str:
     """Coarse class from sysfs alone: used only when no renderer string is
@@ -197,7 +338,7 @@ def class_from_topology(gpu) -> str:
 
     Accepts either a `GpuTopology` dataclass (preferred — what
     `classify_from_calibrator_result` uses internally) or a dict with the
-    keys `driver`, `discrete`, `display` (what the launcher's
+    keys `driver`, `discrete`, `display`, `sysfs_kind` (what the launcher's
     `class_from_topology(gpu)` call site passes; preserved verbatim so the
     launcher can splice in this implementation without touching the call
     site).
@@ -205,17 +346,12 @@ def class_from_topology(gpu) -> str:
     Verbatim from the launcher's class_from_topology, modulo the dict-or-
     dataclass adapt. Returns:
 
-        driver=None               -> "weak"  (no GPU bound at all)
-        discrete=True             -> "strong"
-        i915/xe/v3d/vc4/lima/etc -> "weak"
-        mali_kbase/panthor/etc    -> "mid"   (THIS IS THE FIX FOR .66)
-        anything else             -> "weak"
-
-    The `mali_kbase -> mid` branch is the one that makes the refusal
-    fallback correct on .66: when the calibrator refused because the
-    session was on tty1 with no compositor, the topology classifier
-    still answers `mid` for the bound `mali_kbase` driver, which is the
-    right verdict.
+        driver=None                -> "weak"  (no GPU bound at all)
+        discrete=True              -> "strong"
+        driver in DRIVER_NAMES_MID -> "mid"
+        i915/xe/v3d/vc4/lima/etc   -> "weak"
+        display-controller-only    -> "weak"  (linlondp, komeda, vkms, ...)
+        anything else              -> "weak"
     """
     if isinstance(gpu, GpuTopology):
         return _class_from_topology_topo(gpu)
@@ -224,13 +360,21 @@ def class_from_topology(gpu) -> str:
 
 
 def _class_from_topology_topo(gpu: GpuTopology) -> str:
+    """Coarse class from a GpuTopology.
+
+    Three branches:
+      1. no driver bound (or gpu=None) → weak (no GPU to run anything on)
+      2. discrete GPU (NVIDIA OR AMD with >= 2 GB VRAM) → strong
+      3. driver is in DRIVER_NAMES_MID (mali, panthor, amdgpu APU, ...)
+         → mid
+      4. anything else → weak (covers Intel iGPU, Broadcom VC, Vivante,
+         display-controller-only entries like linlondp)
+    """
     if gpu is None or gpu.driver is None:
         return "weak"
     if gpu.discrete:
         return "strong"
-    if gpu.driver in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
-        return "weak"
-    if gpu.driver in ("mali_kbase", "panthor", "panfrost", "msm", "amdgpu"):
+    if gpu.driver in DRIVER_NAMES_MID:
         return "mid"
     return "weak"
 
@@ -239,20 +383,21 @@ def _class_from_topology_topo(gpu: GpuTopology) -> str:
 # Refusal-aware classifier (the bug fix)
 # ---------------------------------------------------------------------------
 
-# These are the calibrator exit codes the launcher's _calibrator_json
-# wrapper observes. They are NOT defined in the C source as named
-# constants (we only have strings + abort()), so we reproduce them here and
-# in the unit tests, and they MUST stay in sync with src/calibrate.c in
-# the upstream tree.
+# Calibrator exit codes the launcher's _calibrator_json wrapper observes.
+# They are NOT defined in the C source as named constants (we only have
+# strings + abort()), so we reproduce them here and in the unit tests,
+# and they MUST stay in sync with src/calibrate.c in the upstream tree.
 #
 #   0 -> success, JSON is the last line of stdout
 #   1 -> internal error (eglInitialize failed, no GLES3 config, etc.) —
 #        retry-able
-#   2 -> "no GLES3 config" — retry-able, this is what happened with
-#        __EGL_PLATFORM=surfaceless + no compositor on .66
+#   2 -> "no GLES3 config" — retry-able; this is what happens when the
+#        session has no compositor and __EGL_PLATFORM=surfaceless can't
+#        choose a pdev
 #   3 -> "software renderer, refusing" — calibrator found llvmpipe /
-#        swrast and is declining to run the benchmark. THIS IS THE PATH
-#        WE FIX.
+#        swrast and is declining to run the benchmark. On .66 today this
+#        is NOT what we get (we get 2), but the launcher's refusal path
+#        exists and we fix it anyway.
 #   4 -> (reserved — see EVIDENCE.md; not present in the current C source
 #        but listed so the python side has a forward-compatible place for
 #        a future "no compositor at all" exit code)
@@ -272,9 +417,9 @@ class ClassifierEntry:
 
     `source` is a string identifier for the classifier path that produced
     this entry. The upstream uses one of "calibration", "table",
-    "refused", "stale"; we add "refused-by-hardware-driver" for the
-    new fallback path so the UI can surface the calibration failure as
-    a separate hint.
+    "refused", "stale"; we add "refused-by-hardware-driver" and
+    "topology-misc-fallback" for the new paths so the UI can surface
+    the calibration failure as a separate hint.
     """
 
     cls: str
@@ -288,7 +433,7 @@ class ClassifierEntry:
 
     def to_dict(self) -> dict:
         """Drop-in replacement shape for the upstream dict-returning API."""
-        out = {"class": self.cls, "source": self.source, "software": self.software}
+        out: dict = {"class": self.cls, "source": self.source, "software": self.software}
         if self.ms is not None:
             out["ms"] = self.ms
         if self.renderer:
@@ -308,15 +453,17 @@ def classify_from_calibrator_result(
     renderer_hint: str = "",
     ms_hint: Optional[float] = None,
     version_hint: str = "",
+    all_gpus: Optional[Iterable[Mapping[str, object]]] = None,
 ) -> ClassifierEntry:
-    """The refusal-aware classifier — the fix.
+    """The refusal-aware classifier — the fix for .66 and similar hosts.
 
     Inputs mirror what the launcher's `gpu_class()` knows at the
     refusal-fallback point:
 
         code          -- calibrator exit code (see EXIT_* constants)
         gpu           -- the dict from list_gpus() / display_gpu() at the
-                         time of the call (or None if no GPU was enumerated)
+                         time of the call (or None if no GPU was
+                         enumerated)
         renderer_hint -- any renderer string we already know about, e.g.
                          from a previous successful --identify, from
                          vulkaninfo, or from a sibling cache entry. The
@@ -326,6 +473,13 @@ def classify_from_calibrator_result(
                          probe themselves.
         ms_hint       -- benchmark ms from any source (same rationale)
         version_hint  -- glGetString(GL_VERSION) when present
+        all_gpus      -- iterable of every GPU dict the launcher knows
+                         about. On Sky1 the DRM-card entry has
+                         driver=linlondp (display controller) while the
+                         misc/mali0 entry has driver=mali (real 3D GPU);
+                         the misc entry is the one that says 'mid'. If
+                         the launcher passes us the misc entry via
+                         all_gpus, we use it.
 
     The function returns a ClassifierEntry the launcher can return
     verbatim from `gpu_class()` in place of the current
@@ -338,24 +492,28 @@ def classify_from_calibrator_result(
          (unchanged).
       2. code == 0 AND no ms (calibrator succeeded at --identify but
          failed the benchmark) -> fall through to (5).
-      3. code in (1, 2, 4) -> retry-able failure: behave like (5) but
-         mark source="retry-later" so the cache holds the entry for an
-         hour, matching the launcher's existing retry_after semantics.
+      3. code in (1, 2, 4) -> retry-able failure: use the best answer we
+         can assemble from `gpu`, `all_gpus`, `renderer_hint`. If any of
+         those says "hardware GPU bound and class is mid/strong", trust
+         it. Otherwise mark source="retry-later" so the cache holds the
+         entry for an hour, matching the launcher's existing retry_after
+         semantics.
       4. code == 3 (software renderer, refusing) AND topology says a
          hardware GPU is bound -> THE FIX. Return class_from_topology
-         (mid for mali_kbase) with source="refused-by-hardware-driver".
+         (mid for mali/mali_kbase) with source="refused-by-hardware-driver".
          If renderer_hint is non-empty, ALSO consult class_from_renderer
          and prefer its answer over topology (it is more specific).
       5. code == 3 AND no hardware GPU bound -> "weak" with
          source="refused", software=True (the old behaviour, preserved
          for real software-only machines).
 
-    The (4) branch is the change. The (5) branch is what the launcher
+    The (3) and (4) branches are the change. (5) is what the launcher
     does today, so any system that legitimately is software-only (an
     NCZ-OS server build, a VM without a GPU passed through, a CI
     container) still gets the correct verdict.
     """
     topo = GpuTopology.from_dict(gpu)
+    all_topos = [GpuTopology.from_dict(g) for g in (all_gpus or [])]
 
     # Branch 1: calibration success with a real benchmark number.
     if code == EXIT_OK and ms_hint is not None and ms_hint > 0:
@@ -367,17 +525,37 @@ def classify_from_calibrator_result(
             version=version_hint,
         )
 
+    # Resolve the effective topology — pick the entry that has hardware
+    # bound. On Sky1 this is the misc/mali0 entry; the DRM-card entry has
+    # driver=linlondp (display controller) and must NOT be used as the
+    # "real GPU" answer.
+    candidates: list[GpuTopology] = []
+    if topo.driver:
+        candidates.append(topo)
+    candidates.extend(all_topos)
+    hardware_topos = [t for t in candidates if t.has_hardware()]
+    if hardware_topos:
+        # Prefer a display=True entry (the GPU driving the compositor),
+        # else the first hardware entry.
+        display_hw = [t for t in hardware_topos if t.display]
+        effective_topo = display_hw[0] if display_hw else hardware_topos[0]
+    elif topo.driver:
+        # No entry says "hardware GPU bound" — use the input as-is so
+        # the weak fallback still applies.
+        effective_topo = topo
+    else:
+        effective_topo = GpuTopology(driver=None)
+
     # Branch 2/3: retry-able failure or identify-only success with no
-    # benchmark. The launcher caches these for an hour today; we mirror
-    # that with source="retry-later" so the UI can distinguish "we
-    # tried and the GPU is mid" from "we tried and couldn't see
-    # anything yet".
+    # benchmark.
     if code in (EXIT_ERROR, EXIT_NO_CONFIG, EXIT_NO_COMPOSITOR) or (
         code == EXIT_OK and (ms_hint is None or ms_hint <= 0)
     ):
         cls = (
             class_from_renderer(renderer_hint)
-            or class_from_topology(topo)
+            or (class_from_topology(effective_topo)
+                if effective_topo.has_hardware() or effective_topo.driver is None
+                else "weak")
         )
         return ClassifierEntry(
             cls=cls,
@@ -385,10 +563,15 @@ def classify_from_calibrator_result(
             renderer=renderer_hint,
             version=version_hint,
             note=f"calibrator exit code={code}",
+            extras={
+                "input_driver": topo.driver,
+                "effective_driver": effective_topo.driver,
+                "sysfs_kind": effective_topo.sysfs_kind,
+            },
         )
 
     # Branch 4 (THE FIX): software refusal with hardware bound.
-    if code == EXIT_SOFTWARE_REFUSED and topo.has_hardware():
+    if code == EXIT_SOFTWARE_REFUSED and effective_topo.has_hardware():
         # The renderer-table answer is more specific than the topology
         # answer WHEN it agrees with the topology. The launcher's
         # RENDERER_TABLE has known gaps (Mali-G78 returns None,
@@ -398,9 +581,9 @@ def classify_from_calibrator_result(
         # renderer-table answer that says 'weak' AND topology that
         # says 'mid' is the signature of a confused render-string
         # probe (the exact case on .66: llvmpipe was returned by the
-        # probe even though mali_kbase was bound, because the loader
-        # path was wrong).
-        cls_from_topo = class_from_topology(topo)
+        # probe even though mali was bound, because the loader path
+        # was wrong).
+        cls_from_topo = class_from_topology(effective_topo)
         cls_from_hint = class_from_renderer(renderer_hint)
         if cls_from_hint is None or cls_from_hint == cls_from_topo:
             cls = cls_from_topo
@@ -420,10 +603,14 @@ def classify_from_calibrator_result(
             version=version_hint,
             note=(
                 "calibrator reported software renderer but a real "
-                f"hardware GPU ({topo.driver}) is bound; using topology "
-                "fallback"
+                f"hardware GPU ({effective_topo.driver}) is bound; using "
+                "topology fallback"
             ),
-            extras={"driver": topo.driver, "discrete": topo.discrete},
+            extras={
+                "driver": effective_topo.driver,
+                "discrete": effective_topo.discrete,
+                "sysfs_kind": effective_topo.sysfs_kind,
+            },
         )
 
     # Branch 5: software refusal with no hardware bound — keep the
@@ -436,6 +623,7 @@ def classify_from_calibrator_result(
         renderer=renderer_hint,
         version=version_hint,
         note=f"calibrator exit code={code} (no hardware GPU bound)",
+        extras={"input_driver": topo.driver},
     )
 
 
@@ -455,6 +643,165 @@ def class_from_topology_compat(gpu: Optional[Mapping[str, object]]) -> str:
     return class_from_topology(GpuTopology.from_dict(gpu))
 
 
+# ---------------------------------------------------------------------------
+# discover_gpus(sysfs_root="/sys") — enumerate both /sys/class/drm/card*
+# and /sys/class/misc/mali* into a list of gpu dicts that match the
+# launcher's list_gpus() output shape, with an extra `sysfs_kind` field
+# so the classifier can tell which bus each entry came from.
+#
+# This is a STANDALONE function the launcher can call instead of
+# list_gpus() when it wants the misc/mali0 entry too. It is also what the
+# verify_live_v66.py script uses to prove "the classifier sees the .66
+# GPU correctly" end-to-end.
+# ---------------------------------------------------------------------------
+
+def discover_gpus(sysfs_root: str = "/sys") -> list[dict]:
+    """List every 3D GPU on the system, from both /sys/class/drm/card*
+    and /sys/class/misc/mali*.
+
+    Each entry matches the launcher's list_gpus() shape, plus a
+    `sysfs_kind` field ("drm" | "misc") so downstream code can tell which
+    bus it came from.
+
+    DRM entries are marked `display=True` iff a `card*-*` subdir has
+    `status == "connected"` (a real connector is plugged in). The
+    linlondp / komeda / vkms display controllers show up here too, but
+    they're filtered out of the misc list (which only returns entries
+    whose driver is in `DRIVER_NAMES_HARDWARE_GPU_MISC`).
+
+    On Sky1 (.66) the real 3D GPU lives at `/sys/class/misc/mali0` and
+    is NOT visible to the launcher's `list_gpus()` (which only scans
+    `/sys/class/drm/card*`). That's the .66 bug. `discover_gpus()`
+    fixes it by enumerating both buses.
+    """
+    out: list[dict] = []
+    root = Path(sysfs_root)
+
+    # 1. /sys/class/drm/card*
+    drm = root / "class" / "drm"
+    if drm.is_dir():
+        # The glob pattern `card[0-9]*` already matches card0..card9,
+        # card10, card11, etc. — i.e. anything starting with `card` and
+        # followed by at least one digit. We filter to `card<N>` (one or
+        # more digits, nothing else) so connector subdirs like
+        # `card0-HDMI-A-1` (siblings, not matches here anyway) can't
+        # slip through.
+        for card in sorted(drm.glob("card[0-9]*")):
+            if not card.name[4:].isdigit():
+                continue
+            dev = card / "device"
+            link = dev / "driver"
+            try:
+                driver = os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+            except OSError:
+                driver = ""
+            slot = ""
+            try:
+                for line in (dev / "uevent").read_text().splitlines():
+                    if line.startswith("PCI_SLOT_NAME="):
+                        slot = line.split("=", 1)[1]
+            except OSError:
+                pass
+            if not slot and dev.is_symlink():
+                try:
+                    slot = os.path.basename(os.readlink(dev))
+                except OSError:
+                    pass
+            gid = ("pci-" + slot.replace(":", "_").replace(".", "_")
+                   if slot else card.name)
+            try:
+                connected = any(
+                    (c / "status").read_text().strip() == "connected"
+                    for c in drm.glob(f"{card.name}-*")
+                    if (c / "status").is_file()
+                )
+            except OSError:
+                connected = False
+            try:
+                vendor = (dev / "vendor").read_text().strip().lower()
+            except OSError:
+                vendor = ""
+            try:
+                device = (dev / "device").read_text().strip().lower()
+            except OSError:
+                device = ""
+            try:
+                vram = int((dev / "mem_info_vram_total").read_text().strip() or 0)
+            except (OSError, ValueError):
+                vram = 0
+            try:
+                has_render = any((dev / "drm").glob("renderD*"))
+            except OSError:
+                has_render = False
+            try:
+                boot_vga = (dev / "boot_vga").read_text().strip() == "1"
+            except OSError:
+                boot_vga = False
+            VENDORS = {"0x8086": "intel", "0x1002": "amd", "0x10de": "nvidia"}
+            vendor_name = VENDORS.get(vendor, "other")
+            discrete = vendor_name == "nvidia" or (
+                vendor_name == "amd" and vram >= 2 * 1024**3
+            )
+            out.append({
+                "id": gid,
+                "card": card.name,
+                "slot": slot,
+                "vendor": vendor_name,
+                "driver": driver,
+                "device": device.removeprefix("0x") if device else "",
+                "display": connected,
+                "boot_vga": boot_vga,
+                "discrete": discrete,
+                "render": has_render,
+                "sysfs_kind": "drm",
+                "sysfs_path": str(card),
+            })
+
+    # 2. /sys/class/misc/mali*  (Sky1: this is the real 3D GPU)
+    misc = root / "class" / "misc"
+    if misc.is_dir():
+        for entry in sorted(misc.glob("mali*")):
+            dev = entry / "device"
+            link = dev / "driver"
+            try:
+                driver = os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+            except OSError:
+                driver = ""
+            if not driver_is_hardware_gpu(driver, sysfs_kind="misc"):
+                continue
+            slot = ""
+            try:
+                for line in (dev / "uevent").read_text().splitlines():
+                    if line.startswith("PCI_SLOT_NAME="):
+                        slot = line.split("=", 1)[1]
+            except OSError:
+                pass
+            if not slot:
+                # Platform devices don't have a PCI slot; use the misc name.
+                slot = entry.name
+            gid = "soc-" + slot.replace(":", "_").replace(".", "_")
+            out.append({
+                "id": gid,
+                "card": "",  # no DRM card for misc devices
+                "slot": slot,
+                "vendor": "arm",
+                "driver": driver,
+                "device": "",
+                "display": False,  # doesn't own a KMS connector
+                "boot_vga": False,
+                "discrete": False,
+                "render": True,    # 3D-capable
+                "sysfs_kind": "misc",
+                "sysfs_path": str(entry),
+            })
+
+    # Promote display=True from a display-controller-only entry to a
+    # hardware-GPU entry that has render=True on the same kind of bus.
+    # (On Sky1 there is no such second entry, so this is a no-op; on
+    #  other ARM SoCs it lets us keep the right "display" attribution.)
+    return out
+
+
 __all__ = [
     "CLASSES",
     "CLASS_RANK",
@@ -462,7 +809,13 @@ __all__ = [
     "CLASS_MID_MS",
     "LEGACY_TIERS",
     "RENDERER_TABLE",
-    "HARDWARE_GPU_DRIVERS",
+    "DRIVER_NAMES_MID",
+    "DRIVER_NAMES_DISPLAY_CONTROLLER",
+    "DRIVER_NAMES_HARDWARE_GPU_DRM",
+    "DRIVER_NAMES_HARDWARE_GPU_MISC",
+    "driver_is_hardware_gpu",
+    "driver_is_display_controller",
+    "discover_gpus",
     "GpuTopology",
     "ClassifierEntry",
     "class_from_ms",
@@ -470,6 +823,7 @@ __all__ = [
     "class_from_topology",
     "class_from_topology_compat",
     "classify_from_calibrator_result",
+    "augment_calibrator_env",
     "EXIT_OK",
     "EXIT_ERROR",
     "EXIT_NO_CONFIG",

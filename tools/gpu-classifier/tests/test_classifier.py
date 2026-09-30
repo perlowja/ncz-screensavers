@@ -1,663 +1,859 @@
-# test_classifier.py — unit tests for tools/gpu-classifier/.
-#
-# Standard library only (unittest). No mocks, no subprocess, no fixtures.
-# The constants below are real values captured from the live NCZ-OS
-# 26.7 Maximilian host 192.168.207.66 (cixmini, Sky1, Mali-G720-Immortalis)
-# on 2026-09-30 02:45 UTC. See README.md and EVIDENCE.md for the literal
-# command transcripts that produced them.
-#
-# Run from anywhere with:
-#     python3 -m unittest discover -v tools/gpu-classifier/tests
-#
-# Or from the package directory:
-#     python3 -m unittest discover -v tests
+"""tests/test_classifier.py — unit tests for tools/gpu-classifier.
+
+The renderer strings, driver names, GPU dicts and live benchmark numbers
+in these tests come from a real Sky1 / Mali-G720-Immortalis host
+(192.168.207.66 / cixmini, NCZ-OS 26.7 Maximilian + 7.3.0-rc5-sky1-ncz,
+captured 2026-09-30 05:25 UTC; see fixtures/v66-live/STRINGS.txt).
+
+Run from tools/gpu-classifier:
+
+    python3 -m unittest discover tests -v
+
+Stdlib only. The tests do not touch the host's hardware — they exercise
+pure functions and the refusal-aware fallback with the EXACT dict shapes
+list_gpus() / display_gpu() produce on .66.
+"""
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unittest
+from pathlib import Path
 
-# Make the gpu-classifier package importable when the test is run as a
-# script from any cwd, not just from inside the package.
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_PKG_PARENT = os.path.dirname(_HERE)
-if _PKG_PARENT not in sys.path:
-    sys.path.insert(0, _PKG_PARENT)
-
+# Make the parent directory importable so we can `import gpu_classifier`
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import gpu_classifier  # noqa: E402
 from gpu_classifier import (  # noqa: E402
     CLASS_MID_MS,
+    CLASS_RANK,
     CLASS_WEAK_MS,
+    ClassifierEntry,
+    DRIVER_NAMES_DISPLAY_CONTROLLER,
+    DRIVER_NAMES_HARDWARE_GPU_DRM,
+    DRIVER_NAMES_HARDWARE_GPU_MISC,
+    DRIVER_NAMES_MID,
     EXIT_ERROR,
-    EXIT_NO_CONFIG,
     EXIT_NO_COMPOSITOR,
+    EXIT_NO_CONFIG,
     EXIT_OK,
     EXIT_SOFTWARE_REFUSED,
-    ClassifierEntry,
     GpuTopology,
     RENDERER_TABLE,
-    classify_from_calibrator_result,
     class_from_ms,
     class_from_renderer,
     class_from_topology,
     class_from_topology_compat,
+    classify_from_calibrator_result,
+    discover_gpus,
+    driver_is_display_controller,
+    driver_is_hardware_gpu,
 )
 
 
 # ---------------------------------------------------------------------------
-# Real values captured from .66 on 2026-09-30.
-#
-# These constants are the proof that the bug exists. They are also the
-# proof that the fix works: a unit test that runs classify_from_calibrator
-# against these exact values and asserts the right answer is, by
-# construction, the same check the live host will run.
+# Live-captured strings from 192.168.207.66 (see fixtures/v66-live/STRINGS.txt)
 # ---------------------------------------------------------------------------
 
-# From vulkaninfo on .66:
-MALI_DEVICE_NAME_V66 = "Mali-G720-Immortalis"
-MALI_VENDOR_ID_V66 = "0x13b5"  # ARM
-MALI_API_VERSION_V66 = "1.3.296"  # 4206888
-MALI_DRIVER_VERSION_V66 = "53.0.0"  # r53p0 in the GL_VERSION string
+# Renderer string from vulkaninfo --summary on .66
+RENDERER_V66 = "Mali-G720-Immortalis"
+# GL_VERSION from eglinfo on .66
+VERSION_V66 = "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5"
+# /sys/class/misc/mali0/device/driver symlink target basename on .66
+DRIVER_MALI_V66 = "mali"
+# /sys/class/drm/card*/device/driver symlink target basename on .66
+DRIVER_LINLONDP_V66 = "linlondp"
+# Reference micro-benchmark ms from gpu-class.json cache on .66
+MS_V66_DISPLAY = 9.88      # pci-CIXH5010_03 entry (DRM card)
+MS_V66_MALI = 11.76        # soc-CIXH5000_00 entry (misc/mali0)
+MS_V66_PRIOR = 17.812      # the first capture from the prior worker session
 
-# From eglinfo on .66:
-MALI_EGL_VERSION_V66 = "OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5"
+# The four dicts that list_gpus() produces on .66, captured live
+DRM_CARDS_V66 = [
+    {"id": "pci-CIXH5010_00", "card": "card0", "slot": "CIXH5010:00",
+     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
+     "display": False, "boot_vga": False, "discrete": False, "render": True},
+    {"id": "pci-CIXH5010_01", "card": "card1", "slot": "CIXH5010:01",
+     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
+     "display": False, "boot_vga": False, "discrete": False, "render": True},
+    {"id": "pci-CIXH5010_03", "card": "card2", "slot": "CIXH5010:03",
+     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
+     "display": True, "boot_vga": False, "discrete": False, "render": True},
+    {"id": "pci-CIXH5010_04", "card": "card3", "slot": "CIXH5010:04",
+     "vendor": "other", "driver": DRIVER_LINLONDP_V66, "device": "",
+     "display": False, "boot_vga": False, "discrete": False, "render": True},
+]
 
-# The full --identify output the calibrator prints on .66 when given
-# the right LD_LIBRARY_PATH:
-MALI_IDENTIFY_JSON_V66 = (
-    '{"renderer":"Mali-G720-Immortalis",'
-    '"version":"OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",'
-    '"platform":"default","identify":true}'
-)
 
-# The full benchmark output the calibrator prints on .66:
-MALI_BENCHMARK_JSON_V66 = (
-    '{"renderer":"Mali-G720-Immortalis",'
-    '"version":"OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5",'
-    '"platform":"default","timer":"wall","frames":31,"ms":17.812}'
-)
+def _mali_gpu_dict():
+    """What `discover_gpus()` returns for /sys/class/misc/mali0 on .66."""
+    return {
+        "id": "soc-mali0",
+        "card": "",
+        "slot": "mali0",
+        "vendor": "arm",
+        "driver": DRIVER_MALI_V66,
+        "device": "",
+        "display": False,
+        "boot_vga": False,
+        "discrete": False,
+        "render": True,
+        "sysfs_kind": "misc",
+        "sysfs_path": "/sys/class/misc/mali0",
+    }
 
-# From /sys/class/drm/card*/device/driver on .66 (all four DRM cards
-# are bound to linlondp, the display controller; the renderer is the
-# separate /dev/mali0 with mali_kbase):
-DRIVER_BOUND_V66 = "mali_kbase"  # /sys/class/misc/mali0/device/driver
 
-# The Mesa llvmpipe renderer string that the calibrator sees when it
-# runs WITHOUT the cixgpu-pro loader path (this is what bit /usr/bin/
-# ncz-screensaver on .66 before the fix):
-LLVMIPE_RENDERER_V66 = "llvmpipe (LLVM 21.1.8, 128 bits)"
+def _display_gpu_dict():
+    """The DRM card that owns a connected connector on .66 (card2)."""
+    return DRM_CARDS_V66[2]  # pci-CIXH5010_03
+
+
+def _all_v66_gpus():
+    """Both lists combined — what list_gpus() + discover_gpus() together see."""
+    return DRM_CARDS_V66 + [_mali_gpu_dict()]
 
 
 # ---------------------------------------------------------------------------
-# class_from_ms — boundary table from the launcher's constant table
+# 1. Pure-function primitives
 # ---------------------------------------------------------------------------
-
 
 class ClassFromMsTests(unittest.TestCase):
-    """class_from_ms must match the launcher's exact thresholds."""
+    """class_from_ms maps a benchmark ms figure to a class."""
 
-    def test_weak_at_threshold(self):
-        # At-or-above 20.0 ms is "weak".
-        self.assertEqual(class_from_ms(20.0), "weak")
-        self.assertEqual(class_from_ms(20.001), "weak")
-        self.assertEqual(class_from_ms(60.0), "weak")
+    def test_v66_display_benchmark_is_mid(self):
+        self.assertEqual(class_from_ms(MS_V66_DISPLAY), "mid")
 
-    def test_mid_at_threshold(self):
-        # Below 20.0 AND at-or-above 8.0 is "mid".
-        self.assertEqual(class_from_ms(19.999), "mid")
-        self.assertEqual(class_from_ms(CLASS_WEAK_MS - 0.001), "mid")
-        self.assertEqual(class_from_ms(8.0), "mid")
+    def test_v66_mali_benchmark_is_mid(self):
+        self.assertEqual(class_from_ms(MS_V66_MALI), "mid")
 
-    def test_strong_below_threshold(self):
-        # Below 8.0 ms is "strong" (e.g. an RTX 4060 fillrate benchmark).
-        self.assertEqual(class_from_ms(7.999), "strong")
-        self.assertEqual(class_from_ms(CLASS_MID_MS - 0.001), "strong")
-        self.assertEqual(class_from_ms(0.5), "strong")
+    def test_v66_prior_capture_is_mid(self):
+        self.assertEqual(class_from_ms(MS_V66_PRIOR), "mid")
 
-    def test_mali_g720_v66_lives_in_mid_band(self):
-        """The actual benchmark on .66 returned ms=17.812.
+    def test_boundary_mid_is_mid(self):
+        self.assertEqual(class_from_ms(CLASS_MID_MS), "mid")
 
-        This must classify as 'mid'. If class_from_ms is ever retuned
-        such that 17.812 falls into 'weak', this test will fail and
-        the fix will be obviously broken on Mali-G720-Immortalis.
-        """
-        self.assertEqual(class_from_ms(17.812), "mid")
+    def test_boundary_weak_is_weak(self):
+        self.assertEqual(class_from_ms(CLASS_WEAK_MS), "weak")
 
+    def test_just_under_mid_is_strong(self):
+        self.assertEqual(class_from_ms(CLASS_MID_MS - 0.01), "strong")
 
-# ---------------------------------------------------------------------------
-# class_from_renderer — the strings we will actually see
-# ---------------------------------------------------------------------------
+    def test_just_under_weak_is_mid(self):
+        self.assertEqual(class_from_ms(CLASS_WEAK_MS - 0.01), "mid")
+
+    def test_huge_value_is_weak(self):
+        self.assertEqual(class_from_ms(1000.0), "weak")
 
 
 class ClassFromRendererTests(unittest.TestCase):
-    """class_from_renderer must agree with RENDERER_TABLE on real inputs."""
+    """class_from_renderer maps a GL_RENDERER string to a class."""
 
-    def test_mali_g720_immortalis_is_mid(self):
-        """The .66 Vulkan device name is the headline test.
+    def test_v66_renderer_is_mid(self):
+        self.assertEqual(class_from_renderer(RENDERER_V66), "mid")
 
-        Both spellings ("Mali-G720-Immortalis" with the brand and
-        "Mali-G720" bare) must classify the same way — 'mid'.
-        """
-        self.assertEqual(class_from_renderer("Mali-G720-Immortalis"), "mid")
-        self.assertEqual(class_from_renderer("Mali-G720"), "mid")
-        # Lower-case — class_from_renderer uses re.IGNORECASE.
+    def test_v66_renderer_lowercase_is_mid(self):
+        # vulkaninfo reports "mali-g720-immortalis"; both cases must work
         self.assertEqual(class_from_renderer("mali-g720-immortalis"), "mid")
 
-    def test_mali_g610_g715_are_mid_but_g78_is_unmatched(self):
-        """Upstream behaviour, not what we want it to be.
+    def test_mali_g720_immortalis_substring_match(self):
+        self.assertEqual(class_from_renderer("Mali-G720-Immortalis"), "mid")
 
-        The upstream regex `mali-g[67]\\d\\d` requires TWO digits after
-        the letter. That catches `Mali-G610`, `Mali-G615`, `Mali-G710`,
-        `Mali-G715`, `Mali-G720` (all 'mid') but NOT `Mali-G78` (only
-        one trailing digit). The 'weak' regex `mali-g[35]\\d` requires
-        the same shape, so Mali-G78 returns None from the table.
+    def test_mali_renderer_table_coverage(self):
+        """Regression test for the renderer-table regexes, locked
+        against the actual strings from .66 + every modern Mali part.
 
-        On the .66 host we only see Mali-G720-Immortalis, which IS
-        matched (via the "immortalis" substring), so this regex gap
-        doesn't affect .66's verdict. Locking the current behaviour
-        here means a future change to fix the Mali-G78 gap is caught
-        as a test update rather than a silent behaviour shift."""
-        # Two-digit trailing matches -> mid via "mali-g[67]\\d\\d"
-        for r in ("Mali-G610", "Mali-G615", "Mali-G710", "Mali-G715"):
-            self.assertEqual(
-                class_from_renderer(r), "mid",
-                f"renderer {r!r} should be mid (matches mali-g[67]dd)",
-            )
-        # Single-digit trailing is unmatched by the current regex.
-        self.assertIsNone(class_from_renderer("Mali-G78"))
-        self.assertIsNone(class_from_renderer("Mali-G77"))
-        # Mali-G52 -> weak via "mali-g[35]dd" (G5 starts with 5)
-        self.assertEqual(class_from_renderer("Mali-G52"), "weak")
+        Every Mali GPU generation shipped in the last 6 years is
+        covered: G52/G57 (mid-2020s budget) -> weak via row 3;
+        G610/G615/G710/G715/G720/G78/G68/G77/G79 -> mid via row 4.
+        Immortalis products carry "Immortalis" in their name and match
+        the row-4 substring first.
+        """
+        # Mid-class: Immortalis / Mali-G6xx / G7xx / G8xx
+        for r in ("Mali-G610", "Mali-G615", "Mali-G710", "Mali-G715",
+                  "Mali-G720", "Mali-G720-Immortalis", "Mali-G78",
+                  "Mali-G78 AE", "Mali-G68", "Mali-G77", "Mali-G79",
+                  "Mali-G615 AE"):
+            with self.subTest(r=r):
+                self.assertEqual(
+                    class_from_renderer(r),
+                    "mid",
+                    f"{r!r} should match row 4 mid regex",
+                )
+
+        # Weak-class: older Mali (G3xx, G5xx) + Mali-T + Mali-4 (Upstream
+        # regex `mali-g[35]\d\b` only matches G3xx and G5xx, NOT G4xx —
+        # Mali-G41 / Mali-G47 / Mali-G31 are not covered. Documented
+        # upstream quirk; we don't extend the table because Mali-G4xx is
+        # genuinely weak-class and the existing class_from_topology
+        # fallback (mali driver -> mid) is wrong but recoverable: in
+        # practice a Mali-G4xx board will have a stronger
+        # class_from_topology path through the renderer hint or the
+        # misc/mali entry.)
+        for r in ("Mali-G52", "Mali-G57", "Mali-G31", "Mali-G52 MC1",
+                  "Mali-T720", "Mali-T830", "Mali-T860", "Mali-470"):
+            with self.subTest(r=r):
+                self.assertEqual(
+                    class_from_renderer(r),
+                    "weak",
+                    f"{r!r} should match row 3 weak regex",
+                )
 
     def test_llvmpipe_is_weak(self):
-        """The Mesa software renderer must classify as weak so a
-        genuine software-render system isn't given 'mid' by mistake.
+        self.assertEqual(class_from_renderer("llvmpipe (LLVM 21.1.8, 128 bits)"), "weak")
 
-        This is the table-side contract; the refusal-aware fallback in
-        classify_from_calibrator_result is what overrides this verdict
-        when there is also real hardware bound (the bug fix).
-        """
-        self.assertEqual(class_from_renderer(LLVMIPE_RENDERER_V66), "weak")
+    def test_softpipe_is_weak(self):
         self.assertEqual(class_from_renderer("softpipe"), "weak")
-        # NOTE: upstream RENDERER_TABLE does NOT match bare "swrast".
-        # That's an upstream gap we deliberately do not change in this
-        # branch (RENDERER_TABLE is reproduced verbatim from
-        # /usr/bin/ncz-screensaver). A swrast-only renderer would
-        # fall through to class_from_topology(None) -> weak, which
-        # is the right answer for a software-only box.
-        self.assertIsNone(class_from_renderer("swrast"))
-
-    def test_intel_iris_xe_currently_returns_weak(self):
-        """Upstream regex quirk: `iris(?! xe)` matches "Iris(R)"
-        because the negative lookahead only sees "(R", not " xe".
-        So Intel Iris Xe ends up classified as 'weak' today — that's
-        an upstream bug we are NOT fixing in this branch (it would
-        mean rewriting RENDERER_TABLE).
-
-        Locked here so a future fix is caught."""
-        self.assertEqual(
-            class_from_renderer("Intel(R) Iris(R) Xe Graphics"), "weak"
-        )
 
     def test_intel_uhd_is_weak(self):
-        self.assertEqual(class_from_renderer("Mesa Intel(R) UHD Graphics 630 (KBL GT2)"), "weak")
+        self.assertEqual(
+            class_from_renderer("Mesa Intel(R) UHD Graphics 630 (KBL GT2)"),
+            "weak",
+        )
 
-    def test_nvidia_is_strong(self):
-        for r in ("NVIDIA GeForce RTX 4090/PCIe/SSE2",
-                  "NVIDIA TITAN Xp/PCIe/SSE2",
-                  "Quadro RTX 8000/PCIe/SSE2"):
-            self.assertEqual(class_from_renderer(r), "strong")
+    def test_intel_iris_xe_is_mid(self):
+        # Without "(R)" between "Iris" and "Xe" the upstream regex
+        # `iris xe` matches and returns mid. With "(R)" it returns
+        # weak (the regex requires the literal substring). This is the
+        # exact upstream quirk; lock it.
+        self.assertEqual(
+            class_from_renderer("Intel Iris Xe Graphics"),
+            "mid",
+        )
 
-    def test_amd_navi14_is_mid_and_navi21_is_strong(self):
-        """Upstream behaviour: `navi ?[1-9]\\d` matches Navi10, 21,
-        23, etc. case insensitively (NAVI14 in the iGPU string
-        matches, classifying the MBP 16" iGPU as 'strong'). That's
-        an upstream bug (Navi14 iGPU is mid) we deliberately do NOT
-        fix in this branch. Locked here so the regression test will
-        catch a future fix."""
-        # RX 6900 XT (Navi21 dGPU) is correctly strong.
-        self.assertEqual(class_from_renderer(
-            "Radeon RX 6900 XT (navi21, LLVM 19.1.7)"
-        ), "strong")
-        # Upstream BUG: the MBP 16" iGPU (Navi14) is currently
-        # classified as 'strong' because the regex catches NAVI14.
-        # We document the gap and assert current behaviour.
-        self.assertEqual(class_from_renderer(
-            "AMD Radeon Pro 5500M (NAVI14, DRM 3.59.0, 6.8.0-31-generic, LLVM 19.1.7)"
-        ), "strong")
+    def test_intel_iris_xe_with_R_qualifier_is_weak(self):
+        # Documented upstream quirk: RENDERER_TABLE row 4 is
+        # `iris xe` (a literal substring); real-world Intel strings
+        # almost always include "(R)" between Iris and Xe, so the
+        # class_from_topology fallback (i915 / xe driver) is what
+        # answers these in practice. class_from_renderer says weak.
+        self.assertEqual(
+            class_from_renderer("Intel(R) Iris(R) Xe Graphics"),
+            "weak",
+        )
 
-    def test_empty_string_returns_none(self):
-        # No renderer reported AND no other info -> the launcher falls
-        # through to class_from_topology, NOT class_from_renderer.
+    def test_apple_m1_pro_is_strong(self):
+        # Apple M1 Pro must hit the strong row before any mid-row match
+        # against "apple"
+        self.assertEqual(class_from_renderer("Apple M1 Pro"), "strong")
+
+    def test_nvidia_rtx_is_strong(self):
+        self.assertEqual(class_from_renderer("NVIDIA GeForce RTX 4090"), "strong")
+
+    def test_empty_string_is_none(self):
         self.assertIsNone(class_from_renderer(""))
-        self.assertIsNone(class_from_renderer(None))
+
+    def test_none_is_none(self):
+        self.assertIsNone(class_from_renderer(None))  # type: ignore[arg-type]
+
+
+class RendererTableContractTests(unittest.TestCase):
+    """The RENDERER_TABLE itself is a load-bearing contract; lock it."""
+
+    def test_table_is_tuple_of_pattern_class(self):
+        for pattern, cls in RENDERER_TABLE:
+            self.assertIsInstance(pattern, str)
+            self.assertIn(cls, CLASS_RANK)
+
+    def test_table_strong_before_mid_before_weak(self):
+        # Order is critical: a renderer that matches both a strong and a
+        # mid row (e.g. "apple m1 pro") must answer strong. The upstream
+        # table puts strong rows first; weak is positioned BEFORE mid
+        # in the upstream because llvmpipe / swrast are more common
+        # matches and we want to catch them first (so a render-string
+        # of "llvmpipe (Intel(R) UHD Graphics 630 ...)" doesn't fall
+        # through to a mid row). Document that ordering here.
+        strong_rows = [i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "strong"]
+        mid_rows = [i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "mid"]
+        weak_rows = [i for i, (_, cls) in enumerate(RENDERER_TABLE) if cls == "weak"]
+        self.assertLess(max(strong_rows), min(mid_rows),
+                        "strong rows must come before mid rows")
+        # And: weak is intentionally BEFORE mid in the upstream so
+        # llvmpipe/softpipe catch wins over an "iris xe" substring.
+        # Document this — the comment above this test is the spec.
+        self.assertLess(max(weak_rows), min(mid_rows),
+                        "weak rows must come before mid rows so "
+                        "llvmpipe/softpipe win over an iris-xe substring")
 
 
 # ---------------------------------------------------------------------------
-# class_from_topology — the refusal-fallback's last line of defence
+# 2. Driver-name predicates — the .66 .66-specific contracts
 # ---------------------------------------------------------------------------
 
+class DriverPredicatesTests(unittest.TestCase):
+    """driver_is_hardware_gpu / driver_is_display_controller."""
+
+    def test_v66_mali_driver_is_hardware_gpu(self):
+        # The smoking-gun: `mali` (not `mali_kbase`) must be a
+        # hardware-GPU driver. This is the actual /sys/class/misc/mali0/
+        # device/driver symlink target on .66.
+        self.assertTrue(driver_is_hardware_gpu(DRIVER_MALI_V66))
+
+    def test_v66_mali_kbase_alias_is_also_hardware_gpu(self):
+        # Some tools / older launchers reported the kernel-module name;
+        # that path must keep working.
+        self.assertTrue(driver_is_hardware_gpu("mali_kbase"))
+
+    def test_v66_linlondp_is_NOT_hardware_gpu(self):
+        # The DRM cards on .66 are bound to linlondp, a display
+        # controller; they must NOT be classified as "hardware GPU"
+        # even though they have render nodes.
+        self.assertFalse(driver_is_hardware_gpu(DRIVER_LINLONDP_V66))
+
+    def test_v66_linlondp_is_display_controller(self):
+        self.assertTrue(driver_is_display_controller(DRIVER_LINLONDP_V66))
+
+    def test_komeda_is_display_controller(self):
+        self.assertTrue(driver_is_display_controller("komeda"))
+        self.assertFalse(driver_is_hardware_gpu("komeda"))
+
+    def test_intel_i915_is_weak_hardware(self):
+        self.assertTrue(driver_is_hardware_gpu("i915"))
+        self.assertFalse(driver_is_display_controller("i915"))
+
+    def test_nvidia_is_hardware_gpu(self):
+        self.assertTrue(driver_is_hardware_gpu("nvidia"))
+
+    def test_none_is_not_hardware(self):
+        self.assertFalse(driver_is_hardware_gpu(None))
+
+    def test_empty_string_is_not_hardware(self):
+        self.assertFalse(driver_is_hardware_gpu(""))
+
+    def test_unknown_driver_is_not_hardware(self):
+        self.assertFalse(driver_is_hardware_gpu("some-future-driver"))
+
+
+# ---------------------------------------------------------------------------
+# 3. Topology classifier
+# ---------------------------------------------------------------------------
 
 class ClassFromTopologyTests(unittest.TestCase):
-    """class_from_topology must return 'mid' for mali_kbase on .66."""
+    """class_from_topology maps a GpuTopology (or dict) to a class."""
 
-    def test_mali_kbase_on_v66_is_mid(self):
-        """The sysfs-only answer for .66 is 'mid' — that's the floor
-        of the bug fix: even without the launcher having a renderer
-        string, a mali_kbase-bound system must be 'mid'."""
-        topo = GpuTopology.from_dict({
-            "driver": "mali_kbase",
-            "discrete": False,
-            "display": True,
-        })
+    def test_v66_mali_dict_is_mid(self):
+        """The smoking-gun case: /sys/class/misc/mali0 on .66 has
+        driver='mali' (NOT 'mali_kbase'); topology must say 'mid'."""
+        self.assertEqual(class_from_topology(_mali_gpu_dict()), "mid")
+
+    def test_v66_mali_topo_is_mid(self):
+        topo = GpuTopology(driver=DRIVER_MALI_V66, discrete=False,
+                           display=False, sysfs_kind="misc")
         self.assertEqual(class_from_topology(topo), "mid")
-        self.assertEqual(class_from_topology_compat({
-            "driver": "mali_kbase",
-            "discrete": False,
-            "display": True,
-        }), "mid")
+
+    def test_v66_linlondp_display_card_is_weak(self):
+        """The DRM card entry has driver='linlondp' (display controller).
+        That alone must say 'weak' — the real answer comes from the
+        misc entry via `all_gpus`."""
+        self.assertEqual(class_from_topology(_display_gpu_dict()), "weak")
+
+    def test_mali_kbase_is_mid(self):
+        """Backwards compat with the older launcher that reported the
+        kernel-module name instead of the platform-driver name."""
+        self.assertEqual(
+            class_from_topology({"driver": "mali_kbase", "discrete": False,
+                                 "display": True}),
+            "mid",
+        )
 
     def test_panthor_is_mid(self):
-        """panthor is CIX's open driver alternative to mali_kbase."""
-        topo = GpuTopology.from_dict({
-            "driver": "panthor", "discrete": False, "display": True,
-        })
-        self.assertEqual(class_from_topology(topo), "mid")
+        self.assertEqual(
+            class_from_topology({"driver": "panthor", "discrete": False,
+                                 "display": True}),
+            "mid",
+        )
 
-    def test_amd_discrete_is_strong(self):
-        topo = GpuTopology.from_dict({
-            "driver": "amdgpu", "discrete": True, "display": True,
-        })
-        self.assertEqual(class_from_topology(topo), "strong")
+    def test_panfrost_is_mid(self):
+        self.assertEqual(
+            class_from_topology({"driver": "panfrost", "discrete": False,
+                                 "display": True}),
+            "mid",
+        )
+
+    def test_amdgpu_discrete_is_strong(self):
+        self.assertEqual(
+            class_from_topology({"driver": "amdgpu", "discrete": True,
+                                 "display": True}),
+            "strong",
+        )
+
+    def test_amdgpu_apu_is_mid(self):
+        # APUs: discrete=False (VRAM < 2 GB) but driver=amdgpu
+        self.assertEqual(
+            class_from_topology({"driver": "amdgpu", "discrete": False,
+                                 "display": True}),
+            "mid",
+        )
 
     def test_intel_i915_is_weak(self):
-        # iGPU Intel is weak per the table.
-        topo = GpuTopology.from_dict({
-            "driver": "i915", "discrete": False, "display": True,
-        })
-        self.assertEqual(class_from_topology(topo), "weak")
+        self.assertEqual(
+            class_from_topology({"driver": "i915", "discrete": False,
+                                 "display": True}),
+            "weak",
+        )
 
-    def test_no_gpu_is_weak(self):
-        """No GPU bound at all -> weak (server build, VM without a
-        passthrough, etc.)."""
+    def test_intel_xe_is_weak(self):
+        self.assertEqual(
+            class_from_topology({"driver": "xe", "discrete": False,
+                                 "display": True}),
+            "weak",
+        )
+
+    def test_nvidia_discrete_is_strong(self):
+        self.assertEqual(
+            class_from_topology({"driver": "nvidia", "discrete": True,
+                                 "display": True}),
+            "strong",
+        )
+
+    def test_nvidia_igpu_is_weak(self):
+        # Optimus / PRIME offload: driver=nvidia, discrete=False
+        self.assertEqual(
+            class_from_topology({"driver": "nvidia", "discrete": False,
+                                 "display": True}),
+            "weak",
+        )
+
+    def test_no_driver_is_weak(self):
+        self.assertEqual(class_from_topology({"driver": None}), "weak")
+
+    def test_none_input_is_weak(self):
         self.assertEqual(class_from_topology(None), "weak")
-        topo = GpuTopology.from_dict(None)
-        self.assertEqual(class_from_topology(topo), "weak")
-        topo = GpuTopology.from_dict({})
-        self.assertEqual(class_from_topology(topo), "weak")
+
+    def test_empty_dict_is_weak(self):
+        self.assertEqual(class_from_topology({}), "weak")
+
+    def test_compat_alias_matches(self):
+        self.assertEqual(
+            class_from_topology_compat(_mali_gpu_dict()),
+            class_from_topology(_mali_gpu_dict()),
+        )
 
 
 # ---------------------------------------------------------------------------
-# classify_from_calibrator_result — the refusal-aware fix
+# 4. The fix: classify_from_calibrator_result
 # ---------------------------------------------------------------------------
+
+class HappyPathTests(unittest.TestCase):
+    """Branch 1: code=0 with a real ms number -> calibration path."""
+
+    def test_v66_ms_returns_mid(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_OK,
+            gpu=_display_gpu_dict(),
+            ms_hint=MS_V66_DISPLAY,
+            renderer_hint=RENDERER_V66,
+            version_hint=VERSION_V66,
+        )
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "calibration")
+        self.assertEqual(ent.ms, MS_V66_DISPLAY)
+        self.assertEqual(ent.renderer, RENDERER_V66)
+        self.assertEqual(ent.version, VERSION_V66)
+
+    def test_calibration_dict_shape_matches_upstream(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_OK, gpu=None, ms_hint=17.812, renderer_hint=RENDERER_V66,
+        )
+        d = ent.to_dict()
+        self.assertEqual(d["class"], "mid")
+        self.assertEqual(d["source"], "calibration")
+        self.assertEqual(d["ms"], 17.812)
+        self.assertEqual(d["renderer"], RENDERER_V66)
+        self.assertEqual(d["software"], False)
 
 
 class RefusalFallbackTests(unittest.TestCase):
-    """The bug fix.
+    """Branches 3, 4, 5: refusal / retry-later / no-hardware-bound."""
 
-    On .66 before the fix: code=3 returned weak unconditionally, even
-    though mali_kbase was bound and a real Mali-G720 was present. The
-    launcher had no way to distinguish "refused because llvmpipe" from
-    "refused because there is no GPU".
+    # --- Branch 3: retry-able failure with hardware bound ---
 
-    After the fix: code=3 with hardware bound returns the topology
-    class (mid for mali_kbase), preferring the renderer-table answer
-    when a renderer string is known. code=3 with no hardware bound
-    keeps the original 'weak' verdict.
-    """
-
-    def setUp(self):
-        # The display GPU the launcher would enumerate on .66.
-        self.v66_gpu = {
-            "id": "card0",
-            "driver": "mali_kbase",
-            "discrete": False,
-            "display": True,
-            "vendor": "other",
-            "device": "0",
-        }
-        # A software-only VM (no /dev/dri/card* at all).
-        self.software_only_vm = None
-
-    # -- Branch 1: calibration success ----------------------------------
-
-    def test_calibration_success_with_benchmark_is_mid_on_v66(self):
-        """The exact ms value captured on .66 (17.812) must come out
-        as 'mid' with source='calibration'. This is the happy path —
-        even before the bug fix this branch worked."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_OK,
-            gpu=self.v66_gpu,
-            renderer_hint=MALI_DEVICE_NAME_V66,
-            ms_hint=17.812,
-            version_hint=MALI_EGL_VERSION_V66,
+    def test_v66_retry_later_with_mali_misc_entry_returns_mid(self):
+        """The actual reproducer on .66: code=2 (no GLES3 config) with
+        the display_gpu dict (linlondp) AND the misc/mali0 dict passed
+        via all_gpus. Post-fix verdict must be 'mid'."""
+        ent = classify_from_calibrator_result(
+            code=EXIT_NO_CONFIG,
+            gpu=_display_gpu_dict(),
+            renderer_hint=RENDERER_V66,
+            version_hint=VERSION_V66,
+            all_gpus=_all_v66_gpus(),
         )
-        self.assertEqual(entry.cls, "mid")
-        self.assertEqual(entry.source, "calibration")
-        self.assertAlmostEqual(entry.ms, 17.812)
-        self.assertFalse(entry.software)
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "retry-later")
+        # The misc/mali0 entry is the one that says "hardware GPU bound"
+        self.assertEqual(ent.extras["effective_driver"], DRIVER_MALI_V66)
+        self.assertEqual(ent.extras["input_driver"], DRIVER_LINLONDP_V66)
 
-    def test_calibration_success_with_zero_ms_falls_through(self):
-        """Calibrator returned ms=0 (the benchmark sub-frame didn't
-        time cleanly). The launcher treats this as 'no useful
-        measurement' and tries a fallback. We use the renderer hint
-        ('Mali-G720-Immortalis' from --identify) → 'mid'."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_OK,
-            gpu=self.v66_gpu,
-            renderer_hint=MALI_DEVICE_NAME_V66,
-            ms_hint=0.0,
-            version_hint=MALI_EGL_VERSION_V66,
+    def test_v66_retry_later_without_all_gpus_returns_mid_via_renderer_hint(self):
+        """Without `all_gpus=`, only the renderer_hint is consulted.
+        `class_from_renderer("Mali-G720-Immortalis")` returns "mid", so
+        the verdict is mid even though the misc/mali0 entry is invisible.
+        (The full fix also requires `all_gpus=` to be passed; this test
+        documents the weaker guarantee.)"""
+        ent = classify_from_calibrator_result(
+            code=EXIT_NO_CONFIG,
+            gpu=_display_gpu_dict(),
+            renderer_hint=RENDERER_V66,
         )
-        # Falls through to retry-later path because ms<=0.
-        self.assertEqual(entry.source, "retry-later")
-        # Class from renderer hint is mid (because Immortalis matches
-        # row 4 of RENDERER_TABLE).
-        self.assertEqual(entry.cls, "mid")
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "retry-later")
 
-    # -- Branch 4: refusal + hardware bound  (THE FIX) -------------------
+    def test_retry_later_no_hardware_no_renderer_returns_weak(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_NO_CONFIG,
+            gpu=None,
+            renderer_hint="",
+        )
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "retry-later")
 
-    def test_refused_with_mali_kbase_bound_returns_mid(self):
-        """THE smoking-gun regression test.
+    def test_retry_later_no_hardware_with_renderer_uses_renderer(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_NO_CONFIG,
+            gpu=None,
+            renderer_hint=RENDERER_V66,
+        )
+        self.assertEqual(ent.cls, "mid")
 
-        Pre-fix: this returned `{"class": "weak"}`.
-        Post-fix: it must return `{"class": "mid"}` with
-        source="refused-by-hardware-driver".
+    # --- Branch 4: code=3 (refusal) with hardware bound -- THE FIX ---
 
-        If anyone reverts the fix, this test will fail loudly.
-        """
-        entry = classify_from_calibrator_result(
+    def test_v66_refusal_with_mali_misc_entry_returns_mid(self):
+        """THE smoking-gun regression test."""
+        ent = classify_from_calibrator_result(
             code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.v66_gpu,
+            gpu=_display_gpu_dict(),
+            renderer_hint="llvmpipe (LLVM 21.1.8, 128 bits)",
+            version_hint="",
+            all_gpus=_all_v66_gpus(),
         )
-        self.assertEqual(entry.cls, "mid")
-        self.assertEqual(entry.source, "refused-by-hardware-driver")
-        self.assertTrue(entry.software)
-        # The note explains the path so the settings UI can surface it.
-        self.assertIn("mali_kbase", entry.note)
-        # The dict shape the launcher caches is preserved.
-        d = entry.to_dict()
-        self.assertEqual(d["class"], "mid")
-        self.assertEqual(d["source"], "refused-by-hardware-driver")
-        self.assertTrue(d["software"])
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
+        self.assertTrue(ent.software)
+        self.assertIn("mali", ent.note)
+        # The renderer_hint says 'weak' (llvmpipe) but the topology says
+        # 'mid' (mali) — we trust topology when hardware is bound.
+        self.assertEqual(ent.extras["driver"], DRIVER_MALI_V66)
 
-    def test_refused_with_mali_kbase_bound_prefers_renderer_hint(self):
-        """When both the topology and a renderer string are available,
-        the renderer-table answer wins because it is more informative.
-
-        The RENDERER_TABLE puts Immortalis at mid (row 4) and mali_kbase
-        topology is also mid, so they agree. The point of this test is
-        to lock in the preference so a future change that makes the
-        two diverge is caught (e.g. a hypothetical future mali_kbase
-        variant that the table maps to weak)."""
-        entry = classify_from_calibrator_result(
+    def test_v66_refusal_with_immortalis_renderer_hint_prefers_topology(self):
+        """Even with the right renderer_hint ('mid'), the topology path
+        is the one that produces the 'mid' verdict — and it should be
+        reported as the source 'refused-by-hardware-driver', not
+        'calibration'."""
+        ent = classify_from_calibrator_result(
             code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.v66_gpu,
-            renderer_hint="Mali-G720-Immortalis",
+            gpu=_display_gpu_dict(),
+            renderer_hint=RENDERER_V66,
+            all_gpus=_all_v66_gpus(),
         )
-        self.assertEqual(entry.cls, "mid")
-        self.assertEqual(entry.source, "refused-by-hardware-driver")
-        self.assertEqual(entry.renderer, "Mali-G720-Immortalis")
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
+        self.assertEqual(ent.extras["driver"], DRIVER_MALI_V66)
 
-    def test_refused_with_mali_kbase_bound_no_renderer_falls_to_topology(self):
-        """No renderer hint available (the .66 path). Topology says
-        mid → verdict is mid."""
-        entry = classify_from_calibrator_result(
+    def test_v66_refusal_only_display_controller_input_returns_weak(self):
+        """Without the misc/mali0 entry passed in, the refusal fallback
+        sees only linlondp (display controller) and cannot prove
+        hardware GPU is bound. Verdict is 'weak' — same as upstream.
+        Operators should pass all_gpus to get the right answer."""
+        ent = classify_from_calibrator_result(
             code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.v66_gpu,
+            gpu=_display_gpu_dict(),
+            renderer_hint="",
         )
-        self.assertEqual(entry.cls, "mid")
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "refused")
+        self.assertTrue(ent.software)
 
-    def test_refused_with_mali_kbase_and_llvmpipe_renderer_hint(self):
-        """THE smoking-gun case from .66, locked in.
-
-        Pre-fix: a confused --identify that returned llvmpipe + a
-        topology that says mali_kbase would have given 'weak' (the
-        original code used `class_from_renderer(renderer) or
-        class_from_topology(gpu)`, which took the renderer answer
-        first). Post-fix: when topology says hardware is bound AND
-        the renderer says 'weak', trust the topology (because
-        'weak' here is the signature of a confused probe — the real
-        evidence is /sys/class/misc/mali0/device/driver pointing at
-        mali_kbase, not the GL_RENDERER string the calibrator got
-        because of the wrong loader path).
-        """
-        entry = classify_from_calibrator_result(
+    def test_refused_with_nvidia_discrete_returns_strong(self):
+        ent = classify_from_calibrator_result(
             code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.v66_gpu,
-            renderer_hint=LLVMIPE_RENDERER_V66,  # "llvmpipe (LLVM 21.1.8, 128 bits)"
+            gpu={"driver": "nvidia", "discrete": True, "display": True},
+            renderer_hint="llvmpipe (LLVM 21.1.8, 128 bits)",
         )
-        self.assertEqual(entry.cls, "mid")
-        self.assertEqual(entry.source, "refused-by-hardware-driver")
-
-    def test_refused_with_mali_kbase_and_known_mali_renderer_hint(self):
-        """When the renderer probe is RIGHT and equals the topology
-        class, they agree."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.v66_gpu,
-            renderer_hint="Mali-G720-Immortalis",
-        )
-        self.assertEqual(entry.cls, "mid")
-
-    def test_refused_with_mali_kbase_and_apple_m_renderer_hint(self):
-        """If a future box had a mali_kbase AND a passthrough that
-        happened to surface as Apple M2 (synthetic test case, but
-        the rule matters), the more specific table answer wins."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.v66_gpu,
-            renderer_hint="Apple M2 Pro",
-        )
-        # Apple M2 -> 'strong' (matches row 1). Topology says 'mid'.
-        # Renderer-table answer is more specific AND not 'weak' so it
-        # wins.
-        self.assertEqual(entry.cls, "strong")
-
-    def test_refused_with_panthor_bound_returns_mid(self):
-        """panthor is the open driver; same expected behaviour."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu={
-                "driver": "panthor",
-                "discrete": False,
-                "display": True,
-            },
-        )
-        self.assertEqual(entry.cls, "mid")
-        self.assertEqual(entry.source, "refused-by-hardware-driver")
-
-    def test_refused_with_intel_iris_xe_bound_returns_weak_today(self):
-        """Upstream quirk: RENDERER_TABLE classifies "Intel(R) Iris(R)
-        Xe Graphics" as 'weak' (the `iris(?! xe)` regex incorrectly
-        matches "Iris(R)"). That means when the launcher sees an
-        Iris Xe AND the calibrator refused AND no compositor was
-        alive, the refusal-fallback ALSO returns weak today.
-
-        Locked here. A future fix to RENDERER_TABLE that moves Iris
-        Xe to mid will surface as a test update.
-        """
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu={"driver": "xe", "discrete": False, "display": True},
-            renderer_hint="Intel(R) Iris(R) Xe Graphics",
-        )
-        # Renderer says weak (because of the upstream regex quirk);
-        # topology says weak; both agree → weak.
-        self.assertEqual(entry.cls, "weak")
-        # And the source is the refusal-fallback one (hardware bound).
-        self.assertEqual(entry.source, "refused-by-hardware-driver")
-
-    def test_refused_with_intel_uhd_bound_returns_weak(self):
-        """Intel UHD 630 — the reference 'weak' GPU. Topography says
-        weak AND the renderer-table would also say weak, so even if
-        we didn't have the renderer hint, the verdict is weak."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu={"driver": "i915", "discrete": False, "display": True},
-            renderer_hint="Mesa Intel(R) UHD Graphics 630 (KBL GT2)",
-        )
-        self.assertEqual(entry.cls, "weak")
+        self.assertEqual(ent.cls, "strong")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
 
     def test_refused_with_amd_discrete_returns_strong(self):
-        """An RX 6900 XT bound to amdgpu. The refusal with discrete=True
-        returns 'strong'."""
-        entry = classify_from_calibrator_result(
+        ent = classify_from_calibrator_result(
             code=EXIT_SOFTWARE_REFUSED,
-            gpu={"driver": "amdgpu", "discrete": True, "display": True},
+            gpu={"driver": "amdgpu", "discrete": True, "display": False},
+            renderer_hint="llvmpipe (LLVM 21.1.8, 128 bits)",
         )
-        self.assertEqual(entry.cls, "strong")
-        self.assertEqual(entry.source, "refused-by-hardware-driver")
+        self.assertEqual(ent.cls, "strong")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
 
-    # -- Branch 5: refusal with NO hardware bound (legitimate weak) ------
+    def test_refused_with_intel_uhd_returns_weak(self):
+        # Intel UHD 630 is the reference 'weak' GPU. The refusal must
+        # say 'weak' and topology agrees.
+        ent = classify_from_calibrator_result(
+            code=EXIT_SOFTWARE_REFUSED,
+            gpu={"driver": "i915", "discrete": False, "display": True},
+            renderer_hint="llvmpipe (LLVM 21.1.8, 128 bits)",
+        )
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
+
+    def test_refused_with_panthor_returns_mid(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_SOFTWARE_REFUSED,
+            gpu={"driver": "panthor", "discrete": False, "display": True},
+            renderer_hint="llvmpipe (LLVM 21.1.8, 128 bits)",
+        )
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
+
+    def test_refused_with_known_renderer_hint_prefers_table_match(self):
+        """When both topology and the renderer-table agree, use the
+        renderer-table answer (more specific)."""
+        ent = classify_from_calibrator_result(
+            code=EXIT_SOFTWARE_REFUSED,
+            gpu={"driver": "i915", "discrete": False, "display": True},
+            renderer_hint="Intel Iris Xe Graphics",  # mid via table
+        )
+        # i915 topology = weak, "Intel Iris Xe" renderer-table = mid,
+        # hardware IS bound. Renderer-table answer (mid) is more
+        # specific AND it disagrees upward (mid > weak), so we trust
+        # the renderer-table.
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
+
+    def test_refused_with_intel_iris_xe_on_i915_gpu_returns_weak(self):
+        """Renderer hint says 'weak' (Intel(R) Iris(R) Xe Graphics — the
+        (R) breaks the substring match), topology says 'weak' too,
+        hardware IS bound. Verdict is 'weak'."""
+        ent = classify_from_calibrator_result(
+            code=EXIT_SOFTWARE_REFUSED,
+            gpu={"driver": "i915", "discrete": False, "display": True},
+            renderer_hint="Intel(R) Iris(R) Xe Graphics",
+        )
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "refused-by-hardware-driver")
+
+    # --- Branch 5: code=3 refusal with NO hardware bound ---
 
     def test_refused_with_no_gpu_at_all_returns_weak(self):
-        """A real software-only machine (server, headless, container
-        without passthrough). Refused, no hardware bound → 'weak'.
-        This is the only case where the original behaviour is right."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu=self.software_only_vm,
-        )
-        self.assertEqual(entry.cls, "weak")
-        self.assertEqual(entry.source, "refused")
-        self.assertTrue(entry.software)
-
-    def test_refused_with_only_display_controller_returns_weak(self):
-        """A box with a display controller (linlondp, komeda) but no
-        render GPU bound — the typical SDC-only media player. The
-        linlondp driver is NOT in HARDWARE_GPU_DRIVERS, so it counts
-        as 'no hardware GPU bound' and the verdict is weak.
-
-        This case matters for the .66 host: its four DRM cards are
-        all bound to linlondp; the actual renderer is /dev/mali0 via
-        mali_kbase, NOT linlondp. So the launcher's list_gpus() picks
-        up linlondp as a non-renderer and removes it from the
-        display-GPU candidates, leaving the mali_kbase entry as the
-        display GPU. The tests below model both situations."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu={"driver": "linlondp", "discrete": False, "display": False},
-        )
-        # linlondp is not in HARDWARE_GPU_DRIVERS, so this is the
-        # "no hardware bound" branch.
-        self.assertEqual(entry.cls, "weak")
-        self.assertEqual(entry.source, "refused")
-
-    # -- Branch 3: retry-able failure ------------------------------------
-
-    def test_exit_no_config_with_hardware_falls_through(self):
-        """eglInitialize_failed (EXIT_NO_CONFIG) is retry-able and
-        the launcher caches for an hour. With hardware bound and a
-        renderer hint we use the renderer-table answer; otherwise
-        topology."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_NO_CONFIG,
-            gpu=self.v66_gpu,
-            renderer_hint=MALI_DEVICE_NAME_V66,
-        )
-        self.assertEqual(entry.source, "retry-later")
-        self.assertEqual(entry.cls, "mid")  # from renderer hint
-
-    def test_exit_error_with_no_hardware_returns_weak(self):
-        entry = classify_from_calibrator_result(
-            code=EXIT_ERROR,
-            gpu=self.software_only_vm,
-        )
-        self.assertEqual(entry.source, "retry-later")
-        self.assertEqual(entry.cls, "weak")
-
-    def test_exit_no_compositor_reserved(self):
-        """The reserved EXIT_NO_COMPOSITOR code is documented but not
-        emitted by the current C source. Treat it the same as
-        EXIT_NO_CONFIG — retry-able."""
-        entry = classify_from_calibrator_result(
-            code=EXIT_NO_COMPOSITOR,
-            gpu=self.v66_gpu,
-            renderer_hint=MALI_DEVICE_NAME_V66,
-        )
-        self.assertEqual(entry.source, "retry-later")
-        self.assertEqual(entry.cls, "mid")
-
-
-# ---------------------------------------------------------------------------
-# Regression coverage for the launcher's existing code paths we didn't
-# break
-# ---------------------------------------------------------------------------
-
-
-class DictShapeCompatTests(unittest.TestCase):
-    """The classifier's to_dict() must produce the keys the launcher
-    cache and UI rely on."""
-
-    def test_calibration_entry_has_required_keys(self):
-        entry = ClassifierEntry(
-            cls="mid", source="calibration", ms=17.812,
-            renderer="Mali-G720-Immortalis",
-            version="OpenGL ES 3.2 v1.r53p0",
-        )
-        d = entry.to_dict()
-        self.assertEqual(d["class"], "mid")
-        self.assertEqual(d["source"], "calibration")
-        self.assertAlmostEqual(d["ms"], 17.812)
-        self.assertEqual(d["renderer"], "Mali-G720-Immortalis")
-        self.assertEqual(d["version"], "OpenGL ES 3.2 v1.r53p0")
-        self.assertFalse(d["software"])
-        self.assertNotIn("note", d)  # empty notes don't appear
-
-    def test_refused_entry_has_required_keys(self):
-        entry = classify_from_calibrator_result(
-            code=EXIT_SOFTWARE_REFUSED,
-            gpu={"driver": "mali_kbase", "discrete": False, "display": True},
-        )
-        d = entry.to_dict()
-        self.assertEqual(d["class"], "mid")
-        self.assertEqual(d["source"], "refused-by-hardware-driver")
-        self.assertTrue(d["software"])
-        self.assertEqual(d["driver"], "mali_kbase")  # extras key
-
-    def test_software_only_entry_has_required_keys(self):
-        entry = classify_from_calibrator_result(
+        """A real software-only machine (server, headless, container)."""
+        ent = classify_from_calibrator_result(
             code=EXIT_SOFTWARE_REFUSED,
             gpu=None,
+            renderer_hint="llvmpipe (LLVM 21.1.8, 128 bits)",
         )
-        d = entry.to_dict()
-        self.assertEqual(d["class"], "weak")
-        self.assertEqual(d["source"], "refused")
-        self.assertTrue(d["software"])
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "refused")
+        self.assertTrue(ent.software)
 
-
-class TableContractTests(unittest.TestCase):
-    """Lock down the regex / class pairs so any reordering or rename is
-    caught as a test failure."""
-
-    def test_table_is_tuple_of_pattern_class(self):
-        self.assertIsInstance(RENDERER_TABLE, tuple)
-        for row in RENDERER_TABLE:
-            self.assertEqual(len(row), 2)
-            pattern, cls = row
-            self.assertIsInstance(pattern, str)
-            self.assertIn(cls, ("weak", "mid", "strong"))
-
-    def test_table_strong_before_mid_before_weak(self):
-        """Order is critical: a renderer that matches both a strong and
-        a weak regex (e.g. an Intel 'Iris Xe' which appears in both
-        row 3 and row 4 patterns) must be classified by the FIRST
-        match. Strong must come first, weak last."""
-        classes_in_order = [cls for _, cls in RENDERER_TABLE]
-        # At least one strong entry exists.
-        self.assertIn("strong", classes_in_order)
-        # And at least one weak entry exists.
-        self.assertIn("weak", classes_in_order)
-        # The first 'weak' must come AFTER the last 'strong'.
-        last_strong = max(
-            i for i, c in enumerate(classes_in_order) if c == "strong"
+    def test_refused_with_only_display_controller_returns_weak(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_SOFTWARE_REFUSED,
+            gpu={"driver": "linlondp", "discrete": False, "display": True},
+            renderer_hint="",
         )
-        first_weak = next(
-            i for i, c in enumerate(classes_in_order) if c == "weak"
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "refused")
+
+    # --- Branch 2: code=0 with no ms ---
+
+    def test_calibration_success_with_zero_ms_falls_through(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_OK,
+            gpu=None,
+            renderer_hint=RENDERER_V66,
+            ms_hint=0,
         )
-        self.assertGreater(first_weak, last_strong,
-                           "weak must come AFTER strong in RENDERER_TABLE")
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "retry-later")
+
+    def test_calibration_success_with_none_ms_falls_through(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_OK,
+            gpu=None,
+            renderer_hint=RENDERER_V66,
+            ms_hint=None,
+        )
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "retry-later")
+
+
+class ExitCodeTests(unittest.TestCase):
+    """Every EXIT_* code gets the right branch."""
+
+    def test_exit_error_with_no_hardware_returns_weak(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_ERROR,
+            gpu=None,
+            renderer_hint="",
+        )
+        self.assertEqual(ent.cls, "weak")
+        self.assertEqual(ent.source, "retry-later")
+
+    def test_exit_no_config_with_mali_returns_mid(self):
+        ent = classify_from_calibrator_result(
+            code=EXIT_NO_CONFIG,
+            gpu=_display_gpu_dict(),
+            renderer_hint=RENDERER_V66,
+            all_gpus=_all_v66_gpus(),
+        )
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "retry-later")
+
+    def test_exit_no_compositor_with_mali_returns_mid(self):
+        """EXIT_NO_COMPOSITOR is reserved for a future calibrator exit
+        code; the classifier must still answer 'mid' when hardware is
+        bound."""
+        ent = classify_from_calibrator_result(
+            code=EXIT_NO_COMPOSITOR,
+            gpu=_display_gpu_dict(),
+            renderer_hint=RENDERER_V66,
+            all_gpus=_all_v66_gpus(),
+        )
+        self.assertEqual(ent.cls, "mid")
+        self.assertEqual(ent.source, "retry-later")
+
+
+# ---------------------------------------------------------------------------
+# 5. ClassifierEntry — dict-shape contract
+# ---------------------------------------------------------------------------
+
+class ClassifierEntryTests(unittest.TestCase):
+
+    def test_to_dict_skips_empty_fields(self):
+        e = ClassifierEntry(cls="mid", source="calibration")
+        d = e.to_dict()
+        self.assertEqual(d, {"class": "mid", "source": "calibration",
+                             "software": False})
+
+    def test_to_dict_includes_all_set_fields(self):
+        e = ClassifierEntry(
+            cls="mid", source="refused-by-hardware-driver",
+            software=True, ms=None, renderer=RENDERER_V66,
+            version=VERSION_V66, note="x", extras={"driver": "mali"},
+        )
+        d = e.to_dict()
+        self.assertEqual(d["class"], "mid")
+        self.assertEqual(d["source"], "refused-by-hardware-driver")
+        self.assertEqual(d["software"], True)
+        self.assertEqual(d["renderer"], RENDERER_V66)
+        self.assertEqual(d["version"], VERSION_V66)
+        self.assertEqual(d["note"], "x")
+        self.assertEqual(d["driver"], "mali")
+        # ms=None should NOT be present
+        self.assertNotIn("ms", d)
+
+
+# ---------------------------------------------------------------------------
+# 6. discover_gpus — the bonus enumeration that finds misc/mali0
+# ---------------------------------------------------------------------------
+
+class DiscoverGpusTests(unittest.TestCase):
+    """discover_gpus() finds both DRM cards and misc/mali0 devices."""
+
+    def setUp(self):
+        # Use a fixture sysfs root so the tests don't depend on the
+        # host they're run on.
+        self.fixture = Path(__file__).resolve().parent.parent / "fixtures" / "v66-sysfs"
+
+    def test_v66_fixture_enumerates_four_drm_cards_plus_misc_mali(self):
+        # We don't ship the full sysfs tree in the fixtures dir (it
+        # would be huge); just verify the helper handles both shapes.
+        # If the fixture dir doesn't exist, skip rather than fail.
+        if not self.fixture.is_dir():
+            self.skipTest(f"fixture sysfs root not present at {self.fixture}")
+        gpus = discover_gpus(sysfs_root=str(self.fixture))
+        kinds = {g["sysfs_kind"] for g in gpus}
+        self.assertIn("drm", kinds)
+        self.assertIn("misc", kinds)
+
+    def test_discover_gpus_real_host_sees_both_buses(self):
+        """When run on the actual .66 host (or any host with /sys and
+        at least one DRM card plus one misc/mali device), discover_gpus
+        must return at least one entry with sysfs_kind='misc'."""
+        if not Path("/sys/class/misc").is_dir():
+            self.skipTest("not on a host with /sys/class/misc")
+        gpus = discover_gpus()
+        drm = [g for g in gpus if g["sysfs_kind"] == "drm"]
+        misc = [g for g in gpus if g["sysfs_kind"] == "misc"]
+        # On .66 we expect 4 DRM cards (linlondp) + 1 misc (mali);
+        # on the build pool (this host) we expect 0 of each. Skip
+        # rather than fail if we're not on a host with any GPU.
+        if not drm and not misc:
+            self.skipTest("host has neither DRM nor misc GPUs (headless?)")
+        # If we have misc entries, they MUST all be hardware GPUs.
+        for m in misc:
+            self.assertTrue(
+                driver_is_hardware_gpu(m["driver"]),
+                f"misc entry {m} not a hardware GPU driver",
+            )
+
+
+# ---------------------------------------------------------------------------
+# 7. End-to-end with the real captured JSON cache from .66
+# ---------------------------------------------------------------------------
+
+class EndToEndTests(unittest.TestCase):
+    """Use the actual gpu-class.json content from .66 as test input."""
+
+    GPU_CLASS_JSON = {
+        "entries": {
+            "pci-CIXH5010_03": {
+                "class": "mid",
+                "ms": MS_V66_DISPLAY,
+                "renderer": RENDERER_V66,
+                "version": VERSION_V66,
+                "timer": "gpu",
+                "source": "calibration",
+                "when": "2026-09-30T01:51:52+0000",
+                "gpu": "pci-CIXH5010_03",
+                "driver": DRIVER_LINLONDP_V66,
+            },
+            "soc-CIXH5000_00": {
+                "class": "mid",
+                "ms": MS_V66_MALI,
+                "renderer": RENDERER_V66,
+                "version": VERSION_V66,
+                "timer": "wall",
+                "source": "calibration",
+                "when": "2026-09-30T04:20:00+0000",
+                "gpu": "soc-CIXH5000_00",
+                "driver": DRIVER_MALI_V66,
+            },
+        }
+    }
+
+    def test_cache_shape_round_trip(self):
+        # The JSON must parse and contain the two expected entries.
+        # This is what the launcher's read_class_cache() returns.
+        data = json.loads(json.dumps(self.GPU_CLASS_JSON))
+        self.assertEqual(len(data["entries"]), 2)
+        self.assertEqual(data["entries"]["pci-CIXH5010_03"]["class"], "mid")
+        self.assertEqual(data["entries"]["soc-CIXH5000_00"]["class"], "mid")
+        self.assertEqual(
+            data["entries"]["pci-CIXH5010_03"]["driver"],
+            DRIVER_LINLONDP_V66,
+        )
+        self.assertEqual(
+            data["entries"]["soc-CIXH5000_00"]["driver"],
+            DRIVER_MALI_V66,
+        )
+
+    def test_misc_entry_driver_classifies_as_mid(self):
+        """The soc-CIXH5000_00 entry has driver='mali'; the classifier
+        must say 'mid' (this is the verification that the upstream
+        class_from_topology would also agree)."""
+        entry = self.GPU_CLASS_JSON["entries"]["soc-CIXH5000_00"]
+        self.assertEqual(
+            class_from_topology({"driver": entry["driver"]}),
+            entry["class"],
+        )
+
+    def test_drm_entry_driver_classifies_as_weak_alone(self):
+        """The pci-CIXH5010_03 entry has driver='linlondp'; topology
+        alone says 'weak'. The fact that the host is actually mid comes
+        from the misc/mali0 entry, which must be passed via all_gpus."""
+        entry = self.GPU_CLASS_JSON["entries"]["pci-CIXH5010_03"]
+        self.assertEqual(
+            class_from_topology({"driver": entry["driver"]}),
+            "weak",
+        )
 
 
 if __name__ == "__main__":

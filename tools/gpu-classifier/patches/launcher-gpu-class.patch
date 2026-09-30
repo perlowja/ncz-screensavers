@@ -1,66 +1,145 @@
-# patches/launcher-gpu-class.patch — unified diff for /usr/bin/ncz-screensaver 0.7.1.
-#
-# Apply this on the gitlab-side mirror (gitlab.com/ncz-os/ncz-screensavers)
-# after landing tools/gpu-classifier/ in this branch. The patch is
-# conservative: it changes one block in gpu_class() (the code==3 refusal
-# branch) and one line where the calibrator subprocess env is built
-# (to call augment_calibrator_env).
-#
-# Apply with:
-#     git checkout master
-#     git am --signoff < tools/gpu-classifier/patches/launcher-gpu-class.patch
-#     # then copy tools/gpu-classifier/ into the working tree at the
-#     # right sys.path search location
-#
-# The patch file is also rendered textually below in ncz_screensaver_patch.py
-# for reviewers who want to read it as code rather than as a diff.
-
---- a/usr/bin/ncz-screensaver
-+++ b/usr/bin/ncz-screensaver
-@@ -1,8 +1,16 @@
- #!/usr/bin/python3
- """ncz-screensaver - launcher, supervisor and CLI for the NCZ-OS screensavers.
- 
- The idle daemon (ncz-screensaver-idled) runs `ncz-screensaver start --idle`
- when the seat goes idle and `ncz-screensaver stop` on input.  This program
- picks a hack from the dev.ncz.screensaver settings, runs it in its own process
- group, rotates it, benches hacks that crash or render black, and stops it
+--- a/usr/bin/ncz-screensaver	2026-09-30 05:31:41.337530436 +0000
++++ tests/fixtures/patched_launcher.py	2026-09-30 05:43:15.617396149 +0000
+@@ -8,6 +8,17 @@
  cleanly.  See docs/LAUNCHER-DESIGN.md.  Standard library only.
  """
  
-+# The fix for "GPU class shows weak on .66 (Mali-G720-Immortalis) when no
-+# compositor is running" lives in tools/gpu-classifier/. This import resolves
-+# it from /usr/share/ncz-screensavers/gpu-classifier/ in the installed image;
-+# during development, tools/gpu-classifier/ is on PYTHONPATH.
 +try:
-+    from gpu_classifier import classify_from_calibrator_result, augment_calibrator_env
++    from gpu_classifier import (
++        classify_from_calibrator_result,
++        augment_calibrator_env,
++        discover_gpus,
++    )
 +except ImportError:
-+    classify_from_calibrator_result = None
-+    augment_calibrator_env = lambda env: env
++    def classify_from_calibrator_result(*a, **kw): return None
++    def augment_calibrator_env(env): return env
++    def discover_gpus(): return []
 +
  import argparse
  import ast
  import contextlib
-@@ -820,7 +828,12 @@ def gpu_class(settings, gpu=None, run=True, force=False):
-     env = build_child_env("calibrate", settings, offload=False)
-     if gpu is not None and not gpu.get("display"):
-         drop_egl_vendor_pins(env)
+@@ -592,6 +603,23 @@
+         return ""
+ 
+ 
++def _all_known_gpus():
++    """Every GPU the launcher knows about: DRM cards + /sys/class/misc/mali*."""
++    seen = set()
++    out = []
++    for g in list_gpus():
++        if g["id"] in seen:
++            continue
++        seen.add(g["id"])
++        out.append(g)
++    for g in discover_gpus():
++        if g["id"] in seen:
++            continue
++        seen.add(g["id"])
++        out.append(g)
++    return out
++
++
+ @functools.lru_cache(maxsize=1)
+ def list_gpus():
+     """Render-capable GPUs from sysfs, display GPU first.
+@@ -731,7 +759,14 @@
+ 
+ 
+ def class_from_topology(gpu=None):
+-    """Coarse class from sysfs alone: used only when no renderer string is known."""
++    """Coarse class from sysfs alone: used only when no renderer string is known.
++
++    Verbatim from the upstream launcher EXCEPT for the addition of "mali"
++    (the platform-driver name) alongside "mali_kbase" (the kernel-module
++    name). On Sky1 /sys/class/misc/mali0/device/driver resolves to "mali";
++    the upstream launcher only knew "mali_kbase" and so returned "weak"
++    for the misc entry — that was Bug B.
++    """
+     gpu = gpu or display_gpu()
+     if gpu is None:
+         return "weak"
+@@ -739,7 +774,7 @@
+         return "strong"
+     if gpu["driver"] in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
+         return "weak"
+-    if gpu["driver"] in ("mali_kbase", "panthor", "panfrost", "msm", "amdgpu"):
++    if gpu["driver"] in ("mali", "mali_kbase", "panthor", "panfrost", "msm", "amdgpu"):
+         return "mid"
+     return "weak"
+ 
+@@ -788,8 +823,30 @@
+ 
+ 
+ def fallback_entry(renderer="", gpu=None):
+-    cls = class_from_renderer(renderer) or class_from_topology(gpu)
+-    return {"class": cls, "renderer": renderer, "source": "table"}
++    """Refusal-aware fallback. The pre-fix version returned
++    class_from_topology(gpu) which on Sky1 returned 'weak' because
++    display_gpu.driver == 'linlondp' (display controller, not a 3D GPU).
++
++    The fix:
++      1. consult class_from_renderer(renderer) — if it returns mid/strong
++         (the cached renderer says "Mali-G720-Immortalis"), trust it;
++      2. otherwise consult class_from_topology(gpu), but use the misc/mali0
++         entry if it exists, so a real Sky1 box returns 'mid'.
++
++    Returns the launcher's existing dict shape so downstream code (offload,
++    plan, settings UI, cache) doesn't need to change.
++    """
++    cls_from_hint = class_from_renderer(renderer)
++    if cls_from_hint and cls_from_hint != "weak":
++        return {"class": cls_from_hint, "renderer": renderer, "source": "table"}
++    # The display_gpu (linlondp on Sky1) says weak; try the misc entry.
++    misc_entry = next(
++        (g for g in discover_gpus() if g.get("driver") in
++         ("mali", "mali_kbase", "panthor", "panfrost", "msm", "amdgpu")),
++        None,
++    )
++    cls_from_topo = class_from_topology(misc_entry or gpu)
++    return {"class": cls_from_topo, "renderer": renderer, "source": "table"}
+ 
+ 
+ def read_class_cache():
+@@ -822,11 +879,40 @@
      env.update(gpu_env(gpu))
      for name in ("NCZ_ALLOW_SOFTWARE", "NCZ_CALIBRATE_MS"):
          env.pop(name, None)
 +    # Sky1 + cixgpu-pro: inject the loader path so the calibrator sees the
 +    # real Mali instead of falling back to llvmpipe. No-op on every other
-+    # platform. See tools/gpu-classifier/calibrator_env.py.
++    # platform.
 +    augment_calibrator_env(env)
      code, ident = _calibrator_json(["--identify"], env, 30)
      if code == 3:
 -        return {"class": "weak", "source": "refused", "software": True}
-+        # THE FIX: refusal + real hardware bound -> use the topology
-+        # fallback (or the renderer-table answer if a renderer is known).
-+        # On a real software-only system (server, headless VM, CI), the
-+        # original 'weak' verdict is preserved.
++        # THE FIX (refusal path): software renderer refused + real
++        # hardware bound -> use the topology / renderer-table fallback
++        # instead of the unconditional weak. On a real software-only
++        # system (server, headless VM, CI), the original 'weak' verdict
++        # is preserved.
 +        return classify_from_calibrator_result(
 +            code=3, gpu=gpu, renderer_hint="", ms_hint=None,
++            all_gpus=_all_known_gpus(),
 +        ).to_dict()
      if ident is None:
-         return entry or fallback_entry("", gpu)
+-        return entry or fallback_entry("", gpu)
++        # THE FIX (no-ident path): the calibrator exited non-zero but NOT
++        # with code 3 (on .66 today this is exit 2, "no GLES3 config").
++        # The original launcher returns fallback_entry("", gpu) which on
++        # Sky1 says "weak" because display_gpu.driver is "linlondp" (a
++        # display controller, not a 3D GPU). The new classifier consults
++        # the misc/mali0 entry (driver="mali") and returns "mid".
++        if entry is None:
++            cached = read_class_cache()
++            renderer_hint = ""
++            for c in cached.values():
++                if c.get("renderer"):
++                    renderer_hint = c["renderer"]
++                    break
++            return classify_from_calibrator_result(
++                code=code, gpu=gpu, renderer_hint=renderer_hint,
++                all_gpus=_all_known_gpus(),
++            ).to_dict()
++        return entry
+     if (
+         entry
+         and not force

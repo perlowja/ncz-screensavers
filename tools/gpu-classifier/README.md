@@ -7,48 +7,97 @@ Host `192.168.207.66` (cixmini / MS-R1) was reinstalled with
 Hardware confirmed working at the driver/userspace level:
 
 ```
-$ lsmod | grep mali_kbase
-mali_kbase           1269760  31
-$ ls -la /dev/mali0 /dev/dri/renderD*
-crw-rw---- 1 video 226,   0 /dev/mali0
-crw-rw---- 1 render 226, 128 /dev/dri/renderD128  (linlondp)
-$ vulkaninfo | grep deviceName
-deviceName        = Mali-G720-Immortalis
-$ LD_LIBRARY_PATH=/opt/cixgpu-pro/lib/aarch64-linux-gnu eglinfo | grep renderer
+$ lsmod | grep -i mali
+mali_kbase           1269760  35
+
+$ ls -la /dev/dri /dev/mali*
+/dev/dri/card0  ... linlondp
+/dev/dri/card1  ... linlondp
+/dev/dri/card2  ... linlondp   (display=True)
+/dev/dri/card3  ... linlondp
+/dev/mali0      crw-rw-rw- 1 root 10,262
+
+$ basename $(readlink /sys/class/misc/mali0/device/driver)
+mali                                                  <-- platform driver name
+# (NOT "mali_kbase" — that's the kernel-module name; the platform-driver
+#  symlink resolves to "mali". Both names must mean "hardware GPU bound".)
+
+$ vulkaninfo --summary | grep deviceName
+  deviceName         = Mali-G720-Immortalis
+  driverID           = DRIVER_ID_ARM_PROPRIETARY
+  driverName         = Mali-G720-Immortalis
+
+$ eglinfo | grep -E "renderer|version"
+EGL vendor string: ARM
+EGL version string: 1.5 Valhall-"r53p0-00eac0"
 OpenGL ES profile renderer: Mali-G720-Immortalis
 OpenGL ES profile version: OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5
 ```
 
-But the screensaver launcher (`/usr/bin/ncz-screensaver calibrate`,
-package `ncz-screensavers 0.7.1`) classifies this hardware as **weak**, and the
-Singularity launcher settings UI shows that verdict on a panel labelled
-"GPU class". That is wrong: a Mali-G720-Immortalis with `mali_kbase` loaded and
-Vulkan returning a real `Mali-G720-Immortalis` device is the canonical
-mid-class (per `tiers.tsv` min-class column).
+But the screensaver launcher (`/usr/bin/ncz-screensaver 0.7.1`) classifies
+this hardware as **weak** when the operator runs a fresh probe from an SSH
+session. The Singularity launcher settings UI shows that verdict on a panel
+labelled "GPU class". That is wrong: a Mali-G720-Immortalis with
+`mali_kbase` loaded and Vulkan returning a real `Mali-G720-Immortalis`
+device is the canonical mid-class (per `tiers.tsv` min-class column).
 
-### Where the wrong verdict comes from
+### Where the wrong verdict comes from (three bugs, all hit on .66)
 
 The classifier path in `ncz-screensaver` runs the calibrator
 (`/usr/libexec/ncz-screensavers/ncz-screensaver-calibrate`):
+
+#### Bug A — the env-builder doesn't pin the CIX loader path
 
 1. `gpu_class()` calls `_calibrator_json(["--identify"], env, 30)`. The
    `env` is `build_child_env("calibrate", ...)` — which copies `os.environ`
    and adds a few keys via `find_compositor_environ`, **but does not set
    `LD_LIBRARY_PATH`** to the CIX proprietary path
-   (`/opt/cixgpu-pro/lib/aarch64-linux-gnu`). On the live .66 host there is no
-   compositor running (user `mini` is on `tty1`, no `WAYLAND_DISPLAY`,
-   no `labwc`/`sway` in the process table), so `find_compositor_environ`
-   returns `{}`.
+   (`/opt/cixgpu-pro/lib/aarch64-linux-gnu`). On the live .66 host there is
+   no compositor running in the SSH session (user `mini` is on `tty1`, no
+   `WAYLAND_DISPLAY`, no `labwc`/`sway` in the process table), so
+   `find_compositor_environ` returns `{}`.
 2. The calibrator subprocess inherits the parent shell's `LD_LIBRARY_PATH`
    (typically empty). `libEGL.so.1` resolves to **system Mesa 26**
    (`/usr/lib/aarch64-linux-gnu/libEGL.so.1`), whose only backing driver on
    this image is `llvmpipe`. The `MESA_LOADER_DRIVER_OVERRIDE=zink` baked
    into the binary fails with `MESA: error: ZINK: failed to choose pdev` and
    `libEGL warning: DRI2: failed to create screen`.
-3. The calibrator falls through to a software renderer probe, sees the
-   Mesa `llvmpipe` `GL_RENDERER` string, and exits with code 3
-   (`calibrate: software renderer (%s), refusing`).
-4. `gpu_class()` does this:
+3. The calibrator exits with code 2 on .66 today (`calibrate: no GLES3 config`).
+   (The class-3 refusal branch is documented but the live reproducer hits
+   class 2 — see Bug B for why this still gives "weak".)
+
+#### Bug B — the topology classifier can't see the misc/mali0 entry
+
+The launcher's `list_gpus()` enumerates `/sys/class/drm/card*` only. On
+Sky1 the 4 `/dev/dri/card*` devices are bound to `linlondp` (the display
+controller), NOT the 3D GPU. The actual Mali-G720 is at
+`/sys/class/misc/mali0/device/driver -> mali`. The launcher misses it.
+
+When the calibrator fails and `gpu_class()` falls through to
+`fallback_entry("", gpu)`:
+
+```python
+def class_from_topology(gpu=None):
+    if gpu is None: return "weak"
+    if gpu["discrete"]: return "strong"
+    if gpu["driver"] in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
+        return "weak"
+    if gpu["driver"] in ("mali_kbase", "panthor", "panfrost", "msm", "amdgpu"):
+        return "mid"
+    return "weak"        # <-- linlondp hits this; returns "weak"
+```
+
+`display_gpu.driver == "linlondp"` is NOT in any list, so it returns
+**weak** — even though `/dev/mali0` is bound to `mali` and `mali_kbase`
+is loaded. The launcher's own cache
+(`/home/mini/.cache/ncz-screensavers/gpu-class.json`) ALREADY records the
+misc entry (`soc-CIXH5000_00`, driver=mali, class=mid) — proving the
+launcher has seen the data but doesn't consult it at classification time.
+
+#### Bug C — the code-3 refusal is unconditional
+
+Even the documented `if code == 3:` path returns weak without consulting
+the bound driver:
 
 ```python
 code, ident = _calibrator_json(["--identify"], env, 30)
@@ -56,40 +105,37 @@ if code == 3:
     return {"class": "weak", "source": "refused", "software": True}
 ```
 
-That is **the bug**: code 3 is the calibrator's "refusing because I could
-only see software". On a host where the real GPU *is* bound (mali_kbase +
-renderD128) but the calibrator was launched without the proprietary loader
-path, code 3 still fires and the launcher reports **weak**. The launcher's
-failure path never consults the sysfs topology it already enumerates
-correctly: `class_from_topology({"driver": "mali_kbase", "discrete": False})`
-returns `"mid"`.
+This is correct on a real software-only box (server, headless VM, CI
+container). It is WRONG on a host where the real GPU is bound (`.66`).
 
-Worse, the launcher's `RENDERER_TABLE` regex
-(`immortalis|mali-g[67]\d\d|...`) *would* classify
-`Mali-G720-Immortalis` correctly as `mid` — but only if `--identify` ever
-managed to print the renderer, which it never does on this host because the
-calibrator exits before it gets to `glGetString`.
+### Why all three matter
+
+| Caller | Bug A (env) | Bug B (topology) | Bug C (refusal) |
+|---|---|---|---|
+| SSH session, fresh probe | hit (calibrator exit 2) | hit (linlondp) | bypassed |
+| SSH session, code-3 path | hit (calibrator exit 3) | hit (linlondp) | hit |
+| Compositor alive | not hit | hit (linlondp) | bypassed |
+
+All three need to be addressed to fix the operator-visible "weak" verdict.
 
 ### Verification on the live host
 
 ```
-$ # ssh mini@192.168.207.66
-$ /usr/bin/ncz-screensaver calibrate 2>&1 | head -3
-ncz-screensaver: refusing to calibrate while a hack is running
-# (no hack running here, retry once with print)
-
-$ /usr/libexec/ncz-screensavers/ncz-screensaver-calibrate --identify 2>&1 | head -3
+$ /usr/libexec/ncz-screensavers/ncz-screensaver-calibrate --identify
 MESA: error: ZINK: failed to choose pdev
 libEGL warning: egl: failed to create dri2 screen
-# exits 3 — software only, no JSON, no renderer reported
+libEGL warning: DRI2: failed to create screen
+calibrate: no GLES3 config
+$ echo $?
+2
 
 $ # With the right loader path (what the launcher SHOULD inject on Sky1):
 $ LD_LIBRARY_PATH=/opt/cixgpu-pro/lib/aarch64-linux-gnu \
   __EGL_VENDOR_LIBRARY_FILENAMES=/opt/cixgpu-compat/share/glvnd/egl_vendor.d/40_cix.json \
   NCZ_GPU_BACKEND=mali \
   /usr/libexec/ncz-screensavers/ncz-screensaver-calibrate --identify
-{"renderer":"Mali-G720-Immortalis","version":"OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0c707...","platform":"default","identify":true}
-# rc=0; class_from_renderer("Mali-G720-Immortalis") -> "mid" via RENDERER_TABLE
+{"renderer":"Mali-G720-Immortalis","version":"OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5","platform":"default","identify":true}
+# rc=0
 
 $ # Full benchmark with the right loader path:
 $ LD_LIBRARY_PATH=/opt/cixgpu-pro/lib/aarch64-linux-gnu \
@@ -97,73 +143,91 @@ $ LD_LIBRARY_PATH=/opt/cixgpu-pro/lib/aarch64-linux-gnu \
   NCZ_GPU_BACKEND=mali \
   __EGL_PLATFORM=surfaceless \
   /usr/libexec/ncz-screensavers/ncz-screensaver-calibrate
-{"renderer":"Mali-G720-Immortalis","version":"OpenGL ES 3.2 v1.r53p0-00eac0.c707...","platform":"default","timer":"wall","frames":31,"ms":17.812}
+{"renderer":"Mali-G720-Immortalis","version":"OpenGL ES 3.2 v1.r53p0-00eac0.c707efa0cfa034b363bc93f9b6749cb5","platform":"default","timer":"wall","frames":31,"ms":17.812}
 # 17.812ms -> class_from_ms returns "mid" (8 <= 17.812 < 20)
 ```
 
 The renderer string and benchmark timing are real numbers from this host
-on 2026-09-30 02:45 UTC. They are embedded as constants in
-`tools/gpu-classifier/test_classifier.py` so the regression is locked
-without needing a live box to re-verify.
+on 2026-09-30 05:25 UTC. They are embedded as constants in
+`tools/gpu-classifier/tests/test_classifier.py` so the regression is
+locked without needing a live box to re-verify.
 
 ## The fix
 
-Two-part, minimal, self-contained. Both pieces live in `tools/gpu-classifier/`
-in this branch and are designed to be spliced into the upstream Python
-launcher (`/usr/bin/ncz-screensaver`) without touching anything outside the
-classification path.
+Three-part, minimal, self-contained. All three pieces live in
+`tools/gpu-classifier/` in this branch and are designed to be spliced into
+the upstream Python launcher (`/usr/bin/ncz-screensaver`) via the unified
+diff in `patches/launcher-gpu-class.patch`.
 
-1. **Loader-path env builder (`calibrator_env.py`).** A helper the launcher
-   calls when constructing the calibrator's environment. On a Sky1-arm64
-   platform (detected via `platform_id()` returning `"sky1-arm64"`) it sets
-   `LD_LIBRARY_PATH` and the CIX vendor pin so the subprocess picks up
+1. **Loader-path env builder (`calibrator_env.py`).** Fixes Bug A. A helper
+   the launcher calls when constructing the calibrator's environment. On a
+   Sky1-arm64 platform (detected via `platform_id()` returning
+   `"sky1-arm64"`) it sets `LD_LIBRARY_PATH` and the CIX vendor pin so the
+   subprocess picks up
    `libEGL.so.1 -> libEGL_cix.so.1 -> libmali.so`, the same way
    `/usr/local/bin/ncz-gpu-env` does for the desktop session. On other
-   platforms it is a no-op (the launcher's existing compositor-env
-   inheritance still wins).
+   platforms it is a no-op.
 
-2. **Refusal-aware fallback (`gpu_classifier.py`).** A drop-in replacement
-   for the `if code == 3` line. It distinguishes three cases instead of
-   one:
+2. **Refusal-aware fallback + misc/mali0 discovery
+   (`gpu_classifier.py`).** Fixes Bugs B and C. The module exposes:
 
-    a. `code == 3` AND the sysfs topology says a real hardware GPU is
-       bound (`mali_kbase`, `panthor`, `amdgpu`, `nvidia`, `i915`, `xe`,
-       etc.) — return the topology class (`mid` for mali_kbase) with a
-       `source: "refused-by-hardware-driver"` marker. The settings UI
-       shows the right tier AND can surface the refusal as a separate
-       "calibration incomplete" hint.
+    * `discover_gpus()` — enumerates BOTH `/sys/class/drm/card*` AND
+      `/sys/class/misc/mali*`, tagging each entry with `sysfs_kind` so
+      downstream code can tell which bus it came from.
+    * `driver_is_hardware_gpu(driver, sysfs_kind)` — the predicate that
+      answers "is this a real 3D GPU bound to this device?", with separate
+      lists for DRM cards and misc devices.
+    * `driver_is_display_controller(driver)` — the complement, "is this a
+      display-only KMS / scanout controller?" — covers linlondp, komeda,
+      vkms, etc.
+    * `class_from_topology(topo_or_dict)` — verbatim from the launcher,
+      extended to use the new driver lists; returns `mid` for `mali`,
+      `mali_kbase`, `panthor`, `panfrost`, `msm`; `weak` for iGPU
+      Intel/VC4/V3D/etc.; `strong` for discrete.
+    * `classify_from_calibrator_result(code, gpu, ..., all_gpus=...)` —
+      the refusal-aware classifier. Branches:
+      - code 0 + positive ms → calibration path (unchanged).
+      - code in (1, 2, 4) → retry-later path, consults the misc/mali0
+        entry when available.
+      - code 3 + hardware bound → mid/strong via topology + renderer-table
+        (the fix).
+      - code 3 + no hardware bound → weak (preserved contract).
 
-    b. `code == 3` AND no hardware GPU bound (no `mali_kbase`/`panthor`/
-       `amdgpu`/etc., only `*kms`-driven display controllers) — this is
-       the only case where the existing `weak` verdict is correct.
+3. **Splice patch (`patches/launcher-gpu-class.patch`).** A unified diff
+   against `/usr/bin/ncz-screensaver 0.7.1` that splices in:
+    - the import block (try/except for `classify_from_calibrator_result`,
+      `augment_calibrator_env`, `discover_gpus`),
+    - the new `_all_known_gpus()` helper that merges list_gpus() +
+      discover_gpus(),
+    - the env augmentation call before the calibrator subprocess,
+    - the refusal-aware return on code 3,
+    - the refusal-aware return on the no-ident (code 2) path,
+    - the refusal-aware fallback in `fallback_entry()` (the read-only
+      path used by `ncz-screensaver doctor` / `ncz-screensaver gpus` when
+      the cache is empty).
 
-    c. `code == 3` AND the platform has no display GPU at all
-       (`display_gpu() is None`) — keep `weak`. This is the
-       server/headless case.
+The patch was generated against the actual upstream file copied from
+`/usr/bin/ncz-screensaver` on .66 (md5 `1bd3ee4b00e7dcd0acb83a1b17274135`)
+and was round-tripped: dry-run applies, real apply produces a
+parser-clean Python file, and the resulting patched launcher
+(committed at `tests/fixtures/patched_launcher.py`) is what the
+integration tests exercise end-to-end.
 
-   Critically, the refactor adds a *non-zero-cost fallback*: when `code == 3`
-   is hit with hardware bound, we still try the `class_from_renderer`
-   path against any cached/known renderer string (the
-   `Mali-G720-Immortalis` from `vulkaninfo` is a fallback the launcher
-   can pick up), and only then drop to topology.
+### Why this is the minimum
 
-The original `code == 3 -> {"class": "weak", "source": "refused", "software": True}`
-line is preserved as the (c) branch, so any other path that legitimately
-hits refusal (a real software-only machine) still says weak.
+We could rewrite `ncz-screensavers` in Rust, but that would be a much
+larger change with more risk of regressing the 84 catalog rows and the
+dozens of existing screensavers. The bug is in **one** decision (the
+refusal verdict) and **one** data source (the misc/mali0 entry). The fix
+touches only those two sites plus the env builder.
 
-### Why not just add `--probe-only` to the C calibrator?
-
-The C calibrator (`ncz-screensaver-calibrate`) already exposes `--identify`
-which **does** print a renderer string when the loader path is right. The
-launcher just needs to give it the right path. A `--probe-only` mode
-would be redundant: the existing `--identify` returns the same data
-(renderer + version + platform) without binding a benchmark surface, and
-the launcher only calls `--identify` once per `gpu_class()` invocation.
-Adding a second flag would have meant touching the C source, which lives
-in the `ncz-screensavers` C codebase (`src/` in the upstream tree) and
-that source isn't in this branch — that would have made the fix bigger
-than necessary and increased the chance of drift between the github
-mirror and the gitlab build repo.
+We could add a `--probe-only` mode to the C calibrator, but the existing
+`--identify` already returns the same data (renderer + version + platform)
+without binding a benchmark surface. Adding a second flag would mean
+touching the C source, which lives in the upstream `src/` tree and isn't
+in this branch — that would have made the fix bigger than necessary and
+increased the chance of drift between the github mirror and the gitlab
+build repo.
 
 ## Files in this branch
 
@@ -171,17 +235,30 @@ mirror and the gitlab build repo.
   module (no GUI, no `ncz-screensaver` import, stdlib only).
 * `tools/gpu-classifier/calibrator_env.py` — the Sky1 loader-path
   helper.
-* `tools/gpu-classifier/ncz_screensaver_patch.py` — a 25-line patch
-  spec showing where to splice both helpers into the upstream
-  `/usr/bin/ncz-screensaver` so the patch reviewer can read it as a
-  diff. The patch text is also captured at
-  `tools/gpu-classifier/patches/launcher-gpu-class.patch` for
-  `git am` on the gitlab mirror.
-* `tools/gpu-classifier/tests/test_classifier.py` — unit tests using
-  the captured .66 strings.
-* `tools/gpu-classifier/tests/test_calibrator_env.py` — unit tests for
-  the Sky1-only loader-path helper (no-op on amd64).
-* `tools/gpu-classifier/tests/README.md` — how to run them.
+* `tools/gpu-classifier/ncz_screensaver_patch.py` — a Python-readable
+  splice spec for the upstream launcher.
+* `tools/gpu-classifier/patches/launcher-gpu-class.patch` — the
+  unified-diff patch (`git am`-able on the gitlab mirror).
+* `tools/gpu-classifier/verify_live_v66.py` — operator-facing script
+  that prints the fix's verdict against the live .66 hardware state.
+* `tools/gpu-classifier/tests/test_classifier.py` — 77 unit tests using
+  the captured .66 strings (renderer="Mali-G720-Immortalis", driver="mali",
+  driver="linlondp", the four DRM cards, the misc/mali0 entry).
+* `tools/gpu-classifier/tests/test_calibrator_env.py` — 23 unit tests
+  for the Sky1-only loader-path helper.
+* `tools/gpu-classifier/tests/test_launcher_integration.py` — 7
+  integration tests that load the patched launcher (committed as a
+  fixture) and exercise `gpu_class()` end-to-end with mocked calibrator
+  subprocess results.
+* `tools/gpu-classifier/tests/build_patched_launcher_fixture.sh` — a
+  helper that rebuilds the patched-launcher fixture from the live
+  upstream source via ssh.
+* `tools/gpu-classifier/tests/fixtures/patched_launcher.py` — the
+  committed fixture (the patched upstream launcher).
+* `tools/gpu-classifier/tests/fixtures/v66-live/STRINGS.txt` — the
+  literal output of `vulkaninfo`, `eglinfo`, `lsmod`, `/sys/class/...`,
+  and the calibrator reproducer, captured 2026-09-30 05:25 UTC from
+  `.66`.
 * `tools/gpu-classifier/EVIDENCE.md` — the literal command transcripts
   this README summarises, including timestamps and SHA1s.
 
@@ -192,37 +269,40 @@ cd tools/gpu-classifier
 python3 -m unittest discover -v tests
 ```
 
-Six tests, all stdlib. No mocks of subprocess needed — `class_from_renderer`
-and `class_from_topology` and `class_from_ms` are pure functions, and the
-refused-fallback is a deterministic state machine on
-`(code, has_hardware_gpu, has_display_gpu)`.
+107 tests, all stdlib. Two are skipped on hosts that lack /sys (CI
+containers, etc.). The integration tests load the patched-launcher
+fixture and exercise the gpu_class() refusal / no-ident / happy-path
+branches against the live .66 GPU state, mocked.
 
 ## Re-verifying on the live host
 
-The classifiers are pure functions so unit tests catch regressions. For a
-live check on the fixed launcher, the orchestrator's brief asks us to
-"prove it by running the fixed classifier on .66". That requires dropping
-the patched `ncz-screensaver` onto `.66` (operator policy says no
-package installs there, so we don't run `apt install`). The test plan
-on .66 is:
-
 ```
 ssh mini@192.168.207.66
-PYTHONPATH=/usr/share/ncz-screensavers python3 -c "
-import sys
-sys.path.insert(0, '.')
-from gpu_classifier import classify_from_calibrator_result
-print(classify_from_calibrator_result(
-    code=0,
-    hint=None,
-    renderer='Mali-G720-Immortalis',
-    ms=17.812,
-    gpu={'driver': 'mali_kbase', 'discrete': False},
-))
-"
+cd /tmp
+python3 /tmp/verify_live_v66.py
 ```
+
+Output includes a verdict for every classification branch (calibration
+success, refusal with hardware, refusal without, software-only box,
+discover_gpus live enumeration, Sky1 loader-path env builder).
 
 The orchestrator brief says "Do not reboot, reinstall or change system
 config on .66; no package installs there." — so we don't drop the
 patched launcher in place. The classifier's correctness is locked in by
-the unit tests against the same numbers the live host produced.
+the unit tests + the live verifier, both of which run against the same
+captured numbers the live host produced.
+
+## Known limitations
+
+* The new `classify_from_calibrator_result()` requires the launcher to
+  pass `all_gpus=` (the union of DRM + misc) for the fix to fire. If the
+  launcher only passes `gpu=` (the display_gpu dict), the misc/mali0
+  entry is invisible and the answer may still be `weak` on Sky1. The
+  patched launcher's `_all_known_gpus()` helper does this merge; the
+  patch in `patches/launcher-gpu-class.patch` adds the helper and uses
+  it at every gpu_class() call site.
+* The `discover_gpus()` function enumerates `/sys/class/misc/mali*` only
+  — Sky1 / CIX is the only platform in the NCZ-OS image where the GPU is
+  at misc rather than under DRM. On other platforms (Pi, Rockchip,
+  Allwinner, etc.) the misc path is empty and discover_gpus() returns
+  the same list list_gpus() does.

@@ -1,0 +1,2552 @@
+#!/usr/bin/python3
+"""ncz-screensaver - launcher, supervisor and CLI for the NCZ-OS screensavers.
+
+The idle daemon (ncz-screensaver-idled) runs `ncz-screensaver start --idle`
+when the seat goes idle and `ncz-screensaver stop` on input.  This program
+picks a hack from the dev.ncz.screensaver settings, runs it in its own process
+group, rotates it, benches hacks that crash or render black, and stops it
+cleanly.  See docs/LAUNCHER-DESIGN.md.  Standard library only.
+"""
+
+try:
+    from gpu_classifier import (
+        classify_from_calibrator_result,
+        augment_calibrator_env,
+        discover_gpus,
+    )
+except ImportError:
+    def classify_from_calibrator_result(*a, **kw): return None
+    def augment_calibrator_env(env): return env
+    def discover_gpus(): return []
+
+import argparse
+import ast
+import contextlib
+import ctypes
+import errno
+import fcntl
+import functools
+import json
+import os
+import random
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+SCHEMA = "dev.ncz.screensaver"
+DEFAULTS = {
+    "mode": "off",
+    "hack-id": "blackhole_gles3",
+    "random-hacks": [],
+    "playlist": [],
+    "hack-idle-delay": 300,
+    "cycle-delay": 600,
+    "lock-enabled": False,
+    "lock-delay": 60,
+    "lock-on-suspend": True,
+    "display-off-delay": 0,
+    "blackhole-color-mode": "stylized",
+    "verify-render": True,
+    "gpu-offload": "auto",
+    "hack-options": {},
+    "render-scale-mode": "auto",
+    "render-scale": 1.0,
+    "max-render-height": 0,
+    "pool-gpu-class": "auto",
+    "show-all-hacks": False,
+}
+MODES = ("off", "one", "random", "playlist")
+INT_RANGES = {
+    "hack-idle-delay": (1, 86400),
+    "cycle-delay": (5, 86400),
+    "lock-delay": (0, 86400),
+    "display-off-delay": (0, 86400),
+}
+ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+WORD_RE = re.compile(r"^[a-z0-9_-]+$")
+EARLY_EXIT_SECONDS = 3.0
+COLOR_MODES = (
+    "stylized",
+    "kipthorne",
+    "faithful",
+    "singularity",
+    "slingshot",
+    "whitehole",
+    "eht",
+)
+GUARD_EXIT = 3  # the hack's software-renderer guard refused to run
+MAX_CONSECUTIVE_FAILURES = 3
+BENCH_SECONDS = 24 * 3600
+COMPOSITOR_COMMS = (
+    "labwc",
+    "singularity-deskto",
+    "sway",
+    "hyprland",
+    "kwin_wayland",
+    "gnome-shell",
+)
+GPU_ENV_EXACT = ("LD_LIBRARY_PATH",)
+GPU_ENV_PREFIXES = (
+    "__EGL",
+    "__GLX",
+    "EGL_",
+    "MESA_",
+    "LIBGL_",
+    "GBM_",
+    "VK_",
+    "NCZ_GPU",
+    "GALLIUM_",
+    "AMD_VULKAN",
+)
+OFFLOAD_VARS = (
+    "DRI_PRIME",
+    "__NV_PRIME_RENDER_OFFLOAD",
+    "__VK_LAYER_NV_optimus",
+    "__GLX_VENDOR_LIBRARY_NAME",
+    "MESA_VK_DEVICE_SELECT",
+)
+OFFLOAD_MODES = ("off", "auto", "prime")  # or a GPU id such as pci-0000_01_00_0
+GPU_ID_RE = re.compile(r"^pci-[0-9a-f]{4}_[0-9a-f]{2}_[0-9a-f]{2}_[0-9a-f]$")
+VENDORS = {"0x8086": "intel", "0x1002": "amd", "0x10de": "nvidia"}
+NVIDIA_OFFLOAD_ENV = {
+    "__NV_PRIME_RENDER_OFFLOAD": "1",
+    "__GLX_VENDOR_LIBRARY_NAME": "nvidia",
+    "__VK_LAYER_NV_optimus": "NVIDIA_only",
+}
+OFFLOAD_ENV_ALLOWED = (
+    "DRI_PRIME",
+    "MESA_VK_DEVICE_SELECT",
+    *NVIDIA_OFFLOAD_ENV,
+)  # __EGL_VENDOR_LIBRARY_FILENAMES is never taken from any source
+POOL_CLASSES = (
+    "auto",
+    "weak",
+    "mid",
+    "all",
+    "igpu-only",
+)  # igpu-only = old name of weak
+CLASSES = ("weak", "mid", "strong")
+CLASS_RANK = {c: i for i, c in enumerate(CLASSES)}
+CLASS_WEAK_MS = 20.0  # reference micro-benchmark at or above this: weak
+CLASS_MID_MS = 8.0  # at or above this (and below weak): mid; below: strong
+LEGACY_TIERS = {"igpu": "weak", "discrete": "strong"}
+COPY_BUDGET_MS = 8.0  # measured dGPU-to-scanout copy above this lowers the render scale
+WEAK_DEFAULT_SCALE = 0.5  # render scale shader hacks get on a weak GPU in Auto
+GPU_ENV_NEVER = ("DRI_PRIME", "__NV_PRIME_RENDER_OFFLOAD", "__VK_LAYER_NV_optimus")
+SECRET_WORDS = ("password", "token", "secret")
+
+
+def log(msg):
+    print(f"ncz-screensaver: {msg}", file=sys.stderr, flush=True)
+
+
+# --------------------------------------------------------------------------
+# Paths
+# --------------------------------------------------------------------------
+def runtime_dir():
+    base = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    path = Path(base) / "ncz-screensaver"
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return path
+
+
+def state_dir():
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local/state")
+    path = Path(base) / "ncz-screensaver"
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return path
+
+
+def atomic_write(path, text):
+    tmp = Path(f"{path}.{os.getpid()}.tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def read_json(path, default=None):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return default
+
+
+# --------------------------------------------------------------------------
+# GSettings access through the gsettings CLI
+# --------------------------------------------------------------------------
+def parse_gvariant(text):
+    """Parse the GVariant text forms that dev.ncz.screensaver uses."""
+    text = text.strip()
+    if text.startswith("@"):
+        text = text.split(None, 1)[1] if " " in text else ""
+    if text == "true":
+        return True
+    if text == "false":
+        return False
+    text = text.removeprefix("uint32 ")
+    return ast.literal_eval(text)
+
+
+def gsettings_env():
+    env = dict(os.environ)
+    env["G_MESSAGES_DEBUG"] = ""
+    return env
+
+
+def load_settings():
+    """Return (settings dict, schema_available)."""
+    values = dict(DEFAULTS)
+    if not shutil.which("gsettings"):
+        return values, False
+    try:
+        proc = subprocess.run(
+            ["gsettings", "list-recursively", SCHEMA],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            env=gsettings_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return values, False
+    if proc.returncode != 0:
+        return values, False
+    for line in proc.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) != 3 or parts[0] != SCHEMA:
+            continue
+        try:
+            values[parts[1]] = parse_gvariant(parts[2])
+        except (ValueError, SyntaxError):
+            continue
+    return values, True
+
+
+def gvariant_text(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, dict):
+        if not value:
+            return "@a{sa{ss}} {}"
+        inner = ", ".join(
+            f"{str(k)!r}: {{"
+            + ", ".join(f"{str(a)!r}: {str(b)!r}" for a, b in v.items())
+            + "}"
+            for k, v in value.items()
+        )
+        return "{" + inner + "}"
+    if isinstance(value, list):
+        return "[" + ", ".join(repr(str(v)) for v in value) + "]"
+    return str(value)
+
+
+def write_setting(key, value):
+    _, ok = load_settings()
+    if not ok:
+        raise SystemExit(f"schema {SCHEMA} is not available; cannot write settings")
+    proc = subprocess.run(
+        ["gsettings", "set", SCHEMA, key, gvariant_text(value)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+        env=gsettings_env(),
+    )
+    if proc.returncode != 0:
+        raise SystemExit(f"gsettings set {key} failed: {proc.stderr.strip()}")
+
+
+def validate_setting(key, value):
+    if key not in DEFAULTS:
+        raise SystemExit(f"unknown key {key}")
+    if key == "render-scale-mode" and value not in ("auto", "fixed"):
+        raise SystemExit("render-scale-mode must be auto or fixed")
+    if key == "render-scale" and not 0.25 <= float(value) <= 1.0:
+        raise SystemExit("render-scale must be between 0.25 and 1.0")
+    if key == "max-render-height" and not 0 <= int(value) <= 8192:
+        raise SystemExit("max-render-height must be between 0 and 8192")
+    if key == "pool-gpu-class" and value not in POOL_CLASSES:
+        raise SystemExit(f"pool-gpu-class must be one of {', '.join(POOL_CLASSES)}")
+    if (
+        key == "gpu-offload"
+        and value not in OFFLOAD_MODES
+        and not GPU_ID_RE.match(str(value))
+    ):
+        raise SystemExit(
+            f"gpu-offload must be one of {', '.join(OFFLOAD_MODES)} or a GPU id (see `ncz-screensaver gpus`)"
+        )
+    if key == "mode" and value not in MODES:
+        raise SystemExit(f"mode must be one of {', '.join(MODES)}")
+    if key in INT_RANGES:
+        lo, hi = INT_RANGES[key]
+        if not isinstance(value, int) or not lo <= value <= hi:
+            raise SystemExit(f"{key} must be an integer in [{lo}, {hi}]")
+    if key in ("random-hacks", "playlist"):
+        for item in value:
+            if not ID_RE.match(item):
+                raise SystemExit(f"invalid hack id {item!r}")
+    if key == "hack-options" and not isinstance(value, dict):
+        raise SystemExit("hack-options must be a dictionary")
+    if key == "hack-id" and not ID_RE.match(str(value)):
+        raise SystemExit(f"invalid hack id {value!r}")
+
+
+def coerce_value(key, text):
+    default = DEFAULTS[key]
+    if isinstance(default, bool):
+        if text.lower() in ("true", "1", "yes", "on"):
+            return True
+        if text.lower() in ("false", "0", "no", "off"):
+            return False
+        raise SystemExit(f"{key} expects true or false")
+    if isinstance(default, int):
+        try:
+            return int(text)
+        except ValueError:
+            raise SystemExit(f"{key} expects an integer") from None
+    if isinstance(default, list):
+        parts = re.split(r"[,\s]+", text.strip("[]"))
+        return [x.strip("'\"") for x in parts if x.strip("'\"")]
+    return text
+
+
+# --------------------------------------------------------------------------
+# Catalog and binaries
+# --------------------------------------------------------------------------
+def catalog_path():
+    env = os.environ.get("NCZ_SCREENSAVER_CATALOG")
+    candidates = [env] if env else []
+    candidates += [
+        "/usr/share/ncz-screensavers/hacks.tsv",
+        "/usr/share/ncz-screensaver-chooser/hacks.tsv",
+    ]
+    for cand in candidates:
+        if cand and Path(cand).is_file():
+            return Path(cand)
+    return None
+
+
+def load_catalog():
+    path = catalog_path()
+    rows = []
+    if path is None:
+        return rows
+    for line in path.read_text().splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        fields = line.split("\t")
+        if len(fields) >= 3 and ID_RE.match(fields[0]):
+            rows.append({"id": fields[0], "title": fields[1], "group": fields[2]})
+    return rows
+
+
+def hack_dirs():
+    env = os.environ.get("NCZ_SCREENSAVER_DIRS")
+    if env:
+        return [d for d in env.split(":") if d]
+    return [
+        "/usr/lib/ncz-screensavers",
+        "/usr/libexec/ncz-screensavers",
+        "/opt/ncz-screensavers/bin",
+    ]
+
+
+def find_binary(hack_id):
+    if not ID_RE.match(hack_id):
+        return None
+    for d in hack_dirs():
+        cand = Path(d) / hack_id
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+    return None
+
+
+def known_id(hack_id, catalog):
+    if os.environ.get("NCZ_SCREENSAVER_ALLOW_UNLISTED") == "1":
+        return bool(ID_RE.match(hack_id))
+    return any(r["id"] == hack_id for r in catalog)
+
+
+# --------------------------------------------------------------------------
+# Environment for the hack process
+# --------------------------------------------------------------------------
+def find_compositor_environ(proc_root=None):
+    root = Path(proc_root or os.environ.get("NCZ_SCREENSAVER_PROC_ROOT", "/proc"))
+    uid = os.getuid()
+    try:
+        entries = [p for p in root.iterdir() if p.name.isdigit()]
+    except OSError:
+        return {}
+    for entry in sorted(entries, key=lambda p: int(p.name)):
+        try:
+            if entry.stat().st_uid != uid:
+                continue
+            comm = (entry / "comm").read_text().strip()
+            if comm not in COMPOSITOR_COMMS:
+                continue
+            raw = (entry / "environ").read_bytes()
+        except OSError:
+            continue
+        env = {}
+        for item in raw.split(b"\0"):
+            key, sep, val = item.partition(b"=")
+            if sep:
+                env[key.decode(errors="replace")] = val.decode(errors="replace")
+        return env
+    return {}
+
+
+def is_gpu_var(name):
+    if name in GPU_ENV_NEVER:
+        return False
+    return name in GPU_ENV_EXACT or name.startswith(GPU_ENV_PREFIXES)
+
+
+def sysfs_root():
+    return Path(os.environ.get("NCZ_SCREENSAVER_SYSFS", "/sys"))
+
+
+@functools.lru_cache(maxsize=1)
+def gpu_topology():
+    """Which DRM card drives a display, and whether an NVIDIA card can offload.
+
+    Returns {"display_class": "integrated"|"discrete"|None, "nvidia_offload": bool}.
+    """
+    drm = sysfs_root() / "class" / "drm"
+    cards = []
+    for card in sorted(drm.glob("card[0-9]")):
+        link = card / "device" / "driver"
+        driver = os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+        connected = any(
+            (c / "status").is_file()
+            and (c / "status").read_text().strip() == "connected"
+            for c in drm.glob(f"{card.name}-*")
+        )
+        cards.append((card, driver, connected))
+    display = next((c for c in cards if c[2]), None)
+    display_class = None
+    if display:
+        card, driver, _ = display
+        display_class = "integrated"
+        if driver == "nvidia":
+            display_class = "discrete"
+        elif driver == "amdgpu":
+            with contextlib.suppress(OSError, ValueError):
+                vram = int((card / "device" / "mem_info_vram_total").read_text())
+                if vram >= 2 * 1024**3:
+                    display_class = "discrete"
+    nvidia_offload = (
+        bool(display)
+        and display[1] != "nvidia"
+        and any(c[1] == "nvidia" and not c[2] for c in cards)
+    )
+    return {"display_class": display_class, "nvidia_offload": nvidia_offload}
+
+
+def broken_path():
+    env = os.environ.get("NCZ_SCREENSAVER_BROKEN")
+    for cand in ([env] if env else []) + [
+        "/usr/share/ncz-screensavers/broken.tsv",
+        "/usr/share/ncz-screensaver-chooser/broken.tsv",
+    ]:
+        if cand and Path(cand).is_file():
+            return Path(cand)
+    return None
+
+
+def load_broken():
+    """{hack id: (status, reason)} for hacks with a known defect; empty when absent."""
+    path = broken_path()
+    out = {}
+    if path is None:
+        return out
+    for line in path.read_text().splitlines():
+        f = line.split("\t")
+        if len(f) >= 3 and not line.startswith("#") and f[1] in ("broken", "suspect"):
+            out[f[0]] = (f[1], f[2])
+    return out
+
+
+def tiers_path():
+    env = os.environ.get("NCZ_SCREENSAVER_TIERS")
+    for cand in ([env] if env else []) + [
+        "/usr/share/ncz-screensavers/tiers.tsv",
+        "/usr/share/ncz-screensaver-chooser/tiers.tsv",
+    ]:
+        if cand and Path(cand).is_file():
+            return Path(cand)
+    return None
+
+
+def load_tier_rows():
+    """{hack id: {"min": weak|mid|strong, "uhd630", "uhd630_scaled", "mali", ...}}.
+
+    tiers.tsv columns: id, min class, then fps/p95_ms on Intel UHD 630 at native
+    resolution, on UHD 630 at the weak-class default scale, on Mali-G720, AMD
+    Navi14 and RTX 2060 ("-" when not measured), then "date commit". The
+    old two-value tiers igpu and discrete still load (as weak and strong).
+    """
+    path = tiers_path()
+    rows = {}
+    presets = Path(str(path.parent / "presets.tsv")) if path else None
+    if presets is None:
+        for cand in (
+            "/usr/share/ncz-screensavers/presets.tsv",
+            "/usr/share/ncz-screensaver-chooser/presets.tsv",
+        ):
+            if Path(cand).is_file():
+                presets = Path(cand)
+                break
+    if presets is not None and presets.is_file():
+        for line in presets.read_text().splitlines():
+            f = line.split("\t")
+            if len(f) >= 8 and not line.startswith("#") and f[7] in CLASS_RANK:
+                rows[f[0]] = {"min": f[7], "measured": f[8] if len(f) > 8 else ""}
+    if path is None:
+        return rows
+    names = ("uhd630", "uhd630_scaled", "mali", "navi14", "rtx2060")
+    for line in path.read_text().splitlines():
+        f = line.split("\t")
+        if len(f) < 2 or line.startswith("#"):
+            continue
+        cls = LEGACY_TIERS.get(f[1], f[1])
+        if cls not in CLASS_RANK:
+            continue
+        row = {"min": cls}
+        if len(f) >= 8:
+            row.update(dict(zip(names, f[2:7], strict=True)))
+            row["measured"] = f[7]
+        rows[f[0]] = row
+    return rows
+
+
+def load_tiers():
+    """{hack id: minimum GPU class}; empty when tiers.tsv is not installed."""
+    return {k: v["min"] for k, v in load_tier_rows().items()}
+
+
+def _fps_cell(cell):
+    try:
+        return float(cell.split("/")[0])
+    except (ValueError, AttributeError):
+        return None
+
+
+def expectation(hack_id, cls, rows=None):
+    """Measured frame rate to expect on a GPU class, e.g. "about 12 fps on Intel UHD 630"."""
+    rows = load_tier_rows() if rows is None else rows
+    row = rows.get(hack_id)
+    if not row:
+        return ""
+    if cls == "weak":
+        cell = row.get("uhd630_scaled", "-")
+        if cell == "-":
+            cell = row.get("uhd630", "-")
+        chip = "Intel UHD 630"
+    else:
+        cell, chip = row.get("mali", "-"), "Mali-G720"
+    fps = _fps_cell(cell)
+    if fps is None:
+        # a measured row without a number: too slow to print two frame-counter lines
+        return (
+            f"under 6 fps on {chip}"
+            if row.get("measured") and row["min"] != "weak"
+            else ""
+        )
+    return f"about {fps:.0f} fps on {chip}"
+
+
+def class_from_ms(ms):
+    return "weak" if ms >= CLASS_WEAK_MS else "mid" if ms >= CLASS_MID_MS else "strong"
+
+
+# Fallback when calibration cannot run: renderer string to class, first match wins.
+RENDERER_TABLE = (
+    (
+        r"nvidia|geforce|quadro|\brtx\b|\bgtx\b|radeon rx|navi ?[1-9]\d|apple m\d",
+        "strong",
+    ),
+    (r"intel.*arc.*a[57]\d\d", "strong"),
+    (
+        (
+            r"intel.*(uhd|hd graphics|gma|iris(?! xe))|mali-g[35]\d\b|mali-t|mali-4"
+            r"|videocore|v3d|vc4|powervr|adreno \(?[3-5]\d\d|llvmpipe|softpipe"
+        ),
+        "weak",
+    ),
+    (
+        (
+            r"immortalis|mali-g[67]\d\d|iris xe|intel.*arc|radeon (graphics|vega)"
+            r"|vega \d+|adreno \(?[67]\d\d|apple"
+        ),
+        "mid",
+    ),
+)
+
+
+def class_from_renderer(renderer):
+    for pattern, cls in RENDERER_TABLE:
+        if re.search(pattern, renderer or "", re.IGNORECASE):
+            return cls
+    return None
+
+
+def _read(path):
+    try:
+        return Path(path).read_text().strip()
+    except OSError:
+        return ""
+
+
+def _all_known_gpus():
+    """Every GPU the launcher knows about: DRM cards + /sys/class/misc/mali*."""
+    seen = set()
+    out = []
+    for g in list_gpus():
+        if g["id"] in seen:
+            continue
+        seen.add(g["id"])
+        out.append(g)
+    for g in discover_gpus():
+        if g["id"] in seen:
+            continue
+        seen.add(g["id"])
+        out.append(g)
+    return out
+
+
+@functools.lru_cache(maxsize=1)
+def list_gpus():
+    """Render-capable GPUs from sysfs, display GPU first.
+
+    Each entry: id (pci-0000_01_00_0), slot, vendor (intel|amd|nvidia|other), driver,
+    device (pci device id), display (owns a connected connector), boot_vga, discrete.
+    """
+    drm = sysfs_root() / "class" / "drm"
+    gpus = []
+    for card in sorted(drm.glob("card[0-9]*")):
+        if not re.fullmatch(r"card\d+", card.name):
+            continue
+        dev = card / "device"
+        link = dev / "driver"
+        driver = os.path.basename(os.readlink(link)) if link.is_symlink() else ""
+        slot = ""
+        for line in _read(dev / "uevent").splitlines():
+            if line.startswith("PCI_SLOT_NAME="):
+                slot = line.split("=", 1)[1]
+        if not slot and dev.is_symlink():
+            slot = os.path.basename(os.readlink(dev))
+        gid = "pci-" + slot.replace(":", "_").replace(".", "_") if slot else card.name
+        connected = any(
+            _read(c / "status") == "connected" for c in drm.glob(f"{card.name}-*")
+        )
+        vram = 0
+        with contextlib.suppress(ValueError):
+            vram = int(_read(dev / "mem_info_vram_total") or 0)
+        has_render = any((dev / "drm").glob("renderD*"))
+        vendor = VENDORS.get(_read(dev / "vendor").lower(), "other")
+        discrete = vendor == "nvidia" or (vendor == "amd" and vram >= 2 * 1024**3)
+        gpus.append(
+            {
+                "id": gid,
+                "card": card.name,
+                "slot": slot,
+                "vendor": vendor,
+                "driver": driver,
+                "device": _read(dev / "device").lower().removeprefix("0x"),
+                "display": connected,
+                "boot_vga": _read(dev / "boot_vga") == "1",
+                "discrete": discrete,
+                "render": has_render,
+            }
+        )
+    # A display controller that has no render node (Pi vc4, Sky1 komeda) is not a GPU:
+    # the display role belongs to the render GPU that sits on the same kind of bus.
+    if any(g["render"] for g in gpus) and not all(g["render"] for g in gpus):
+        shown = next((g for g in gpus if g["display"]), None)
+        renderers = [g for g in gpus if g["render"]]
+        if shown is not None and not shown["render"]:
+            pci = bool(PCI_SLOT_RE.match(shown["slot"]))
+            same = [g for g in renderers if bool(PCI_SLOT_RE.match(g["slot"])) == pci]
+            for g in renderers:
+                g["display"] = False
+            (same or renderers)[0]["display"] = True
+        gpus = renderers
+    if gpus and not any(g["display"] for g in gpus):
+        for g in gpus:
+            g["display"] = g["boot_vga"]
+        if not any(g["display"] for g in gpus):
+            gpus[0]["display"] = True
+    gpus.sort(key=lambda g: not g["display"])
+    return gpus
+
+
+def display_gpu():
+    gpus = list_gpus()
+    return gpus[0] if gpus else None
+
+
+@functools.lru_cache(maxsize=1)
+def switcheroo_envs():
+    """{"pci-...": env} and {"nvidia": env} parsed from `switcherooctl list`; {} when absent."""
+    cmd = os.environ.get("NCZ_SCREENSAVER_SWITCHEROOCTL") or shutil.which(
+        "switcherooctl"
+    )
+    if not cmd:
+        return {}
+    try:
+        out = subprocess.run(
+            [cmd, "list"], capture_output=True, text=True, timeout=5, check=False
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    found = {}
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.startswith("Environment:"):
+            continue
+        env = {}
+        for item in line.split(":", 1)[1].split():
+            name, sep, val = item.partition("=")
+            if sep and name in OFFLOAD_ENV_ALLOWED:
+                env[name] = val
+        if env.get("DRI_PRIME", "").startswith("pci-"):
+            found[env["DRI_PRIME"]] = env
+        elif "__NV_PRIME_RENDER_OFFLOAD" in env:
+            found["nvidia"] = env
+    return found
+
+
+def drop_egl_vendor_pins(env):
+    """A compositor's EGL vendor pin would send an offloaded process to the display GPU."""
+    for name in ("__EGL_VENDOR_LIBRARY_FILENAMES", "__EGL_VENDOR_LIBRARY_DIRS"):
+        env.pop(name, None)
+
+
+def gpu_env(gpu):
+    """Environment that makes ONE process render on `gpu` (empty for the display GPU)."""
+    if not gpu or gpu.get("display"):
+        return {}
+    via = switcheroo_envs()
+    if (
+        gpu["driver"] == "nvidia"
+        or gpu["vendor"] == "nvidia"
+        and gpu["driver"] != "nouveau"
+    ):
+        env = via.get("nvidia") or dict(NVIDIA_OFFLOAD_ENV)
+        return {k: v for k, v in env.items() if k in OFFLOAD_ENV_ALLOWED}
+    prime = "pci-" + gpu["slot"].replace(":", "_").replace(".", "_")
+    env = dict(via.get(prime) or {"DRI_PRIME": prime})
+    vend = {v: k for k, v in VENDORS.items()}.get(gpu["vendor"])
+    if vend and gpu["device"] and "MESA_VK_DEVICE_SELECT" not in env:
+        env["MESA_VK_DEVICE_SELECT"] = f"{vend[2:]}:{gpu['device']}"
+    return env
+
+
+def ac_online():
+    """True on AC or when there is no battery (a desktop)."""
+    supplies = sysfs_root() / "class" / "power_supply"
+    mains = [p for p in supplies.glob("*") if _read(p / "type") == "Mains"]
+    batteries = [p for p in supplies.glob("*") if _read(p / "type") == "Battery"]
+    if not batteries:
+        return True
+    return any(_read(p / "online") == "1" for p in mains)
+
+
+def class_from_topology(gpu=None):
+    """Coarse class from sysfs alone: used only when no renderer string is known.
+
+    Verbatim from the upstream launcher EXCEPT for the addition of "mali"
+    (the platform-driver name) alongside "mali_kbase" (the kernel-module
+    name). On Sky1 /sys/class/misc/mali0/device/driver resolves to "mali";
+    the upstream launcher only knew "mali_kbase" and so returned "weak"
+    for the misc entry — that was Bug B.
+    """
+    gpu = gpu or display_gpu()
+    if gpu is None:
+        return "weak"
+    if gpu["discrete"]:
+        return "strong"
+    if gpu["driver"] in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
+        return "weak"
+    if gpu["driver"] in ("mali", "mali_kbase", "panthor", "panfrost", "msm", "amdgpu"):
+        return "mid"
+    return "weak"
+
+
+def class_cache_path():
+    home = os.environ.get("HOME", str(Path.home()))
+    base = os.environ.get("XDG_CACHE_HOME") or f"{home}/.cache"
+    return Path(base) / "ncz-screensavers" / "gpu-class.json"
+
+
+def calibrate_bin():
+    env = os.environ.get("NCZ_SCREENSAVER_CALIBRATE_BIN")
+    if env:
+        return env if os.access(env, os.X_OK) else None
+    name = "ncz-screensaver-calibrate"
+    dirs = [*hack_dirs(), "/usr/libexec", "/usr/lib/ncz-screensavers"]
+    dirs += [str(p) for p in Path("/usr/lib").glob("*-linux-gnu")]
+    for d in dirs:
+        cand = Path(d) / name
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+    return shutil.which(name)
+
+
+def _calibrator_json(args, env, timeout):
+    """Run the calibrator; returns (exit code, parsed JSON or None)."""
+    binary = calibrate_bin()
+    if not binary:
+        return None, None
+    try:
+        proc = subprocess.run(
+            [binary, *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+            env=env,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None, None
+    try:
+        return proc.returncode, json.loads(proc.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return proc.returncode, None
+
+
+def fallback_entry(renderer="", gpu=None):
+    """Refusal-aware fallback. The pre-fix version returned
+    class_from_topology(gpu) which on Sky1 returned 'weak' because
+    display_gpu.driver == 'linlondp' (display controller, not a 3D GPU).
+
+    The fix:
+      1. consult class_from_renderer(renderer) — if it returns mid/strong
+         (the cached renderer says "Mali-G720-Immortalis"), trust it;
+      2. otherwise consult class_from_topology(gpu), but use the misc/mali0
+         entry if it exists, so a real Sky1 box returns 'mid'.
+
+    Returns the launcher's existing dict shape so downstream code (offload,
+    plan, settings UI, cache) doesn't need to change.
+    """
+    cls_from_hint = class_from_renderer(renderer)
+    if cls_from_hint and cls_from_hint != "weak":
+        return {"class": cls_from_hint, "renderer": renderer, "source": "table"}
+    # The display_gpu (linlondp on Sky1) says weak; try the misc entry.
+    misc_entry = next(
+        (g for g in discover_gpus() if g.get("driver") in
+         ("mali", "mali_kbase", "panthor", "panfrost", "msm", "amdgpu")),
+        None,
+    )
+    cls_from_topo = class_from_topology(misc_entry or gpu)
+    return {"class": cls_from_topo, "renderer": renderer, "source": "table"}
+
+
+def read_class_cache():
+    data = read_json(class_cache_path())
+    return data.get("entries", {}) if isinstance(data, dict) else {}
+
+
+def _cache_key(gpu):
+    return gpu["id"] if gpu else "display"
+
+
+def gpu_class(settings, gpu=None, run=True, force=False):
+    """Class entry {"class", "ms", "renderer", "version", "source", ...} for one GPU
+    (default: the display GPU), cached per GPU id.
+
+    run=False only reads the cache (with a table fallback). run=True identifies the
+    renderer first (about 0.3 s) and calibrates (about 3 s) only when the cache is
+    missing or its renderer string or driver version changed. Never call it while a
+    hack is running.
+    """
+    gpu = gpu or display_gpu()
+    key = _cache_key(gpu)
+    cache = read_class_cache()
+    entry = cache.get(key)
+    if not run and not force:
+        return entry or fallback_entry("", gpu)
+    env = build_child_env("calibrate", settings, offload=False)
+    if gpu is not None and not gpu.get("display"):
+        drop_egl_vendor_pins(env)
+    env.update(gpu_env(gpu))
+    for name in ("NCZ_ALLOW_SOFTWARE", "NCZ_CALIBRATE_MS"):
+        env.pop(name, None)
+    # Sky1 + cixgpu-pro: inject the loader path so the calibrator sees the
+    # real Mali instead of falling back to llvmpipe. No-op on every other
+    # platform.
+    augment_calibrator_env(env)
+    code, ident = _calibrator_json(["--identify"], env, 30)
+    if code == 3:
+        # THE FIX (refusal path): software renderer refused + real
+        # hardware bound -> use the topology / renderer-table fallback
+        # instead of the unconditional weak. On a real software-only
+        # system (server, headless VM, CI), the original 'weak' verdict
+        # is preserved.
+        return classify_from_calibrator_result(
+            code=3, gpu=gpu, renderer_hint="", ms_hint=None,
+            all_gpus=_all_known_gpus(),
+        ).to_dict()
+    if ident is None:
+        # THE FIX (no-ident path): the calibrator exited non-zero but NOT
+        # with code 3 (on .66 today this is exit 2, "no GLES3 config").
+        # The original launcher returns fallback_entry("", gpu) which on
+        # Sky1 says "weak" because display_gpu.driver is "linlondp" (a
+        # display controller, not a 3D GPU). The new classifier consults
+        # the misc/mali0 entry (driver="mali") and returns "mid".
+        if entry is None:
+            cached = read_class_cache()
+            renderer_hint = ""
+            for c in cached.values():
+                if c.get("renderer"):
+                    renderer_hint = c["renderer"]
+                    break
+            return classify_from_calibrator_result(
+                code=code, gpu=gpu, renderer_hint=renderer_hint,
+                all_gpus=_all_known_gpus(),
+            ).to_dict()
+        return entry
+    if (
+        entry
+        and not force
+        and entry.get("renderer") == ident.get("renderer")
+        and entry.get("version") == ident.get("version")
+        and (
+            entry.get("source") == "calibration"
+            or time.time() < entry.get("retry_after", 0)
+        )
+    ):
+        return entry
+    code, res = _calibrator_json([], env, 90)
+    if res and res.get("ms", 0) > 0:
+        entry = {
+            "class": class_from_ms(res["ms"]),
+            "ms": round(res["ms"], 2),
+            "renderer": res.get("renderer", ""),
+            "version": res.get("version", ""),
+            "timer": res.get("timer", ""),
+            "source": "calibration",
+            "when": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        }
+    else:
+        entry = fallback_entry(ident.get("renderer", ""), gpu)
+        entry["version"] = ident.get("version", "")
+        entry["retry_after"] = (
+            time.time() + 3600
+        )  # the benchmark failed: try again later
+    if gpu:
+        entry["gpu"] = gpu["id"]
+        entry["driver"] = gpu["driver"]
+    if cache.get(key, {}).get("copy_ms") is not None:
+        entry["copy_ms"] = cache[key]["copy_ms"]
+    cache[key] = entry
+    path = class_cache_path()
+    with contextlib.suppress(OSError):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"entries": cache}, indent=1) + "\n")
+        os.replace(tmp, path)
+    return entry
+
+
+PCI_SLOT_RE = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]$")
+
+
+def offload_mode(settings):
+    """gpu-offload normalized: off, auto, prime or a GPU id; anything else means auto."""
+    mode = str(settings.get("gpu-offload", "auto"))
+    return mode if mode in OFFLOAD_MODES or GPU_ID_RE.match(mode) else "auto"
+
+
+def offload_targets(settings):
+    """GPUs a hack may be sent to instead of the display GPU, best first.
+
+    Honours gpu-offload (off: none; a GPU id: only that one; auto/prime: every other
+    GPU) and the power policy: on battery, auto never wakes a second GPU.
+    """
+    mode = offload_mode(settings)
+    # DRI_PRIME and the NVIDIA variables address PCI devices only
+    others = [
+        g for g in list_gpus() if not g["display"] and PCI_SLOT_RE.match(g["slot"])
+    ]
+    if mode == "off" or not others:
+        return []
+    if GPU_ID_RE.match(mode):
+        return [g for g in others if g["id"] == mode]
+    if mode == "auto" and not ac_online():
+        return []
+    others.sort(
+        key=lambda g: (
+            -CLASS_RANK[gpu_class(settings, g, run=False)["class"]],
+            not g["discrete"],
+        )
+    )
+    return others
+
+
+def system_class(settings):
+    """Class of the GPU the compositor uses (cache only)."""
+    return gpu_class(settings, None, run=False)["class"]
+
+
+def best_class(settings):
+    """Highest class among the display GPU and the allowed offload targets."""
+    best = system_class(settings)
+    for g in offload_targets(settings):
+        cls = gpu_class(settings, g, run=False)["class"]
+        if CLASS_RANK[cls] > CLASS_RANK[best]:
+            best = cls
+    return best
+
+
+def plan_for(hack_id, settings, tiers=None):
+    """Where a hack should render: {"gpu": gpu dict or None (display), "offload": bool,
+    "class": class of the GPU that will render it, "copy_ms": cross-GPU copy cost}.
+
+    On AC (offload_targets is empty on battery) every shader hack goes to the best offload
+    target when that target is a faster class, because a discrete GPU is idle anyway; other
+    hacks (the classics) stay on the display GPU unless they need a faster class. It never
+    goes to a slower GPU. gpu-offload=prime or a GPU id forces the target for every hack.
+    """
+    mode = offload_mode(settings)
+    tiers = load_tiers() if tiers is None else tiers
+    disp = display_gpu()
+    disp_cls = system_class(settings)
+    targets = offload_targets(settings)
+    if not targets:
+        return {"gpu": disp, "offload": False, "class": disp_cls, "copy_ms": 0.0}
+    tgt = targets[0]
+    ent = gpu_class(settings, tgt, run=False)
+    forced = mode == "prime" or bool(GPU_ID_RE.match(mode))
+    need = CLASS_RANK[tiers.get(hack_id, "strong")]
+    faster = CLASS_RANK[ent["class"]] > CLASS_RANK[disp_cls]
+    if forced or (faster and (need > CLASS_RANK[disp_cls] or is_shader_hack(hack_id))):
+        return {
+            "gpu": tgt,
+            "offload": True,
+            "class": ent["class"],
+            "copy_ms": float(ent.get("copy_ms") or 0.0),
+        }
+    return {"gpu": disp, "offload": False, "class": disp_cls, "copy_ms": 0.0}
+
+
+def display_plan(settings):
+    return {
+        "gpu": display_gpu(),
+        "offload": False,
+        "class": system_class(settings),
+        "copy_ms": 0.0,
+    }
+
+
+def offload_for(hack_id, settings, tiers=None):
+    """True when this hack process should render on another GPU."""
+    return plan_for(hack_id, settings, tiers)["offload"]
+
+
+def pool_class(settings):
+    """Resolve pool-gpu-class to the highest hack class the pools may use."""
+    cls = str(settings.get("pool-gpu-class", "auto"))
+    if cls == "igpu-only":
+        cls = "weak"
+    if cls in ("weak", "mid"):
+        return cls
+    if cls == "all":
+        return "strong"
+    return best_class(settings)
+
+
+def filter_pool(ids, settings):
+    """Drop known-broken hacks and hacks flagged too heavy for this system."""
+    known = load_broken()
+    ids = [i for i in ids if i not in known] or ids
+    tiers = load_tiers()
+    if not tiers:
+        return ids
+    limit = CLASS_RANK[pool_class(settings)]
+    kept = [i for i in ids if CLASS_RANK[tiers.get(i, "strong")] <= limit]
+    return kept or ids
+
+
+def notify(title, body):
+    if shutil.which("notify-send"):
+        with contextlib.suppress(OSError):
+            subprocess.Popen(
+                ["notify-send", "-a", "ncz-screensaver", title, body],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+
+def parse_option_args(items):
+    out = {}
+    for item in items:
+        name, sep, value = item.partition("=")
+        if not sep or not name:
+            raise SystemExit(f"--option expects name=value, got {item!r}")
+        out[name] = value
+    return out
+
+
+def options_dir():
+    return Path(
+        os.environ.get("NCZ_SCREENSAVER_OPTIONS", "/usr/share/ncz-screensavers/options")
+    )
+
+
+def short_name(hack_id):
+    return re.sub(r"_gles3$", "", hack_id)
+
+
+def _read_schema_file(path, hack_id):
+    rows = []
+    for line in path.read_text().splitlines():
+        f = (line.split("\t") + [""] * 10)[:10]
+        if (
+            not line.strip()
+            or line.startswith("#")
+            or f[1] not in ("bool", "int", "float", "enum", "string")
+        ):
+            continue
+        env = (
+            f[9]
+            or f"NCZ_{short_name(hack_id).upper()}_{f[0].upper().replace('-', '_')}"
+        )
+        rows.append(
+            {
+                "name": f[0],
+                "type": f[1],
+                "default": f[2],
+                "min": f[3],
+                "max": f[4],
+                "choices": [c for c in f[5].split(",") if c],
+                "label": f[6] or f[0],
+                "description": f[7],
+                "group": f[8] or "General",
+                "env": env,
+            }
+        )
+    return rows
+
+
+def load_option_schema(hack_id):
+    """Rows of options/<hack>.tsv plus the common options/_render.tsv for shader hacks.
+
+    Columns: name, type, default, min, max, choices, label, description, group, env.
+    """
+    rows = []
+    for stem in (hack_id, short_name(hack_id)):
+        path = options_dir() / f"{stem}.tsv"
+        if path.is_file():
+            rows = _read_schema_file(path, hack_id)
+            break
+    common = options_dir() / "_render.tsv"
+    if is_shader_hack(hack_id) and common.is_file():
+        have = {r["name"] for r in rows}
+        rows += [r for r in _read_schema_file(common, hack_id) if r["name"] not in have]
+    return rows
+
+
+def normalize_option(row, value):
+    """Return the canonical string for value or raise ValueError."""
+    kind = row["type"]
+    value = str(value).strip()
+    if kind == "bool":
+        if value.lower() in ("true", "1", "yes", "on"):
+            return "true"
+        if value.lower() in ("false", "0", "no", "off"):
+            return "false"
+        raise ValueError("expected true or false")
+    if kind in ("int", "float"):
+        num = int(value) if kind == "int" else float(value)
+        if row["min"] != "" and num < (
+            int(row["min"]) if kind == "int" else float(row["min"])
+        ):
+            raise ValueError(f"below the minimum {row['min']}")
+        if row["max"] != "" and num > (
+            int(row["max"]) if kind == "int" else float(row["max"])
+        ):
+            raise ValueError(f"above the maximum {row['max']}")
+        return str(num)
+    if kind == "enum":
+        if value not in row["choices"]:
+            raise ValueError(f"expected one of {', '.join(row['choices'])}")
+        return value
+    if not value.isprintable() or len(value) > 200:
+        raise ValueError("expected printable text up to 200 characters")
+    return value
+
+
+def hack_option_env(hack_id, settings, overrides=None):
+    """Environment variables for a hack from stored options plus per-run overrides.
+
+    Only names in the hack's schema with valid values are passed; the rest are
+    dropped with a warning. The legacy blackhole color mode fills palette.
+    """
+    schema = {r["name"]: r for r in load_option_schema(hack_id)}
+    if not schema:
+        return {}
+    values = dict((settings.get("hack-options") or {}).get(hack_id, {}))
+    if "palette" in schema and "palette" not in values:
+        legacy = str(settings.get("blackhole-color-mode", "stylized"))
+        if hack_id == "blackhole_gles3" and legacy != "stylized":
+            values["palette"] = legacy
+    values.update(overrides or {})
+    env = {}
+    for name, value in values.items():
+        row = schema.get(name)
+        if row is None:
+            log(f"{hack_id}: ignoring unknown option {name}")
+            continue
+        try:
+            env[row["env"]] = normalize_option(row, value)
+        except ValueError as exc:
+            log(f"{hack_id}: ignoring option {name}={value!r}: {exc}")
+    return env
+
+
+SHADER_PREFIXES = ("hyprsaver_", "xshadertoy_", "blackhole_")
+
+
+def is_shader_hack(hack_id):
+    return hack_id.startswith(SHADER_PREFIXES)
+
+
+@functools.lru_cache(maxsize=1)
+def platform_id():
+    """ "sky1-arm64" on Cix Sky1 boards (ACPI CIXH devices), else "generic"."""
+    if os.uname().machine != "aarch64":
+        return "generic"
+    if any((sysfs_root() / "bus" / "acpi" / "devices").glob("CIXH*")):
+        return "sky1-arm64"
+    try:
+        compat = Path("/proc/device-tree/compatible").read_bytes()
+    except OSError:
+        return "generic"
+    return "sky1-arm64" if b"cix" in compat.lower() else "generic"
+
+
+@functools.lru_cache(maxsize=1)
+def native_height():
+    """Height in pixels of the first connected connector's preferred mode, 0 if unknown."""
+    for conn in sorted((sysfs_root() / "class" / "drm").glob("card[0-9]-*")):
+        try:
+            if (conn / "status").read_text().strip() != "connected":
+                continue
+            first = (conn / "modes").read_text().split()[0]
+            return int(first.split("x")[1].rstrip("ip"))
+        except (OSError, IndexError, ValueError):
+            continue
+    return 0
+
+
+def render_defaults():
+    path = Path(
+        os.environ.get(
+            "NCZ_SCREENSAVER_RENDER_DEFAULTS",
+            "/usr/share/ncz-screensavers/render-defaults.tsv",
+        )
+    )
+    out = {}
+    with contextlib.suppress(OSError):
+        for line in path.read_text().splitlines():
+            f = line.split("\t")
+            if len(f) >= 2 and not line.startswith("#") and f[1].isdigit():
+                out[f[0]] = int(f[1])
+    return out
+
+
+def default_render_cap():
+    """Platform default for max-render-height (0 = none)."""
+    table = render_defaults()
+    if platform_id() == "sky1-arm64" and "sky1-arm64" in table:
+        return table["sky1-arm64"]
+    topo = gpu_topology()
+    if topo["display_class"] == "integrated" and native_height() > 1440:
+        return table.get("igpu-large", 0)
+    return 0
+
+
+def load_render_hints():
+    """{hack id: render scale} measured to reach a smooth frame rate on a mid-class GPU."""
+    for cand in (
+        os.environ.get("NCZ_SCREENSAVER_RENDER_HINTS", ""),
+        "/usr/share/ncz-screensavers/render-hints.tsv",
+        "/usr/share/ncz-screensaver-chooser/render-hints.tsv",
+    ):
+        if cand and Path(cand).is_file():
+            out = {}
+            for line in Path(cand).read_text().splitlines():
+                f = line.split("\t")
+                if len(f) >= 2 and not line.startswith("#"):
+                    with contextlib.suppress(ValueError):
+                        out[f[0]] = float(f[1])
+            return out
+    return {}
+
+
+def render_env(hack_id, settings, plan=None):
+    """NCZ_RENDER_SCALE / NCZ_MAX_RENDER_HEIGHT for shader hacks (or per-hack overrides)."""
+    per_hack = (settings.get("hack-options") or {}).get(hack_id, {})
+    override = {
+        k: per_hack[k] for k in ("render-scale", "max-render-height") if k in per_hack
+    }
+    if not is_shader_hack(hack_id) and not override:
+        return {}
+    try:
+        scale = float(override.get("render-scale", settings.get("render-scale", 1.0)))
+        cap = int(
+            float(
+                override.get("max-render-height", settings.get("max-render-height", 0))
+            )
+        )
+    except (TypeError, ValueError):
+        return {}
+    if (
+        "max-render-height" not in override
+        and str(settings.get("render-scale-mode", "auto")) == "auto"
+        and cap == 0
+    ):
+        cap = default_render_cap()
+    if (
+        "render-scale" not in override
+        and scale >= 1.0
+        and str(settings.get("render-scale-mode", "auto")) == "auto"
+        and is_shader_hack(hack_id)
+        and (plan or plan_for(hack_id, settings))["class"] == "weak"
+    ):
+        scale = WEAK_DEFAULT_SCALE
+    plan = plan or plan_for(hack_id, settings)
+    if (
+        plan["class"] == "mid"
+        and "render-scale" not in override
+        and scale >= 1.0
+        and str(settings.get("render-scale-mode", "auto")) == "auto"
+        and is_shader_hack(hack_id)
+    ):
+        scale = min(scale, load_render_hints().get(hack_id, 1.0))
+    if (
+        plan["offload"]
+        and plan["copy_ms"] > COPY_BUDGET_MS
+        and "render-scale" not in override
+        and scale >= 1.0
+        and str(settings.get("render-scale-mode", "auto")) == "auto"
+    ):
+        scale = 0.75  # the cross-GPU frame copy alone eats the frame budget
+    env = {}
+    fixed = str(settings.get("render-scale-mode", "auto")) == "fixed"
+    if fixed:
+        env["NCZ_RENDER_SCALE_MODE"] = "fixed"
+    if 0.25 <= scale < 1.0:
+        env["NCZ_RENDER_SCALE"] = f"{scale:.2f}"
+    if cap > 0 or (fixed and cap == 0):
+        env["NCZ_MAX_RENDER_HEIGHT"] = str(cap)  # an explicit 0 means unlimited
+    return env
+
+
+def shader_cache_env(env):
+    """Keep the driver shader cache on and in a persistent, writable directory."""
+    for name in ("MESA_SHADER_CACHE_DISABLE", "MESA_GLSL_CACHE_DISABLE"):
+        env.pop(name, None)
+    home = env.setdefault("HOME", str(Path.home()))
+    cache_home = env.setdefault("XDG_CACHE_HOME", f"{home}/.cache")
+    if "MESA_SHADER_CACHE_DIR" not in env:
+        cache = Path(cache_home) / "ncz-screensavers" / "mesa"
+        try:
+            cache.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            return
+        if os.access(cache, os.W_OK):
+            env["MESA_SHADER_CACHE_DIR"] = str(cache)
+
+
+def build_child_env(
+    hack_id, settings, base_env=None, proc_root=None, offload=None, options=None
+):
+    env = dict(os.environ if base_env is None else base_env)
+    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    if "WAYLAND_DISPLAY" not in env:
+        rd = Path(env["XDG_RUNTIME_DIR"])
+        socks = sorted(
+            p.name for p in rd.glob("wayland-*") if not p.name.endswith(".lock")
+        )
+        if socks:
+            env["WAYLAND_DISPLAY"] = "wayland-0" if "wayland-0" in socks else socks[0]
+    for name, val in find_compositor_environ(proc_root).items():
+        if is_gpu_var(name) and name not in env:
+            env[name] = val
+    for name in list(env):
+        if any(w in name.lower() for w in SECRET_WORDS):
+            del env[name]
+    if hack_id == "blackhole_gles3":
+        keep = os.environ.get("NCZ_SCREENSAVER_KEEP_ENV") == "1"
+        mode = str(settings.get("blackhole-color-mode", "stylized"))
+        if keep and "NCZ_BLACKHOLE_COLORS" in env:
+            pass
+        elif mode == "stylized":
+            env.pop("NCZ_BLACKHOLE_COLORS", None)
+        else:
+            env["NCZ_BLACKHOLE_COLORS"] = mode
+    # Offload is per hack process and only on request. NVIDIA documents
+    # __NV_PRIME_RENDER_OFFLOAD=1 alone for EGL (and the optimus layer for
+    # Vulkan); __EGL_VENDOR_LIBRARY_FILENAMES is never set, because pinning the
+    # vendor breaks Wayland compositors (labwc died that way on PEGASUS).
+    for name in OFFLOAD_VARS:
+        env.pop(name, None)
+    if isinstance(offload, dict):
+        plan = offload
+    elif offload is None:
+        plan = plan_for(hack_id, settings)
+    elif offload:
+        forced = offload_mode(settings)
+        forced = forced if GPU_ID_RE.match(forced) else "prime"
+        plan = plan_for(hack_id, {**settings, "gpu-offload": forced})
+    else:
+        plan = display_plan(settings)
+    if plan["offload"]:
+        drop_egl_vendor_pins(env)
+        env.update(gpu_env(plan["gpu"]))
+    env.update(render_env(hack_id, settings, plan))
+    if hack_id != "calibrate":
+        env.setdefault("NCZ_GPU_CLASS", plan["class"])
+    shader_cache_env(env)
+    env.update(hack_option_env(hack_id, settings, options))
+    env["NCZ_SCREENSAVER_ACTIVE"] = "1"
+    return env
+
+
+# --------------------------------------------------------------------------
+# Render check
+# --------------------------------------------------------------------------
+def frame_is_black(ppm):
+    """True when fewer than 0.5% of pixels of a binary PPM frame are lit.
+
+    Malformed or truncated frames are never reported as black.
+    """
+    try:
+        tokens = []
+        pos = 0
+        n = len(ppm)
+        while len(tokens) < 4:
+            while pos < n and ppm[pos : pos + 1].isspace():
+                pos += 1
+            if pos >= n:
+                return False
+            if ppm[pos : pos + 1] == b"#":
+                pos = ppm.index(b"\n", pos) + 1
+                continue
+            end = pos
+            while end < n and not ppm[end : end + 1].isspace():
+                end += 1
+            tokens.append(ppm[pos:end])
+            pos = end
+        pos += 1  # exactly one whitespace byte precedes the pixels
+        if tokens[0] != b"P6":
+            return False
+        width, height = int(tokens[1]), int(tokens[2])
+        pix = ppm[pos : pos + width * height * 3]
+        total = width * height
+        if total <= 0 or len(pix) < total * 3:
+            return False
+    except (ValueError, IndexError):
+        return False
+    lit = sum(
+        1
+        for r, g, b in zip(pix[0::3], pix[1::3], pix[2::3], strict=False)
+        if max(r, g, b) > 16
+    )
+    return lit / total < 0.005
+
+
+def grab_frame_is_black(env):
+    grim = shutil.which("grim")
+    if not grim:
+        return False
+    try:
+        proc = subprocess.run(
+            [grim, "-t", "ppm", "-s", "0.05", "-"],
+            capture_output=True,
+            timeout=10,
+            check=False,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if proc.returncode != 0:
+        return False
+    return frame_is_black(proc.stdout)
+
+
+# --------------------------------------------------------------------------
+# Failure ledger
+# --------------------------------------------------------------------------
+class Failures:
+    def __init__(self):
+        self.path = state_dir() / "failures.json"
+        self.data = read_json(self.path, {})
+
+    def save(self):
+        atomic_write(self.path, json.dumps(self.data))
+
+    def benched(self, hack_id):
+        return self.data.get(hack_id, {}).get("benched_until", 0) > time.time()
+
+    def fail(self, hack_id):
+        entry = self.data.setdefault(hack_id, {"consecutive": 0, "benched_until": 0})
+        entry["consecutive"] += 1
+        if entry["consecutive"] >= MAX_CONSECUTIVE_FAILURES:
+            entry["benched_until"] = time.time() + BENCH_SECONDS
+            log(f"benching {hack_id} for 24 h after {entry['consecutive']} failures")
+        self.save()
+
+    def ok(self, hack_id):
+        if hack_id in self.data:
+            del self.data[hack_id]
+            self.save()
+
+
+# --------------------------------------------------------------------------
+# Process helpers
+# --------------------------------------------------------------------------
+def pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except OSError as exc:
+        return exc.errno == errno.EPERM
+    return True
+
+
+def is_our_process(pid):
+    try:
+        cmdline = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return False
+    return b"ncz-screensaver" in cmdline
+
+
+def terminate_group(pgid, grace=1.0, child=None):
+    """SIGTERM the hack's process group, wait up to `grace` seconds, then SIGKILL.
+
+    Returns as soon as the hack has exited. When `child` (the Popen of the
+    group leader) is given it is reaped first: a zombie leader still makes
+    killpg(pgid, 0) succeed, which would otherwise burn the whole grace period
+    on every stop.
+    """
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, signal.SIGTERM)
+    deadline = time.monotonic() + grace
+    while time.monotonic() < deadline:
+        if child is not None:
+            if child.poll() is not None:
+                break
+        else:
+            try:
+                os.killpg(pgid, 0)
+            except OSError:
+                return
+        time.sleep(0.02)
+    # Leader gone or grace over: make sure no member of the group survives.
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, signal.SIGKILL)
+    if child is not None:
+        with contextlib.suppress(Exception):
+            child.wait(timeout=1)
+
+
+def session_locked():
+    """True while a screen locker owns the session (hacks would stall there)."""
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            cmd = (entry / "cmdline").read_bytes()
+        except OSError:
+            continue
+        if b"singularity-lockscreen" in cmd or cmd.startswith(b"swaylock"):
+            return True
+    return False
+
+
+def set_pdeathsig():
+    with contextlib.suppress(Exception):
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(1, signal.SIGTERM)
+
+
+# --------------------------------------------------------------------------
+# Supervisor
+# --------------------------------------------------------------------------
+class Supervisor:
+    def __init__(self, args, settings, catalog):
+        self.args = args
+        self.settings = settings
+        self.catalog = catalog
+        self.failures = Failures()
+        self.rt = runtime_dir()
+        self.child = None
+        self.child_hack = None
+        self.stop_requested = False
+        self.last_hack = None
+        self.playlist_index = 0
+        self.session_failures = 0
+        self.no_offload = set()
+        self.verified = set(read_json(self.rt / "verified.json", []))
+        self.overrides = {}
+        if args.hack and getattr(args, "option", None):
+            self.overrides[args.hack] = parse_option_args(args.option)
+        self.mode = "one" if args.hack else settings["mode"]
+        self.min_cycle = 1 if os.environ.get("NCZ_SCREENSAVER_MIN_CYCLE") else 5
+
+    def write_state(self, rotates_at=None):
+        child = self.child
+        state = {
+            "pid": os.getpid(),
+            "hack": self.child_hack,
+            "child_pid": child.pid if child else None,
+            "pgid": child.pid if child else None,
+            "started": self.started_wall,
+            "mode": self.mode,
+            "rotates_at": rotates_at,
+        }
+        atomic_write(self.rt / "state.json", json.dumps(state))
+
+    def installed(self, ids):
+        return [i for i in ids if ID_RE.match(i) and find_binary(i)]
+
+    def pick(self):
+        s = self.settings
+        if self.args.hack:
+            return self.args.hack
+        if self.mode == "one":
+            return s["hack-id"]
+        if self.mode == "playlist":
+            ids = filter_pool(self.installed(s["playlist"]), s)
+            if not ids:
+                return None
+            hack = ids[self.playlist_index % len(ids)]
+            self.playlist_index += 1
+            return hack
+        pool = s["random-hacks"] or [r["id"] for r in self.catalog]
+        pool = filter_pool(
+            [i for i in self.installed(pool) if not self.failures.benched(i)], s
+        )
+        if len(pool) > 1 and self.last_hack in pool:
+            pool.remove(self.last_hack)
+        return random.choice(pool) if pool else None
+
+    def launch(self, hack_id, offload=None):
+        binary = find_binary(hack_id)
+        if not binary:
+            log(f"{hack_id}: no executable found")
+            return None
+        env = build_child_env(
+            hack_id, self.settings, offload=offload, options=self.overrides.get(hack_id)
+        )
+        logf = open(self.rt / "hack.log", "ab")  # noqa: SIM115 - handed to the child
+        try:
+            child = subprocess.Popen(
+                [binary],
+                env=env,
+                stdout=logf,
+                stderr=logf,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+                preexec_fn=set_pdeathsig,  # noqa: PLW1509 - start_new_session is set
+            )
+        finally:
+            logf.close()
+        return child
+
+    def stop_child(self):
+        if self.child is not None:
+            terminate_group(self.child.pid, child=self.child)
+            self.child = None
+            self.child_hack = None
+
+    def run_one(self, hack_id, deadline):
+        """Run one hack until it ends, rotation is due or a stop arrives.
+
+        Returns "failed", "rotate", "ended" or "stop".
+        """
+        plan = (
+            display_plan(self.settings)
+            if hack_id in self.no_offload
+            else plan_for(hack_id, self.settings)
+        )
+        offload = plan["offload"]
+        self.child = self.launch(hack_id, offload=plan)
+        if self.child is None:
+            self.failures.fail(hack_id)
+            return "failed"
+        self.child_hack = hack_id
+        self.last_hack = hack_id
+        began = time.monotonic()
+        cycle = None
+        if not self.args.hack and self.mode in ("random", "playlist"):
+            cycle = max(self.min_cycle, int(self.settings["cycle-delay"]))
+        rotates_at = time.time() + cycle if cycle else None
+        self.write_state(rotates_at)
+        verify_at = began + float(os.environ.get("NCZ_SCREENSAVER_VERIFY_DELAY", "4"))
+        verified = (
+            not self.settings.get("verify-render", True) or hack_id in self.verified
+        )
+        cleared = False
+        while True:
+            if self.stop_requested:
+                return "stop"
+            now = time.monotonic()
+            if deadline is not None and now >= deadline:
+                self.stop_requested = True
+                return "stop"
+            code = self.child.poll()
+            if code is not None:
+                self.child = None
+                if code == 0 and now - began >= EARLY_EXIT_SECONDS:
+                    return "ended"  # the hack quit by itself, e.g. a key press
+                if code == GUARD_EXIT:
+                    log(
+                        f"{hack_id}: the software renderer guard refused to start it; not retrying"
+                    )
+                    notify(
+                        "Screensaver not started",
+                        "No hardware GPU is available for the screensaver.",
+                    )
+                    return "refused"
+                if offload:
+                    log(
+                        f"{hack_id} failed under GPU offload; retrying on the display GPU"
+                    )
+                    self.no_offload.add(hack_id)
+                    return self.run_one(hack_id, deadline)
+                log(f"{hack_id} exited early or abnormally with status {code}")
+                self.failures.fail(hack_id)
+                return "failed"
+            if not cleared and now - began >= EARLY_EXIT_SECONDS:
+                self.failures.ok(hack_id)
+                cleared = True
+            if not verified and now >= verify_at:
+                verified = True
+                if grab_frame_is_black(build_child_env(hack_id, self.settings)):
+                    log(f"{hack_id} rendered an all-black frame")
+                    self.failures.fail(hack_id)
+                    self.stop_child()
+                    return "failed"
+                self.verified.add(hack_id)
+                atomic_write(
+                    self.rt / "verified.json", json.dumps(sorted(self.verified))
+                )
+            if cycle and now - began >= cycle:
+                return "rotate"
+            time.sleep(0.1)
+
+    def calibrate(self):
+        """Measure the GPU class once (cache hit: about 0.3 s), never while a hack runs."""
+        with contextlib.suppress(Exception):
+            gpu_class(self.settings, None)
+            for tg in offload_targets(self.settings):
+                if self.stop_requested:
+                    return
+                gpu_class(self.settings, tg)
+
+    def run(self):
+        self.started_wall = time.time()
+        deadline = time.monotonic() + self.args.seconds if self.args.seconds else None
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            signal.signal(sig, lambda *_: setattr(self, "stop_requested", True))
+        try:
+            # state.json first, so that a stop during the calibration below is delivered
+            self.write_state(None)
+            if not self.args.hack:
+                self.calibrate()
+            while not self.stop_requested:
+                hack = self.pick()
+                if not hack:
+                    log("no runnable hack available")
+                    return 1
+                result = self.run_one(hack, deadline)
+                self.stop_child()
+                if result == "failed":
+                    self.session_failures += 1
+                    if self.session_failures >= MAX_CONSECUTIVE_FAILURES:
+                        log("giving up after 3 consecutive failures")
+                        return 1
+                elif result in ("ended", "refused"):
+                    return 0
+                else:
+                    self.session_failures = 0
+            return 0
+        finally:
+            self.stop_child()
+            with contextlib.suppress(OSError):
+                (self.rt / "state.json").unlink()
+
+
+# --------------------------------------------------------------------------
+# Commands
+# --------------------------------------------------------------------------
+def read_state():
+    """Return state.json when its supervisor is alive, else clean it up."""
+    path = runtime_dir() / "state.json"
+    state = read_json(path)
+    if not state:
+        return None
+    pid = state.get("pid")
+    if isinstance(pid, int) and pid_alive(pid) and is_our_process(pid):
+        return state
+    with contextlib.suppress(OSError):
+        path.unlink()
+    return None
+
+
+def cmd_start(args):
+    settings, _ = load_settings()
+    catalog = load_catalog()
+    if args.hack:
+        if not ID_RE.match(args.hack) or not known_id(args.hack, catalog):
+            log(f"unknown hack {args.hack}")
+            return 1
+        if not find_binary(args.hack):
+            log(f"{args.hack} is not installed")
+            return 1
+    if settings["mode"] == "off" and not (args.force or args.hack):
+        log("mode is off; nothing to start (use --force)")
+        return 0
+    if args.idle and session_locked():
+        # On some GPU stacks a hack blocks in eglSwapBuffers while the lock
+        # surface owns frame callbacks; never start one behind the lock.
+        log("session is locked; not starting")
+        return 0
+    rt = runtime_dir()
+    if not args.foreground:
+        if read_state():
+            print("already running")
+            return 0
+        logpath = rt / "launcher.log"
+        with contextlib.suppress(OSError):
+            if logpath.stat().st_size > 200 * 1024:
+                logpath.write_bytes(logpath.read_bytes()[-200 * 1024 :])
+        cmd = [sys.argv[0], "start", "--foreground"]
+        for flag, on in (("--idle", args.idle), ("--force", args.force)):
+            if on:
+                cmd.append(flag)
+        if args.hack:
+            cmd += ["--hack", args.hack]
+        for item in getattr(args, "option", None) or []:
+            cmd += ["--option", item]
+        if args.seconds:
+            cmd += ["--seconds", str(args.seconds)]
+        with open(logpath, "ab") as lf:
+            child = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=lf,
+                stderr=lf,
+                start_new_session=True,
+            )
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            state = read_json(rt / "state.json")
+            if state and state.get("pid") == child.pid:
+                return 0
+            code = child.poll()
+            if code is not None:
+                return 0 if code == 0 else code
+            time.sleep(0.05)
+        return 0
+    lock_fd = os.open(rt / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("already running")
+        return 0
+    return Supervisor(args, settings, catalog).run()
+
+
+def cmd_stop(_args):
+    state = read_state()
+    if not state:
+        return 0
+    pid = state["pid"]
+    with contextlib.suppress(OSError):
+        os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if not pid_alive(pid):
+            return 0
+        time.sleep(0.05)
+    log("supervisor did not exit; killing")
+    with contextlib.suppress(OSError):
+        os.kill(pid, signal.SIGKILL)
+    pgid = state.get("pgid")
+    if isinstance(pgid, int) and pgid > 1:
+        with contextlib.suppress(OSError):
+            os.killpg(pgid, signal.SIGKILL)
+    with contextlib.suppress(OSError):
+        (runtime_dir() / "state.json").unlink()
+    return 0
+
+
+def idled_info():
+    info = read_json(runtime_dir() / "idled.json")
+    if info and isinstance(info.get("pid"), int) and pid_alive(info["pid"]):
+        return info
+    return None
+
+
+def cmd_status(args):
+    if getattr(args, "diagnostics", False):
+        return cmd_doctor(args)
+    settings, _ = load_settings()
+    state = read_state()
+    entry = gpu_class(settings, None, run=False)
+    out = {
+        "gpu_class": entry.get("class"),
+        "gpu_class_score_ms": entry.get("ms"),
+        "gpu_class_source": entry.get("source"),
+        "running": bool(state),
+        "hack": state.get("hack") if state else None,
+        "pid": state.get("pid") if state else None,
+        "uptime": round(time.time() - state["started"], 1) if state else None,
+        "mode": settings["mode"],
+        "idled": idled_info(),
+    }
+    if args.json:
+        print(json.dumps(out))
+    elif state:
+        print(
+            f"running {out['hack']} (supervisor pid {out['pid']}, up {out['uptime']}s)"
+        )
+    else:
+        print("not running")
+    return 0 if state else 3
+
+
+def cmd_list(args):
+    settings, _ = load_settings()
+    pool = settings["random-hacks"]
+    tier_rows = load_tier_rows()
+    tiers = {k: v["min"] for k, v in tier_rows.items()}
+    known = load_broken()
+    syscls = pool_class(settings)  # the best class the pools may use
+    rows = []
+    for r in load_catalog():
+        if args.group and r["group"] != args.group:
+            continue
+        row = dict(r)
+        row["installed"] = find_binary(r["id"]) is not None
+        row["enabled"] = not pool or r["id"] in pool
+        row["tier"] = tiers.get(r["id"], "strong") if tiers else "unknown"
+        row["min_class"] = row["tier"]
+        row["flagged"] = bool(tiers) and CLASS_RANK[row["tier"]] > CLASS_RANK[syscls]
+        row["expect"] = (
+            expectation(r["id"], syscls, tier_rows) if row["flagged"] else ""
+        )
+        row["issue"] = known[r["id"]][0] if r["id"] in known else ""
+        row["issue_reason"] = known[r["id"]][1] if r["id"] in known else ""
+        if args.enabled and not row["enabled"]:
+            continue
+        if args.installed and not row["installed"]:
+            continue
+        rows.append(row)
+    if args.json:
+        print(json.dumps(rows))
+    else:
+        for row in rows:
+            flags = (
+                ("I" if row["installed"] else "-")
+                + ("E" if row["enabled"] else "-")
+                + ("!" if row["issue"] else "-")
+            )
+            print(
+                f"{flags} {row['tier']:<8} {row['id']:<40} {row['group']:<22} {row['title']}"
+            )
+    return 0
+
+
+def cmd_preview(args):
+    cmd_stop(args)
+    args.idle = False
+    args.force = True
+    args.foreground = False
+    return cmd_start(args)
+
+
+def cmd_set(key, value):
+    validate_setting(key, value)
+    write_setting(key, value)
+    return 0
+
+
+def cmd_set_hack(args):
+    if not known_id(args.id, load_catalog()):
+        raise SystemExit(f"unknown hack {args.id}")
+    cmd_set("hack-id", args.id)
+    return cmd_set("mode", "one")
+
+
+def cmd_set_color(args):
+    if not WORD_RE.match(args.mode):
+        raise SystemExit("color mode must be a lowercase word")
+    if args.mode not in COLOR_MODES:
+        log(f"warning: {args.mode} may not be a known color mode")
+    return cmd_set("blackhole-color-mode", args.mode)
+
+
+def cmd_enable_disable(args, enable):
+    if not args.id:
+        return cmd_set("mode", "random" if enable else "off")
+    settings, _ = load_settings()
+    catalog_ids = [r["id"] for r in load_catalog()]
+    if not known_id(args.id, load_catalog()):
+        raise SystemExit(f"unknown hack {args.id}")
+    pool = list(settings["random-hacks"] or catalog_ids)
+    if enable and args.id not in pool:
+        pool.append(args.id)
+    if not enable and args.id in pool:
+        pool.remove(args.id)
+    if sorted(pool) == sorted(catalog_ids):
+        pool = []
+    return cmd_set("random-hacks", pool)
+
+
+def stored_options(settings):
+    return {k: dict(v) for k, v in (settings.get("hack-options") or {}).items()}
+
+
+def need_schema(hack_id):
+    rows = load_option_schema(hack_id)
+    if not rows:
+        raise SystemExit(f"{hack_id} has no options")
+    return {r["name"]: r for r in rows}
+
+
+def cmd_list_options(args):
+    settings, _ = load_settings()
+    stored = stored_options(settings).get(args.hack, {})
+    rows = []
+    for r in need_schema(args.hack).values():
+        row = dict(r)
+        row["value"] = stored.get(r["name"], r["default"])
+        rows.append(row)
+    if args.json:
+        print(json.dumps(rows))
+    else:
+        for r in rows:
+            print(
+                f"{r['group']:<12} {r['name']:<20} {r['type']:<6} {r['value']:<14} {r['label']}"
+            )
+    return 0
+
+
+def cmd_get_option(args):
+    settings, _ = load_settings()
+    schema = need_schema(args.hack)
+    stored = stored_options(settings).get(args.hack, {})
+    if args.name not in schema:
+        raise SystemExit(f"unknown option {args.name}")
+    print(stored.get(args.name, schema[args.name]["default"]))
+    return 0
+
+
+def cmd_set_option(args):
+    schema = need_schema(args.hack)
+    if args.name not in schema:
+        raise SystemExit(f"unknown option {args.name}")
+    try:
+        value = normalize_option(schema[args.name], args.value)
+    except ValueError as exc:
+        raise SystemExit(f"invalid value for {args.name}: {exc}") from None
+    settings, _ = load_settings()
+    stored = stored_options(settings)
+    stored.setdefault(args.hack, {})[args.name] = value
+    return cmd_set("hack-options", stored)
+
+
+def cmd_reset_options(args):
+    settings, _ = load_settings()
+    stored = stored_options(settings)
+    stored.pop(args.hack, None)
+    return cmd_set("hack-options", stored)
+
+
+def cmd_config(args):
+    settings, ok = load_settings()
+    if args.action == "dump":
+        print(json.dumps(settings))
+    elif args.action == "get":
+        if args.key not in settings:
+            raise SystemExit(f"unknown key {args.key}")
+        print(json.dumps(settings[args.key]))
+    else:
+        if args.key is None or args.value is None:
+            raise SystemExit("config set needs KEY VALUE")
+        if args.key not in DEFAULTS:
+            raise SystemExit(f"unknown key {args.key}")
+        return cmd_set(args.key, coerce_value(args.key, args.value))
+    if not ok and args.action != "set":
+        log("schema not available; showing built-in defaults")
+    return 0
+
+
+UNIT_PROPS = (
+    "ActiveState",
+    "Nice",
+    "CPUWeight",
+    "CPUQuotaPerSecUSec",
+    "IOWeight",
+    "MemoryMax",
+    "Slice",
+    "OOMScoreAdjust",
+    "ProtectHome",
+    "PrivateTmp",
+    "ReadOnlyPaths",
+    "DynamicUser",
+    "CPUAffinity",
+)
+ENV_KEYS = (
+    "HOME",
+    "XDG_CACHE_HOME",
+    "XDG_RUNTIME_DIR",
+    "WAYLAND_DISPLAY",
+    "LD_LIBRARY_PATH",
+    "MESA_SHADER_CACHE_DIR",
+    "MESA_SHADER_CACHE_DISABLE",
+    "MESA_GLSL_CACHE_DISABLE",
+    "NCZ_GPU_BACKEND",
+    "NCZ_RENDER_SCALE",
+    "NCZ_MAX_RENDER_HEIGHT",
+    "DRI_PRIME",
+    "__NV_PRIME_RENDER_OFFLOAD",
+    "__VK_LAYER_NV_optimus",
+    "__GLX_VENDOR_LIBRARY_NAME",
+    "__EGL_VENDOR_LIBRARY_FILENAMES",
+)
+
+
+def picked_env(env):
+    return {k: env[k] for k in ENV_KEYS if k in env}
+
+
+def dir_size_mb(path):
+    total = 0
+    for f in Path(path).rglob("*"):
+        with contextlib.suppress(OSError):
+            if f.is_file():
+                total += f.stat().st_size
+    return round(total / 1e6, 1)
+
+
+def diagnostics(settings, schema_ok):
+    catalog = load_catalog()
+    per_group = {}
+    for r in catalog:
+        g = per_group.setdefault(r["group"], [0, 0])
+        g[0] += 1
+        g[1] += find_binary(r["id"]) is not None
+    rd = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    hack = settings["hack-id"]
+    tiers = load_tiers()
+    env = build_child_env(hack, settings)
+    cache = env.get("MESA_SHADER_CACHE_DIR", "")
+    unit = {}
+    if shutil.which("systemctl"):
+        with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+            out = subprocess.run(
+                [
+                    "systemctl",
+                    "--user",
+                    "show",
+                    "ncz-screensaver-idled.service",
+                    "-p",
+                    ",".join(UNIT_PROPS),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            ).stdout
+            unit = dict(x.split("=", 1) for x in out.splitlines() if "=" in x)
+    running = {}
+    state = read_state()
+    if state:
+        with contextlib.suppress(OSError, KeyError, TypeError):
+            raw = (
+                Path(f"/proc/{state['child_pid']}/environ")
+                .read_bytes()
+                .decode(errors="replace")
+            )
+            running = picked_env(
+                dict(x.split("=", 1) for x in raw.split("\0") if "=" in x)
+            )
+    topo = gpu_topology()
+    return {
+        "schema": schema_ok,
+        "catalog_rows": len(catalog),
+        "installed_by_group": {
+            k: {"catalog": v[0], "installed": v[1]} for k, v in per_group.items()
+        },
+        "wayland_sockets": sorted(
+            p.name for p in Path(rd).glob("wayland-*") if not p.name.endswith(".lock")
+        ),
+        "grim": bool(shutil.which("grim")),
+        "idled_running": idled_info() is not None,
+        "mode": settings["mode"],
+        "gpu": topo,
+        "gpus": list_gpus(),
+        "gpu_class": {
+            "display": gpu_class(settings, None, run=False),
+            "offload_targets": {
+                g["id"]: gpu_class(settings, g, run=False)
+                for g in offload_targets({**settings, "gpu-offload": "prime"})
+            },
+            "power": {"ac_online": ac_online()},
+            "thresholds_ms": {
+                "weak_at_or_above": CLASS_WEAK_MS,
+                "mid_at_or_above": CLASS_MID_MS,
+            },
+            "cache": str(class_cache_path()),
+            "calibrator": calibrate_bin(),
+        },
+        "offload": {
+            "setting": settings["gpu-offload"],
+            "hack": hack,
+            "min_class": tiers.get(hack, "unknown"),
+            "applies_to_selected_hack": offload_for(hack, settings, tiers),
+            "targets": [g["id"] for g in offload_targets(settings)],
+            "switcheroo": sorted(switcheroo_envs()),
+        },
+        "tiers_loaded": len(tiers),
+        "pool_class": pool_class(settings),
+        "render": {
+            "platform": platform_id(),
+            "native_height": native_height(),
+            "default_cap": default_render_cap(),
+            "effective_for_selected_hack": render_env(hack, settings),
+        },
+        "hack_env": picked_env(env),
+        "running_hack_env": running,
+        "shader_cache": {
+            "dir": cache,
+            "writable": bool(cache) and os.access(cache, os.W_OK),
+            "size_mb": dir_size_mb(cache) if cache and Path(cache).is_dir() else 0,
+        },
+        "unit": unit,
+    }
+
+
+def cmd_calibrate(args):
+    if args.copy_ms:
+        gid, _, val = args.copy_ms.partition("=")
+        if not val:
+            raise SystemExit("--copy-ms expects GPUID=MILLISECONDS")
+        cache = read_class_cache()
+        cache.setdefault(gid, {})["copy_ms"] = float(val)
+        path = class_cache_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"entries": cache}, indent=1) + "\n")
+        return 0
+    if read_state():
+        log(
+            "a screensaver is running; stop it first (calibration never runs during a hack)"
+        )
+        return 3
+    settings, _ = load_settings()
+    if not calibrate_bin():
+        log("ncz-screensaver-calibrate is not installed; using the renderer table")
+    out = {"display": gpu_class(settings, None, force=args.force)}
+    for tg in offload_targets({**settings, "gpu-offload": "prime"}):
+        out[tg["id"]] = gpu_class(settings, tg, force=args.force)
+    if args.json:
+        print(json.dumps(out))
+    else:
+        for name, e in out.items():
+            ms = f"{e['ms']:.1f} ms" if "ms" in e else "no score"
+            print(
+                f"{name}: {e['class']} ({ms}, {e.get('source')}, {e.get('renderer') or 'unknown renderer'})"
+            )
+    return 3 if any(e.get("software") for e in out.values()) else 0
+
+
+def installed_ids(settings):
+    catalog = [r["id"] for r in load_catalog()]
+    pool = settings["random-hacks"] or catalog
+    return [i for i in pool if find_binary(i)]
+
+
+def cmd_pool(args):
+    """The hacks random and playlist mode would use right now, and why others are out."""
+    settings, _ = load_settings()
+    ids = installed_ids(settings)
+    kept = filter_pool(ids, settings)
+    tiers = load_tiers()
+    known = load_broken()
+    why = {}
+    limit = CLASS_RANK[pool_class(settings)]
+    for i in ids:
+        if i in kept:
+            continue
+        if i in known:
+            why[i] = f"listed {known[i][0]}"
+        else:
+            why[i] = f"needs {tiers.get(i, 'strong')} GPU, pool allows {CLASSES[limit]}"
+    out = {"class": CLASSES[limit], "count": len(kept), "ids": kept, "excluded": why}
+    if args.json:
+        print(json.dumps(out))
+    else:
+        print(f"pool class {out['class']}: {len(kept)} of {len(ids)} installed hacks")
+        for i, r in sorted(why.items()):
+            print(f"  out: {i} ({r})")
+    return 0
+
+
+def cmd_plan(args):
+    """Where one hack would render: display GPU or an offload target, and the class."""
+    settings, _ = load_settings()
+    if not known_id(args.hack, load_catalog()):
+        raise SystemExit(f"unknown hack {args.hack}")
+    plan = plan_for(args.hack, settings)
+    gpu = plan["gpu"]
+    out = {
+        "hack": args.hack,
+        "min_class": load_tiers().get(args.hack, "strong"),
+        "gpu": gpu["id"] if gpu else None,
+        "gpu_driver": gpu["driver"] if gpu else None,
+        "offload": plan["offload"],
+        "class": plan["class"],
+        "env": sorted(gpu_env(gpu)) if plan["offload"] else [],
+        "on_battery": not ac_online(),
+        "setting": settings["gpu-offload"],
+    }
+    print(json.dumps(out) if args.json else json.dumps(out, indent=1))
+    return 0
+
+
+PLUGIN_MODULE = "screensaver"
+PLUGIN_SO = "/opt/singularity/lib/singularity/plugins/screensaver/libscreensaver.so"
+SHELL_SCHEMA = "dev.sinty.desktop"
+
+
+def shell_gsettings(*args):
+    env = gsettings_env()
+    env["XDG_DATA_DIRS"] = "/opt/singularity/share:" + env.get(
+        "XDG_DATA_DIRS", "/usr/local/share:/usr/share"
+    )
+    env["GSETTINGS_SCHEMA_DIR"] = "/opt/singularity/share/glib-2.0/schemas"
+    return subprocess.run(
+        ["gsettings", *args],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+        env=env,
+    )
+
+
+def cmd_ensure_plugin(_args):
+    """Turn the Settings plugin on once for this user, keeping the rest of their list.
+
+    Runs at login from the idle daemon unit. It adds "screensaver" to the shell's
+    enabled-plugins when the plugin is installed and this user has not been through
+    the step before; a plugin the user switches off afterwards stays off.
+    """
+    if not Path(PLUGIN_SO).is_file() or not shutil.which("gsettings"):
+        return 0
+    state = (
+        Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
+        / "ncz-screensavers"
+    )
+    marker = state / "plugin-enabled"
+    if marker.exists():
+        return 0
+    got = shell_gsettings("get", SHELL_SCHEMA, "enabled-plugins")
+    if got.returncode != 0:
+        log("shell schema not available; not enabling the plugin")
+        return 0
+    try:
+        current = parse_gvariant(got.stdout.strip())
+    except (ValueError, SyntaxError):
+        return 0
+    if PLUGIN_MODULE not in current:
+        put = shell_gsettings(
+            "set",
+            SHELL_SCHEMA,
+            "enabled-plugins",
+            gvariant_text([*current, PLUGIN_MODULE]),
+        )
+        if put.returncode != 0:
+            log(f"could not enable the plugin: {put.stderr.strip()}")
+            return 1
+    state.mkdir(parents=True, exist_ok=True)
+    marker.write_text("1\n")
+    return 0
+
+
+def cmd_gpus(args):
+    settings, _ = load_settings()
+    rows = []
+    for g in list_gpus():
+        ent = gpu_class(settings, g, run=False)
+        rows.append(
+            {
+                **g,
+                "class": ent["class"],
+                "ms": ent.get("ms"),
+                "renderer": ent.get("renderer", ""),
+            }
+        )
+    if args.json:
+        print(json.dumps(rows))
+    else:
+        for g in rows:
+            role = "display" if g["display"] else "offload"
+            ms = f"{g['ms']:.1f} ms" if g["ms"] else "no score"
+            print(
+                f"{g['id']} {role:<8} {g['vendor']:<7} {g['driver']:<8} {g['class']:<6} {ms}"
+            )
+    return 0
+
+
+def cmd_doctor(_args):
+    settings, schema_ok = load_settings()
+    print(json.dumps(diagnostics(settings, schema_ok), indent=1))
+    return 0
+
+
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="ncz-screensaver", description="NCZ-OS screensaver launcher"
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("start", help="start the screensaver")
+    s.add_argument("--idle", action="store_true", help="started by the idle daemon")
+    s.add_argument("--hack", help="run this catalog id")
+    s.add_argument("--seconds", type=int, help="stop the session after N seconds")
+    s.add_argument(
+        "--option",
+        action="append",
+        metavar="NAME=VALUE",
+        help="per-run option for --hack (validated)",
+    )
+    s.add_argument("--force", action="store_true", help="ignore mode off")
+    s.add_argument("--foreground", action="store_true", help="do not detach")
+    s.set_defaults(fn=cmd_start)
+    s = sub.add_parser("stop", help="stop the screensaver")
+    s.set_defaults(fn=cmd_stop)
+    s = sub.add_parser("status", help="show state")
+    s.add_argument("--json", action="store_true")
+    s.add_argument("--diagnostics", action="store_true", help="print the doctor report")
+    s.set_defaults(fn=cmd_status)
+    s = sub.add_parser(
+        "calibrate", help="measure the GPU class (about 3 s; refuses while a hack runs)"
+    )
+    s.add_argument("--force", action="store_true", help="ignore the cache")
+    s.add_argument("--json", action="store_true")
+    s.add_argument(
+        "--copy-ms",
+        metavar="GPUID=MS",
+        help="record a measured cross-GPU frame copy cost for an offload target",
+    )
+    s.set_defaults(fn=cmd_calibrate)
+    s = sub.add_parser(
+        "pool", help="hacks random/playlist mode use now, and exclusions"
+    )
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_pool)
+    s = sub.add_parser("plan", help="which GPU one hack would render on")
+    s.add_argument("hack")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_plan)
+    s = sub.add_parser(
+        "ensure-plugin", help="enable the Settings plugin once for this user"
+    )
+    s.set_defaults(fn=cmd_ensure_plugin)
+    s = sub.add_parser("gpus", help="list GPUs, their roles and classes")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_gpus)
+    s = sub.add_parser("list", help="list catalog hacks")
+    s.add_argument("--group")
+    s.add_argument("--enabled", action="store_true")
+    s.add_argument("--installed", action="store_true")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_list)
+    s = sub.add_parser("preview", help="run one hack for a while")
+    s.add_argument("hack")
+    s.add_argument("--seconds", type=int, default=15)
+    s.add_argument(
+        "--option",
+        action="append",
+        metavar="NAME=VALUE",
+        help="per-run option (validated)",
+    )
+    s.set_defaults(fn=cmd_preview)
+    s = sub.add_parser("set-timeout", help="idle seconds before the screensaver")
+    s.add_argument("seconds", type=int)
+    s.set_defaults(fn=lambda a: cmd_set("hack-idle-delay", a.seconds))
+    s = sub.add_parser("set-hack", help="use one hack (mode one)")
+    s.add_argument("id")
+    s.set_defaults(fn=cmd_set_hack)
+    s = sub.add_parser("set-mode", help="off, one, random or playlist")
+    s.add_argument("mode", choices=MODES)
+    s.set_defaults(fn=lambda a: cmd_set("mode", a.mode))
+    s = sub.add_parser(
+        "set-gpu", help="GPU for hacks: off, auto or prime (NVIDIA offload)"
+    )
+    s.add_argument("mode", help="off, auto, prime or a GPU id (ncz-screensaver gpus)")
+    s.set_defaults(fn=lambda a: cmd_set("gpu-offload", a.mode))
+    s = sub.add_parser(
+        "list-options", help="options of a screensaver with their values"
+    )
+    s.add_argument("hack")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_list_options)
+    s = sub.add_parser("get-option", help="value of one option")
+    s.add_argument("hack")
+    s.add_argument("name")
+    s.set_defaults(fn=cmd_get_option)
+    s = sub.add_parser(
+        "set-option", help="set one option (validated against the schema)"
+    )
+    s.add_argument("hack")
+    s.add_argument("name")
+    s.add_argument("value")
+    s.set_defaults(fn=cmd_set_option)
+    s = sub.add_parser(
+        "reset-options", help="forget all stored options of a screensaver"
+    )
+    s.add_argument("hack")
+    s.set_defaults(fn=cmd_reset_options)
+    s = sub.add_parser(
+        "set-pool", help="random and playlist pool: auto, weak, mid or all"
+    )
+    s.add_argument("cls", choices=POOL_CLASSES)
+    s.set_defaults(fn=lambda a: cmd_set("pool-gpu-class", a.cls))
+    s = sub.add_parser("set-color", help="black hole color mode")
+    s.add_argument("mode")
+    s.set_defaults(fn=cmd_set_color)
+    for name, flag in (("enable", True), ("disable", False)):
+        s = sub.add_parser(name, help=f"{name} random mode or one hack in the pool")
+        s.add_argument("id", nargs="?")
+        s.set_defaults(fn=lambda a, f=flag: cmd_enable_disable(a, f))
+    s = sub.add_parser("config", help="get/set/dump raw settings")
+    s.add_argument("action", choices=("get", "set", "dump"))
+    s.add_argument("key", nargs="?")
+    s.add_argument("value", nargs="?")
+    s.set_defaults(fn=cmd_config)
+    s = sub.add_parser("doctor", help="environment checks")
+    s.set_defaults(fn=cmd_doctor)
+    return p
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
+    return args.fn(args) or 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
