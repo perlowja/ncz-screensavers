@@ -773,8 +773,14 @@ def _iter_platform_gpu_devices():
     blacklisted on this kernel). The synthetic id is 'soc-<platform-device-name>'
     so a cached calibration entry is keyed off something stable across
     reboots.
+
+    A kernel may register more than one misc character device for the
+    same GPU (mali0 + mali_capture + mali_jit on Panthor / CSF kernels);
+    those siblings share the same parent platform device, so we de-dup
+    by the resolved platform path and yield each GPU once.
     """
     root = sysfs_root()
+    seen = set()
     for misc in sorted((root / "class" / "misc").glob("mali*")):
         device_link = misc / "device"
         if not device_link.is_symlink():
@@ -803,6 +809,15 @@ def _iter_platform_gpu_devices():
         if not plat_parts:
             continue
         plat_dev = root.joinpath(*plat_parts)
+        # De-dup by the resolved platform-device path: mali0, mali_capture
+        # and mali_jit on a Panthor / CSF kernel all share the same parent
+        # platform device and would otherwise produce three duplicate rows.
+        try:
+            plat_key = str(plat_dev.resolve(strict=False))
+        except OSError:
+            plat_key = str(plat_dev)
+        if plat_key in seen:
+            continue
         drv_link = plat_dev / "driver"
         if not drv_link.is_symlink():
             continue
@@ -810,6 +825,7 @@ def _iter_platform_gpu_devices():
         if not driver:
             # No driver bound — there is no GPU yet; skip.
             continue
+        seen.add(plat_key)
         plat_name = plat_dev.name
         gid = f"soc-{plat_name.replace(':', '_').replace('.', '_')}"
         yield {
@@ -904,11 +920,12 @@ def class_from_topology(gpu=None):
     gpu = gpu or display_gpu()
     if gpu is None:
         return "weak"
-    if gpu["discrete"]:
+    if gpu.get("discrete"):
         return "strong"
-    if gpu["driver"] in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
+    driver = gpu.get("driver", "")
+    if driver in ("i915", "xe", "v3d", "vc4", "lima", "etnaviv"):
         return "weak"
-    if gpu["driver"] in MID_DRIVERS:
+    if driver in MID_DRIVERS:
         return "mid"
     return "weak"
 

@@ -1991,3 +1991,148 @@ def test_sky1_pass13_cmd_status_reports_mid(env, monkeypatch, capsys):
     )
     assert out["gpu_class_score_ms"] == SKY1_PASS13_CAPTURE["ms"]
     assert out["gpu_class_source"] == "calibration"
+
+
+# ----------------------------------------------------------------------------
+# Adversarial-review gap-pin tests (turn 4 dispatch, 2026-09-30)
+# ----------------------------------------------------------------------------
+# The subagent review of launcher/ncz-screensaver found a real defect
+# (`_iter_platform_gpu_devices()` glob matches `mali_capture`/`mali_jit`
+# and would produce duplicate rows on a Panthor/CSF kernel) and several
+# hardening gaps. The tests below pin each one against the same fake-sysfs
+# rig the rest of the suite uses, so a regression in any of them surfaces
+# at unit-test time rather than on the next live-host probe.
+
+
+def test_platform_gpu_devices_dedup_mali_capture_and_mali_jit_siblings(env):
+    """A kernel that registers more than one misc character device for the
+    same GPU (Panthor / CSF: mali0 + mali_capture + mali_jit) used to produce
+    three duplicate rows in list_gpus() because the glob `class/misc/mali*`
+    matched every sibling that shared the parent platform device. The fix
+    resolves the platform path and yields one GPU per parent device.
+    """
+    add_power(env.sysfs, True)
+    # Parent platform device: CIXH5000:00 driven by 'mali'.
+    gpu_dev = env.sysfs / "devices/platform/CIXH5000:00"
+    gpu_dev.mkdir(parents=True)
+    (gpu_dev / "uevent").write_text("DRIVER=mali\n")
+    drv = env.sysfs / "bus/platform/drivers/mali"
+    drv.mkdir(parents=True)
+    os.symlink(drv, gpu_dev / "driver")
+    # Three sibling misc devices, all symlinked to subdirs of the same parent.
+    for name in ("mali0", "mali_capture", "mali_jit"):
+        misc = env.sysfs / "class/misc" / name
+        misc.mkdir(parents=True)
+        (misc / "dev").write_text("10:262\n")
+        target = gpu_dev / f"misc/{name}"
+        target.mkdir(parents=True)
+        os.symlink(target, misc / "device")
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+    gpus = env.list_gpus()
+    assert len(gpus) == 1, (
+        f"list_gpus() returned {len(gpus)} entries for one parent GPU "
+        f"with three misc siblings; should be one row."
+    )
+    assert gpus[0]["id"] == "soc-CIXH5000_00"
+    assert gpus[0]["driver"] == "mali"
+    assert gpus[0]["display"] is True
+
+
+def test_class_from_topology_tolerates_partial_dicts(env):
+    """Adversarial review found that `class_from_topology({})` and
+    `class_from_topology({'driver': 'mali'})` raised `KeyError: 'discrete'`
+    / `'driver'`. The function is now `.get()`-safe; these tests pin the
+    hardened contract so a future refactor can't reintroduce the crash.
+    """
+    # Empty dict: defaults to weak, no exception.
+    assert env.class_from_topology({}) == "weak"
+    # Missing discrete: must not raise, must check driver first.
+    assert env.class_from_topology({"driver": "mali"}) == "mid"
+    assert env.class_from_topology({"driver": "i915"}) == "weak"
+    assert env.class_from_topology({"driver": "panthor"}) == "mid"
+    # nvidia without the discrete flag stays weak — the strong verdict
+    # requires either the renderer string (handled upstream by
+    # class_from_renderer) or the discrete=True sysfs flag (set below).
+    assert env.class_from_topology({"driver": "nvidia"}) == "weak"
+    assert env.class_from_topology({"driver": "nvidia", "discrete": True}) == "strong"
+    # Missing driver: must not raise, defaults to weak.
+    assert env.class_from_topology({"discrete": False}) == "weak"
+    assert env.class_from_topology({"discrete": True}) == "strong"
+
+
+def test_list_gpus_only_display_only_drivers_keeps_them_as_weak(env):
+    """A host with no real GPU (e.g. a Pi 4 with the v3d module unloaded,
+    or a Sky1 with the mali module blacklisted forever) still has the
+    display controllers in its DRM list. They must stay in list_gpus() so
+    cmd_gpus can render something; class_from_topology must return 'weak'
+    via the default branch since no driver is in any allow-list.
+    """
+    # Two display-only DRM cards: vc4 (no render node) and vkms (test rig).
+    for i, driver in enumerate(("vc4", "vkms")):
+        add_gpu(
+            env.sysfs,
+            f"card{i}",
+            "0x0000",
+            "0x0000",
+            driver,
+            f"0000:0{i}:00.0",
+            connected=(i == 0),
+        )
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+    gpus = env.list_gpus()
+    # Both cards survive the filter (no real GPU exists to filter against).
+    ids = sorted(g["id"] for g in gpus)
+    assert ids == ["pci-0000_00_00_0", "pci-0000_01_00_0"]
+    # Both are flagged display_only=True by the filter.
+    assert all(g.get("display_only") for g in gpus)
+    # And class_from_topology classifies both as 'weak'.
+    assert env.class_from_topology(gpus[0]) == "weak"
+    assert env.class_from_topology(gpus[1]) == "weak"
+
+
+def test_cmd_gpus_on_empty_sysfs_returns_cleanly(env, capsys):
+    """cmd_gpus on a host with no GPUs at all (e.g. a CI runner without a
+    DRM device, or a fresh image that has not loaded any driver yet) must
+    not crash. Pre-fix this would have iterated an empty list and printed
+    nothing; pin the contract explicitly so the JSON consumer sees `[]`
+    and the text consumer sees zero rows + rc=0.
+    """
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+    rc = env.cmd_gpus(type("A", (), {"json": True})())
+    assert rc == 0
+    out = capsys.readouterr().out.strip()
+    assert out == "[]", f"cmd_gpus --json on empty sysfs should print '[]', got {out!r}"
+
+
+def test_render_only_gpu_takes_display_when_display_controller_has_no_render_node(
+    env,
+):
+    """Pi 4 layout: card0=vc4 (display controller, no renderD*), card1=v3d
+    (render GPU). Already covered for Pi at the integration level (line
+    1607), but this test pins the *display_role assignment* alone so a
+    future refactor of list_gpus() that touches the boot_vga fallback
+    cannot silently swap the display GPU.
+    """
+    # vc4 display controller with NO renderD* child.
+    add_gpu(
+        env.sysfs, "card0", "0x0000", "0x0000", "vc4", "0000:01:00.0", connected=True
+    )
+    (env.sysfs / "class/drm/card0/device/drm").mkdir(parents=True, exist_ok=True)
+    # v3d render GPU with a renderD* child.
+    add_gpu(env.sysfs, "card1", "0x0000", "0x0000", "v3d", "0000:02:00.0")
+    (env.sysfs / "class/drm/card1/device/drm").mkdir(parents=True, exist_ok=True)
+    (env.sysfs / "class/drm/card1/device/drm/renderD128").touch()
+    add_power(env.sysfs, True)
+    for fn in (env.list_gpus, env.gpu_topology):
+        fn.cache_clear()
+    gpus = env.list_gpus()
+    assert len(gpus) == 1, (
+        f"vc4 is display-only; the display role must belong to the v3d. Got: {gpus}"
+    )
+    assert gpus[0]["driver"] == "v3d"
+    assert gpus[0]["display"] is True
