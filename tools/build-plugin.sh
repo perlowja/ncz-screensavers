@@ -10,9 +10,14 @@ T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 printf "project('ncz-screensaver-plugin', 'c', version: '0.1.0')\nsubdir('plugin')\n" > "$T/meson.build"
 cp "$ROOT/meson_options.txt" "$T/meson_options.txt"
-ln -s "$ROOT/plugin" "$T/plugin"
+ln -s "${NCZ_PLUGIN_SRC:-$ROOT/plugin}" "$T/plugin"
 PKG_CONFIG_PATH="$SDK/lib/pkgconfig" meson setup "$T/b" "$T" -Dsingularity-plugin=enabled \
     -Dsingularity-vapidir="$SDK/share/vala/vapi" -Db_lundef=false >/dev/null
-PKG_CONFIG_PATH="$SDK/lib/pkgconfig" ninja -C "$T/b" 2>&1 | grep -E "error|FAILED" >&2 || true; [ -f "$T/b/plugin/screensaver/libscreensaver.so" ]
+if ! PKG_CONFIG_PATH="$SDK/lib/pkgconfig" ninja -C "$T/b" >"$T/ninja.log" 2>&1; then
+    grep -E "error|FAILED" "$T/ninja.log" >&2 || tail -n 20 "$T/ninja.log" >&2
+    echo "build-plugin: compile failed" >&2
+    exit 1
+fi
+[ -f "$T/b/plugin/screensaver/libscreensaver.so" ] || { echo "build-plugin: no libscreensaver.so produced" >&2; exit 1; }
 mkdir -p "$OUT"
 cp "$T/b/plugin/screensaver/libscreensaver.so" "$ROOT/plugin/screensaver/screensaver.plugin" "$OUT/"
