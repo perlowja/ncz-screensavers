@@ -456,7 +456,7 @@ public class ScreensaverSettings : Gtk.Box {
                 copy.clicked.connect (() => {
                     var display = Gdk.Display.get_default ();
                     if (display != null)
-                        display.get_clipboard ().set_content (Gdk.ContentProvider.for_value ("%d".printf ((int) row.spin_btn.value)));
+                        display.get_clipboard ().set_content (new Gdk.ContentProvider.for_value ("%d".printf ((int) row.spin_btn.value)));
                 });
                 row.add_suffix (randomize);
                 row.add_suffix (copy);
