@@ -542,7 +542,11 @@ public class ScreensaverSettings : Gtk.Box {
             current.remove (id);
         if (current.size == all.size)
             current.clear ();
-        backend.enabled_hacks = current.to_array ();
+        // Gee to_array () is not NULL-terminated, which a strv setting needs
+        string[] ids = new string[0];
+        foreach (var e in current)
+            ids += e;
+        backend.enabled_hacks = ids;
     }
 
     private void refresh () {

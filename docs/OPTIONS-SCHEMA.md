@@ -13,6 +13,13 @@ launcher. No screensaver needs UI code.
 | `/usr/share/ncz-screensavers/options/presets/<short>/<name>.json` | one scene (preset) per file |
 | `/usr/share/ncz-screensavers/options/_render.tsv` | common render options added to every shader hack (do not repeat them) |
 
+A hack that describes its own options needs no file: when there is no `options/<id>.json` or
+`.tsv`, the launcher runs `<hack> --dump-schema` (five seconds at most, no GPU needed) and reads
+its tab-separated output, ten columns per option: name, type, default, min, max, choices
+(comma separated), label, description, group, env variable. The xshadertoy family works this
+way (options declared in each `.glsl` header, common options `preset`, `seed`, `randomize`,
+`palette`, `speed`, `evolution`, `quality`). `--dump-schema` must exit 0 and print nothing else.
+
 The older tab-separated form (`options/<id>.tsv`, ten columns, produced by
 `<hack>_gles3 --dump-schema`) is still read; `.json` wins when both exist. Black Hole
 also lists its scenes in `presets.tsv` (hack `--preset=NAME`), which the engine merges with the

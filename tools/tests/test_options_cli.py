@@ -109,3 +109,24 @@ def test_json_preset_values_apply_below_stored_options(mod):
 def test_unknown_preset_file_is_ignored(mod):
     assert mod.preset_values("toy_gles3", "../etc") == {}
     assert mod.preset_values("toy_gles3", "missing") == {}
+
+
+def test_schema_falls_back_to_the_hack_dump_schema(mod, tmp_path, monkeypatch):
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    hack = bindir / "dumpy_gles3"
+    hack.write_text(
+        '#!/bin/sh\n[ "$1" = --dump-schema ] || exit 9\n'
+        'printf "seed\\tint\\t0\\t0\\t99\\t\\tSeed\\tRepeatable\\tLook\\tNCZ_XSHADERTOY_DUMPY_SEED\\n"\n'
+        'printf "palette\\tenum\\tauto\\t\\t\\tauto,a,b\\tPalette\\t\\tLook\\t\\n"\n'
+    )
+    hack.chmod(0o755)
+    monkeypatch.setenv("NCZ_SCREENSAVER_DIRS", str(bindir))
+    mod.dumped_schema.cache_clear()
+    rows = {r["name"]: r for r in mod.load_option_schema("dumpy_gles3")}
+    assert (
+        rows["seed"]["env"] == "NCZ_XSHADERTOY_DUMPY_SEED"
+        and rows["seed"]["max"] == "99"
+    )
+    assert rows["palette"]["choices"] == ["auto", "a", "b"]
+    assert mod.option_level(rows["seed"]) == "basic"

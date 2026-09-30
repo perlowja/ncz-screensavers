@@ -302,7 +302,9 @@ public class NczScreensaverBackend : Object, ScreensaverBackend {
                 if (titles.size < 2)
                     return;
                 kind = "enum";
-                choices = titles.to_array ();
+                choices = new string[0];
+                foreach (var t in titles)
+                    choices += t;
                 dflt = NO_SCENE;
                 label = "Scene";
             }

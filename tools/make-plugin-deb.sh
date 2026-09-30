@@ -10,7 +10,7 @@ set -eu
 ARCH=${1:?arch (amd64|arm64)}
 SRC=${2:?build dir}
 OUT=${3:?output .deb}
-VER=${4:-0.3.4}
+VER=${4:-0.3.5}
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 D=$W/opt/singularity/lib/singularity/plugins/screensaver
